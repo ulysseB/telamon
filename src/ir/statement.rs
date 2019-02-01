@@ -1,5 +1,7 @@
 //! Provides a generic decription of basic blocks.
-use ir;
+use crate::ir;
+
+use serde::{Deserialize, Serialize};
 use utils::*;
 
 /// Provides a unique identifer for a basic block.

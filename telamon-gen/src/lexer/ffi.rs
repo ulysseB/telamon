@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use ir;
+use crate::ir;
 use libc;
 
 use std::fmt;

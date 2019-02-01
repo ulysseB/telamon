@@ -1,8 +1,10 @@
 //! Search space datastructures and constraint propagation.
-use ir;
+use crate::ir;
+use log::debug;
 
 mod dim_map;
 mod operand;
+use utils::generated_file;
 generated_file!(choices);
 
 pub use self::choices::{

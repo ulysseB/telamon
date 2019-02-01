@@ -31,10 +31,10 @@ end
 
 trigger forall $dim in Dimension:
   forall $bb in Statement:
-    "::lowering::test_trigger($fun, $dim, $bb)" when foo($dim, $bb) is A
+    "crate::lowering::test_trigger($fun, $dim, $bb)" when foo($dim, $bb) is A
 
 trigger forall $lhs in Dimension:
   forall $rhs in Dimension:
-    "::lowering::test_complex_trigger($fun, $lhs, $rhs)" when
+    "crate::lowering::test_complex_trigger($fun, $lhs, $rhs)" when
       bar($lhs) is A && bar($rhs) is A
 

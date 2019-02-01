@@ -1,14 +1,10 @@
 //! Contains integration tests for Exhaust.
-extern crate env_logger;
-extern crate libc;
-extern crate telamon;
-extern crate telamon_utils as utils;
 #[macro_use]
 extern crate log;
 
 mod common;
 
-use common::*;
+use crate::common::*;
 use telamon::device::Context;
 use telamon::helper;
 use telamon::ir::{self, Size, Type};

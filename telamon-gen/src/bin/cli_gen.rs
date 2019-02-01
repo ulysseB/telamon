@@ -10,7 +10,6 @@ fn main() {
     if let Err(process_error) = telamon_gen::process(
         Some(&mut std::io::stdin()),
         &mut std::io::stdout(),
-        true,
         &Path::new("exh"),
     ) {
         eprintln!("error: {}", process_error);

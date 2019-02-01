@@ -1,10 +1,11 @@
-use codegen::*;
-use device::x86::Namer;
-use ir::{self, op, Type};
+use crate::codegen::*;
+use crate::device::x86::Namer;
+use crate::ir::{self, op, Type};
+use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag, MemSpace};
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
+use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]

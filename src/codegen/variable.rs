@@ -1,8 +1,8 @@
 //! Code generation for `ir::Variable`.
-use codegen;
+use crate::codegen;
+use crate::ir;
+use crate::search_space::*;
 use indexmap::IndexMap;
-use ir;
-use search_space::*;
 use utils::*;
 
 /// Wraps an `ir::Variable` to expose specified decisions.
@@ -192,9 +192,9 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use device::x86::Cpu;
-    use helper;
-    use ir;
+    use crate::device::x86::Cpu;
+    use crate::helper;
+    use crate::ir;
     use std;
 
     fn mk_map<K, V>(content: &[(K, V)]) -> HashMap<K, V>

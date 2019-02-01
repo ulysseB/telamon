@@ -1,9 +1,9 @@
 //! Pressure on the hardware execution units.
-use device::Device;
-use ir;
+use crate::device::Device;
+use crate::ir;
+use crate::model::{CodePoint, Level};
+use crate::search_space::{DimKind, Domain};
 use itertools::Itertools;
-use model::{CodePoint, Level};
-use search_space::{DimKind, Domain};
 use std::rc::Rc;
 use std::{cmp, fmt, iter};
 use utils::*;

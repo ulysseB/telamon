@@ -1,8 +1,8 @@
 //! Prints counter manipulation methods.
-use ir;
-use print;
+use crate::ir;
+use crate::print;
 use proc_macro2::TokenStream;
-use quote;
+use quote::quote;
 
 /// Prints the value of a counter increment. If `use_old` is true, only takes into account
 /// decisions that have been propagated.

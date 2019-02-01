@@ -1,5 +1,6 @@
-use super::lalrpop_util::*;
-use super::lexer::{ErrorKind, LexicalError, Position, Span, Spanned, Token};
+use crate::lexer::{ErrorKind, LexicalError, Position, Span, Spanned, Token};
+use failure::Fail;
+use lalrpop_util::ParseError;
 use std::fmt;
 use std::path::PathBuf;
 

@@ -1,5 +1,6 @@
 //! Defines traits for domains of integers.
 use proc_macro2::TokenStream;
+use quote::quote;
 
 /// Returns the definition of `NumDomain` and `NumSet` traits.
 pub fn get() -> TokenStream {

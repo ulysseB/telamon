@@ -1,9 +1,10 @@
 //! Prints sets of values.
-use ir;
+use crate::ir;
+use crate::print;
+use crate::print::ast::{self, Context};
 use itertools::Itertools;
-use print;
-use print::ast::{self, Context};
 use proc_macro2::TokenStream;
+use quote::quote;
 use std::collections::BTreeSet;
 use utils::*;
 

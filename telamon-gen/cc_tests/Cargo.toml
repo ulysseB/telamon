@@ -3,6 +3,7 @@ authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
 build = "build.rs"
 name = "telamon-gen-test"
 version = "0.1.0"
+edition = "2018"
 
 [build-dependencies]
 env_logger = "0.5.9"

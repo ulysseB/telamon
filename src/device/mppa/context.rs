@@ -9,7 +9,7 @@ use libc;
 use search_space::SearchSpace;
 use std;
 use std::sync::Arc;
-use utils::*;
+use telamon_utils::*;
 
 const EXECUTION_QUEUE_SIZE: isize = 512;
 

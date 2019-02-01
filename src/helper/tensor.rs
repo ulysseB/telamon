@@ -1,10 +1,10 @@
 //! Utilities to allocate and operate on tensors.
-use device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
-use helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
-use ir;
+use crate::device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
+use crate::helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
+use crate::ir;
+use crate::search_space::InstFlag;
+use ::ndarray::{self, ArrayD};
 use itertools::Itertools;
-use ndarray::{self, ArrayD};
-use search_space::InstFlag;
 use std;
 use utils::*;
 

@@ -1,13 +1,16 @@
 //! Exploration of the search space.
-use device::Context;
-use explorer::choice::ActionEx;
-use model::{bound, Bound};
+use crate::device::Context;
+use crate::explorer::choice::ActionEx;
+use crate::model::{bound, Bound};
+use crate::search_space::SearchSpace;
+
+use log::{debug, info, trace};
 use rpds::List;
-use search_space::SearchSpace;
 use std;
 use std::cmp::{Ordering, PartialOrd};
 
 use itertools::Itertools;
+use utils::unwrap;
 
 /// A node of the search tree.
 #[derive(Clone)]

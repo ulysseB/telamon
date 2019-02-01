@@ -1,9 +1,11 @@
 //! Prints the manipulation of individual domains.
-use ir;
-use print;
+use crate::ir;
+use crate::print;
+use lazy_static::lazy_static;
 use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream};
 use quote::{self, ToTokens};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use utils::unwrap;
 
 /// A value that a domain can take.
 #[derive(Debug, Clone)]
@@ -43,8 +45,12 @@ impl Value {
     ) -> Self {
         let getter = print::store::getter_name(&choice_instance.choice, get_old);
         let ids = print::choice::ids(choice_instance, ctx);
-        let diff = if get_old { quote!(diff) } else { quote!() };
-        let tokens = quote!(store.#getter(#ids#diff));
+        let diff = if get_old {
+            quote::quote!(diff)
+        } else {
+            quote::quote!()
+        };
+        let tokens = quote::quote!(store.#getter(#ids#diff));
         Self::new(tokens, choice_instance.value_type(ctx.ir_desc))
     }
 
@@ -63,7 +69,7 @@ impl Value {
     pub fn inverse(&mut self) {
         self.tokens = {
             let tokens = &self.tokens;
-            Group::new(Self::DELIMITER, quote!(#tokens.inverse()))
+            Group::new(Self::DELIMITER, quote::quote!(#tokens.inverse()))
         };
     }
 
@@ -71,21 +77,21 @@ impl Value {
     pub fn negate(&mut self) {
         self.tokens = {
             let tokens = &self.tokens;
-            Group::new(Self::DELIMITER, quote!(!(#tokens)))
+            Group::new(Self::DELIMITER, quote::quote!(!(#tokens)))
         };
     }
 
     /// Returns the minimum of an integer domain.
     pub fn get_min(&self, ctx: &print::Context) -> Self {
         let universe = universe(self.value_type(), ctx);
-        let tokens = quote!(NumSet::min(&#self, #universe));
+        let tokens = quote::quote!(NumSet::min(&#self, #universe));
         Value::new(tokens, ir::ValueType::Constant)
     }
 
     /// Returns the maximum of an integer domain.
     pub fn get_max(&self, ctx: &print::Context) -> Self {
         let universe = universe(self.value_type(), ctx);
-        let tokens = quote!(NumSet::max(&#self, #universe));
+        let tokens = quote::quote!(NumSet::max(&#self, #universe));
         Value::new(tokens, ir::ValueType::Constant)
     }
 }
@@ -154,7 +160,7 @@ pub fn universe(value_type: &ir::ValueType, ctx: &print::Context) -> Value {
     match value_type {
         ir::ValueType::Enum(..) => panic!("only integer domains have a universe"),
         ir::ValueType::Range { .. } | ir::ValueType::Constant => {
-            Value::new(quote!(&()), ir::ValueType::Constant)
+            Value::new(quote::quote!(&()), ir::ValueType::Constant)
         }
         ir::ValueType::NumericSet(universe) => Value::new_const(universe, ctx),
     }
@@ -171,7 +177,8 @@ pub fn integer_domain_constructor(
     let constructor = constructor_from_op(constructor_op);
     let to_universe = universe(&to_type, ctx);
     let from_universe = universe(from.value_type(), ctx);
-    let tokens = quote!(#to_type::#constructor(#to_universe, #from, #from_universe));
+    let tokens =
+        quote::quote!(#to_type::#constructor(#to_universe, #from, #from_universe));
     Value::new(tokens, to_type)
 }
 

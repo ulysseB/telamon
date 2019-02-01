@@ -1,15 +1,15 @@
 //! Abstracts kernels so we can build generic methods to test them.
+use crate::statistics;
+use crate::utils::*;
 use itertools::Itertools;
 use num_cpus;
 use rayon::prelude::*;
-use statistics;
 use std;
 use std::sync::{atomic, Mutex};
 use telamon::explorer::{local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
 use telamon::{codegen, device, explorer, ir};
-use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
 const CUT: f64 = 2e8f64;
@@ -47,7 +47,7 @@ pub trait Kernel<'a>: Sized {
     ) -> Vec<Candidate<'b>>;
 
     /// Computes the expected output.
-    fn get_expected_output(&self, &device::Context) -> Self::ExpectedOutput;
+    fn get_expected_output(&self, _: &device::Context) -> Self::ExpectedOutput;
 
     /// Ensures the generated code performs the correct operation.
     fn check_result(

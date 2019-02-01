@@ -1,5 +1,4 @@
 //! Thread-safe LRU Cache.
-use super::*;
 use linked_hash_map::LinkedHashMap;
 use std;
 use std::hash::Hash;

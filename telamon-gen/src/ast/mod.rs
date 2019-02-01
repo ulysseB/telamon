@@ -9,17 +9,18 @@ mod error;
 mod set;
 mod trigger;
 
+use crate::ir;
+use crate::print;
 use indexmap::IndexMap;
-use ir;
 use itertools::Itertools;
-use print;
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
 use utils::{HashMap, HashSet, RcStr};
 
-pub use constraint::dedup_inputs;
-pub use constraint::Constraint as TypedConstraint;
+pub use crate::constraint::dedup_inputs;
+pub use crate::constraint::Constraint as TypedConstraint;
 
 pub use super::lexer::{Position, Spanned};
 

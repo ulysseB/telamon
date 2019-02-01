@@ -55,7 +55,7 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   new_objs = "$objs.iteration_dims"
   from_superset = "$inst.iteration_dims().get(&$item.id()).map(|_| $item)"
   reverse forall $dim in Dimensions = "$dim.iterated().map(|id| $fun.inst(id))"
-  add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
+  add_to_set = "crate::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
 include "variable.exh"
@@ -257,17 +257,17 @@ require forall $dim in Dimensions:
 // dim_map lowering.
 trigger forall $lhs in Dimensions:
   forall $rhs in Dimensions:
-    "::search_space::dim_map::dim_not_mapped($lhs, $rhs, ir_instance)"
+    "crate::search_space::dim_map::dim_not_mapped($lhs, $rhs, ir_instance)"
       when dim_mapping($lhs, $rhs) is NOT_MAPPED && "$lhs.id() < $rhs.id()"
 
 // Layout Lowering.
 trigger forall $lhs in Dimensions:
   forall $rhs in Dimensions:
-    "::search_space::dim_map::dim_not_merged($lhs, $rhs, ir_instance)"
+    "crate::search_space::dim_map::dim_not_merged($lhs, $rhs, ir_instance)"
       when order($lhs, $rhs) is not MERGED && "$lhs.id() < $rhs.id()"
 
 // Merge lowering
 trigger forall $lhs in Dimensions:
   forall $rhs in Dimensions:
-    "::search_space::merge_dims($lhs, $rhs, ir_instance)"
+    "crate::search_space::merge_dims($lhs, $rhs, ir_instance)"
       when order($lhs, $rhs) is MERGED && "$lhs.id() > $rhs.id()"

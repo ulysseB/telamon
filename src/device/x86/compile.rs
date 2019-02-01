@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::process::{Command, ExitStatus};
 use std::time::Instant;
+use utils::unwrap;
 
 pub fn compile(mut source_file: File, lib_path: &str) -> ExitStatus {
     unwrap!(source_file.seek(SeekFrom::Start(0)));

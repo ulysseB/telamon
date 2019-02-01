@@ -1,5 +1,7 @@
 //! Encodes the data-flow information.
-use ir;
+use crate::ir;
+
+use serde::{Deserialize, Serialize};
 use utils::*;
 
 /// Uniquely identifies variables.

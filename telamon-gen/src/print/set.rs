@@ -1,7 +1,8 @@
 //! Manipulation of sets and their items.
-use ir;
+use crate::ir;
 use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 use quote;
+use utils::unwrap;
 
 /// Lists the new objects of the given set.
 pub fn iter_new_objects(set: &ir::SetDef) -> TokenTree {

@@ -1,11 +1,13 @@
 //! AST building blocks for the generated code.
+use crate::ir;
+use crate::ir::SetRef;
+use crate::print;
 use indexmap::IndexMap;
-use ir;
-use ir::SetRef;
 use itertools::Itertools;
-use print;
+use lazy_static::lazy_static;
 use quote::ToTokens;
 use serde::{Serialize, Serializer};
+use serde_derive;
 use std::fmt::{self, Display, Formatter};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use utils::*;
@@ -164,7 +166,7 @@ impl<'a> Context<'a> {
 ///
 /// Associated templates:
 /// * [choice/getter]: retrives the choice value from the store.
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde_derive::Serialize)]
 pub struct ChoiceInstance<'a> {
     name: &'a str,
     arguments: Vec<(Variable<'a>, Set<'a>)>,
@@ -183,7 +185,7 @@ impl<'a> ChoiceInstance<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde_derive::Serialize)]
 pub struct SetConstraint<'a> {
     var: Variable<'a>,
     sets: Vec<Set<'a>>,
@@ -223,7 +225,7 @@ pub enum Conflict<'a> {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, serde_derive::Serialize)]
 pub enum ConflictAst<'a> {
     Variable {
         conflict_var: Variable<'a>,
@@ -281,7 +283,7 @@ impl<'a> Conflict<'a> {
 }
 
 /// Builds a loop nest given a body.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, serde_derive::Serialize)]
 pub struct LoopNest<'a> {
     levels: Vec<(Variable<'a>, Set<'a>, Vec<ConflictAst<'a>>)>,
     triangular: bool,
@@ -384,7 +386,7 @@ impl<'a> Display for Variable<'a> {
 }
 
 /// The type of a value.
-#[derive(Serialize)]
+#[derive(serde_derive::Serialize)]
 pub enum ValueType {
     Enum(RcStr),
     Range,
@@ -437,7 +439,7 @@ pub fn new_objs_list(set: &ir::SetDef, new_objs: &str) -> Variable<'static> {
 }
 
 /// AST to print the reference to a set.
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, serde_derive::Serialize)]
 pub struct Set<'a> {
     def: SetDef<'a>,
     var: Option<Variable<'a>>,
@@ -468,7 +470,7 @@ impl<'a> Set<'a> {
 }
 
 /// AST for the set definition.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, serde_derive::Serialize)]
 pub struct SetDef<'a> {
     name: &'a str,
     keys: &'a IndexMap<ir::SetDefKey, String>,

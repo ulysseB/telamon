@@ -1,7 +1,7 @@
-use codegen;
-use ir;
+use crate::codegen;
+use crate::ir;
+use crate::search_space::{DimKind, Domain, Order, SearchSpace};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, Order, SearchSpace};
 use std;
 use utils::*;
 

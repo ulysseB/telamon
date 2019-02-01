@@ -8,7 +8,9 @@ use config;
 use getopts;
 use itertools::Itertools;
 use num_cpus;
+use serde::{Deserialize, Serialize};
 use std::{self, error, fmt, str::FromStr};
+use utils::unwrap;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]

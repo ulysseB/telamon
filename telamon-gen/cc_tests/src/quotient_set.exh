@@ -59,7 +59,7 @@ quotient InstQuotient of $inst in Instruction:
   var_prefix = "inst_repr"
   new_objs = "$objs.inst_quotient"
   from_superset = "ir::inst_quotient::from_superset($fun, $item)"
-  add_to_set = "::quotient_set::add_inst_to_quotient($fun, $item)"
+  add_to_set = "crate::quotient_set::add_inst_to_quotient($fun, $item)"
 end
 
 quotient DimQuotient($inst in Instruction) of $dim in Dimension:
@@ -73,5 +73,5 @@ quotient DimQuotient($inst in Instruction) of $dim in Dimension:
   new_objs = "$objs.dim_quotient"
   from_superset = "ir::dim_quotient::from_superset($fun, $inst, $item)"
   reverse forall $dim in Dimension = "ir::dim_quotient::reverse($fun, $dim.id())"
-  add_to_set = "::quotient_set::add_dim_to_quotient($fun, $inst, $item)"
+  add_to_set = "crate::quotient_set::add_dim_to_quotient($fun, $inst, $item)"
 end

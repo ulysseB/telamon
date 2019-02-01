@@ -1,8 +1,11 @@
 //! Choices that can be applied to split the search space.
-use explorer::config;
-use ir::{self, Statement};
+use crate::explorer::config;
+use crate::ir::{self, Statement};
+use crate::search_space::{Action, Domain, NumSet, Order, SearchSpace};
 use itertools::Itertools;
-use search_space::{Action, Domain, NumSet, Order, SearchSpace};
+use log::trace;
+use serde::{Deserialize, Serialize};
+use utils::unwrap;
 
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -74,7 +77,7 @@ pub fn list<'a>(
     iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
     space: &'a SearchSpace<'a>,
 ) -> impl Iterator<Item = Choice> + 'a {
-    use explorer::config::ChoiceGroup::*;
+    use crate::explorer::config::ChoiceGroup::*;
 
     NestedIterator::new(iter_choice.into_iter().map(
         move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
