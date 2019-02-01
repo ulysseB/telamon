@@ -425,6 +425,74 @@
 <span id="425">425</span>
 <span id="426">426</span>
 <span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -631,13 +699,27 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreePolicy</span> {
     <span class="doccomment">/// Take the candidate with the best bound.</span>
     <span class="ident">Bound</span>,
+
     <span class="doccomment">/// Consider the nodes with a probability proportional to the distance between the</span>
     <span class="doccomment">/// cut and the bound.</span>
     <span class="ident">WeightedRandom</span>,
-    <span class="doccomment">/// TAG algorithm</span>
+
+    <span class="doccomment">/// Policies based on TAG, as described in</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">///   Bandit-Based Optimization on Graphs with Application to Library Performance Tuning</span>
+    <span class="doccomment">///   De Mesmay, Rimmel, Voronenko, Püschel</span>
+    <span class="doccomment">///   ICML 2009</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Those policies make decisions based on the relative proportions of the top N samples in</span>
+    <span class="doccomment">/// each branch, without relying directly on the values.  This obviates the issue of selecting</span>
+    <span class="doccomment">/// a good threshold value for good vs bad samples (we don&#39;t know what a good value is until</span>
+    <span class="doccomment">/// after we have found it!), but introduces an issue with staleness:</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
     <span class="ident">TAG</span>(<span class="ident">TAGConfig</span>),
-    <span class="doccomment">/// UCT algorithm</span>
+
+    <span class="doccomment">/// Policies based on UCT, including variants such as p-UCT.  Those policies optimize a reduced</span>
+    <span class="doccomment">/// value (such as average score or best score) among the samples seen in a branch, along with</span>
+    <span class="doccomment">/// an uncertainty term to boost rarely explored branches.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;uct&quot;</span>)]</span>
     <span class="ident">UCT</span>(<span class="ident">UCTConfig</span>),
 }
@@ -674,15 +756,69 @@
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UCTConfig</span> {
-    <span class="kw">pub</span> <span class="ident">factor</span>: <span class="ident">f64</span>,
+    <span class="doccomment">/// Constant multiplier for the exploration term.  This is controls the</span>
+    <span class="doccomment">/// exploration-exploitation tradeoff, and is normalized using the `normalization` term.</span>
+    <span class="kw">pub</span> <span class="ident">exploration_constant</span>: <span class="ident">f64</span>,
+    <span class="doccomment">/// Normalization to use for the exploration term.</span>
+    <span class="kw">pub</span> <span class="ident">normalization</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Normalization</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Reduction function to use when computing the state value.</span>
+    <span class="kw">pub</span> <span class="ident">value_reduction</span>: <span class="ident">ValueReduction</span>,
+    <span class="doccomment">/// Target to use as a reward.</span>
+    <span class="kw">pub</span> <span class="ident">reward</span>: <span class="ident">Reward</span>,
+    <span class="doccomment">/// Formula to use for the exploration term.</span>
+    <span class="kw">pub</span> <span class="ident">formula</span>: <span class="ident">Formula</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">UCTConfig</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">UCTConfig</span> {
-            <span class="ident">factor</span>: <span class="number">2f64</span>.<span class="ident">sqrt</span>(),
+            <span class="ident">exploration_constant</span>: <span class="number">2f64</span>.<span class="ident">sqrt</span>(),
+            <span class="ident">normalization</span>: <span class="prelude-val">None</span>,
+            <span class="comment">// We use best value reduction by default because the mean value does not make much</span>
+            <span class="comment">// sense considering that we can have infinite/very large values due to both timeouts</span>
+            <span class="comment">// and cutting later in the evaluation process.</span>
+            <span class="ident">value_reduction</span>: <span class="ident">ValueReduction</span>::<span class="ident">Best</span>,
+            <span class="ident">reward</span>: <span class="ident">Reward</span>::<span class="ident">Speed</span>,
+            <span class="ident">formula</span>: <span class="ident">Formula</span>::<span class="ident">Uct</span>,
         }
     }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Formula</span> {
+    <span class="doccomment">/// Regular UCT formula: sqrt(log(\sum visits) / visits)</span>
+    <span class="ident">Uct</span>,
+    <span class="doccomment">/// AlphaGo PUCT variant: p * sqrt(\sum visits) / visits</span>
+    <span class="doccomment">/// Currently only uniform prior is supported (p = 1 / k where k is the number of children).</span>
+    <span class="ident">AlphaPuct</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Reward</span> {
+    <span class="ident">NegTime</span>,
+    <span class="ident">Speed</span>,
+    <span class="ident">LogSpeed</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValueReduction</span> {
+    <span class="doccomment">/// Use the mean evaluation time.  This yields the regular UCT value function.</span>
+    <span class="ident">Mean</span>,
+    <span class="doccomment">/// Use the best evaluation time.  This yields an algorithm similar to maxUCT from</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">///   Trial-based Heuristic Tree Search for Finite Horizon MDPs,</span>
+    <span class="doccomment">///   Thomas Keller and Malte Helmert</span>
+    <span class="ident">Best</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Normalization</span> {
+    <span class="doccomment">/// Normalize the exploration term according to the current global best.</span>
+    <span class="ident">GlobalBest</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BanditConfig</span> {
