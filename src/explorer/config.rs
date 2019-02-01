@@ -313,8 +313,8 @@ pub enum ValueReduction {
     Mean,
     /// Use the best evaluation time.  This yields an algorithm similar to maxUCT from
     ///
-    ///     Trial-based Heuristic Tree Search for Finite Horizon MDPs,
-    ///     Thomas Keller and Malte Helmert
+    ///   Trial-based Heuristic Tree Search for Finite Horizon MDPs,
+    ///   Thomas Keller and Malte Helmert
     Best,
 }
 
