@@ -1,11 +1,12 @@
 //! Describes CUDA-enabled GPUs.
-use codegen::Function;
-use device::cuda::mem_model::{self, MemInfo};
-use device::cuda::CudaPrinter;
-use device::{self, cuda, Device};
-use ir::{self, Operator, Type};
-use model::{self, HwPressure};
-use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+use crate::codegen::Function;
+use crate::device::cuda::mem_model::{self, MemInfo};
+use crate::device::cuda::CudaPrinter;
+use crate::device::{self, cuda, Device};
+use crate::ir::{self, Operator, Type};
+use crate::model::{self, HwPressure};
+use crate::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+use serde::{Deserialize, Serialize};
 use std;
 use std::io::Write;
 use utils::*;
@@ -292,7 +293,7 @@ impl Gpu {
         inst: &ir::Instruction,
         ctx: &device::Context,
     ) -> HwPressure {
-        use ir::Operator::*;
+        use crate::ir::Operator::*;
         let t = inst.t().map(|t| self.lower_type(t, space).unwrap_or(t));
         match (inst.operator(), t) {
             (&BinOp(ir::BinOp::Add, ..), Some(Type::F(32)))

@@ -1,4 +1,4 @@
-use ir;
+use crate::ir;
 use linked_list;
 use linked_list::LinkedList;
 use utils::*;

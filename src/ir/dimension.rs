@@ -1,5 +1,8 @@
 //! Represents iteration dimensions.
-use ir::{self, Statement};
+use crate::ir::{self, Statement};
+use lazy_static::lazy_static;
+use log::trace;
+use serde::{Deserialize, Serialize};
 use std;
 use utils::*;
 

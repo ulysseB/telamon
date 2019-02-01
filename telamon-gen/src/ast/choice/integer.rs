@@ -1,10 +1,10 @@
 use std::ops::Deref;
 
-use ast::context::CheckerContext;
-use ast::error::TypeError;
-use ast::{type_check_code, VarDef, VarMap};
-use ir;
-use lexer::Spanned;
+use crate::ast::context::CheckerContext;
+use crate::ast::error::TypeError;
+use crate::ast::{type_check_code, VarDef, VarMap};
+use crate::ir;
+use crate::lexer::Spanned;
 
 use utils::RcStr;
 

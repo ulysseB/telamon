@@ -1,9 +1,9 @@
 //! Provides functions to print PTX code.
-use codegen::*;
-use device::cuda::{Gpu, Namer};
-use ir::{self, op, Type};
+use crate::codegen::*;
+use crate::device::cuda::{Gpu, Namer};
+use crate::ir::{self, op, Type};
+use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag, MemSpace};
 use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;

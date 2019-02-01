@@ -2,8 +2,8 @@
 //! is not installed. This allows us to reference the CUDA-specific types without cuda
 //! installed and to run tests on functions that do not rely on the executor.
 
-use device;
-use device::cuda::api;
+use crate::device;
+use crate::device::cuda::api;
 use std::marker::PhantomData;
 
 /// An argument that can be passed to the executor.

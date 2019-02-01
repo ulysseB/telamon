@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::{fs, io, path, ptr};
 
 use errno::Errno;
+use failure::Fail;
 
 pub use self::ffi::Spanned;
 pub use self::token::Token;

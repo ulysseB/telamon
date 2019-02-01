@@ -1,15 +1,16 @@
 use std::iter;
 
-use ast::constrain::Constraint;
-use ast::context::CheckerContext;
-use ast::error::TypeError;
-use ast::{
+use crate::ast::constrain::Constraint;
+use crate::ast::context::CheckerContext;
+use crate::ast::error::TypeError;
+use crate::ast::{
     type_check_code, type_check_enum_values, ChoiceDef, ChoiceInstance, Condition,
     CounterBody, CounterVal, HashSet, VarDef, VarMap,
 };
-use ir::{self, Adaptable};
+use crate::ir::{self, Adaptable};
+use crate::lexer::Spanned;
 use itertools::Itertools;
-use lexer::Spanned;
+use log::trace;
 use utils::RcStr;
 
 #[derive(Clone, Debug)]
@@ -79,7 +80,7 @@ impl CounterDef {
             } => {
                 // TODO(cleanup): allow mul of sums. The problem is that you can multiply
                 // and/or divide by zero when doing this.
-                use ir::CounterKind;
+                use crate::ir::CounterKind;
                 assert!(!(kind == CounterKind::Mul && value_kind == CounterKind::Add));
                 assert!(
                     caller_visibility >= visibility,

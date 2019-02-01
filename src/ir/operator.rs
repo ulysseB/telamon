@@ -1,9 +1,10 @@
 //! Defines operators.
 use self::Operator::*;
-use ir::{self, AccessPattern, LoweringMap, Operand, Type};
+use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
 use itertools::Itertools;
 use std;
 use std::borrow::Cow;
+
 use utils::*;
 
 /// The rounding mode of an arithmetic operation.

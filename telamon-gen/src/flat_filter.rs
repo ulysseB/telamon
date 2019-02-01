@@ -1,5 +1,5 @@
 //! Filter generation.
-use ir::{self, Adaptable};
+use crate::ir::{self, Adaptable};
 use utils::*;
 
 /// Merge flat filters that can be merged in the given list.

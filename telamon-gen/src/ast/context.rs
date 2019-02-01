@@ -1,9 +1,9 @@
 use std::ops::Deref;
 
-use ast::error::{Hint, TypeError};
-use ast::SetRef;
+use crate::ast::error::{Hint, TypeError};
+use crate::ast::SetRef;
 
-use lexer::Spanned;
+use crate::lexer::Spanned;
 use utils::HashMap;
 
 /// CheckContext is a type system.

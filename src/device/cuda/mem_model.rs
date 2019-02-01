@@ -1,11 +1,12 @@
 //! Memory accesses analysis.
+use crate::device::{cuda, Context};
+use crate::ir;
+use crate::model::size;
+use crate::search_space::*;
 use binary_heap_plus::BinaryHeap;
-use device::{cuda, Context};
-use ir;
 use itertools::Itertools;
-use model::size;
+use log::trace;
 use num::Integer;
-use search_space::*;
 use std;
 use utils::*;
 

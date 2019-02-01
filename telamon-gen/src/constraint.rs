@@ -1,7 +1,7 @@
 //! Constraint representation and manipulation.
-use flat_filter::FlatFilter;
-use ir::SetRef;
-use ir::{self, Adaptable};
+use crate::flat_filter::FlatFilter;
+use crate::ir::SetRef;
+use crate::ir::{self, Adaptable};
 use std;
 use utils::*;
 

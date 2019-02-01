@@ -1,4 +1,4 @@
-use ir;
+use crate::ir;
 use utils::*;
 
 /// Unique identifier for `InductionVar`

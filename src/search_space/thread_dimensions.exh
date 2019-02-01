@@ -9,7 +9,7 @@ quotient ThreadDims of $dim in StaticDims:
   var_prefix = "thread_dim"
   new_objs = "$objs.thread_dims"
   from_superset = "(if $item.is_thread_dim() { Some($item) } else { None })"
-  add_to_set = "::search_space::add_thread_dim($fun, $item)"
+  add_to_set = "crate::search_space::add_thread_dim($fun, $item)"
 end
 
 /// Limits the number of threads.

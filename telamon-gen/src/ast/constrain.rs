@@ -1,6 +1,6 @@
-use ast::context::CheckerContext;
-use ast::error::TypeError;
-use ast::{ir, Condition, TypedConstraint, VarDef, VarMap};
+use crate::ast::context::CheckerContext;
+use crate::ast::error::TypeError;
+use crate::ast::{ir, Condition, TypedConstraint, VarDef, VarMap};
 
 use itertools::Itertools;
 

@@ -10,8 +10,8 @@ pub use self::context::Context;
 pub use self::cpu::Cpu;
 pub use self::printer::X86printer;
 
-use codegen;
-use ir;
+use crate::codegen;
+use crate::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;

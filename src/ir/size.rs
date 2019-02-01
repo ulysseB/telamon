@@ -1,5 +1,6 @@
-use ir;
+use crate::ir;
 use std;
+
 use utils::*;
 
 /// A fully specified size.

@@ -1,6 +1,10 @@
 //! Describes the instructions.
-use ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
+use crate::ir::{
+    self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type,
+};
+use serde::{Deserialize, Serialize};
 use std;
+
 use utils::*;
 
 /// Uniquely identifies an instruction.

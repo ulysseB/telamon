@@ -1,10 +1,11 @@
 //! Compute and represent local information on the different objects representing of the IR.
-use device::{Context, Device};
-use ir::{self, Statement};
+use crate::device::{Context, Device};
+use crate::ir::{self, Statement};
+use crate::model::{size, HwPressure};
+use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
 use itertools::Itertools;
-use model::{size, HwPressure};
 use num::integer::lcm;
-use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
+
 use utils::*;
 
 /// Local information on the different objects.

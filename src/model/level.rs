@@ -7,13 +7,16 @@
 //! times while when considering the intersection of the bodies, we consider it is
 //! repeated N x M times.
 
-use device::Context;
-use ir;
+use crate::device::Context;
+use crate::ir;
+use crate::model::{
+    size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo,
+};
+use crate::search_space::{DimKind, Domain, SearchSpace};
 use itertools::{self, Itertools};
-use model::{size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
-use search_space::{DimKind, Domain, SearchSpace};
 use std;
 use std::cmp::Ordering;
+
 use utils::*;
 
 /// A level at which latency should be computed.

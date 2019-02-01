@@ -671,7 +671,7 @@ mod counter_alloc {
     #[test]
     fn counter_allocation() {
         let _ = ::env_logger::try_init();
-        use counter_alloc::*;
+        use self::counter_alloc::*;
 
         let mut fun = ir::Function::default();
         let dim0 = ir::dim::create(&mut fun, false);
@@ -779,7 +779,7 @@ mod counter_cond {
     #[test]
     fn counter_conditions() {
         let _ = ::env_logger::try_init();
-        use counter_cond::*;
+        use self::counter_cond::*;
 
         let mut fun = ir::Function::default();
         let dim0 = ir::dim::create(&mut fun, false);

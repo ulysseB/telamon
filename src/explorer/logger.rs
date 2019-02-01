@@ -5,15 +5,17 @@ use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
 
+use crate::explorer::config::Config;
+use crate::explorer::monitor;
 use bincode;
-use explorer::config::Config;
-use explorer::monitor;
+use failure::Fail;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
-use serde::ser::Serialize;
+use serde::{Deserialize, Serialize};
 
 use utils::tfrecord;
 use utils::tfrecord::RecordWriter;
+use utils::unwrap;
 
 #[derive(Serialize, Deserialize)]
 pub enum LogMessage<E> {

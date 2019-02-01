@@ -3,6 +3,7 @@ name = "telamon"
 authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
 license = "Apache-2.0"
 version = "0.2.0"
+edition = "2018"
 
 readme = "README.md"
 repository = "https://github.com/ulysseB/telamon/"
@@ -79,7 +80,7 @@ rand = "0.5.5"
 rayon = "1.0.1"
 regex = "0.2.10"
 rpds = { version = "0.5.0", features = ["serde"] }
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 serde_json = "1.0.22"
 serde_yaml = "0.8"
@@ -92,9 +93,7 @@ xdg = "^2.1"
 flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
-
-[dependencies.telamon-utils]
-path = "telamon-utils"
+utils = {package = "telamon-utils", path = "telamon-utils"}
 
 [dependencies.tokio-timer]
 git = "https://github.com/ulysseB/tokio-timer.git"
