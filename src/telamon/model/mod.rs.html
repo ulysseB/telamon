@@ -366,7 +366,9 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
-</pre><pre class="rust ">
+<span id="369">369</span>
+<span id="370">370</span>
+</pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Building Blocks for lower bound performance models.</span>
 <span class="kw">mod</span> <span class="ident">code_point</span>;
 <span class="kw">mod</span> <span class="ident">cuda_tests</span>;
@@ -379,6 +381,8 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">hw_pressure</span>::{<span class="ident">BottleneckLevel</span>, <span class="ident">Bound</span>, <span class="ident">HwPressure</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">local_info</span>::<span class="ident">Nesting</span>;
+
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 
 <span class="comment">// TODO(model): One some instruction, the latency dependens on the operand position.</span>
 <span class="comment">// TODO(model): Some instructions are divided into multiple sub-instructions. When adding</span>
@@ -399,15 +403,15 @@
 <span class="comment">//  is issued. For this, either double the nodes or subtract the size of buffers to the next</span>
 <span class="comment">//  issue.</span>
 
-<span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">Context</span>, <span class="ident">Device</span>};
-<span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::{<span class="ident">Context</span>, <span class="ident">Device</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">code_point</span>::{<span class="ident">CodePoint</span>, <span class="ident">CodePointDag</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">dependency_map</span>::<span class="ident">DependencyMap</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">hw_pressure</span>::<span class="ident">FastBound</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">level</span>::{<span class="ident">sum_pressure</span>, <span class="ident">Level</span>, <span class="ident">LevelDag</span>, <span class="ident">RepeatLevel</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">local_info</span>::<span class="ident">LocalInfo</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
-<span class="kw">use</span> <span class="ident">model</span>::<span class="ident">code_point</span>::{<span class="ident">CodePoint</span>, <span class="ident">CodePointDag</span>};
-<span class="kw">use</span> <span class="ident">model</span>::<span class="ident">dependency_map</span>::<span class="ident">DependencyMap</span>;
-<span class="kw">use</span> <span class="ident">model</span>::<span class="ident">hw_pressure</span>::<span class="ident">FastBound</span>;
-<span class="kw">use</span> <span class="ident">model</span>::<span class="ident">level</span>::{<span class="ident">sum_pressure</span>, <span class="ident">Level</span>, <span class="ident">LevelDag</span>, <span class="ident">RepeatLevel</span>};
-<span class="kw">use</span> <span class="ident">model</span>::<span class="ident">local_info</span>::<span class="ident">LocalInfo</span>;
-<span class="kw">use</span> <span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -735,5 +739,5 @@
         <span class="ident">level_dag</span>.<span class="ident">add_dependency</span>(<span class="ident">to_map</span>, <span class="ident">pred</span>, <span class="ident">dst_point</span>, <span class="kw-2">&amp;</span><span class="ident">latency</span>);
     }
 }
-</pre>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script src="../../../source-files.js"></script><script src="../../../source-script.js"></script><script defer src="../../../search-index.js"></script></body></html>

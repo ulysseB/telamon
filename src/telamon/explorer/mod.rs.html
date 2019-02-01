@@ -228,7 +228,10 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
-</pre><pre class="rust ">
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+</pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">bandit_arm</span>;
 <span class="kw">mod</span> <span class="ident">candidate</span>;
@@ -251,15 +254,18 @@
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">parallel_list</span>::<span class="ident">ParallelCandidateList</span>;
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">store</span>::<span class="ident">Store</span>;
 
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::{<span class="ident">Context</span>, <span class="ident">EvalMode</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">bound</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
+
 <span class="kw">use</span> <span class="ident">boxfnonce</span>::<span class="ident">SendBoxFnOnce</span>;
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
-<span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">Context</span>, <span class="ident">EvalMode</span>};
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">executor</span>::<span class="ident">block_on</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">channel</span>, <span class="ident">SinkExt</span>};
-<span class="kw">use</span> <span class="ident">model</span>::<span class="ident">bound</span>;
-<span class="kw">use</span> <span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
 <span class="comment">// TODO(cc_perf): To improve performances, the following should be considered:</span>
 <span class="comment">// * choices should be ranked once and then reused for multiple steps.</span>
@@ -290,7 +296,7 @@
     <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;l</span> <span class="ident">Config</span>,
     <span class="ident">bandit_config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;l</span> <span class="ident">BanditConfig</span>,
-    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;l</span> <span class="ident">dyn</span> <span class="ident">Context</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;l</span> <span class="kw">dyn</span> <span class="ident">Context</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;l</span>, <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;l</span><span class="op">&gt;</span> <span class="ident">TreeBuilder</span><span class="op">&lt;</span><span class="lifetime">&#39;l</span>, <span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -459,5 +465,5 @@
     }
     <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;{} candidates explored&quot;</span>, <span class="ident">total</span>);
 }
-</pre>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script src="../../../source-files.js"></script><script src="../../../source-script.js"></script><script defer src="../../../search-index.js"></script></body></html>

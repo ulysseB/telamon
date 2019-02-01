@@ -381,12 +381,16 @@
 <span id="381">381</span>
 <span id="382">382</span>
 <span id="383">383</span>
-</pre><pre class="rust ">
-<span class="kw">use</span> <span class="ident">codegen</span>::{<span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">Instruction</span>};
-<span class="kw">use</span> <span class="ident">ir</span>;
+<span id="384">384</span>
+<span id="385">385</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::{<span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">Instruction</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::{<span class="self">self</span>, <span class="ident">Itertools</span>};
-<span class="kw">use</span> <span class="ident">search_space</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">fmt</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
 <span class="doccomment">/// Represents a CFG of the targeted device.</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Cfg</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -696,7 +700,7 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">thread_dims</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">events</span> <span class="op">=</span> <span class="ident">insts</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">CfgEvent</span>::<span class="ident">Exec</span>).<span class="ident">collect_vec</span>();
     <span class="comment">// Create dimension events and sort thread and block dims.</span>
-    <span class="kw">for</span> <span class="kw-2">mut</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">dims</span> {
+    <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">dims</span> {
         <span class="kw">match</span> <span class="ident">dim</span>.<span class="ident">kind</span>() {
             <span class="ident">DimKind</span>::<span class="ident">BLOCK</span> <span class="op">=&gt;</span> <span class="ident">block_dims</span>.<span class="ident">push</span>(<span class="ident">dim</span>),
             <span class="ident">DimKind</span>::<span class="ident">THREAD</span> <span class="op">=&gt;</span> {
@@ -765,5 +769,5 @@
         .<span class="ident">collect</span>();
     (<span class="ident">block_dims</span>, <span class="ident">thread_dims</span>, <span class="ident">events</span>)
 }
-</pre>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script src="../../../source-files.js"></script><script src="../../../source-script.js"></script><script defer src="../../../search-index.js"></script></body></html>
