@@ -203,13 +203,27 @@ pub struct BanditConfig {
 pub enum TreePolicy {
     /// Take the candidate with the best bound.
     Bound,
+
     /// Consider the nodes with a probability proportional to the distance between the
     /// cut and the bound.
     WeightedRandom,
-    /// TAG algorithm
+
+    /// Policies based on TAG, as described in
+    ///
+    ///   Bandit-Based Optimization on Graphs with Application to Library Performance Tuning
+    ///   De Mesmay, Rimmel, Voronenko, Püschel
+    ///   ICML 2009
+    ///
+    /// Those policies make decisions based on the relative proportions of the top N samples in
+    /// each branch, without relying directly on the values.  This obviates the issue of selecting
+    /// a good threshold value for good vs bad samples (we don't know what a good value is until
+    /// after we have found it!), but introduces an issue with staleness:
     #[serde(rename = "tag")]
     TAG(TAGConfig),
-    /// UCT algorithm
+
+    /// Policies based on UCT, including variants such as p-UCT.  Those policies optimize a reduced
+    /// value (such as average score or best score) among the samples seen in a branch, along with
+    /// an uncertainty term to boost rarely explored branches.
     #[serde(rename = "uct")]
     UCT(UCTConfig),
 }
@@ -246,15 +260,69 @@ impl Default for TAGConfig {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct UCTConfig {
-    pub factor: f64,
+    /// Constant multiplier for the exploration term.  This is controls the
+    /// exploration-exploitation tradeoff, and is normalized using the `normalization` term.
+    pub exploration_constant: f64,
+    /// Normalization to use for the exploration term.
+    pub normalization: Option<Normalization>,
+    /// Reduction function to use when computing the state value.
+    pub value_reduction: ValueReduction,
+    /// Target to use as a reward.
+    pub reward: Reward,
+    /// Formula to use for the exploration term.
+    pub formula: Formula,
 }
 
 impl Default for UCTConfig {
     fn default() -> Self {
         UCTConfig {
-            factor: 2f64.sqrt(),
+            exploration_constant: 2f64.sqrt(),
+            normalization: None,
+            // We use best value reduction by default because the mean value does not make much
+            // sense considering that we can have infinite/very large values due to both timeouts
+            // and cutting later in the evaluation process.
+            value_reduction: ValueReduction::Best,
+            reward: Reward::Speed,
+            formula: Formula::Uct,
         }
     }
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Formula {
+    /// Regular UCT formula: sqrt(log(\sum visits) / visits)
+    Uct,
+    /// AlphaGo PUCT variant: p * sqrt(\sum visits) / visits
+    /// Currently only uniform prior is supported (p = 1 / k where k is the number of children).
+    AlphaPuct,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reward {
+    NegTime,
+    Speed,
+    LogSpeed,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueReduction {
+    /// Use the mean evaluation time.  This yields the regular UCT value function.
+    Mean,
+    /// Use the best evaluation time.  This yields an algorithm similar to maxUCT from
+    ///
+    ///   Trial-based Heuristic Tree Search for Finite Horizon MDPs,
+    ///   Thomas Keller and Malte Helmert
+    Best,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Normalization {
+    /// Normalize the exploration term according to the current global best.
+    GlobalBest,
 }
 
 impl BanditConfig {
