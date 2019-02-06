@@ -20,8 +20,6 @@
 //!
 //! masked_crc = ((crc >> 15) | (crc << 17)) + 0xa282ead8u32
 //!
-extern crate byteorder;
-extern crate crc;
 
 use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};

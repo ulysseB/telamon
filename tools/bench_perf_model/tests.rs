@@ -1,8 +1,8 @@
+use crate::PerfModelTest;
 use telamon::device::{ArgMap, Context};
 use telamon::helper::{Builder, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::*;
-use PerfModelTest;
 
 pub struct Test0;
 

@@ -1,10 +1,5 @@
-extern crate env_logger;
-extern crate serde_json;
-extern crate telamon;
-#[macro_use]
-extern crate telamon_utils;
-
 use telamon::device::cuda;
+use utils::unwrap;
 
 fn main() {
     env_logger::init();

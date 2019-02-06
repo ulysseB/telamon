@@ -1,7 +1,8 @@
 //! Builds the description of a GPU.
-use device::cuda::characterize::instruction;
-use device::cuda::DeviceAttribute::*;
-use device::cuda::{self, Executor, InstDesc};
+use crate::device::cuda::characterize::instruction;
+use crate::device::cuda::DeviceAttribute::*;
+use crate::device::cuda::{self, Executor, InstDesc};
+use log::warn;
 use std;
 
 const EMPTY_INST_DESC: InstDesc = InstDesc {

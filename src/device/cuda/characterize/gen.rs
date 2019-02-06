@@ -1,15 +1,16 @@
 //! Builds code for micro benchmarks.
-use codegen;
-use device::cuda::characterize::Table;
-use device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
-use device::{ArgMapExt, Device, ScalarArgument};
-use explorer;
-use helper::tensor::DimSize;
-use helper::{AutoOperand, Builder, Reduce};
-use ir::{self, Signature};
+use crate::codegen;
+use crate::device::cuda::characterize::Table;
+use crate::device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
+use crate::device::{ArgMapExt, Device, ScalarArgument};
+use crate::explorer;
+use crate::helper::tensor::DimSize;
+use crate::helper::{AutoOperand, Builder, Reduce};
+use crate::ir::{self, Signature};
+use crate::search_space::*;
 use itertools::Itertools;
+use log::trace;
 use num::Zero;
-use search_space::*;
 use std;
 use utils::*;
 

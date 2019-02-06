@@ -7,11 +7,17 @@ mod table;
 
 use self::table::Table;
 
-use device::cuda;
+use crate::device::cuda;
 use itertools::Itertools;
 use serde_json;
 use std;
 use xdg;
+
+use failure::Fail;
+use lazy_static::lazy_static;
+use log::{info, warn};
+
+use utils::unwrap;
 
 /// Error raised will retrieveing the GPU description
 #[derive(Debug, Fail)]
