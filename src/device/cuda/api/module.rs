@@ -1,11 +1,12 @@
 //! Interface with CUDA Modules and Kernels.
-use device;
-use device::cuda::api::wrapper::*;
 #[cfg(feature = "cuda")]
-use device::cuda::api::PerfCounterSet;
+use crate::device::cuda::api::PerfCounterSet;
+use crate::device::{self, cuda::api::wrapper::*};
 use itertools::Itertools;
 use libc;
+use log::debug;
 use std::ffi::CString;
+use utils::unwrap;
 
 /// A CUDA module.
 pub struct Module<'a> {

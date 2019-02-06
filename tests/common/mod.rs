@@ -1,6 +1,5 @@
 //! Contains integration tests for Exhaust.
 #![allow(dead_code)]
-extern crate env_logger;
 
 pub mod fake;
 
