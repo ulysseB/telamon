@@ -275,8 +275,6 @@
 <span id="275">275</span>
 <span id="276">276</span>
 <span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module provides Read and Write extensions for reading and</span>
 <span class="doccomment">//! writing TFRecord files. TFRecord is a simple container file format</span>
@@ -300,8 +298,6 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! masked_crc = ((crc &gt;&gt; 15) | (crc &lt;&lt; 17)) + 0xa282ead8u32</span>
 <span class="doccomment">//!</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">byteorder</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">crc</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">BufWriter</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
