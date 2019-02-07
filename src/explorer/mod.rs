@@ -90,6 +90,7 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
                 bandit_config,
                 policy,
                 log_sender.clone(),
+                config.timeout,
             );
 
             unwrap!(scope
