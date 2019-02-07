@@ -4,7 +4,7 @@ use ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
 use ir::{mem, AccessPattern, Operand, SparseVec};
 use itertools::Itertools;
 use search_space::MemSpace;
-use std;
+use std::{self, slice};
 use utils::*;
 
 /// Represents an argument of a function.
@@ -152,6 +152,32 @@ impl<'a, L> Function<'a, L> {
         let id = ir::IndVarId(self.induction_vars.len() as u32);
         self.induction_vars.push(ind_var);
         id
+    }
+
+    // The next couple of *_ids functions are useful to get features out of the ir::Function, for
+    // instance in a search space.
+    pub fn inst_ids(&'_ self) -> ir::SparseVecDenseKeys<'_, ir::InstId> {
+        self.insts.dense_keys()
+    }
+
+    pub fn mem_inst_ids(&'_ self) -> slice::Iter<'_, ir::InstId> {
+        self.mem_insts.iter()
+    }
+
+    pub fn dim_ids(&'_ self) -> ir::SparseVecDenseKeys<'_, ir::DimId> {
+        self.dims.dense_keys()
+    }
+
+    pub fn static_dim_ids(&'_ self) -> slice::Iter<'_, ir::DimId> {
+        self.static_dims.iter()
+    }
+
+    pub fn thread_dim_ids(&'_ self) -> slice::Iter<'_, ir::DimId> {
+        self.thread_dims.iter()
+    }
+
+    pub fn variable_ids(&'_ self) -> ir::SparseVecDenseKeys<'_, ir::VarId> {
+        self.variables.dense_keys()
     }
 
     /// Returns the list of instructions of the function.

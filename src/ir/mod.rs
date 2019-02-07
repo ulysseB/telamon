@@ -300,7 +300,7 @@ where
     }
 
     /// Returns an iterator over all the keys in the sparse vector, including holes.
-    pub fn dense_keys(&'_ self) -> SparseVecDenseKeys<I> {
+    pub fn dense_keys(&'_ self) -> SparseVecDenseKeys<'_, I> {
         SparseVecDenseKeys {
             range: 0..self.capacity,
             _marker: PhantomData,
@@ -335,12 +335,12 @@ impl<I, T> IntoIterator for SparseVec<I, T> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SparseVecDenseKeys<I> {
+pub struct SparseVecDenseKeys<'a, I> {
     range: std::ops::Range<usize>,
-    _marker: PhantomData<I>,
+    _marker: PhantomData<fn() -> &'a I>,
 }
 
-impl<I> Iterator for SparseVecDenseKeys<I>
+impl<'a, I> Iterator for SparseVecDenseKeys<'a, I>
 where
     I: SparseKey,
 {
@@ -356,9 +356,9 @@ where
     }
 }
 
-impl<I> std::iter::FusedIterator for SparseVecDenseKeys<I> where I: SparseKey {}
+impl<'a, I> std::iter::FusedIterator for SparseVecDenseKeys<'a, I> where I: SparseKey {}
 
-impl<I> ExactSizeIterator for SparseVecDenseKeys<I>
+impl<'a, I> ExactSizeIterator for SparseVecDenseKeys<'a, I>
 where
     I: SparseKey,
 {
@@ -367,7 +367,7 @@ where
     }
 }
 
-impl<I> DoubleEndedIterator for SparseVecDenseKeys<I>
+impl<'a, I> DoubleEndedIterator for SparseVecDenseKeys<'a, I>
 where
     I: SparseKey,
 {
