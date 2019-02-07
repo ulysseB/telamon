@@ -1,25 +1,13 @@
 //! Generic helper functions.
-extern crate fnv;
-extern crate itertools;
-extern crate linked_hash_map;
-extern crate linked_list;
-extern crate num;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate failure;
-extern crate flate2;
 
 mod cache;
 mod dag;
 mod iterator;
 pub mod multimap;
 pub mod ndarray;
-mod vec_set;
-#[macro_use]
-pub mod unwrap;
 pub mod tfrecord;
+pub mod unwrap;
+mod vec_set;
 
 pub use self::cache::Cache;
 pub use self::dag::Dag;
@@ -28,6 +16,7 @@ pub use self::ndarray::{NDArray, NDRange};
 pub use self::vec_set::VecSet;
 use fnv::FnvHasher;
 use num::Integer;
+use serde_derive::Serialize;
 use std::hash::BuildHasherDefault;
 
 /// A fast but not secure `Hasher`.

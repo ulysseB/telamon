@@ -1,9 +1,10 @@
 //! `DimMap` and layout lowering.
-use ir;
+use crate::ir;
+use crate::search_space::choices::dim_kind;
+use crate::search_space::operand;
+use crate::search_space::{Action, DimKind, DomainStore, MemSpace, Order};
 use itertools::Itertools;
-use search_space::choices::dim_kind;
-use search_space::operand;
-use search_space::{Action, DimKind, DomainStore, MemSpace, Order};
+use log::debug;
 
 /// Lowers a layout
 pub fn lower_layout(

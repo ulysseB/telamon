@@ -111,7 +111,7 @@ impl Format {
 
 impl fmt::Display for Format {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Format::*;
+        use crate::Format::*;
 
         match self {
             Toml => write!(f, "toml"),
@@ -124,7 +124,7 @@ impl std::str::FromStr for Format {
     type Err = ParseFormatError;
 
     fn from_str(s: &str) -> Result<Format, Self::Err> {
-        use Format::*;
+        use crate::Format::*;
 
         if s.eq_ignore_ascii_case("toml") {
             Ok(Toml)

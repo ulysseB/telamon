@@ -1,7 +1,7 @@
 //! Allows the execution of kernels on the GPU.
-use device;
-use device::cuda::api::wrapper::*;
-use device::cuda::api::Argument;
+use crate::device;
+use crate::device::cuda::api::wrapper::*;
+use crate::device::cuda::api::Argument;
 use libc;
 use num::integer::div_rem;
 use std;

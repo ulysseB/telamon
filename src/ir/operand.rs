@@ -1,10 +1,10 @@
 //! Describes the different kinds of operands an instruction can have.
 use self::Operand::*;
-use ir::{self, DimMap, InstId, Instruction, Parameter, Type};
+use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
-use utils::HashMap;
+use utils::{unwrap, HashMap};
 
 #[derive(Clone, Debug)]
 pub struct LoweringMap {

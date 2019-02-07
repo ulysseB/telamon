@@ -1,4 +1,4 @@
-use ir;
+use crate::ir;
 use utils::*;
 
 /// Represent a transformation to apply to a rule to fir it in a new context.

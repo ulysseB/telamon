@@ -8,10 +8,11 @@ works internally, we encourage you to read our [paper][cc17].
 
 ## Getting Started
 
-To compile Telamon, you need [rust 1.27 or higher][rust-install] installed. If you want to
+To compile Telamon, you need [rust 1.31 or higher][rust-install] installed. If you want to
 generate code for GPU, you will also need a CUDA toolchain installed, with `cuda`,
 `curand` and `cupti` accessible in the include and library paths. You can also view the
-[documentation on github][telamon-doc].
+[documentation on github][telamon-doc]. Telamon is now compiled with edition
+2018 of rust. 
 
 Examples of kernels are located in the `kernels/` directory. In particular,
 `kernels/src/linalg.rs` contains linear algebra kernels. You can compare the code

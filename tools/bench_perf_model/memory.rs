@@ -1,9 +1,9 @@
 //! Tests the memory model.
+use crate::PerfModelTest;
 use telamon::device::{ArgMap, Context};
 use telamon::helper::{Builder, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
-use PerfModelTest;
 
 /// Tests the model in presence of global access replay.
 pub struct L1LinesPressure;

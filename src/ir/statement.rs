@@ -1,8 +1,10 @@
 //! Provides a generic decription of basic blocks.
 use std::fmt;
 
-use ir;
+use serde::{Deserialize, Serialize};
 use utils::*;
+
+use crate::ir;
 
 /// Provides a unique identifer for a basic block.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

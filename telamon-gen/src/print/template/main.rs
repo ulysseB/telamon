@@ -1,3 +1,4 @@
+use log::{debug, trace};
 use super::ir;
 #[allow(unused_imports)]
 use super::ir::prelude::*;
@@ -6,6 +7,8 @@ use std;
 use std::sync::Arc;
 use num;
 use itertools::Itertools;
+use serde::Serialize;
+use serde::Deserialize;
 #[allow(unused_imports)]
 use utils::*;
 

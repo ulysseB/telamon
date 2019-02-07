@@ -1,12 +1,13 @@
 //! IR instances compiled into CUDA kernels.
-use codegen;
-use codegen::ParamVal;
-use device;
+use crate::codegen;
+use crate::codegen::ParamVal;
+use crate::device;
+use crate::device::cuda::{api, Context, Gpu, JITDaemon};
+use crate::device::Context as ContextTrait;
 #[cfg(feature = "cuda")]
 use device::cuda::PerfCounterSet;
-use device::cuda::{api, Context, Gpu, JITDaemon};
-use device::Context as ContextTrait;
 use itertools::Itertools;
+use log::warn;
 use std;
 
 /// An IR instance compiled into a CUDA kernel.

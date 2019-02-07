@@ -8,7 +8,9 @@ use config;
 use getopts;
 use itertools::Itertools;
 use num_cpus;
+use serde::{Deserialize, Serialize};
 use std::{self, error, fmt, str::FromStr};
+use utils::unwrap;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
@@ -314,8 +316,8 @@ pub enum ValueReduction {
     Mean,
     /// Use the best evaluation time.  This yields an algorithm similar to maxUCT from
     ///
-    ///     Trial-based Heuristic Tree Search for Finite Horizon MDPs,
-    ///     Thomas Keller and Malte Helmert
+    ///   Trial-based Heuristic Tree Search for Finite Horizon MDPs,
+    ///   Thomas Keller and Malte Helmert
     Best,
 }
 

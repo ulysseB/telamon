@@ -1,12 +1,12 @@
 //! Describes the context for which a function must be optimized.
-use codegen::{self, Function};
-use device::{ArrayArgument, Device, ScalarArgument};
-use explorer::Candidate;
-use ir;
+use crate::codegen::{self, Function};
+use crate::device::{ArrayArgument, Device, ScalarArgument};
+use crate::explorer::Candidate;
+use crate::ir;
+use boxfnonce::SendBoxFnOnce;
 use num;
 use std::sync::Arc;
-
-use boxfnonce::SendBoxFnOnce;
+use utils::unwrap;
 
 /// A callback that is called after evaluating a kernel.
 pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;

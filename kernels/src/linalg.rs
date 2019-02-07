@@ -1,7 +1,9 @@
 //! Linera algebra kernels.
+use crate::kernel::Kernel;
+use crate::utils::*;
+use crate::{build_candidate, create_size, infer_tiling, Scalar};
+use ::ndarray::{Array1, Array2, Array3, ArrayD};
 use itertools::Itertools;
-use kernel::Kernel;
-use ndarray::{Array1, Array2, Array3, ArrayD};
 use rand;
 use telamon::explorer::Candidate;
 use telamon::helper::tensor::*;
@@ -9,8 +11,6 @@ use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
-use utils::*;
-use {build_candidate, create_size, infer_tiling, Scalar};
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S>

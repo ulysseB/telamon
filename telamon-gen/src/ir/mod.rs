@@ -15,6 +15,8 @@ pub use self::choice::*;
 pub use self::filter::*;
 pub use self::set::*;
 
+use serde_derive::Serialize;
+
 /// Describes the choices that constitute the IR.
 #[derive(Debug)]
 pub struct IrDesc {

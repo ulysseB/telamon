@@ -1,7 +1,7 @@
 //! Handle operands invariants.
-use ir::Operand::*;
-use ir::{self, DimMapScope, Statement};
-use search_space::choices::{Action, DimKind, DimMapping, Order};
+use crate::ir::Operand::*;
+use crate::ir::{self, DimMapScope, Statement};
+use crate::search_space::choices::{Action, DimKind, DimMapping, Order};
 
 /// Generates actions to enforce operands invariants.
 pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec<Action> {

@@ -1,6 +1,7 @@
-use device::{self, ScalarArgument};
+use crate::device::{self, ScalarArgument};
 use libc;
 use std::sync::{Mutex, MutexGuard};
+use utils::unwrap;
 
 pub enum ArgLock<'a> {
     Scalar(*mut libc::c_void),

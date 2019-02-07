@@ -1,12 +1,5 @@
 //! Tests the accuracy of the performance model. A pattern can be passed as argument to
 //! specify the tests to run.
-extern crate env_logger;
-extern crate regex;
-extern crate telamon;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate telamon_utils as utils;
 
 mod latency;
 mod memory;
@@ -17,6 +10,9 @@ use telamon::device::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
+
+use log::info;
+use utils::unwrap;
 
 // TODO(test_model): RAM bandwidth
 // TODO(test_model): L2 bandwidth

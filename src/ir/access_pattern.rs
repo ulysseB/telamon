@@ -1,7 +1,7 @@
 /// Provides a way to represent the stride of a given variable.
-use device::Device;
-use ir;
-use search_space::MemSpace;
+use crate::device::Device;
+use crate::ir;
+use crate::search_space::MemSpace;
 use utils::*;
 
 /// A stride on a given dimensions.

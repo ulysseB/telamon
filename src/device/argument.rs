@@ -1,10 +1,11 @@
 //! Maps rust types to telamon data types.
-use ir;
+use crate::ir;
 use libc;
 use num::integer::div_rem;
 use num::rational::Ratio;
 use rand::Rng;
 use std;
+use utils::unwrap;
 
 /// Represents a value that can be used as a `Function` argument. Must ensures the type is a scalar
 /// and does not contains any reference.  Also must ensure that no two implementers should have the
@@ -35,7 +36,7 @@ pub unsafe trait ScalarArgument:
         Self: Sized;
 
     /// Generates a random instance of the argument type.
-    fn gen_random<R: Rng>(&mut R) -> Self
+    fn gen_random<R: Rng>(_: &mut R) -> Self
     where
         Self: Sized;
 }

@@ -6,11 +6,11 @@ pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
 
-use ast::context::CheckerContext;
-use ast::error::{Hint, TypeError};
-use ast::{Constraint, Statement};
+use crate::ast::context::CheckerContext;
+use crate::ast::error::{Hint, TypeError};
+use crate::ast::{Constraint, Statement};
 
-use ir;
+use crate::ir;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {

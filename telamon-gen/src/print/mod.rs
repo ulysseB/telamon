@@ -5,8 +5,11 @@ mod set;
 mod value;
 
 // Re-export commonly used items.
-use print::ast::Context;
-use print::value::{Value, ValueIdent};
+use crate::print::ast::Context;
+use crate::print::value::{Value, ValueIdent};
+use lazy_static::lazy_static;
+use log::debug;
+use serde_derive::Serialize;
 
 /// Reset the state of the printer. This should only be used for testing purpose, when
 /// one whats to compare the outputs of the printer oer sevral runs.
@@ -18,8 +21,8 @@ pub fn reset() {
 }
 
 // TODO(cleanup): rewrite the fllowing with token streams instead of string templates
+use crate::ir;
 use handlebars::{self, Handlebars, Helper, RenderContext, RenderError, Renderable};
-use ir;
 use itertools::Itertools;
 use serde_json::value::Value as JsonValue;
 use std::cmp::Ordering;
@@ -60,17 +63,17 @@ macro_rules! render {
     ($($tmpl:ident)/+, $(< $($lifetime: tt),* >, )*
      $($name:ident: $ty: ty = $val: expr),*) => {
         {
-            #[derive(Serialize)]
+            #[derive(serde_derive::Serialize)]
             struct Data<$($($lifetime),*),*> { $($name: $ty),* };
             let data = Data { $($name: $val),* };
             let template = concat_sep!(".", $(stringify!($tmpl)),*);
-            ::print::ENGINE.render(template, &data).unwrap()
+            crate::print::ENGINE.render(template, &data).unwrap()
         }
     };
     ($($tmpl:ident)/+, $data:expr) => {
         {
             let template = concat_sep!(".", $(stringify!($tmpl)),*);
-            ::print::ENGINE.render(template, &$data).unwrap()
+            crate::print::ENGINE.render(template, &$data).unwrap()
         }
     }
 }
@@ -191,7 +194,7 @@ fn to_type_name(h: &Helper, _: &Handlebars, rc: &mut RenderContext) -> RenderRes
         }
     };
     rc.writer
-        .write_all(::to_type_name(&string).into_bytes().as_ref())?;
+        .write_all(crate::to_type_name(&string).into_bytes().as_ref())?;
     Ok(())
 }
 
@@ -215,7 +218,7 @@ fn ifeq(h: &Helper, r: &Handlebars, rc: &mut RenderContext) -> RenderResult {
 // TODO(cleanup): remove printing macros
 macro_rules! iter_printer {
     ($iter: expr, $item: pat, $($format_args: tt)*) => {
-        ::print::Printer(move |f: &mut Formatter| {
+        crate::print::Printer(move |f: &mut Formatter| {
             for $item in $iter { write!(f, $($format_args)*)?; }
             Ok(())
         })
@@ -432,7 +435,7 @@ where
         sorted.push(nodes[data.index].clone());
 
         for &successor_index in data.successors.iter() {
-            let mut successor_data = &mut node_data[successor_index];
+            let successor_data = &mut node_data[successor_index];
             successor_data.as_mut().unwrap().num_predecessors -= 1;
             if successor_data.as_mut().unwrap().num_predecessors == 0 {
                 queue.push(successor_data.take().unwrap())
@@ -753,9 +756,9 @@ fn bits_type(num_values: usize) -> &'static str {
 /// Printing for test structures.
 mod test {
     use super::ENGINE;
-    use ir::test::{EvalContext, StaticCond};
+    use crate::ir::test::{EvalContext, StaticCond};
+    use crate::print;
     use itertools::Itertools;
-    use print;
     use std;
 
     impl<'a> std::fmt::Display for EvalContext<'a> {

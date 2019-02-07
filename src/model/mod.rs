@@ -11,6 +11,8 @@ pub mod size;
 pub use self::hw_pressure::{BottleneckLevel, Bound, HwPressure};
 pub use self::local_info::Nesting;
 
+use log::{debug, trace};
+
 // TODO(model): One some instruction, the latency dependens on the operand position.
 // TODO(model): Some instructions are divided into multiple sub-instructions. When adding
 //  ordering dependencies, this must be taken into account as the last sub-instruction
@@ -30,15 +32,15 @@ pub use self::local_info::Nesting;
 //  is issued. For this, either double the nodes or subtract the size of buffers to the next
 //  issue.
 
-use device::{Context, Device};
-use ir;
+use crate::device::{Context, Device};
+use crate::ir;
+use crate::model::code_point::{CodePoint, CodePointDag};
+use crate::model::dependency_map::DependencyMap;
+use crate::model::hw_pressure::FastBound;
+use crate::model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
+use crate::model::local_info::LocalInfo;
+use crate::search_space::SearchSpace;
 use itertools::Itertools;
-use model::code_point::{CodePoint, CodePointDag};
-use model::dependency_map::DependencyMap;
-use model::hw_pressure::FastBound;
-use model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
-use model::local_info::LocalInfo;
-use search_space::SearchSpace;
 use std::cmp;
 use utils::*;
 

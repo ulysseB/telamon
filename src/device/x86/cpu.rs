@@ -1,10 +1,10 @@
 //! Describes CUDA-enabled GPUs.
-use codegen::Function;
-use device;
-use ir::{self, Type};
-use model::{self, HwPressure};
+use crate::codegen::Function;
+use crate::device;
+use crate::ir::{self, Type};
+use crate::model::{self, HwPressure};
+use crate::search_space::*;
 use num_cpus;
-use search_space::*;
 use std::io::Write;
 use utils::*;
 

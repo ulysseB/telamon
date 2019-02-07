@@ -1,10 +1,14 @@
 ///! Filter code generation.
-use ir;
-use print;
-use print::ast::{self, Context};
-use print::value_set;
+use crate::ir;
+use crate::print;
+use crate::print::ast::{self, Context};
+use crate::print::value_set;
+
+use log::trace;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote;
+use serde_derive::Serialize;
+use utils::unwrap;
 
 /// Ast for a filtering funtion.
 #[derive(Serialize)]
@@ -181,13 +185,13 @@ impl<'a> Rule<'a> {
 /// Prints an `ir::Condition`.
 pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
     match cond {
-        ir::Condition::Bool(b) => quote!(#b),
+        ir::Condition::Bool(b) => quote::quote!(#b),
         ir::Condition::Code { code, negate } => {
             let mut code = print::Value::new_const(code, ctx);
             if *negate {
                 code.negate();
             }
-            quote!(#code)
+            quote::quote!(#code)
         }
         ir::Condition::Enum {
             input,
@@ -199,7 +203,7 @@ pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
             let enum_def = ctx.ir_desc.get_enum(unwrap!(input.value_type().as_enum()));
             let set = ir::normalized_enum_set(values, !*negate, *inverse, enum_def);
             let value_set = value_set::print(&set, ctx);
-            quote!(!#input.intersects(#value_set))
+            quote::quote!(!#input.intersects(#value_set))
         }
         ir::Condition::CmpCode { lhs, rhs, op } => {
             let rhs = print::Value::new_const(rhs, ctx);
@@ -229,7 +233,7 @@ fn comparison(
 ) -> TokenStream {
     let lhs_universe = print::value::universe(lhs.value_type(), ctx);
     let rhs_universe = print::value::universe(rhs.value_type(), ctx);
-    quote!(#lhs.#op(#lhs_universe, #rhs, #rhs_universe))
+    quote::quote!(#lhs.#op(#lhs_universe, #rhs, #rhs_universe))
 }
 
 impl quote::ToTokens for ir::CmpOp {

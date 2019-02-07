@@ -1,5 +1,5 @@
 /// Tokens from the textual representation of constraints.
-use ir;
+use crate::ir;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {

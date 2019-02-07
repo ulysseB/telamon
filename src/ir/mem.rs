@@ -1,6 +1,8 @@
 //! A module for handling accesses to the device memory.
-use ir::{self, dim, InstId, SparseKey, Type};
+use serde::{Deserialize, Serialize};
 use utils::*;
+
+use crate::ir::{self, dim, InstId, SparseKey, Type};
 
 // TODO(cleanup): move layouts into internal blocks.
 

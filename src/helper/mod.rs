@@ -9,7 +9,7 @@ pub use self::builder::Builder;
 pub use self::operand::{AutoOperand, Reduce, TmpArray};
 pub use self::signature::Builder as SignatureBuilder;
 
-use ir;
+use crate::ir;
 use std;
 use utils::*;
 

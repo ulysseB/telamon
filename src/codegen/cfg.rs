@@ -1,8 +1,10 @@
-use codegen::{Dimension, InductionLevel, Instruction};
-use ir;
+use crate::codegen::{Dimension, InductionLevel, Instruction};
+use crate::ir;
+use crate::search_space::*;
 use itertools::{self, Itertools};
-use search_space::*;
+use log::debug;
 use std::{self, fmt};
+use utils::unwrap;
 
 /// Represents a CFG of the targeted device.
 pub enum Cfg<'a> {
@@ -312,7 +314,7 @@ fn gen_events<'a>(
     let mut thread_dims = Vec::new();
     let mut events = insts.into_iter().map(CfgEvent::Exec).collect_vec();
     // Create dimension events and sort thread and block dims.
-    for mut dim in dims {
+    for dim in dims {
         match dim.kind() {
             DimKind::BLOCK => block_dims.push(dim),
             DimKind::THREAD => {

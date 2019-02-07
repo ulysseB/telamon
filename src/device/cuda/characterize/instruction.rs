@@ -1,11 +1,12 @@
 //! Microbenchmarks to get the description of each instruction.
-use codegen;
-use device::cuda::characterize::{create_table, gen, math, Table};
-use device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
-use device::{Device, ScalarArgument};
-use helper::tensor::DimSize;
-use ir;
+use crate::codegen;
+use crate::device::cuda::characterize::{create_table, gen, math, Table};
+use crate::device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
+use crate::device::{Device, ScalarArgument};
+use crate::helper::tensor::DimSize;
+use crate::ir;
 use itertools::Itertools;
+use log::{info, trace};
 use num::Zero;
 use std;
 use utils::*;
