@@ -91,7 +91,10 @@ impl Default for TreeStats {
 #[derive(Serialize, Deserialize)]
 pub enum DeadEndSource {
     /// Dead-end encountered in the tree
-    Tree,
+    Tree {
+        /// List of actions defining the dead-end candidate
+        actions: List<choice::ActionEx>,
+    },
     /// Dead-end encountered in the rollout phase
     Rollout {
         /// List of actions defining the dead-end candidate
@@ -158,7 +161,11 @@ pub struct Tree<'a, 'b, P: TreePolicy> {
     policy: P,
     stats: TreeStats,
     log: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
+    /// Time at which the `Tree` structure was created.  This is a reasonably good approximation of
+    /// the time at which the search was started.
     start_time: std::time::Instant,
+    /// Optional timeout after which the search will stop.
+    timeout: Option<std::time::Duration>,
 }
 
 impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
@@ -168,8 +175,14 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         config: &'b BanditConfig,
         policy: P,
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
+        timeout: Option<u64>,
     ) -> Self {
-        let root = Node::try_from_candidates(candidates);
+        let root = Node::try_from_candidates(
+            candidates
+                .into_iter()
+                .map(|candidate| (None, candidate))
+                .collect(),
+        );
         let bound = root.as_ref().and_then(|root| root.bound());
 
         Tree {
@@ -182,6 +195,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             stats: TreeStats::default(),
             log: log_sender,
             start_time: std::time::Instant::now(),
+            timeout: timeout.map(|timeout| std::time::Duration::from_secs(timeout * 60)),
         }
     }
 
@@ -300,8 +314,29 @@ where
         // Retry loop (in case of deadends)
         loop {
             if self.stop.load(Ordering::Relaxed) {
-                debug!("stopping: requested");
+                info!("stopping: requested");
                 return None;
+            }
+
+            // TODO: We now have two places where we are checking the timeout: here in the tree
+            // search, and in the generic monitor infrastructure.  Historically, we were only
+            // checking in the generic monitor infrastructure to stop evaluating implementations
+            // once the timeout is reached; however, the tree search can spend a long time finding
+            // only deadends but no implementations.  In that case the search would go on forever
+            // as we would stay in the tree search and never get back to the monitoring
+            // infrastructure.
+            //
+            // Anyways, performing that check twice is easier than reworking the generic
+            // infrastructure (which... actually my understanding is that it should still work, but
+            // the control flow is complex enough now that I don't know anymore) to understand the
+            // concept of a cooperative yield from the underlying algorithm.  The check in the
+            // generic code is still useful for other algorithms which may not incorporate its own
+            // timeout logic.
+            if let Some(timeout) = self.timeout {
+                if self.start_time.elapsed() > timeout {
+                    info!("stopping: timeout");
+                    return None;
+                }
             }
 
             let cut: f64 = { *unwrap!(self.cut.read()) };
@@ -334,15 +369,31 @@ where
                 match state {
                     SubTree::Empty => {
                         info!("Deadend found in the tree.");
-                        unwrap!(self.log.send(LogMessage::Event(TreeEvent::DeadEnd {
-                            source: DeadEndSource::Tree,
-                            time: self.timestamp(),
-                            thread: self.thread(),
-                        })));
+                        if let Some(actions) = path
+                            .0
+                            .iter()
+                            .skip(1)
+                            .map(|&(ref node, idx)| {
+                                node.upgrade().map(|node| {
+                                    node.children[idx].action.clone().unwrap()
+                                })
+                            })
+                            .collect::<Option<List<_>>>()
+                        {
+                            unwrap!(self.log.send(LogMessage::Event(
+                                TreeEvent::DeadEnd {
+                                    source: DeadEndSource::Tree { actions },
+                                    time: self.timestamp(),
+                                    thread: self.thread(),
+                                }
+                            )));
 
-                        self.clean_deadends(&path, env.cut);
-                        self.backpropagate(&path, None);
-                        break;
+                            self.backpropagate(&path, None);
+                            self.clean_deadends(&path, env.cut);
+                            break;
+                        } else {
+                            warn!("Deadend was cut by another thread.");
+                        }
                     }
                     SubTree::Leaf(leaf) => {
                         let mut rollout_path = Vec::new();
@@ -474,6 +525,9 @@ struct Edge<'a, E> {
 
     /// The current bound for the pointed-to node.
     bound: RwLock<f64>,
+
+    /// The action associated with this edge
+    action: Option<choice::ActionEx>,
 }
 
 impl<'a, E: Default> Edge<'a, E> {
@@ -540,7 +594,15 @@ impl<'a, E: Default> Edge<'a, E> {
                         let choice = env.list_actions(&candidate);
                         if let Some(choice) = choice {
                             if let Some(node) = Node::try_from_candidates(
-                                env.apply_choice(&candidate, choice),
+                                env.apply_choice(&candidate, choice)
+                                    .into_iter()
+                                    .map(|candidate| {
+                                        (
+                                            candidate.actions.first().map(Clone::clone),
+                                            candidate,
+                                        )
+                                    })
+                                    .collect(),
                             ) {
                                 // Newly expanded node, with no stats yet.
                                 *dst = SubTree::InternalNode(node);
@@ -577,17 +639,20 @@ pub struct Node<'a, E> {
 
 impl<'a, E: Default> Node<'a, E> {
     /// Creates a new children containing the given candidates, if any.
-    fn try_from_candidates(candidates: Vec<Candidate<'a>>) -> Option<Arc<Self>> {
+    fn try_from_candidates(
+        candidates: Vec<(Option<choice::ActionEx>, Candidate<'a>)>,
+    ) -> Option<Arc<Self>> {
         if candidates.is_empty() {
             None
         } else {
             Some(Arc::new(Node {
                 children: candidates
                     .into_iter()
-                    .map(|candidate| Edge {
+                    .map(|(action, candidate)| Edge {
                         bound: RwLock::new(candidate.bound.value()),
                         dst: RwLock::new(SubTree::Leaf(Box::new(candidate))),
                         stats: Default::default(),
+                        action,
                     })
                     .collect::<Vec<_>>(),
             }))
