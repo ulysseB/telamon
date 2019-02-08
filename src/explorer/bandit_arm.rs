@@ -5,7 +5,7 @@ use crate::explorer::config::{self, BanditConfig, NewNodeOrder};
 use crate::explorer::logger::LogMessage;
 use crate::explorer::store::Store;
 use crate::explorer::{choice, local_selection};
-use log::{debug, info, trace, warn};
+use log::{debug, info, log_enabled, trace, warn};
 use rpds::List;
 use serde::{Deserialize, Serialize};
 use std;
@@ -133,8 +133,9 @@ pub enum TreeEvent {
         /// root.
         cut: f64,
         /// Time at which the implementation was found
-        search_end_time: f64,
-        /// Time at which the evaluation finished
+        discovery_time: f64,
+        /// Time at which the evaluation finished.  Note that evaluations are performed by a
+        /// specific thread, not the one that found the implementation.
         evaluation_end_time: f64,
         /// ID of the thread that found this implementation
         thread: String,
@@ -145,7 +146,7 @@ pub enum TreeEvent {
         /// Source of this deadend
         source: DeadEndSource,
         /// Time at which the deadend was found after the start of the program
-        time: f64,
+        discovery_time: f64,
         /// ID of the thread that found the deadend
         thread: String,
     },
@@ -164,8 +165,6 @@ pub struct Tree<'a, 'b, P: TreePolicy> {
     /// Time at which the `Tree` structure was created.  This is a reasonably good approximation of
     /// the time at which the search was started.
     start_time: std::time::Instant,
-    /// Optional timeout after which the search will stop.
-    timeout: Option<std::time::Duration>,
 }
 
 impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
@@ -175,7 +174,6 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         config: &'b BanditConfig,
         policy: P,
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
-        timeout: Option<u64>,
     ) -> Self {
         let root = Node::try_from_candidates(
             candidates
@@ -195,7 +193,6 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             stats: TreeStats::default(),
             log: log_sender,
             start_time: std::time::Instant::now(),
-            timeout: timeout.map(|timeout| std::time::Duration::from_secs(timeout * 60)),
         }
     }
 
@@ -211,6 +208,29 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
     /// Updates bounds along the way.
     fn clean_deadends(&self, path: &Path<'a, P::EdgeStats>, cut: f64) {
+        info!("Deadend found in the tree.");
+
+        // Statistics and logging
+        self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+        if let Some(actions) = path
+            .0
+            .iter()
+            .skip(1)
+            .map(|&(ref node, idx)| {
+                node.upgrade()
+                    .map(|node| node.children[idx].action.clone().unwrap())
+            })
+            .collect::<Option<List<_>>>()
+        {
+            unwrap!(self.log.send(LogMessage::Event(TreeEvent::DeadEnd {
+                source: DeadEndSource::Tree { actions },
+                discovery_time: self.timestamp(),
+                thread: self.thread(),
+            })));
+        } else {
+            warn!("Deadend was cut by another thread.");
+        }
+
         // A `None` bound indicates the path points to a dead-end.
         let mut bound = None;
         for &(ref node, pos) in path.0.iter().rev() {
@@ -294,7 +314,7 @@ where
             score: eval,
             bound: info.bound,
             cut: info.cut,
-            search_end_time: info.time,
+            discovery_time: info.discovery_time,
             evaluation_end_time: self.timestamp(),
             thread: info.thread,
         })));
@@ -316,27 +336,6 @@ where
             if self.stop.load(Ordering::Relaxed) {
                 info!("stopping: requested");
                 return None;
-            }
-
-            // TODO: We now have two places where we are checking the timeout: here in the tree
-            // search, and in the generic monitor infrastructure.  Historically, we were only
-            // checking in the generic monitor infrastructure to stop evaluating implementations
-            // once the timeout is reached; however, the tree search can spend a long time finding
-            // only deadends but no implementations.  In that case the search would go on forever
-            // as we would stay in the tree search and never get back to the monitoring
-            // infrastructure.
-            //
-            // Anyways, performing that check twice is easier than reworking the generic
-            // infrastructure (which... actually my understanding is that it should still work, but
-            // the control flow is complex enough now that I don't know anymore) to understand the
-            // concept of a cooperative yield from the underlying algorithm.  The check in the
-            // generic code is still useful for other algorithms which may not incorporate its own
-            // timeout logic.
-            if let Some(timeout) = self.timeout {
-                if self.start_time.elapsed() > timeout {
-                    info!("stopping: timeout");
-                    return None;
-                }
             }
 
             let cut: f64 = { *unwrap!(self.cut.read()) };
@@ -368,32 +367,8 @@ where
             loop {
                 match state {
                     SubTree::Empty => {
-                        info!("Deadend found in the tree.");
-                        if let Some(actions) = path
-                            .0
-                            .iter()
-                            .skip(1)
-                            .map(|&(ref node, idx)| {
-                                node.upgrade().map(|node| {
-                                    node.children[idx].action.clone().unwrap()
-                                })
-                            })
-                            .collect::<Option<List<_>>>()
-                        {
-                            unwrap!(self.log.send(LogMessage::Event(
-                                TreeEvent::DeadEnd {
-                                    source: DeadEndSource::Tree { actions },
-                                    time: self.timestamp(),
-                                    thread: self.thread(),
-                                }
-                            )));
-
-                            self.backpropagate(&path, None);
-                            self.clean_deadends(&path, env.cut);
-                            break;
-                        } else {
-                            warn!("Deadend was cut by another thread.");
-                        }
+                        self.clean_deadends(&path, env.cut);
+                        break;
                     }
                     SubTree::Leaf(leaf) => {
                         let mut rollout_path = Vec::new();
@@ -406,7 +381,7 @@ where
                                 path,
                                 bound: implementation.bound.value(),
                                 cut: env.cut,
-                                time: self.timestamp(),
+                                discovery_time: self.timestamp(),
                                 thread: self.thread(),
                             };
 
@@ -423,7 +398,7 @@ where
                                             bound: dead.bound.value(),
                                             cut: env.cut,
                                         },
-                                        time: self.timestamp(),
+                                        discovery_time: self.timestamp(),
                                         thread: self.thread(),
                                     }
                                 )));
@@ -496,7 +471,7 @@ pub struct ImplInfo<'a, E> {
     /// Cut at the time the implementation was found
     cut: f64,
     /// Time at which the implementation was found
-    time: f64,
+    discovery_time: f64,
     /// ID of the thread which found the implementation
     thread: String,
 }
