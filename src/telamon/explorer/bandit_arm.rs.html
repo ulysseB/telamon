@@ -1043,32 +1043,6 @@
 <span id="1043">1043</span>
 <span id="1044">1044</span>
 <span id="1045">1045</span>
-<span id="1046">1046</span>
-<span id="1047">1047</span>
-<span id="1048">1048</span>
-<span id="1049">1049</span>
-<span id="1050">1050</span>
-<span id="1051">1051</span>
-<span id="1052">1052</span>
-<span id="1053">1053</span>
-<span id="1054">1054</span>
-<span id="1055">1055</span>
-<span id="1056">1056</span>
-<span id="1057">1057</span>
-<span id="1058">1058</span>
-<span id="1059">1059</span>
-<span id="1060">1060</span>
-<span id="1061">1061</span>
-<span id="1062">1062</span>
-<span id="1063">1063</span>
-<span id="1064">1064</span>
-<span id="1065">1065</span>
-<span id="1066">1066</span>
-<span id="1067">1067</span>
-<span id="1068">1068</span>
-<span id="1069">1069</span>
-<span id="1070">1070</span>
-<span id="1071">1071</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">///! Exploration of the search space.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
@@ -1232,8 +1206,6 @@
     <span class="doccomment">/// Time at which the `Tree` structure was created.  This is a reasonably good approximation of</span>
     <span class="doccomment">/// the time at which the search was started.</span>
     <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
-    <span class="doccomment">/// Optional timeout after which the search will stop.</span>
-    <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span>: <span class="ident">TreePolicy</span><span class="op">&gt;</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span><span class="op">&gt;</span> {
@@ -1243,7 +1215,6 @@
         <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">BanditConfig</span>,
         <span class="ident">policy</span>: <span class="ident">P</span>,
         <span class="ident">log_sender</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">TreeEvent</span><span class="op">&gt;&gt;</span>,
-        <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">try_from_candidates</span>(
             <span class="ident">candidates</span>
@@ -1263,7 +1234,6 @@
             <span class="ident">stats</span>: <span class="ident">TreeStats</span>::<span class="ident">default</span>(),
             <span class="ident">log</span>: <span class="ident">log_sender</span>,
             <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>::<span class="ident">now</span>(),
-            <span class="ident">timeout</span>: <span class="ident">timeout</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">timeout</span><span class="op">|</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>::<span class="ident">from_secs</span>(<span class="ident">timeout</span> <span class="op">*</span> <span class="number">60</span>)),
         }
     }
 
@@ -1279,6 +1249,29 @@
     <span class="doccomment">/// Removes the dead ends along the given path. Assumes the path points to a dead-end.</span>
     <span class="doccomment">/// Updates bounds along the way.</span>
     <span class="kw">fn</span> <span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) {
+        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Deadend found in the tree.&quot;</span>);
+
+        <span class="comment">// Statistics and logging</span>
+        <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">actions</span>) <span class="op">=</span> <span class="ident">path</span>
+            .<span class="number">0</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">skip</span>(<span class="number">1</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">node</span>, <span class="ident">idx</span>)<span class="op">|</span> {
+                <span class="ident">node</span>.<span class="ident">upgrade</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">node</span>.<span class="ident">children</span>[<span class="ident">idx</span>].<span class="ident">action</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>())
+            })
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">List</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>()
+        {
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(<span class="ident">TreeEvent</span>::<span class="ident">DeadEnd</span> {
+                <span class="ident">source</span>: <span class="ident">DeadEndSource</span>::<span class="ident">Tree</span> { <span class="ident">actions</span> },
+                <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
+                <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
+            })));
+        } <span class="kw">else</span> {
+            <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Deadend was cut by another thread.&quot;</span>);
+        }
+
         <span class="comment">// A `None` bound indicates the path points to a dead-end.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bound</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">node</span>, <span class="ident">pos</span>) <span class="kw">in</span> <span class="ident">path</span>.<span class="number">0</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
@@ -1370,27 +1363,6 @@
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
             }
 
-            <span class="comment">// TODO: We now have two places where we are checking the timeout: here in the tree</span>
-            <span class="comment">// search, and in the generic monitor infrastructure.  Historically, we were only</span>
-            <span class="comment">// checking in the generic monitor infrastructure to stop evaluating implementations</span>
-            <span class="comment">// once the timeout is reached; however, the tree search can spend a long time finding</span>
-            <span class="comment">// only deadends but no implementations.  In that case the search would go on forever</span>
-            <span class="comment">// as we would stay in the tree search and never get back to the monitoring</span>
-            <span class="comment">// infrastructure.</span>
-            <span class="comment">//</span>
-            <span class="comment">// Anyways, performing that check twice is easier than reworking the generic</span>
-            <span class="comment">// infrastructure (which... actually my understanding is that it should still work, but</span>
-            <span class="comment">// the control flow is complex enough now that I don&#39;t know anymore) to understand the</span>
-            <span class="comment">// concept of a cooperative yield from the underlying algorithm.  The check in the</span>
-            <span class="comment">// generic code is still useful for other algorithms which may not incorporate its own</span>
-            <span class="comment">// timeout logic.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">timeout</span> {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>() <span class="op">&gt;</span> <span class="ident">timeout</span> {
-                    <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;stopping: timeout&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">None</span>;
-                }
-            }
-
             <span class="kw">let</span> <span class="ident">cut</span>: <span class="ident">f64</span> <span class="op">=</span> { <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">read</span>()) };
             <span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="ident">Env</span> {
                 <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">config</span>,
@@ -1420,32 +1392,8 @@
             <span class="kw">loop</span> {
                 <span class="kw">match</span> <span class="ident">state</span> {
                     <span class="ident">SubTree</span>::<span class="ident">Empty</span> <span class="op">=&gt;</span> {
-                        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Deadend found in the tree.&quot;</span>);
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">actions</span>) <span class="op">=</span> <span class="ident">path</span>
-                            .<span class="number">0</span>
-                            .<span class="ident">iter</span>()
-                            .<span class="ident">skip</span>(<span class="number">1</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">node</span>, <span class="ident">idx</span>)<span class="op">|</span> {
-                                <span class="ident">node</span>.<span class="ident">upgrade</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> {
-                                    <span class="ident">node</span>.<span class="ident">children</span>[<span class="ident">idx</span>].<span class="ident">action</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>()
-                                })
-                            })
-                            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">List</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>()
-                        {
-                            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(
-                                <span class="ident">TreeEvent</span>::<span class="ident">DeadEnd</span> {
-                                    <span class="ident">source</span>: <span class="ident">DeadEndSource</span>::<span class="ident">Tree</span> { <span class="ident">actions</span> },
-                                    <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
-                                    <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
-                                }
-                            )));
-
-                            <span class="self">self</span>.<span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="ident">env</span>.<span class="ident">cut</span>);
-                            <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
-                            <span class="kw">break</span>;
-                        } <span class="kw">else</span> {
-                            <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Deadend was cut by another thread.&quot;</span>);
-                        }
+                        <span class="self">self</span>.<span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="ident">env</span>.<span class="ident">cut</span>);
+                        <span class="kw">break</span>;
                     }
                     <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">leaf</span>) <span class="op">=&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rollout_path</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
