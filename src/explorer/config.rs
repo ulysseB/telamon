@@ -194,6 +194,9 @@ pub struct BanditConfig {
     pub choice_ordering: ChoiceOrdering,
     /// Indicates how to choose between nodes with at least one children evaluated.
     pub tree_policy: TreePolicy,
+    /// If true, will backtrack deadends during the rollout phase until an implementation is found.
+    /// Otherwise (the default) the search is restarted from the root.
+    pub backtrack_rollout_dead: bool,
 }
 
 /// Tree policy configuration
@@ -352,6 +355,7 @@ impl Default for BanditConfig {
             new_nodes_order: NewNodeOrder::default(),
             tree_policy: TreePolicy::default(),
             choice_ordering: ChoiceOrdering::default(),
+            backtrack_rollout_dead: false,
         }
     }
 }
