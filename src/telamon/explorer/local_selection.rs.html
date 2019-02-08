@@ -115,6 +115,97 @@
 <span id="115">115</span>
 <span id="116">116</span>
 <span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides different methods to select a candidate in a list.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
@@ -126,6 +217,100 @@
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
+<span class="doccomment">/// A random rollout configuration</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Rollout</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// The order in which choices should be considered during the rollout</span>
+    <span class="kw">pub</span> <span class="ident">choice_order</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ChoiceOrdering</span>,
+    <span class="doccomment">/// The policy to use when selecting among the available actions</span>
+    <span class="kw">pub</span> <span class="ident">node_order</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NewNodeOrder</span>,
+    <span class="doccomment">/// The context to use for propagation</span>
+    <span class="kw">pub</span> <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Context</span>,
+    <span class="doccomment">/// Current best score.  Used in a branch-and-bound fashion with the lower-bound from the</span>
+    <span class="doccomment">/// performance model, and possibly in other policy-specific computations.</span>
+    <span class="kw">pub</span> <span class="ident">cut</span>: <span class="ident">f64</span>,
+}
+
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RolloutError</span> {
+    <span class="doccomment">/// The candidate is a dead-end</span>
+    <span class="ident">DeadEnd</span>,
+    <span class="doccomment">/// The candidate is fully specified</span>
+    <span class="ident">Implementation</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Rollout</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_live</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">candidate</span>: <span class="kw-2">&amp;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cut</span> {
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="self">self</span>.<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>() {
+            <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">choice</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">child</span>) <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_decision</span>(<span class="self">self</span>.<span class="ident">context</span>, <span class="ident">action</span>).<span class="ident">ok</span>() {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_live</span>(<span class="kw-2">&amp;</span><span class="ident">child</span>) {
+                        <span class="comment">// Fully-specified candidate found in this subtree</span>
+                        <span class="kw">return</span> <span class="bool-val">true</span>;
+                    }
+                }
+            }
+
+            <span class="bool-val">false</span>
+        } <span class="kw">else</span> {
+            <span class="comment">// This is a fully-specified candidate</span>
+            <span class="bool-val">true</span>
+        }
+    }
+
+    <span class="doccomment">/// Perform one rollout step: select a set of actions according to the choice ordering, apply</span>
+    <span class="doccomment">/// them, and select among the resulting candidates according to the rollout policy.</span>
+    <span class="kw">fn</span> <span class="ident">step</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">candidate</span>: <span class="kw-2">&amp;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>, <span class="ident">RolloutError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="self">self</span>.<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>() {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">children</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="self">self</span>.<span class="ident">context</span>, <span class="ident">choice</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idx</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">node_order</span>.<span class="ident">pick_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">children</span>, <span class="self">self</span>.<span class="ident">cut</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">children</span>.<span class="ident">swap_remove</span>(<span class="ident">idx</span>))
+            } <span class="kw">else</span> {
+                <span class="prelude-val">Err</span>(<span class="ident">RolloutError</span>::<span class="ident">DeadEnd</span>)
+            }
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">RolloutError</span>::<span class="ident">Implementation</span>)
+        }
+    }
+
+    <span class="doccomment">/// Repeatedly perform rollout steps on the `candidate` until it is fully specified or a</span>
+    <span class="doccomment">/// deadend is reached, in which case `None` is returned.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">descend</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;&gt;</span> {
+        <span class="kw">loop</span> {
+            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">step</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">next</span>) <span class="op">=&gt;</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">next</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">RolloutError</span>::<span class="ident">DeadEnd</span>) <span class="op">=&gt;</span> <span class="kw">break</span> <span class="prelude-val">None</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">RolloutError</span>::<span class="ident">Implementation</span>) <span class="op">=&gt;</span> <span class="kw">break</span> <span class="prelude-val">Some</span>(<span class="ident">candidate</span>),
+            }
+        }
+    }
+
+    <span class="doccomment">/// Identical to `descend`, except that all intermediate candidates (including the initial</span>
+    <span class="doccomment">/// candidate) are appended to the back of the `path`.  This makes it easier to backtrack or</span>
+    <span class="doccomment">/// investigate the tree locally after a dead-end.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">descend_with_path</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>,
+        <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;&gt;</span> {
+        <span class="kw">loop</span> {
+            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">step</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">next</span>) <span class="op">=&gt;</span> {
+                    <span class="ident">path</span>.<span class="ident">push</span>(<span class="ident">candidate</span>);
+                    <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">next</span>;
+                }
+                <span class="prelude-val">Err</span>(<span class="ident">RolloutError</span>::<span class="ident">Implementation</span>) <span class="op">=&gt;</span> <span class="kw">break</span> <span class="prelude-val">Some</span>(<span class="ident">candidate</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">RolloutError</span>::<span class="ident">DeadEnd</span>) <span class="op">=&gt;</span> {
+                    <span class="ident">path</span>.<span class="ident">push</span>(<span class="ident">candidate</span>);
+                    <span class="kw">break</span> <span class="prelude-val">None</span>;
+                }
+            }
+        }
+    }
+}
+
 <span class="doccomment">/// A recursive function that takes a candidate and expands it until we have a completely specified</span>
 <span class="doccomment">/// candidate that we can pass to the evaluator, or we find a dead-end</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">descend</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
@@ -135,16 +320,13 @@
     <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">cut</span>: <span class="ident">f64</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-    <span class="comment">//let choice_opt = choice::list(&amp;candidate.space).next();</span>
-    <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice_opt</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
-        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">node_order</span>.<span class="ident">pick_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">new_nodes</span>, <span class="ident">cut</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">new_nodes</span>.<span class="ident">swap_remove</span>(<span class="ident">idx</span>);
-        <span class="ident">descend</span>(<span class="ident">choice_order</span>, <span class="ident">node_order</span>, <span class="ident">context</span>, <span class="ident">node</span>, <span class="ident">cut</span>)
-    } <span class="kw">else</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">candidate</span>)
+    <span class="ident">Rollout</span> {
+        <span class="ident">choice_order</span>,
+        <span class="ident">node_order</span>: <span class="kw-2">&amp;</span><span class="ident">node_order</span>,
+        <span class="ident">context</span>,
+        <span class="ident">cut</span>,
     }
+    .<span class="ident">descend</span>(<span class="ident">candidate</span>)
 }
 
 <span class="kw">impl</span> <span class="ident">NewNodeOrder</span> {

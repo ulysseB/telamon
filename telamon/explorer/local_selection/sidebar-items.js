@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["descend","A recursive function that takes a candidate and expands it until we have a completely specified candidate that we can pass to the evaluator, or we find a dead-end"]]});
+initSidebarItems({"enum":[["RolloutError",""]],"fn":[["descend","A recursive function that takes a candidate and expands it until we have a completely specified candidate that we can pass to the evaluator, or we find a dead-end"]],"struct":[["Rollout","A random rollout configuration"]]});
