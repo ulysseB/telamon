@@ -879,6 +879,35 @@
 <span id="879">879</span>
 <span id="880">880</span>
 <span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">///! Exploration of the search space.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
@@ -983,6 +1012,11 @@
     <span class="ident">policy</span>: <span class="ident">P</span>,
     <span class="ident">stats</span>: <span class="ident">TreeStats</span>,
     <span class="ident">log</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">TreeEvent</span><span class="op">&gt;&gt;</span>,
+    <span class="doccomment">/// Time at which the `Tree` structure was created.  This is a reasonably good approximation of</span>
+    <span class="doccomment">/// the time at which the search was started.</span>
+    <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
+    <span class="doccomment">/// Optional timeout after which the search will stop.</span>
+    <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span>: <span class="ident">TreePolicy</span><span class="op">&gt;</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span><span class="op">&gt;</span> {
@@ -992,6 +1026,7 @@
         <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">BanditConfig</span>,
         <span class="ident">policy</span>: <span class="ident">P</span>,
         <span class="ident">log_sender</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">TreeEvent</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">try_from_candidates</span>(<span class="ident">candidates</span>);
         <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">root</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">root</span><span class="op">|</span> <span class="ident">root</span>.<span class="ident">bound</span>());
@@ -1005,6 +1040,8 @@
             <span class="ident">policy</span>,
             <span class="ident">stats</span>: <span class="ident">TreeStats</span>::<span class="ident">default</span>(),
             <span class="ident">log</span>: <span class="ident">log_sender</span>,
+            <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>::<span class="ident">now</span>(),
+            <span class="ident">timeout</span>: <span class="ident">timeout</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">timeout</span><span class="op">|</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>::<span class="ident">from_secs</span>(<span class="ident">timeout</span> <span class="op">*</span> <span class="number">60</span>)),
         }
     }
 
@@ -1092,8 +1129,29 @@
         <span class="comment">// Retry loop (in case of deadends)</span>
         <span class="kw">loop</span> {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stop</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>) {
-                <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;stopping: requested&quot;</span>);
+                <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;stopping: requested&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
+            }
+
+            <span class="comment">// TODO: We now have two places where we are checking the timeout: here in the tree</span>
+            <span class="comment">// search, and in the generic monitor infrastructure.  Historically, we were only</span>
+            <span class="comment">// checking in the generic monitor infrastructure to stop evaluating implementations</span>
+            <span class="comment">// once the timeout is reached; however, the tree search can spend a long time finding</span>
+            <span class="comment">// only deadends but no implementations.  In that case the search would go on forever</span>
+            <span class="comment">// as we would stay in the tree search and never get back to the monitoring</span>
+            <span class="comment">// infrastructure.</span>
+            <span class="comment">//</span>
+            <span class="comment">// Anyways, performing that check twice is easier than reworking the generic</span>
+            <span class="comment">// infrastructure (which... actually my understanding is that it should still work, but</span>
+            <span class="comment">// the control flow is complex enough now that I don&#39;t know anymore) to understand the</span>
+            <span class="comment">// concept of a cooperative yield from the underlying algorithm.  The check in the</span>
+            <span class="comment">// generic code is still useful for other algorithms which may not incorporate its own</span>
+            <span class="comment">// timeout logic.</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">timeout</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>() <span class="op">&gt;</span> <span class="ident">timeout</span> {
+                    <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;stopping: timeout&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">None</span>;
+                }
             }
 
             <span class="kw">let</span> <span class="ident">cut</span>: <span class="ident">f64</span> <span class="op">=</span> { <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">read</span>()) };
