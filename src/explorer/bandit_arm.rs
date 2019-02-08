@@ -125,12 +125,14 @@ pub enum TreeEvent {
         score: f64,
         /// Performance model lower bound
         bound: f64,
-        /// Cut value when the implementation was found
+        /// Cut value when the implementation was found.  This is the best implementation at the
+        /// time the descent started from the root, as threads only synchronize the cut at the
+        /// root.
         cut: f64,
         /// Time at which the implementation was found
-        start_time: f64,
+        search_end_time: f64,
         /// Time at which the evaluation finished
-        end_time: f64,
+        evaluation_end_time: f64,
         /// ID of the thread that found this implementation
         thread: String,
     },
@@ -278,8 +280,8 @@ where
             score: eval,
             bound: info.bound,
             cut: info.cut,
-            start_time: info.time,
-            end_time: self.timestamp(),
+            search_end_time: info.time,
+            evaluation_end_time: self.timestamp(),
             thread: info.thread,
         })));
 
