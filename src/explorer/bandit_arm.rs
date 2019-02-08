@@ -128,8 +128,9 @@ pub enum TreeEvent {
         /// root.
         cut: f64,
         /// Time at which the implementation was found
-        search_end_time: f64,
-        /// Time at which the evaluation finished
+        discovery_time: f64,
+        /// Time at which the evaluation finished.  Note that evaluations are performed by a
+        /// specific thread, not the one that found the implementation.
         evaluation_end_time: f64,
         /// ID of the thread that found this implementation
         thread: String,
@@ -140,7 +141,7 @@ pub enum TreeEvent {
         /// Source of this deadend
         source: DeadEndSource,
         /// Time at which the deadend was found after the start of the program
-        time: f64,
+        discovery_time: f64,
         /// ID of the thread that found the deadend
         thread: String,
     },
@@ -277,7 +278,7 @@ where
             score: eval,
             bound: info.bound,
             cut: info.cut,
-            search_end_time: info.time,
+            discovery_time: info.discovery_time,
             evaluation_end_time: self.timestamp(),
             thread: info.thread,
         })));
@@ -362,7 +363,7 @@ where
                             unwrap!(self.log.send(LogMessage::Event(
                                 TreeEvent::DeadEnd {
                                     source: DeadEndSource::Tree { actions },
-                                    time: self.timestamp(),
+                                    discovery_time: self.timestamp(),
                                     thread: self.thread(),
                                 }
                             )));
@@ -385,7 +386,7 @@ where
                                 path,
                                 bound: implementation.bound.value(),
                                 cut: env.cut,
-                                time: self.timestamp(),
+                                discovery_time: self.timestamp(),
                                 thread: self.thread(),
                             };
 
@@ -402,7 +403,7 @@ where
                                             bound: dead.bound.value(),
                                             cut: env.cut,
                                         },
-                                        time: self.timestamp(),
+                                        discovery_time: self.timestamp(),
                                         thread: self.thread(),
                                     }
                                 )));
@@ -456,7 +457,7 @@ pub struct ImplInfo<'a, E> {
     /// Cut at the time the implementation was found
     cut: f64,
     /// Time at which the implementation was found
-    time: f64,
+    discovery_time: f64,
     /// ID of the thread which found the implementation
     thread: String,
 }
