@@ -10,7 +10,7 @@ pub mod choice;
 pub mod config;
 pub mod local_selection;
 
-pub use self::bandit_arm::TreeEvent;
+pub use self::bandit_arm::{DeadEndSource, TreeEvent};
 pub use self::candidate::Candidate;
 pub use self::config::{BanditConfig, Config, SearchAlgorithm};
 pub use self::logger::LogMessage;
