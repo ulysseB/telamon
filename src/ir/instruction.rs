@@ -3,20 +3,24 @@ use crate::ir::{
     self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type,
 };
 use serde::{Deserialize, Serialize};
-use std;
+use std::{self, fmt};
 
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct InstId(pub u32);
 
-impl Into<usize> for InstId {
-    fn into(self) -> usize {
-        self.0 as usize
+impl fmt::Debug for InstId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "@{}", self.0)
+    }
+}
+
+impl From<InstId> for usize {
+    fn from(id: InstId) -> usize {
+        id.0 as usize
     }
 }
 
