@@ -156,7 +156,11 @@ pub struct Tree<'a, 'b, P: TreePolicy> {
     policy: P,
     stats: TreeStats,
     log: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
+    /// Time at which the `Tree` structure was created.  This is a reasonably good approximation of
+    /// the time at which the search was started.
     start_time: std::time::Instant,
+    /// Optional timeout after which the search will stop.
+    timeout: Option<std::time::Duration>,
 }
 
 impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
@@ -166,6 +170,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         config: &'b BanditConfig,
         policy: P,
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
+        timeout: Option<u64>,
     ) -> Self {
         let root = Node::try_from_candidates(
             candidates
@@ -185,6 +190,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             stats: TreeStats::default(),
             log: log_sender,
             start_time: std::time::Instant::now(),
+            timeout: timeout.map(|timeout| std::time::Duration::from_secs(timeout * 60)),
         }
     }
 
@@ -287,8 +293,29 @@ where
         // Retry loop (in case of deadends)
         loop {
             if self.stop.load(Ordering::Relaxed) {
-                debug!("stopping: requested");
+                info!("stopping: requested");
                 return None;
+            }
+
+            // TODO: We now have two places where we are checking the timeout: here in the tree
+            // search, and in the generic monitor infrastructure.  Historically, we were only
+            // checking in the generic monitor infrastructure to stop evaluating implementations
+            // once the timeout is reached; however, the tree search can spend a long time finding
+            // only deadends but no implementations.  In that case the search would go on forever
+            // as we would stay in the tree search and never get back to the monitoring
+            // infrastructure.
+            //
+            // Anyways, performing that check twice is easier than reworking the generic
+            // infrastructure (which... actually my understanding is that it should still work, but
+            // the control flow is complex enough now that I don't know anymore) to understand the
+            // concept of a cooperative yield from the underlying algorithm.  The check in the
+            // generic code is still useful for other algorithms which may not incorporate its own
+            // timeout logic.
+            if let Some(timeout) = self.timeout {
+                if self.start_time.elapsed() > timeout {
+                    info!("stopping: timeout");
+                    return None;
+                }
             }
 
             let cut: f64 = { *unwrap!(self.cut.read()) };
