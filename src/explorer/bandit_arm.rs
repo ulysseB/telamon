@@ -84,10 +84,66 @@ impl Default for TreeStats {
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum DeadEndSource {
+    /// Dead-end encountered in the tree
+    Tree {
+        /// List of actions defining the dead-end candidate
+        actions: List<choice::ActionEx>,
+    },
+    /// Dead-end encountered in the rollout phase
+    Rollout {
+        /// List of actions defining the dead-end candidate
+        actions: List<choice::ActionEx>,
+        /// Depth in the tree.  The remaining actions were selected during rollout.
+        depth: usize,
+        /// Performance model bound
+        bound: f64,
+        /// Current cut value
+        cut: f64,
+    },
+}
+
+/// The possible tree events.
+/// WARNING:  Changing the enums *will break* any pre-existing eventlog files.  Adding new cases
+/// *at the end only* is safe.
+#[derive(Serialize, Deserialize)]
 pub enum TreeEvent {
     Evaluation {
         actions: List<choice::ActionEx>,
         score: f64,
+    },
+
+    /// A fully-specified implementation was found and evaluated
+    EvaluationV2 {
+        /// List of actions defining the implementation
+        actions: List<choice::ActionEx>,
+        /// Depth in the tree.  The remaining actions were selected during rollout.
+        depth: usize,
+        /// Execution time
+        score: f64,
+        /// Performance model lower bound
+        bound: f64,
+        /// Cut value when the implementation was found.  This is the best implementation at the
+        /// time the descent started from the root, as threads only synchronize the cut at the
+        /// root.
+        cut: f64,
+        /// Time at which the implementation was found
+        discovery_time: f64,
+        /// Time at which the evaluation finished.  Note that evaluations are performed by a
+        /// specific thread, not the one that found the implementation.
+        evaluation_end_time: f64,
+        /// ID of the thread that found this implementation
+        thread: String,
+    },
+
+    /// A dead-end was reached
+    DeadEnd {
+        /// Source of this deadend
+        source: DeadEndSource,
+        /// Time at which the deadend was found after the start of the program
+        discovery_time: f64,
+        /// ID of the thread that found the deadend
+        thread: String,
     },
 }
 
@@ -117,7 +173,12 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
         timeout: Option<u64>,
     ) -> Self {
-        let root = Node::try_from_candidates(candidates);
+        let root = Node::try_from_candidates(
+            candidates
+                .into_iter()
+                .map(|candidate| (None, candidate))
+                .collect(),
+        );
         let bound = root.as_ref().and_then(|root| root.bound());
 
         Tree {
@@ -134,12 +195,21 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         }
     }
 
+    fn thread(&self) -> String {
+        format!("{:?}", std::thread::current().id())
+    }
+
+    fn timestamp(&self) -> f64 {
+        let time = self.start_time.elapsed();
+        time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9
+    }
+
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
     /// Updates bounds along the way.
-    fn clean_deadends(&self, mut path: Path<'a, P::EdgeStats>, cut: f64) {
+    fn clean_deadends(&self, path: &Path<'a, P::EdgeStats>, cut: f64) {
         // A `None` bound indicates the path points to a dead-end.
         let mut bound = None;
-        while let Some((node, pos)) = path.0.pop() {
+        for &(ref node, pos) in path.0.iter().rev() {
             if let Some(node) = node.upgrade() {
                 if let Some(bound) = bound {
                     node.children[pos].update_bound(bound);
@@ -175,7 +245,7 @@ where
     P: Send + Sync,
     P::EdgeStats: Send + Sync,
 {
-    type PayLoad = Path<'a, P::EdgeStats>;
+    type PayLoad = ImplInfo<'a, P::EdgeStats>;
 
     type Event = TreeEvent;
 
@@ -199,15 +269,21 @@ where
     fn commit_evaluation(
         &self,
         actions: &List<choice::ActionEx>,
-        mut path: Self::PayLoad,
+        mut info: Self::PayLoad,
         eval: f64,
     ) {
-        unwrap!(self.log.send(LogMessage::Event(TreeEvent::Evaluation {
+        unwrap!(self.log.send(LogMessage::Event(TreeEvent::EvaluationV2 {
             actions: actions.clone(),
+            depth: info.path.0.len(),
             score: eval,
+            bound: info.bound,
+            cut: info.cut,
+            discovery_time: info.discovery_time,
+            evaluation_end_time: self.timestamp(),
+            thread: info.thread,
         })));
 
-        while let Some((node, idx)) = path.0.pop() {
+        while let Some((node, idx)) = info.path.0.pop() {
             if let Some(node) = node.upgrade() {
                 self.policy.backpropagate(&node, idx, eval);
             }
@@ -259,26 +335,82 @@ where
                 }
             });
 
+            // Rollout configuration
+            let rollout = local_selection::Rollout {
+                choice_order: &env.config.choice_ordering,
+                node_order: &env.config.new_nodes_order,
+                context: env.context,
+                cut: env.cut,
+            };
+
             // Descent loop
             let mut path = Path::default();
             loop {
                 match state {
                     SubTree::Empty => {
-                        self.clean_deadends(path, env.cut);
+                        info!("Deadend found in the tree.");
+                        if let Some(actions) = path
+                            .0
+                            .iter()
+                            .skip(1)
+                            .map(|&(ref node, idx)| {
+                                node.upgrade().map(|node| {
+                                    node.children[idx].action.clone().unwrap()
+                                })
+                            })
+                            .collect::<Option<List<_>>>()
+                        {
+                            unwrap!(self.log.send(LogMessage::Event(
+                                TreeEvent::DeadEnd {
+                                    source: DeadEndSource::Tree { actions },
+                                    discovery_time: self.timestamp(),
+                                    thread: self.thread(),
+                                }
+                            )));
 
-                        self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
-                        break;
+                            self.clean_deadends(&path, env.cut);
+                            self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+                            break;
+                        } else {
+                            warn!("Deadend was cut by another thread.");
+                        }
                     }
                     SubTree::Leaf(leaf) => {
-                        if let Some(implementation) = local_selection::descend(
-                            &env.config.choice_ordering,
-                            env.config.new_nodes_order,
-                            env.context,
-                            *leaf,
-                            env.cut,
-                        ) {
-                            return Some((implementation, path));
+                        let mut rollout_path = Vec::new();
+                        if let Some(implementation) =
+                            rollout.descend_with_path(*leaf, &mut rollout_path)
+                        {
+                            info!("Implementation found.");
+
+                            let info = ImplInfo {
+                                path,
+                                bound: implementation.bound.value(),
+                                cut: env.cut,
+                                discovery_time: self.timestamp(),
+                                thread: self.thread(),
+                            };
+
+                            return Some((implementation, info));
                         } else {
+                            info!("Deadend found during rollout.");
+
+                            if let Some(dead) = rollout_path.last() {
+                                unwrap!(self.log.send(LogMessage::Event(
+                                    TreeEvent::DeadEnd {
+                                        source: DeadEndSource::Rollout {
+                                            actions: dead.actions.clone(),
+                                            depth: path.0.len(),
+                                            bound: dead.bound.value(),
+                                            cut: env.cut,
+                                        },
+                                        discovery_time: self.timestamp(),
+                                        thread: self.thread(),
+                                    }
+                                )));
+                            } else {
+                                warn!("Empty rollout.");
+                            }
+
                             // Deadend reached while exploring; restart from the root
                             // TODO(bclement): We should backpropagate explicitely here.
                             self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
@@ -315,6 +447,21 @@ where
     }
 }
 
+/// Informations on a fully-specified implementation
+#[derive(Clone)]
+pub struct ImplInfo<'a, E> {
+    /// Path to the implementation (in the tree)
+    path: Path<'a, E>,
+    /// Bound from the performance model
+    bound: f64,
+    /// Cut at the time the implementation was found
+    cut: f64,
+    /// Time at which the implementation was found
+    discovery_time: f64,
+    /// ID of the thread which found the implementation
+    thread: String,
+}
+
 /// Path to follow to reach a leaf in the tree.
 #[derive(Clone, Default)]
 pub struct Path<'a, E>(Vec<(Weak<Node<'a, E>>, usize)>);
@@ -339,6 +486,9 @@ struct Edge<'a, E> {
 
     /// The current bound for the pointed-to node.
     bound: RwLock<f64>,
+
+    /// The action associated with this edge
+    action: Option<choice::ActionEx>,
 }
 
 impl<'a, E: Default> Edge<'a, E> {
@@ -405,7 +555,15 @@ impl<'a, E: Default> Edge<'a, E> {
                         let choice = env.list_actions(&candidate);
                         if let Some(choice) = choice {
                             if let Some(node) = Node::try_from_candidates(
-                                env.apply_choice(&candidate, choice),
+                                env.apply_choice(&candidate, choice)
+                                    .into_iter()
+                                    .map(|candidate| {
+                                        (
+                                            candidate.actions.first().map(Clone::clone),
+                                            candidate,
+                                        )
+                                    })
+                                    .collect(),
                             ) {
                                 // Newly expanded node, with no stats yet.
                                 *dst = SubTree::InternalNode(node);
@@ -442,17 +600,20 @@ pub struct Node<'a, E> {
 
 impl<'a, E: Default> Node<'a, E> {
     /// Creates a new children containing the given candidates, if any.
-    fn try_from_candidates(candidates: Vec<Candidate<'a>>) -> Option<Arc<Self>> {
+    fn try_from_candidates(
+        candidates: Vec<(Option<choice::ActionEx>, Candidate<'a>)>,
+    ) -> Option<Arc<Self>> {
         if candidates.is_empty() {
             None
         } else {
             Some(Arc::new(Node {
                 children: candidates
                     .into_iter()
-                    .map(|candidate| Edge {
+                    .map(|(action, candidate)| Edge {
                         bound: RwLock::new(candidate.bound.value()),
                         dst: RwLock::new(SubTree::Leaf(Box::new(candidate))),
                         stats: Default::default(),
+                        action,
                     })
                     .collect::<Vec<_>>(),
             }))
