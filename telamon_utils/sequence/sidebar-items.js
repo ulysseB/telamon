@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Sequence","A type representing a sequence of values."]]});

@@ -1308,7 +1308,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span>: <span class="ident">TreePolicy</span><span class="op">&gt;</span> <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">P</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
-    <span class="ident">P</span>::<span class="ident">EdgeStats</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
+    <span class="ident">P</span>::<span class="ident">EdgeStats</span>: <span class="lifetime">&#39;a</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span>,
 {
     <span class="kw">type</span> <span class="ident">PayLoad</span> <span class="op">=</span> <span class="ident">ImplInfo</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;</span>;
 
