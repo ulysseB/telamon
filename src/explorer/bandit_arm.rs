@@ -262,7 +262,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P>
 where
     P: Send + Sync,
-    P::EdgeStats: Send + Sync,
+    P::EdgeStats: 'a + Send + Sync,
 {
     type PayLoad = ImplInfo<'a, P::EdgeStats>;
 
