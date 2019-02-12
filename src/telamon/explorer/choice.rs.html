@@ -234,8 +234,30 @@
 <span id="234">234</span>
 <span id="235">235</span>
 <span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Choices that can be applied to split the search space.</span>
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">config</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Statement</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">Domain</span>, <span class="ident">NumSet</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
@@ -245,7 +267,7 @@
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
 <span class="doccomment">/// Either a regular action or a manually applied action.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ActionEx</span> {
     <span class="ident">Action</span>(<span class="ident">Action</span>),
     <span class="ident">LowerLayout</span> {
@@ -253,6 +275,24 @@
         <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
         <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     },
+}
+
+<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">ActionEx</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="comment">// Actions are already explicitely self-describing enough</span>
+            <span class="ident">ActionEx</span>::<span class="ident">Action</span>(<span class="ident">action</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">action</span>),
+            <span class="ident">ActionEx</span>::<span class="ident">LowerLayout</span> {
+                <span class="ident">mem</span>,
+                <span class="ident">st_dims</span>,
+                <span class="ident">ld_dims</span>,
+            } <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(
+                <span class="ident">f</span>,
+                <span class="string">&quot;LowerLayout {{ mem: {:?}, st_dims: {:?}, ld_dims: {:?} }}&quot;</span>,
+                <span class="ident">mem</span>, <span class="ident">st_dims</span>, <span class="ident">ld_dims</span>
+            ),
+        }
+    }
 }
 
 <span class="doccomment">/// Represents a choice that splits a search space in multiple ones.</span>
