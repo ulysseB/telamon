@@ -69,7 +69,7 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
     fn build<P: bandit_arm::TreePolicy>(self, policy: P) -> Option<Candidate<'a>>
     where
         P: 'l + Send + Sync,
-        P::EdgeStats: Send + Sync,
+        P::EdgeStats: 'a + Send + Sync,
     {
         let TreeBuilder {
             candidates,
