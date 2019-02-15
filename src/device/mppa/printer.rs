@@ -418,22 +418,22 @@ impl MppaPrinter {
         )
     }
 
-    fn get_printf_val_in_code(val_id: &str, t: VarType) -> String {
+    fn get_printf_val_in_code(val_id: &str, t: ir::Type) -> String {
         match t {
-            VarType::F(_) => {
+            ir::Type::F(_) => {
                 format!("printf(\"float {val} = %f\\n\", {val});", val = val_id)
             }
-            VarType::I(_) => {
+            ir::Type::I(_) => {
                 format!("printf(\"int {val} = %u\\n\", {val});", val = val_id)
             }
-            VarType::Ptr => format!(
+            ir::Type::Ptr => format!(
                 "printf(\"ptr {val} = %p\\n\", (void *){val});",
                 val = val_id
             ),
         }
     }
 
-    fn print_val_in_code(&mut self, val_id: &str, t: VarType) {
+    fn print_val_in_code(&mut self, val_id: &str, t: ir::Type) {
         unwrap!(writeln!(
             self.buffer,
             "{}",

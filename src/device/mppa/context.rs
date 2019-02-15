@@ -17,6 +17,7 @@ use libc;
 use std;
 use std::sync::{mpsc, Arc};
 use std::time::Instant;
+use utils::unwrap;
 use utils::*;
 
 const EXECUTION_QUEUE_SIZE: usize = 32;
@@ -240,10 +241,11 @@ impl<'a> device::ArgMap for Context<'a> {
     fn bind_erased_array(
         &mut self,
         param: &ir::Parameter,
+        t: ir::Type,
         len: usize,
     ) -> Arc<dyn ArrayArgument + 'a>
     {
-        let size = len * std::mem::size_of::<S>();
+        let size = len * unwrap!(t.len_byte()) as usize;
         let buffer_arc = Arc::new(Buffer::new(self.executor, size));
         self.bind_param(param.name.clone(), Arc::clone(&buffer_arc) as Arc<Argument>);
         buffer_arc

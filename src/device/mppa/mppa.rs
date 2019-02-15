@@ -62,7 +62,7 @@ impl device::Device for Mppa {
     fn hw_pressure(
         &self,
         _space: &SearchSpace,
-        _dim_sizes: &HashMap<ir::dim::Id, u32>,
+        _dim_sizes: &HashMap<ir::DimId, u32>,
         _nesting: &HashMap<ir::StmtId, model::Nesting>,
         _bb: &ir::Statement,
         _: &device::Context,
