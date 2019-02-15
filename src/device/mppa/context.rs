@@ -232,23 +232,20 @@ impl<'a> device::Context for Context<'a> {
 }
 
 impl<'a> device::ArgMap for Context<'a> {
-    type Array = Buffer;
-
-    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
-        assert_eq!(param.t, S::t());
+    fn bind_erased_scalar(&mut self, param: &ir::Parameter, value: Box<dyn ScalarArgument>) {
+        assert_eq!(param.t, value.get_type());
         self.bind_param(param.name.clone(), Arc::new(value));
     }
 
-    fn bind_array<S: ScalarArgument>(
+    fn bind_erased_array(
         &mut self,
         param: &ir::Parameter,
         len: usize,
-    ) -> Arc<Self::Array>
+    ) -> Arc<dyn ArrayArgument + 'a>
     {
         let size = len * std::mem::size_of::<S>();
-        //println!("Allocated {} bytes for param {}", size, param.name);
         let buffer_arc = Arc::new(Buffer::new(self.executor, size));
-        self.bind_param(param.name.clone(), buffer_arc.clone());
+        self.bind_param(param.name.clone(), Arc::clone(&buffer_arc) as Arc<Argument>);
         buffer_arc
     }
 }
