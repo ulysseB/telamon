@@ -2,15 +2,16 @@ use crate::codegen;
 use crate::codegen::*;
 use crate::device::mppa::{Mppa, Namer};
 use crate::ir::{self, op, Type};
-use crate::search_space::{DimKind, Domain, InstFlag};
+use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use itertools::Itertools;
+use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]
 pub struct MppaPrinter {
-    out_function: String,
+    buffer: String,
 }
 
 impl MppaPrinter {
@@ -84,11 +85,11 @@ impl MppaPrinter {
         );
         // INDEX LOADS
         let idx_loads = self.decl_par_indexes(function, &mut name_map);
-        unwrap!(writeln!(self.out_function, "{}", idx_loads));
+        unwrap!(writeln!(self.buffer, "{}", idx_loads));
         // LOAD PARAM
         for val in function.device_code_args() {
             unwrap!(writeln!(
-                self.out_function,
+                self.buffer,
                 "{var_name} = {name};// LD_PARAM",
                 var_name = name_map.name_param_val(val.key()),
                 name = name_map.name_param(val.key())
@@ -139,7 +140,7 @@ impl MppaPrinter {
         self.cfg(function, function.cfg(), &mut name_map);
         let var_decls = self.var_decls(&mut name_map);
         return_string.push_str(&var_decls);
-        return_string.push_str(&self.out_function);
+        return_string.push_str(&self.buffer);
         // Close function bracket
         return_string.push('}');
         return_string
@@ -434,7 +435,7 @@ impl MppaPrinter {
 
     fn print_val_in_code(&mut self, val_id: &str, t: VarType) {
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{}",
             Self::get_printf_val_in_code(val_id, t)
         ));
@@ -444,123 +445,124 @@ impl MppaPrinter {
 impl Printer for MppaPrinter {
     fn get_int(n: u32) -> String { format!("{}", n) }
 
-    fn get_float(f: f64) -> String { format!("{:.4e}", f) }
-
-    fn get_type(t: Type) -> String {
-        match t {
-            Type::Void => String::from("void"),
-            //Type::PtrTo(..) => " uint8_t *",
-            Type::PtrTo(..) => String::from("uintptr_t"),
-            Type::F(32) => String::from("float"),
-            Type::F(64) => String::from("double"),
-            Type::I(1) => String::from("uint8_t"),
-            Type::I(8) => String::from("uint8_t"),
-            Type::I(16) => String::from("uint16_t"),
-            Type::I(32) => String::from("uint32_t"),
-            Type::I(64) => String::from("uint64_t"),
-            ref t => panic!("invalid type for the host: {}", t),
-        }
-    }
-
-    fn print_vector_inst(
-        &mut self,
-        _: &Instruction,
-        _: &Dimension,
-        _: &mut NameMap,
-        _: &Function,
-    )
-    {
-        panic!("Vectorization not implemented for x86")
-    }
-
     fn print_binop(
         &mut self,
+        vector_factors: [u32; 2],
         op: ir::BinOp,
         _: Type,
         _: op::Rounding,
-        return_id: &str,
+        result: &str,
         lhs: &str,
         rhs: &str,
-    )
-    {
-        match op {
-            ir::BinOp::Add => unwrap!(writeln!(
-                self.out_function,
-                "{} = {} + {};",
-                return_id, lhs, rhs
-            )),
-            ir::BinOp::Sub => unwrap!(writeln!(
-                self.out_function,
-                "{} = {} - {};",
-                return_id, lhs, rhs
-            )),
-            ir::BinOp::Div => unwrap!(writeln!(
-                self.out_function,
-                "{} = {} / {};",
-                return_id, lhs, rhs
-            )),
+    ) {
+        assert_eq!(vector_factors, [1, 1]);
+        let op = match op {
+            ir::BinOp::Add => "+",
+            ir::BinOp::Sub => "-",
+            ir::BinOp::Div => "/",
+            ir::BinOp::And => "&",
+            ir::BinOp::Or => "|",
+            ir::BinOp::Lt => "<",
+            ir::BinOp::Leq => "<=",
+            ir::BinOp::Equals => "==",
         };
+        unwrap!(writeln!(
+            self.buffer,
+            "{} = {} {} {};",
+            result, lhs, op, rhs
+        ));
     }
+
+    fn print_unary_op(
+        &mut self,
+        vector_factors: [u32; 2],
+        operator: ir::UnaryOp,
+        _: Type,
+        result: &str,
+        operand: &str,
+    ) {
+        assert_eq!(vector_factors, [1, 1]);
+        unwrap!(write!(self.buffer, "{} = ", result));
+        match operator {
+            ir::UnaryOp::Mov => (),
+            ir::UnaryOp::Cast(t) => {
+                unwrap!(write!(self.buffer, "({})", Self::get_type(t)))
+            }
+        };
+        unwrap!(writeln!(self.buffer, "{};", operand));
+    }
+
 
     fn print_mul(
         &mut self,
+        vector_factors: [u32; 2],
         _: Type,
         _: op::Rounding,
-        _: MulMode,
-        return_id: &str,
+        mode: MulMode,
+        result: &str,
         op1: &str,
         op2: &str,
-    )
-    {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} * {};",
-            return_id, op1, op2
-        ));
+    ) {
+        assert_ne!(mode, MulMode::High);
+        assert_eq!(vector_factors, [1, 1]);
+        unwrap!(writeln!(self.buffer, "{} = {} * {};", result, op1, op2));
     }
 
     fn print_mad(
         &mut self,
+        vector_factors: [u32; 2],
         _: Type,
         _: op::Rounding,
-        _: MulMode,
-        return_id: &str,
+        mode: MulMode,
+        result: &str,
         mlhs: &str,
         mrhs: &str,
         arhs: &str,
-    )
-    {
+    ) {
+        assert_eq!(vector_factors, [1, 1]);
+        assert_ne!(mode, MulMode::High);
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{} = {} * {} + {};",
-            return_id, mlhs, mrhs, arhs
+            result, mlhs, mrhs, arhs
         ));
-    }
-
-    fn print_mov(&mut self, _: Type, return_id: &str, op: &str) {
-        unwrap!(writeln!(self.out_function, "{} = {} ;", return_id, op));
     }
 
     fn print_ld(
         &mut self,
+        vector_factors: [u32; 2],
         return_type: Type,
-        flag: InstFlag,
-        return_id: &str,
+        _: MemSpace,
+        _: InstFlag,
+        result: &str,
         addr: &str,
-    )
-    {
+    ) {
+        assert_eq!(vector_factors, [1, 1]);
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{} = *({}*){} ;",
-            return_id,
+            result,
             Self::get_type(return_type),
             addr
         ));
     }
 
-    fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
+    fn print_st(
+        &mut self,
+        vector_factors: [u32; 2],
+        val_type: Type,
+        _: MemSpace,
+        _: InstFlag,
+        predicate: Option<&str>,
+        addr: &str,
+        val: &str,
+    ) {
+        assert_eq!(vector_factors, [1, 1]);
+        if let Some(predicate) = predicate {
+            unwrap!(write!(self.buffer, "if ({})", predicate));
+        }
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "*({}*){} = {} ;",
             Self::get_type(val_type),
             addr,
@@ -568,99 +570,42 @@ impl Printer for MppaPrinter {
         ));
     }
 
-    fn print_cond_st(
-        &mut self,
-        val_type: Type,
-        _: InstFlag,
-        cond: &str,
-        addr: &str,
-        val: &str,
-    )
-    {
-        unwrap!(writeln!(
-            self.out_function,
-            "if ({}) *({} *){} = {} ;",
-            cond,
-            Self::get_type(val_type),
-            addr,
-            val
-        ));
-    }
-
-    fn print_cast(
-        &mut self,
-        _: Type,
-        t: Type,
-        _: op::Rounding,
-        return_id: &str,
-        op1: &str,
-    )
-    {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = ({}) {};",
-            return_id,
-            Self::get_type(t),
-            op1
-        ));
-    }
-
     fn print_label(&mut self, label_id: &str) {
-        unwrap!(writeln!(self.out_function, "LABEL_{}:", label_id));
-    }
-
-    fn print_and(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} && {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_or(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} || {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} == {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} < {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} > {};",
-            return_id, op1, op2
-        ));
+        unwrap!(writeln!(self.buffer, "LABEL_{}:", label_id));
     }
 
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
         unwrap!(writeln!(
-            self.out_function,
-            "if({}) {{goto LABEL_{};}}",
+            self.buffer,
+            "if({}) goto LABEL_{};",
             cond, label_id
         ));
     }
 
     fn print_sync(&mut self) {
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "if (pthread_barrier_wait(tid->barrier)) {{printf(\"barrier error\\n\"); return;}}\n",
         ));
+    }
+
+    fn name_operand<'a>(
+        vector_dims: &[Vec<Dimension>; 2],
+        op: &ir::Operand,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        assert!(vector_dims[0].is_empty());
+        assert!(vector_dims[1].is_empty());
+        namer.name_op(op)
+    }
+
+    fn name_inst<'a>(
+        vector_dims: &[Vec<Dimension>; 2],
+        inst: ir::InstId,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        assert!(vector_dims[0].is_empty());
+        assert!(vector_dims[1].is_empty());
+        namer.name_inst(inst).into()
     }
 }
