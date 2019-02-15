@@ -1,18 +1,19 @@
 //! MPPA evaluation context.
-use codegen::{self, ParamVal};
+use crate::codegen::{self, ParamVal};
+use crate::device::context::AsyncCallback;
+use crate::device::mppa::telajax::Buffer;
+use crate::device::mppa::{telajax, MppaPrinter};
+use crate::device::Context as ContextTrait;
+use crate::device::{self, mppa, ArrayArgument, EvalMode, ScalarArgument};
+use crate::explorer;
+use crate::ir;
+use crate::search_space::DimKind;
+use crate::search_space::SearchSpace;
+
 use crossbeam;
 use crossbeam::sync::MsQueue;
-use device::context::AsyncCallback;
-use device::mppa::telajax::Buffer;
-use device::mppa::{telajax, MppaPrinter};
-use device::Context as ContextTrait;
-use device::{self, mppa, ArrayArgument, EvalMode, ScalarArgument};
-use explorer;
-use ir;
 use itertools::Itertools;
 use libc;
-use search_space::DimKind;
-use search_space::SearchSpace;
 use std;
 use std::sync::{mpsc, Arc};
 use std::time::Instant;

@@ -3,13 +3,16 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-use device::{self, ArrayArgument};
+use crate::device::{self, ArrayArgument};
 use itertools::{zip_eq, Itertools};
 use libc;
+use log::debug;
+use lazy_static::lazy_static;
 use parking_lot;
 use std;
 use std::ffi::CStr;
 use std::sync::{Arc, RwLock};
+use utils::unwrap;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

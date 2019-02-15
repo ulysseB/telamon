@@ -13,8 +13,8 @@ pub use self::context::Context;
 pub use self::mppa::Mppa;
 pub use self::printer::MppaPrinter;
 
-use codegen::{self, VarType};
-use ir;
+use crate::codegen::{self, VarType};
+use crate::ir;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
