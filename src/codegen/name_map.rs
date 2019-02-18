@@ -19,16 +19,36 @@ pub enum Operand<'a> {
     Operand(&'a ir::Operand<'a>),
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum DeclType {
+    I(u16),
+    F(u16),
+    Ptr,
+}
+
+impl From<Type> for DeclType {
+    fn from(t: Type) -> Self {
+        match t {
+            Type::I(size) => DeclType::I(size),
+            Type::F(size) => DeclType::F(size),
+            Type::PtrTo(_) => DeclType::Ptr,
+        }
+    }
+}
+
 /// Assign names to variables.
 pub trait Namer {
     /// Provides a name for a variable of the given type.
-    fn name(&mut self, t: Type) -> String;
+    fn name(&mut self, t: DeclType) -> String;
     /// Generates a name for a parameter.
     fn name_param(&mut self, p: ParamValKey) -> String;
     /// Provides a name for a floating point constant.
     fn name_float(&self, _: &Ratio<BigInt>, _: u16) -> String;
     /// Provides a name for an integer constant.
     fn name_int(&self, _: &BigInt, _: u16) -> String;
+    /// Returns an iterator on tuples (type t, number of declared variables of
+    /// type t)
+    fn get_declared_variables(&self) -> Vec<(DeclType, usize)>;
 }
 
 /// Maps variables to names.
@@ -70,7 +90,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let params = function
             .device_code_args()
             .map(|val| {
-                let var_name = namer.name(val.t());
+                let var_name = namer.name(val.t().into());
                 let param_name = namer.name_param(val.key());
                 if let ParamValKey::GlobalMem(id) = val.key() {
                     mem_blocks.insert(id, var_name.clone());
@@ -81,7 +101,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
         for dim in function.dimensions() {
-            let name = RcStr::new(namer.name(Type::I(32)));
+            let name = RcStr::new(namer.name(DeclType::I(32)));
             for id in dim.dim_ids() {
                 indexes.insert(id, name.clone());
             }
@@ -162,7 +182,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Generates a variable of the given `Type`.
     pub fn gen_name(&self, t: Type) -> String {
-        self.namer.borrow_mut().name(t)
+        self.namer.borrow_mut().name(t.into())
     }
 
     /// Generates an ID for a loop.
@@ -175,7 +195,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     /// Allocate a predicate name.
     #[cfg(feature = "cuda")]
     pub fn allocate_pred(&self) -> String {
-        self.namer.borrow_mut().name(Type::I(1))
+        self.namer.borrow_mut().name(DeclType::I(1))
     }
 
     pub fn name(&self, operand: Operand) -> Cow<str> {
@@ -366,7 +386,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
             hash_map::Entry::Vacant(entry) => {
-                Some(entry.insert(self.namer.borrow_mut().name(t)).to_string())
+                Some(entry.insert(self.namer.borrow_mut().name(t.into())).to_string())
             }
         }
     }
@@ -398,6 +418,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
     /// Sets the predicate to use in front of side-effect instruction.
     pub fn set_side_effect_guard(&mut self, guard: Option<RcStr>) {
         self.side_effect_guard = guard;
+    }
+    pub fn get_declared_variables(&self) -> Vec<(DeclType, usize)> {
+        self.namer.borrow().get_declared_variables()
     }
 }
 
@@ -467,7 +490,7 @@ impl VariableNames {
             .map(|(dim, size)| (VarNameIndex::FromDim(dim), size))
             .unzip();
         let num_names = dim_sizes.iter().product::<usize>();
-        let names = (0..num_names).map(|_| namer.name(t)).collect();
+        let names = (0..num_names).map(|_| namer.name(t.into())).collect();
         VariableNames {
             indexes,
             names: std::rc::Rc::new(NDArray::new(dim_sizes, names)),
@@ -535,6 +558,7 @@ mod tests {
     fn mk_index(idx: &[(ir::DimId, usize)]) -> HashMap<ir::DimId, usize> {
         idx.iter().cloned().collect()
     }
+
 
     /// Ensures variables names creation works correctly.
     #[test]

@@ -38,14 +38,14 @@ where T: device::ScalarArgument
 }
 
 /// MPPA evaluation context.
-pub struct Context<'a> {
+pub struct Context {
     device: mppa::Mppa,
     executor: &'static telajax::Device,
-    parameters: HashMap<String, Arc<Argument + 'a>>,
+    parameters: HashMap<String, Arc<Argument >>,
     wrappers: Cache<ir::Signature, telajax::Wrapper>,
     writeback_slots: MsQueue<telajax::Buffer>,
 }
-unsafe impl<'a> Sync for Context<'a> {}
+unsafe impl Sync for Context {}
 
 /// We need to keep the arguments allocated for the kernel somewhere
 enum KernelArg {
@@ -64,7 +64,7 @@ impl KernelArg {
     }
 }
 
-impl<'a> Context<'a> {
+impl Context {
     /// Creates a new `Context`. Blocks until the MPPA device is ready to be
     /// used.
     pub fn new() -> Self {
@@ -89,7 +89,7 @@ impl<'a> Context<'a> {
     /// Compiles and sets the arguments of a kernel.
     fn setup_kernel(
         &self,
-        fun: &codegen::Function<'a>,
+        fun: &codegen::Function,
     ) -> (telajax::Kernel, Vec<KernelArg>)
     {
         let mut printer = MppaPrinter::default();
@@ -170,7 +170,7 @@ fn get_type_size(t: ir::Type) -> usize {
     }
 }
 
-impl<'a> device::Context for Context<'a> {
+impl device::Context for Context {
     fn device(&self) -> &device::Device { &self.device }
 
     fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
@@ -232,7 +232,7 @@ impl<'a> device::Context for Context<'a> {
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).as_size() }
 }
 
-impl<'a> device::ArgMap for Context<'a> {
+impl<'a> device::ArgMap<'a> for Context {
     fn bind_erased_scalar(&mut self, param: &ir::Parameter, value: Box<dyn ScalarArgument>) {
         assert_eq!(param.t, value.get_type());
         self.bind_param(param.name.clone(), Arc::new(value));
@@ -262,7 +262,7 @@ type AsyncPayload<'a, 'b> = (
 struct AsyncEvaluator<'a, 'b>
 where 'a: 'b
 {
-    context: &'b Context<'b>,
+    context: &'b Context,
     sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
 }
 

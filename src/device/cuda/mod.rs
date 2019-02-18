@@ -43,23 +43,23 @@ struct Namer {
 
 impl Namer {
     /// Generate a variable name prefix from a type.
-    fn gen_prefix(t: &ir::Type) -> &'static str {
+    fn gen_prefix(t: &codegen::DeclType) -> &'static str {
         match *t {
-            ir::Type::I(1) => "p",
-            ir::Type::I(8) => "c",
-            ir::Type::I(16) => "s",
-            ir::Type::I(32) => "r",
-            ir::Type::I(64) => "rd",
-            ir::Type::F(16) => "h",
-            ir::Type::F(32) => "f",
-            ir::Type::F(64) => "d",
+            codegen::DeclType::I(1) => "p",
+            codegen::DeclType::I(8) => "c",
+            codegen::DeclType::I(16) => "s",
+            codegen::DeclType::I(32) => "r",
+            codegen::DeclType::I(64) => "rd",
+            codegen::DeclType::F(16) => "h",
+            codegen::DeclType::F(32) => "f",
+            codegen::DeclType::F(64) => "d",
             _ => panic!("invalid PTX type"),
         }
     }
 }
 
 impl codegen::Namer for Namer {
-    fn name(&mut self, t: ir::Type) -> String {
+    fn name(&mut self, t: codegen::DeclType) -> String {
         let prefix = Namer::gen_prefix(&t);
         let entry = self.num_var.entry(t).or_insert(0);
         let name = format!("%{}{}", prefix, *entry);
@@ -88,5 +88,8 @@ impl codegen::Namer for Namer {
                 format!("_size_{}", self.num_sizes - 1)
             }
         }
+    }
+    fn get_declared_variables(&self) -> Vec<(codegen::DeclType, usize)> {
+        self.num_var.iter().map(|(&t, &n)| (t, n)).collect_vec()
     }
 }
