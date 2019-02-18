@@ -18,6 +18,12 @@ impl fmt::Debug for InstId {
     }
 }
 
+impl From<InstId> for usize {
+    fn from(id: InstId) -> usize {
+        id.0 as usize
+    }
+}
+
 impl SparseKey for InstId {
     fn from_usize(key: usize) -> Self {
         InstId(key as u32)
