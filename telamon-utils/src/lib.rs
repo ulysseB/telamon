@@ -5,6 +5,7 @@ mod dag;
 mod iterator;
 pub mod multimap;
 pub mod ndarray;
+pub mod ndarray_numpy_ext;
 pub mod tfrecord;
 pub mod unwrap;
 mod vec_set;
