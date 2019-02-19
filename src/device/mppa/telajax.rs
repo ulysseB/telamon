@@ -45,6 +45,7 @@ impl Buffer {
 
     pub fn raw_ptr(&self) -> *const libc::c_void { self.mem.read().unwrap().raw_ptr() }
 }
+
 impl device::ArrayArgument for Buffer {
     fn read_i8(&self) -> Vec<i8> {
         let mem_block = unwrap!(self.mem.read());
@@ -59,6 +60,7 @@ impl device::ArrayArgument for Buffer {
         self.executor.write_buffer::<i8>(slice, &mut mem_block, &[]);
     }
 }
+
 /// A Telajax execution context.
 pub struct Device {
     inner: device_t,
