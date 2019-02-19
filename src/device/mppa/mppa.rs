@@ -4,7 +4,7 @@ use crate::ir::{self, Type};
 use crate::model::{self, HwPressure};
 use crate::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
 use std;
-use std::io::{Read, Write};
+use std::io::Write;
 use utils::unwrap;
 use utils::*;
 

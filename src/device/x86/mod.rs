@@ -9,8 +9,9 @@ mod printer;
 pub use self::context::Context;
 pub use self::cpu::Cpu;
 pub use self::printer::X86printer;
-
 use crate::codegen;
+
+use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;

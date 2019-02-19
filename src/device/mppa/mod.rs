@@ -14,7 +14,6 @@ pub use self::mppa::Mppa;
 pub use self::printer::MppaPrinter;
 
 use crate::codegen;
-use crate::ir;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;

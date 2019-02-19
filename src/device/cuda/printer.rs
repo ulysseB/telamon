@@ -102,7 +102,7 @@ impl CudaPrinter {
 
     /// Declares a shared memory block.
     fn shared_mem_decl(&mut self, block: &MemoryRegion, namer: &mut NameMap) {
-        let ptr_type_name = Self::get_type(Type::I(32));
+        let ptr_type_name = Self::get_type(DeclType::I(32));
         let name = namer.name_addr(block.id());
         unwrap!(writeln!(
             self.buffer,
@@ -170,7 +170,7 @@ impl CudaPrinter {
     fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
         format!(
             ".param .{t}{attr} {name}",
-            t = Self::get_type(param.t()),
+            t = Self::get_type(param.t().into()),
             attr = if param.is_pointer() {
                 ".ptr.global.align 16"
             } else {
@@ -206,7 +206,7 @@ impl CudaPrinter {
                 unwrap!(writeln!(
                     self.buffer,
                     "ld.param.{t} {var_name}, [{name}];",
-                    t = Self::get_type(val.t()),
+                    t = Self::get_type(val.t().into()),
                     var_name = name_map.name_param_val(val.key()),
                     name = name_map.name_param(val.key())
                 ));
@@ -342,11 +342,11 @@ impl CudaPrinter {
     }
 
     /// Print a type in the backend
-    fn get_type(t: Type) -> String {
+    fn get_type(t: DeclType) -> String {
         match t {
-            Type::I(1) => "pred".to_string(),
-            Type::I(size) => format!("s{size}", size = size),
-            Type::F(size) => format!("f{size}", size = size),
+            DeclType::I(1) => "pred".to_string(),
+            DeclType::I(size) => format!("s{size}", size = size),
+            DeclType::F(size) => format!("f{size}", size = size),
             _ => panic!(),
         }
     }
@@ -372,7 +372,7 @@ impl Printer for CudaPrinter {
         assert_eq!(vector_factors, [1, 1]);
         let op = Self::binary_op(op);
         let rounding = Self::rounding(rounding);
-        let operands_type = Self::get_type(operands_type);
+        let operands_type = Self::get_type(operands_type.into());
         unwrap!(writeln!(
             self.buffer,
             "{}{}.{} {}, {}, {};",
@@ -402,11 +402,11 @@ impl Printer for CudaPrinter {
                     _ => ir::op::Rounding::Exact,
                 };
                 let rounding = Self::rounding(rounding);
-                let op = format!("cvt{}.{}", rounding, Self::get_type(cast_type));
+                let op = format!("cvt{}.{}", rounding, Self::get_type(cast_type.into()));
                 std::borrow::Cow::from(op)
             }
         };
-        let t = Self::get_type(operand_type);
+        let t = Self::get_type(operand_type.into());
         unwrap!(writeln!(
             self.buffer,
             "{}.{} {}, {};",
@@ -431,7 +431,7 @@ impl Printer for CudaPrinter {
         } else {
             format!("mul{}", Self::rounding(round))
         };
-        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
+        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type).into());
         unwrap!(writeln!(
             self.buffer,
             "{}.{} {}, {}, {};",
@@ -457,7 +457,7 @@ impl Printer for CudaPrinter {
         } else {
             format!("fma{}", Self::rounding(round))
         };
-        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
+        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type).into());
         unwrap!(writeln!(
             self.buffer,
             "{}.{} {}, {}, {}, {};",
@@ -487,7 +487,7 @@ impl Printer for CudaPrinter {
             "{}{}.{} {}, [{}];",
             operator,
             vector,
-            Self::get_type(return_type),
+            Self::get_type(return_type.into()),
             result,
             addr
         ));
@@ -519,7 +519,7 @@ impl Printer for CudaPrinter {
             "{}{}.{} [{}], {};",
             operator,
             vector,
-            Self::get_type(val_type),
+            Self::get_type(val_type.into()),
             addr,
             val
         ));

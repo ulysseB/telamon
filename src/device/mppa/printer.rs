@@ -1,6 +1,5 @@
-use crate::codegen;
 use crate::codegen::*;
-use crate::device::mppa::{Mppa, Namer};
+use crate::device::mppa::Namer;
 use crate::ir::{self, op, Type};
 use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use itertools::Itertools;

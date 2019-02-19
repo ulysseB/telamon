@@ -7,9 +7,6 @@ use crate::device::Context as ContextTrait;
 use crate::device::{self, mppa, ArrayArgument, EvalMode, ScalarArgument};
 use crate::explorer;
 use crate::ir;
-use crate::search_space::DimKind;
-use crate::search_space::SearchSpace;
-
 use crossbeam;
 use crossbeam::sync::MsQueue;
 use itertools::Itertools;
@@ -220,7 +217,6 @@ impl device::Context for Context {
                 while let Ok((candidate, mut kernel, callback)) = recv.recv() {
                     // TODO: measure time directly on MPPA
                     let t0 = Instant::now();
-                    panic!();
                     self.executor.execute_kernel(&mut kernel);
                     let t = Instant::now() - t0;
                     callback.call(candidate, t.subsec_nanos() as f64);

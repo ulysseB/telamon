@@ -28,7 +28,8 @@ pub use self::kernel::Kernel;
 pub use self::printer::CudaPrinter;
 
 use crate::codegen;
-use crate::ir;
+
+use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
@@ -37,7 +38,7 @@ use utils::*;
 
 #[derive(Default)]
 struct Namer {
-    num_var: HashMap<ir::Type, usize>,
+    num_var: HashMap<codegen::DeclType, usize>,
     num_sizes: usize,
 }
 
