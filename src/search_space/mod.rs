@@ -23,6 +23,41 @@ pub struct SearchSpace<'a> {
 }
 
 impl<'a> SearchSpace<'a> {
+    pub fn n_features(&self) -> usize {
+        // Compute the number of instructions, dimensions, statements, and variables
+        let n_insts = self.ir_instance.inst_ids().len();
+        let n_dims = self.ir_instance.dim_ids().len();
+        let n_statements = n_insts + n_dims;
+        let n_vars = self.ir_instance.variable_ids().len();
+
+        // One value for each pair of statements
+        let n_order = n_statements * (n_statements - 1) / 2;
+
+        // One value per instruction
+        let n_inst_flag = n_insts;
+
+        // One value per dimension
+        let n_size = n_dims;
+        let n_dim_kind = n_dims;
+
+        // One value for each pair of dimensions
+        let n_thread_mapping = n_dims * (n_dims - 1) / 2;
+        let n_dim_mapping = n_dims * (n_dims - 1) / 2;
+
+        // Finally the variables
+        let n_memory_space = n_vars;
+
+        let n_features = n_order
+            + n_inst_flag
+            + n_size
+            + n_dim_kind
+            + n_thread_mapping
+            + n_dim_mapping
+            + n_memory_space;
+
+        n_features
+    }
+
     /// Creates a new `SearchSpace` for the given `ir_instance`.
     pub fn new(
         ir_instance: ir::Function<'a, ()>,

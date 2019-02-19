@@ -385,6 +385,8 @@ where
                                 thread: self.thread(),
                             };
 
+                            info!("SSSize: {}", implementation.space.n_features());
+
                             return Some((implementation, info));
                         } else {
                             info!("Deadend found during rollout.");
