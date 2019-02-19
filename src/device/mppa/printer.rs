@@ -20,11 +20,11 @@ impl MppaPrinter {
         let name = name_map.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
-                format!("{} {}", Self::get_type(*par_type), name)
+                format!("{} {}", Self::get_type(par_type.into()), name)
             }
             ParamVal::Size(_) => format!("uint32_t {}", name),
             ParamVal::GlobalMem(_, _, par_type) => {
-                format!("{} {}", Self::get_type(*par_type), name)
+                format!("{} {}", Self::get_type(par_type.into()), name)
             }
         }
     }
@@ -112,16 +112,16 @@ impl MppaPrinter {
             }
             for level in dim.induction_levels() {
                 if let Some((_, incr)) = level.increment {
-                    let name = name_map.declare_size_cast(incr, level.t());
+                    let name = name_map.declare_size_cast(&incr, level.t());
                     if let Some(name) = name {
-                        let old_name = name_map.name_size(incr, Type::I(32));
-                        self.print_cast(
+                        let old_name = name_map.name_size(&incr, Type::I(32));
+                        self.print_unary_op(
+                            [1, 1],
+                            ir::UnaryOp::Cast(level.t()),
                             Type::I(32),
-                            level.t(),
-                            op::Rounding::Exact,
                             &name,
                             &old_name,
-                        );
+                            );
                     }
                 }
             }
@@ -161,7 +161,7 @@ impl MppaPrinter {
                     ),
                     ParamVal::External(_, par_type) => format!(
                         "{t} p{i} = *({t}*)*(args + {i})",
-                        t = Self::get_type(*par_type),
+                        t = Self::get_type(par_type.into()),
                         i = i
                     ),
                     ParamVal::Size(_) => format!(
@@ -172,7 +172,7 @@ impl MppaPrinter {
                     // Are we sure we know the size at compile time ? I think we do
                     ParamVal::GlobalMem(_, _, par_type) => format!(
                         "{t} p{i} = ({t})*(args + {i})",
-                        t = Self::get_type(*par_type),
+                        t = Self::get_type(par_type.into()),
                         i = i
                     ),
                 }
@@ -346,7 +346,7 @@ impl MppaPrinter {
             .join(",  ");
         format!(
             include_str!("template/host.c.template"),
-            id = func.id,
+            id = func.id(),
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
             build_ptr_struct = self.build_ptr_struct(func),
@@ -363,7 +363,6 @@ impl MppaPrinter {
     /// Returns the name of a type.
     fn type_name(t: &ir::Type) -> &'static str {
         match *t {
-            ir::Type::Void => "void",
             ir::Type::PtrTo(..) => "void*",
             ir::Type::F(32) => "float",
             ir::Type::F(64) => "double",
@@ -412,33 +411,25 @@ impl MppaPrinter {
             .to_string();
         format!(
             include_str!("template/ocl_wrap.c.template"),
-            fun_id = fun.id,
+            fun_id = fun.id(),
             arg_names = arg_names,
             cl_arg_defs = cl_arg_defs,
         )
     }
 
-    fn get_printf_val_in_code(val_id: &str, t: ir::Type) -> String {
-        match t {
-            ir::Type::F(_) => {
-                format!("printf(\"float {val} = %f\\n\", {val});", val = val_id)
-            }
-            ir::Type::I(_) => {
-                format!("printf(\"int {val} = %u\\n\", {val});", val = val_id)
-            }
-            ir::Type::Ptr => format!(
-                "printf(\"ptr {val} = %p\\n\", (void *){val});",
-                val = val_id
-            ),
-        }
-    }
 
-    fn print_val_in_code(&mut self, val_id: &str, t: ir::Type) {
-        unwrap!(writeln!(
-            self.buffer,
-            "{}",
-            Self::get_printf_val_in_code(val_id, t)
-        ));
+    fn get_type(t: DeclType) -> String {
+        match t {
+            DeclType::Ptr => String::from("intptr_t"),
+            DeclType::F(32) => String::from("float"),
+            DeclType::F(64) => String::from("double"),
+            DeclType::I(1) => String::from("int8_t"),
+            DeclType::I(8) => String::from("int8_t"),
+            DeclType::I(16) => String::from("int16_t"),
+            DeclType::I(32) => String::from("int32_t"),
+            DeclType::I(64) => String::from("int64_t"),
+            ref t => panic!("invalid type for the host: {}", t),
+        }
     }
 }
 
@@ -486,7 +477,7 @@ impl Printer for MppaPrinter {
         match operator {
             ir::UnaryOp::Mov => (),
             ir::UnaryOp::Cast(t) => {
-                unwrap!(write!(self.buffer, "({})", Self::get_type(t)))
+                unwrap!(write!(self.buffer, "({})", Self::get_type(t.into())))
             }
         };
         unwrap!(writeln!(self.buffer, "{};", operand));
@@ -542,7 +533,7 @@ impl Printer for MppaPrinter {
             self.buffer,
             "{} = *({}*){} ;",
             result,
-            Self::get_type(return_type),
+            Self::get_type(return_type.into()),
             addr
         ));
     }
@@ -564,7 +555,7 @@ impl Printer for MppaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "*({}*){} = {} ;",
-            Self::get_type(val_type),
+            Self::get_type(val_type.into()),
             addr,
             val
         ));

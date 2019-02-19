@@ -14,6 +14,7 @@ use std;
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
+    id: u16,
     cfg: Cfg<'a>,
     thread_dims: Vec<Dimension<'a>>,
     block_dims: Vec<Dimension<'a>>,
@@ -58,6 +59,7 @@ impl<'a> Function<'a> {
         );
         debug!("compiling cfg {:?}", cfg);
         Function {
+            id: 0,
             cfg,
             thread_dims,
             block_dims,
@@ -68,6 +70,11 @@ impl<'a> Function<'a> {
             variables: codegen::variable::wrap_variables(space),
             init_induction_levels,
         }
+    }
+
+    /// Returns the id of the function 
+    pub fn id(&self) -> u16 {
+        self.id
     }
 
     /// Returns the ordered list of thread dimensions.

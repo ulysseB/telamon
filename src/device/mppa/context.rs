@@ -96,7 +96,7 @@ impl Context {
         let kernel_code = printer.wrapper_function(fun);
         std::fs::write("dump_kernel.c", &kernel_code).expect("Could not read file");
         //println!("KERNEL CODE\n{}", kernel_code);
-        println!("Setting up kernel {}", fun.id);
+        println!("Setting up kernel {}", fun.id());
         let wrapper = self.get_wrapper(fun);
         let cflags = std::ffi::CString::new("-mhypervisor").unwrap();
         let lflags = std::ffi::CString::new("-mhypervisor -lutask -lvbsp").unwrap();
@@ -153,7 +153,7 @@ impl Context {
         let mut name_map = codegen::NameMap::new(fun, &mut namer);
         let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map);
         //println!("{}", ocl_code);
-        let name = std::ffi::CString::new(format!("wrapper_{}", fun.id)).unwrap();
+        let name = std::ffi::CString::new(format!("wrapper_{}", fun.id())).unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
         Arc::new(self.executor.build_wrapper(&name, &ocl_code))
     }
@@ -179,7 +179,7 @@ impl device::Context for Context {
 
     fn evaluate(&self, fun: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
         let (mut kernel, mut kernel_args) = self.setup_kernel(fun);
-        self.executor.execute_kernel_id(&mut kernel, fun.id);
+        self.executor.execute_kernel_id(&mut kernel, fun.id());
         let out_mem = if let KernelArg::GlobalMem(mem) = kernel_args.pop().unwrap() {
             mem
         } else {

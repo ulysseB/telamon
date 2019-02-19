@@ -8,6 +8,7 @@ use num::rational::Ratio;
 use std;
 use std::borrow::Cow;
 use std::collections::hash_map;
+use std::fmt;
 use utils::*;
 
 // TODO(cleanup): refactor
@@ -19,11 +20,21 @@ pub enum Operand<'a> {
     Operand(&'a ir::Operand<'a>),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DeclType {
     I(u16),
     F(u16),
     Ptr,
+}
+
+impl From<&Type> for DeclType {
+    fn from(t: &Type) -> Self {
+        match t {
+            Type::I(size) => DeclType::I(*size),
+            Type::F(size) => DeclType::F(*size),
+            Type::PtrTo(_) => DeclType::Ptr,
+        }
+    }
 }
 
 impl From<Type> for DeclType {
@@ -32,6 +43,16 @@ impl From<Type> for DeclType {
             Type::I(size) => DeclType::I(size),
             Type::F(size) => DeclType::F(size),
             Type::PtrTo(_) => DeclType::Ptr,
+        }
+    }
+}
+
+impl fmt::Display for DeclType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DeclType::I(s) => write!(f, "i{}", s),
+            DeclType::F(s) => write!(f, "f{}", s),
+            DeclType::Ptr => write!(f, "ptr"),
         }
     }
 }
@@ -110,7 +131,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut induction_levels = HashMap::default();
         let mut induction_vars = HashMap::default();
         for level in function.induction_levels() {
-            let name = namer.name(level.t());
+            let name = namer.name(level.t().into());
             if let Some((dim, _)) = level.increment {
                 induction_levels.insert((level.ind_var, dim), name);
             } else {
@@ -120,7 +141,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Name shared memory blocks. Global mem blocks are named by parameters.
         for mem_block in function.mem_blocks() {
             if mem_block.alloc_scheme() == AllocationScheme::Shared {
-                let name = namer.name(mem_block.ptr_type());
+                let name = namer.name(mem_block.ptr_type().into());
                 mem_blocks.insert(mem_block.id(), name);
             }
         }

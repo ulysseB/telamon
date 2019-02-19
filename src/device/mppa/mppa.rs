@@ -17,10 +17,10 @@ impl device::Device for Mppa {
         unwrap!(write!(out, "Basic MPPA"));
     }
 
-    fn check_type(&self, t: &Type) -> Result<(), ir::TypeError> {
-        match *t {
+    fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
+        match t {
             Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
-            Type::Void | Type::PtrTo(_) => Ok(()),
+            Type::PtrTo(_) => Ok(()),
             t => Err(ir::TypeError::InvalidType {t}),
         }
     }
@@ -59,17 +59,20 @@ impl device::Device for Mppa {
         }
     }
 
+    fn name(&self) -> &str {
+        "MPPA"
+    }
+
     fn hw_pressure(
         &self,
-        _space: &SearchSpace,
-        _dim_sizes: &HashMap<ir::DimId, u32>,
-        _nesting: &HashMap<ir::StmtId, model::Nesting>,
-        _bb: &ir::Statement,
+        _: &SearchSpace,
+        _: &HashMap<ir::DimId, model::size::Range>,
+        _: &HashMap<ir::StmtId, model::Nesting>,
+        _: &ir::Statement,
         _: &device::Context,
-    ) -> HwPressure
-    {
+    ) -> model::HwPressure {
         // TODO(model): implement model
-        HwPressure::zero(self)
+        model::HwPressure::zero(self)
     }
 
     fn loop_iter_pressure(&self, _kind: DimKind) -> (HwPressure, HwPressure) {
@@ -109,8 +112,9 @@ impl device::Device for Mppa {
 
     fn add_block_overhead(
         &self,
-        _predicated_dims_size: u64,
-        _max_threads_per_blocks: u64,
+        _: model::size::FactorRange,
+        _: model::size::FactorRange,
+        _: model::size::Range,
         _pressure: &mut HwPressure,
     )
     {

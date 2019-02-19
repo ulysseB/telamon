@@ -11,7 +11,6 @@ pub use self::cpu::Cpu;
 pub use self::printer::X86printer;
 
 use crate::codegen;
-use crate::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
@@ -26,8 +25,8 @@ struct Namer {
 
 impl Namer {
     /// Generate a variable name prefix from a type.
-    fn gen_prefix(t: &codegen::DeclType) -> &'static str {
-        match *t {
+    fn gen_prefix(t: codegen::DeclType) -> &'static str {
+        match t {
             codegen::DeclType::I(1) => "p",
             codegen::DeclType::I(8) => "c",
             codegen::DeclType::I(16) => "s",
@@ -36,7 +35,7 @@ impl Namer {
             codegen::DeclType::F(16) => "h",
             codegen::DeclType::F(32) => "f",
             codegen::DeclType::F(64) => "d",
-            codegen::DeclType::PtrTo(..) => "ptr",
+            codegen::DeclType::Ptr => "ptr",
             _ => panic!("invalid CPU type"),
         }
     }
@@ -44,7 +43,7 @@ impl Namer {
 
 impl codegen::Namer for Namer {
     fn name(&mut self, t: codegen::DeclType) -> String {
-        let prefix = Namer::gen_prefix(&t);
+        let prefix = Namer::gen_prefix(t);
         match t {
             codegen::DeclType::Ptr => {
                 let name = format!("{}{}", prefix, self.num_glob_ptr);

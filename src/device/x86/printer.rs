@@ -19,11 +19,11 @@ impl X86printer {
         let name = namer.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
-                format!("{} {}", Self::get_type(*par_type), name)
+                format!("{} {}", Self::get_type(par_type.into()), name)
             }
             ParamVal::Size(_) => format!("uint32_t {}", name),
             ParamVal::GlobalMem(_, _, par_type) => {
-                format!("{} {}", Self::get_type(*par_type), name)
+                format!("{} {}", Self::get_type(par_type.into()), name)
             }
         }
     }
@@ -31,9 +31,9 @@ impl X86printer {
     /// Declared all variables that have been required from the namer
     fn var_decls(&mut self, namer: &Namer) -> String {
         let print_decl = |(&t, &n)| match t {
-            Type::PtrTo(..) => String::new(),
+            DeclType::Ptr => String::new(),
             _ => {
-                let prefix = Namer::gen_prefix(&t);
+                let prefix = Namer::gen_prefix(t);
                 let mut s = format!("{} ", Self::get_type(t));
                 s.push_str(
                     &(0..n)
@@ -165,7 +165,7 @@ impl X86printer {
                 }
                 ParamVal::External(_, par_type) => format!(
                     "{t} p{i} = *({t}*)*(args + {i})",
-                    t = Self::get_type(*par_type),
+                    t = Self::get_type(par_type.into()),
                     i = i
                 ),
                 ParamVal::Size(_) => {
@@ -174,7 +174,7 @@ impl X86printer {
                 // Are we sure we know the size at compile time ? I think we do
                 ParamVal::GlobalMem(_, _, par_type) => format!(
                     "{t} p{i} = ({t})*(args + {i})",
-                    t = Self::get_type(*par_type),
+                    t = Self::get_type(par_type.into()),
                     i = i
                 ),
             })
@@ -322,17 +322,17 @@ impl X86printer {
         )
     }
 
-    fn get_type(t: Type) -> String {
+    fn get_type(t: DeclType) -> String {
         match t {
             //Type::PtrTo(..) => " uint8_t *",
-            Type::PtrTo(..) => String::from("intptr_t"),
-            Type::F(32) => String::from("float"),
-            Type::F(64) => String::from("double"),
-            Type::I(1) => String::from("int8_t"),
-            Type::I(8) => String::from("int8_t"),
-            Type::I(16) => String::from("int16_t"),
-            Type::I(32) => String::from("int32_t"),
-            Type::I(64) => String::from("int64_t"),
+            DeclType::Ptr => String::from("intptr_t"),
+            DeclType::F(32) => String::from("float"),
+            DeclType::F(64) => String::from("double"),
+            DeclType::I(1) => String::from("int8_t"),
+            DeclType::I(8) => String::from("int8_t"),
+            DeclType::I(16) => String::from("int16_t"),
+            DeclType::I(32) => String::from("int32_t"),
+            DeclType::I(64) => String::from("int64_t"),
             ref t => panic!("invalid type for the host: {}", t),
         }
     }
@@ -384,7 +384,7 @@ impl Printer for X86printer {
         match operator {
             ir::UnaryOp::Mov => (),
             ir::UnaryOp::Cast(t) => {
-                unwrap!(write!(self.buffer, "({})", Self::get_type(t)))
+                unwrap!(write!(self.buffer, "({})", Self::get_type(t.into())))
             }
         };
         unwrap!(writeln!(self.buffer, "{};", operand));
@@ -439,7 +439,7 @@ impl Printer for X86printer {
             self.buffer,
             "{} = *({}*){} ;",
             result,
-            Self::get_type(return_type),
+            Self::get_type(return_type.into()),
             addr
         ));
     }
@@ -461,7 +461,7 @@ impl Printer for X86printer {
         unwrap!(writeln!(
             self.buffer,
             "*({}*){} = {} ;",
-            Self::get_type(val_type),
+            Self::get_type(val_type.into()),
             addr,
             val
         ));
