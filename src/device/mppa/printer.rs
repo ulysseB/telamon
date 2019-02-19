@@ -110,10 +110,10 @@ impl MppaPrinter {
                 continue;
             }
             for level in dim.induction_levels() {
-                if let Some((_, incr)) = level.increment {
-                    let name = name_map.declare_size_cast(&incr, level.t());
+                if let Some((_, ref incr)) = level.increment {
+                    let name = name_map.declare_size_cast(incr, level.t());
                     if let Some(name) = name {
-                        let old_name = name_map.name_size(&incr, Type::I(32));
+                        let old_name = name_map.name_size(incr, Type::I(32));
                         self.print_unary_op(
                             [1, 1],
                             ir::UnaryOp::Cast(level.t()),
