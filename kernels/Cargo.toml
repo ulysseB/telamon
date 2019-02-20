@@ -33,6 +33,9 @@ cuda = [
     "telamon/cuda",
     "cuda-sys",
 ]
+mppa = [
+    "telamon/mppa",
+]
 
 [[bench]]
 name = "cuda-search"
