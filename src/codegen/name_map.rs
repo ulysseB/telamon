@@ -556,14 +556,14 @@ mod tests {
     }
 
     impl Namer for FakeNamer {
-        fn name(&mut self, _: ir::Type) -> String {
+        fn name(&mut self, _: DeclType) -> String {
             let name = format!("%{}", self.next_name);
             self.next_name += 1;
             name
         }
 
         fn name_param(&mut self, _: ParamValKey) -> String {
-            self.name(ir::Type::I(0))
+            self.name(DeclType::I(0))
         }
 
         fn name_float(&self, _: &Ratio<BigInt>, _: u16) -> String {
@@ -572,6 +572,10 @@ mod tests {
 
         fn name_int(&self, _: &BigInt, _: u16) -> String {
             "1".to_owned()
+        }
+
+        fn get_declared_variables(&self) -> Vec<(DeclType, usize)> {
+            vec![]
         }
     }
 

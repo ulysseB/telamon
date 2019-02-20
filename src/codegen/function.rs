@@ -28,6 +28,15 @@ pub struct Function<'a> {
 }
 
 impl<'a> Function<'a> {
+    /// Creates a device `Function` from an IR instance with an id.
+    pub fn build_with_id(space: &'a SearchSpace<'a>, id: u16) -> Function<'a> {
+        let func = Self::build(space);
+        Function {
+            id,
+            .. func
+        }
+    }
+
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace<'a>) -> Function<'a> {
         let mut dims = dimension::group_merged_dimensions(space);

@@ -80,7 +80,7 @@ pub trait Kernel<'a>: Sized {
             let leaf =
                 local_selection::descend(&ordering, order, context, candidate, CUT);
             if let Some(leaf) = leaf {
-                let device_fn = codegen::Function::build(&leaf.space);
+                let device_fn = codegen::Function::build_with_id(&leaf.space, num_runs as u16);
                 unwrap!(
                     context.evaluate(&device_fn, device::EvalMode::FindBest),
                     "evaluation failed for kernel {}, with actions {:?}",
