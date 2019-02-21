@@ -7,10 +7,16 @@ use quote::quote;
 /// Defines the `NumericSet` type.
 pub fn get() -> TokenStream {
     quote! {
-        #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
+        #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
         #[repr(C)]
         pub struct NumericSet {
             enabled_values: u16
+        }
+
+        impl std::fmt::Debug for NumericSet {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "NS{{{}}}", self.list().map(|bit| bit.enabled_values).format(", "))
+            }
         }
 
         #[allow(dead_code)]

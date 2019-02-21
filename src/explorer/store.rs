@@ -9,7 +9,7 @@ use serde::Serialize;
 pub trait Store<'a>: Sync {
     /// Transmits the information needed to update the store after a `Candidate` is
     /// evaluated.
-    type PayLoad: Send;
+    type PayLoad: 'a + Send;
     /// The type of events this store can emit during search.
     type Event: Send + Serialize;
     /// Updates the value that will be used to prune the search space

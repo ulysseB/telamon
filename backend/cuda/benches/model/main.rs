@@ -13,6 +13,9 @@ use telamon::search_space::Action;
 use telamon_cuda as cuda;
 use utils::*;
 
+use log::info;
+use utils::unwrap;
+
 // TODO(test_model): RAM bandwidth
 // TODO(test_model): L2 bandwidth
 // TODO(test_model): L1 bandwidth

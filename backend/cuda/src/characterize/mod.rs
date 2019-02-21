@@ -16,6 +16,12 @@ use serde_json;
 use utils::*;
 use xdg;
 
+use failure::Fail;
+use lazy_static::lazy_static;
+use log::{info, warn};
+
+use utils::unwrap;
+
 /// Error raised will retrieveing the GPU description
 #[derive(Debug, Fail)]
 enum Error {

@@ -10,7 +10,7 @@ pub mod choice;
 pub mod config;
 pub mod local_selection;
 
-pub use self::bandit_arm::TreeEvent;
+pub use self::bandit_arm::{DeadEndSource, TreeEvent};
 pub use self::candidate::Candidate;
 pub use self::config::{BanditConfig, Config, SearchAlgorithm};
 pub use self::logger::LogMessage;
@@ -69,7 +69,7 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
     fn build<P: bandit_arm::TreePolicy>(self, policy: P) -> Option<Candidate<'a>>
     where
         P: 'l + Send + Sync,
-        P::EdgeStats: Send + Sync,
+        P::EdgeStats: 'a + Send + Sync,
     {
         let TreeBuilder {
             candidates,

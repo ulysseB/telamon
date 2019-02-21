@@ -6,10 +6,11 @@ fn main() -> Result<(), ReadError> {
 
     for record_bytes in (&mut f).records() {
         match bincode::deserialize(&record_bytes?).unwrap() {
-            TreeEvent::Evaluation {
-                actions,
-                score: _score,
-            } => println!("{:?}", actions.into_iter().collect::<Vec<_>>()),
+            TreeEvent::Evaluation { actions, .. }
+            | TreeEvent::EvaluationV2 { actions, .. } => {
+                println!("{:?}", actions.into_iter().collect::<Vec<_>>())
+            }
+            TreeEvent::DeadEnd { .. } => (),
         }
     }
 

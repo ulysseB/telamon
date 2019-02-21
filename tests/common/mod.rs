@@ -1,9 +1,8 @@
 //! Contains integration tests for Exhaust.
 #![allow(dead_code)]
-use log::*;
-
 pub mod fake;
 
+use log::*;
 use std::io::sink;
 use telamon::device::{Context, EvalMode};
 use telamon::search_space::SearchSpace;
