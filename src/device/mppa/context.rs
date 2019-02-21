@@ -170,7 +170,7 @@ impl Context {
 fn get_type_size(t: ir::Type) -> usize {
     match t {
         ir::Type::I(u) | ir::Type::F(u) => (u / 8) as usize,
-        ir::Type::PtrTo(_) => self::telajax::Mem::get_mem_size(),
+        ir::Type::PtrTo(_) => telajax::Mem::get_mem_size(),
         _ => panic!(),
     }
 }

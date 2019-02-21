@@ -117,6 +117,7 @@ mppa = []
 members = [
     "kernels",
     "telamon-gen",
+    "telajax-bind",
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
