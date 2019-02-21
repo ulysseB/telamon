@@ -1,8 +1,7 @@
 //! MPPA evaluation context.
 use crate::codegen::{self, ParamVal};
 use crate::device::context::AsyncCallback;
-use crate::device::mppa::telajax::Buffer;
-use crate::device::mppa::{telajax, MppaPrinter};
+use crate::device::mppa::MppaPrinter;
 use crate::device::Context as ContextTrait;
 use crate::device::{self, mppa, ArrayArgument, EvalMode, ScalarArgument};
 use crate::explorer;
@@ -14,6 +13,7 @@ use libc;
 use std;
 use std::sync::{mpsc, Arc};
 use std::time::Instant;
+use telajax_bind::telajax::{self, Buffer};
 use utils::unwrap;
 use utils::*;
 
@@ -42,12 +42,27 @@ impl<'a> Argument for Box<dyn ScalarArgument + 'a>
 }
 
 
+impl device::ArrayArgument for Buffer {
+    fn read_i8(&self) -> Vec<i8> {
+        let mem_block = unwrap!(self.mem.read());
+        let mut read_buffer = vec![0; mem_block.len()];
+        self.executor
+            .read_buffer::<i8>(&mem_block, &mut read_buffer, &[]);
+        read_buffer
+    }
+
+    fn write_i8(&self, slice: &[i8]) {
+        let mut mem_block = unwrap!(self.mem.write());
+        self.executor.write_buffer::<i8>(slice, &mut mem_block, &[]);
+    }
+}
+
 /// MPPA evaluation context.
 pub struct Context {
     device: mppa::Mppa,
     executor: &'static telajax::Device,
     parameters: HashMap<String, Arc<Argument >>,
-    wrappers: Cache<ir::Signature, telajax::Wrapper>,
+    //wrappers: Cache<ir::Signature, telajax::Wrapper>,
     writeback_slots: MsQueue<telajax::Buffer>,
 }
 unsafe impl Sync for Context {}
@@ -82,7 +97,7 @@ impl Context {
             device: mppa::Mppa::default(),
             executor,
             parameters: HashMap::default(),
-            wrappers: Cache::new(25),
+            //wrappers: Cache::new(25),
             writeback_slots,
         }
     }
@@ -115,9 +130,8 @@ impl Context {
         let (mut arg_sizes, mut kernel_args): (Vec<_>, Vec<_>) = fun
             .device_code_args()
             .map(|p| {
-                let name = name_map.name_param(p.key());
                 match p {
-                    ParamVal::External(par, _) => {
+                    ParamVal::External(..) => {
                         let name = name_map.name_param(p.key());
                         let arg = self.get_param(&name);
                         (get_type_size(p.t()), KernelArg::External(arg.raw_ptr()))
@@ -126,7 +140,7 @@ impl Context {
                         let size = self.eval_size(size);
                         let mem = self.executor.allocate_array(size as usize);
                         (
-                            self::telajax::Mem::get_mem_size(),
+                            telajax::Mem::get_mem_size(),
                             KernelArg::GlobalMem(mem),
                         )
                     }
@@ -140,7 +154,7 @@ impl Context {
             .unzip();
         let out_mem = self.writeback_slots.pop();
         kernel_args.push(KernelArg::GlobalMem(out_mem));
-        arg_sizes.push(self::telajax::Mem::get_mem_size());
+        arg_sizes.push(telajax::Mem::get_mem_size());
         let args_ptr = kernel_args
             .iter()
             .map(|k_arg| k_arg.raw_ptr())
@@ -171,14 +185,13 @@ fn get_type_size(t: ir::Type) -> usize {
     match t {
         ir::Type::I(u) | ir::Type::F(u) => (u / 8) as usize,
         ir::Type::PtrTo(_) => telajax::Mem::get_mem_size(),
-        _ => panic!(),
     }
 }
 
 impl device::Context for Context {
     fn device(&self) -> &device::Device { &self.device }
 
-    fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
+    fn benchmark(&self, _function: &device::Function, _num_samples: usize) -> Vec<f64> {
         unimplemented!()
     }
 
@@ -281,7 +294,7 @@ where
         callback: device::AsyncCallback<'a, 'b>,
     )
     {
-        let (kernel, out_mem) = {
+        let (kernel, _) = {
             let dev_fun = device::Function::build(&candidate.space);
             self.context.setup_kernel(&dev_fun)
         };

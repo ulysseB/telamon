@@ -38,7 +38,7 @@ impl device::Device for Mppa {
 
     fn can_vectorize(&self, _dim: &ir::Dimension, _op: &ir::Operator) -> bool { false }
 
-    fn max_vectorization(&self, op: &ir::Operator) -> [u32; 2] {
+    fn max_vectorization(&self, _op: &ir::Operator) -> [u32; 2] {
         [1, 1] 
     }
 

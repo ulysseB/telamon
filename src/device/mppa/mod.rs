@@ -7,7 +7,6 @@
 mod context;
 mod mppa;
 mod printer;
-mod telajax;
 
 pub use self::context::Context;
 pub use self::mppa::Mppa;

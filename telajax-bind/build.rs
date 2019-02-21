@@ -1,6 +1,5 @@
 //! Rust script to compile non-rust files.
 use std::fs;
-use std::env;
 use std::path::{Path, PathBuf};
 
 /// Orders to Cargo to link a library.
