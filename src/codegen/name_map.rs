@@ -172,12 +172,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         id
     }
 
-    /// Allocate a predicate name.
-    #[cfg(feature = "cuda")]
-    pub fn allocate_pred(&self) -> String {
-        self.namer.borrow_mut().name(Type::I(1))
-    }
-
     pub fn name(&self, operand: Operand) -> Cow<str> {
         match operand {
             Operand::Operand(op) => self.name_op(op),

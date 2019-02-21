@@ -8,18 +8,6 @@ edition = "2018"
 readme = "README.md"
 repository = "https://github.com/ulysseB/telamon/"
 
-build = "build.rs"
-
-[[bin]]
-name = "cuda-characterize"
-path = "src/bin/cuda_characterize.rs"
-required-features = ["cuda"]
-
-[[bin]]
-name = "bench-perf-model"
-path = "tools/bench_perf_model/main.rs"
-required-features = ["cuda"]
-
 [[bin]]
 name = "expandconfig"
 
@@ -36,7 +24,6 @@ harness = false
 
 [[example]]
 name = "matmul"
-required-features = ["cuda"]
 
 [[example]]
 name = "print_event_log"
@@ -55,13 +42,11 @@ boxfnonce = "0.1.0"
 config = "0.8.0"
 crossbeam = "0.3.2"
 env_logger = "0.5.9"
-errno = "0.2.3"
 failure = "0.1.1"
 futures-preview = "0.2"
 getopts = "0.2.17"
 indexmap = "1.0"
 interval-heap = "0.0.5"
-ipc-channel = "0.10.0"
 itertools = "0.7.8"
 lazy_static = "1.0.0"
 libc = "0.2.40"
@@ -74,8 +59,6 @@ num = "0.2.0"
 num_cpus = "1.8.0"
 parking_lot = "0.5.5"
 pbr = "1.0.0"
-prctl = "1.0.0"
-prettytable-rs = "0.6.7"
 rand = "0.5.5"
 rayon = "1.0.1"
 regex = "0.2.10"
@@ -89,30 +72,29 @@ bincode = "1.0"
 std-semaphore = "0.1.0"
 tempfile = "3.0.1"
 toml = "0.4"
-xdg = "^2.1"
 flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
-
-[dependencies.tokio-timer]
-git = "https://github.com/ulysseB/tokio-timer.git"
+tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
 
 [dev-dependencies]
 gcc = "0.3.54"
 tempdir = "0.3.7"
 criterion = "0.2.4"
 jemalloc-ctl = "0.1"
+telamon-cuda = { path = "backend/cuda", features = [] }
 
 [features]
-cuda = []
 default = []
 format_exh = []
 lex = []
 mppa = []
+cuda = ["telamon-cuda/real_gpu"]
 
 [workspace]
 members = [
+    "backend/cuda",
     "kernels",
     "telamon-gen",
     "telamon-utils",

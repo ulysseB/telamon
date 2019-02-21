@@ -9,18 +9,14 @@ libc = "0.2"
 num = "0.2.0"
 failure = "0.1.1"
 
-[dependencies.telamon]
-path = "../"
-
-[dependencies.telamon-kernels]
-path = "../kernels"
-
-[dependencies.telamon-utils]
-path = "../telamon-utils"
+telamon = { path = "../" }
+telamon-cuda = { path = "../backend/cuda", optional=true }
+telamon-kernels = { path = "../kernels" }
+telamon-utils = { path = "../telamon-utils" }
 
 [features]
 cuda = [
-    "telamon/cuda",
+    "telamon-cuda",
     "telamon-kernels/cuda",
 ]
 

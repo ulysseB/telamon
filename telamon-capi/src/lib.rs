@@ -7,6 +7,8 @@ extern crate env_logger;
 extern crate libc;
 extern crate num;
 extern crate telamon;
+#[cfg(feature = "cuda")]
+extern crate telamon_cuda;
 extern crate telamon_kernels;
 #[macro_use]
 extern crate telamon_utils;
@@ -16,8 +18,6 @@ extern crate failure;
 #[macro_use]
 pub mod error;
 
-#[cfg(feature = "cuda")]
-pub mod cuda;
 pub mod explorer;
 pub mod ir;
 pub mod search_space;
@@ -159,8 +159,8 @@ pub unsafe extern "C" fn kernel_optimize(
         DeviceId::Cuda => {
             #[cfg(feature = "cuda")]
             {
-                let executor = device::cuda::Executor::init();
-                let mut context = device::cuda::Context::new(&executor);
+                let executor = ::telamon_cuda::Executor::init();
+                let mut context = ::telamon_cuda::Context::new(&executor);
                 (*params).optimize_kernel(&config, &mut context);
             }
             #[cfg(not(feature = "cuda"))]
