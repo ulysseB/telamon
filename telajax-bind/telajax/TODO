@@ -1,0 +1,10 @@
+- Add 'devices' layer and its intermediate API to support multi-platform
+- Review 'kernel_build' to correctly call clCompileProgram() instead of 
+	clBuildProgram(), for both core and wrapper program. 
+	The correct sequence should be : 
+	* clCompileProgram(progs[0], ...);
+	* clCompileProgram(progs[1], ...);
+	* prog_final = clLinkProgram(2, progs, ...);
+	* clReleaseProgram(progs[0]);
+	* clReleaseProgram(progs[1]);
+
