@@ -1,11 +1,27 @@
+// Copyright 2018 Ulysse Beaugnon and Ecole Normale Superieure
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//pub mod telajax;
+
 //! Unsafe wrapper around  library from Kalray.
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+use lazy_static::lazy_static;
 use libc;
 use log::debug;
-use lazy_static::lazy_static;
 use parking_lot;
 use std;
 use std::ffi::CStr;
@@ -18,16 +34,16 @@ lazy_static! {
     static ref DEVICE: Device = Device::init();
 }
 
-/// The OpenCL interface is actually not thread-safe as it was originally assumed (and told by the vendor)
-/// As a workaround, we serialize every access to the static Device.
-/// OpenCL spec requires thread-safety, so there is an hypothetical possibility that this bug would
-/// be fixed at some point. 
+unsafe impl Sync for Device {}
+unsafe impl Send for Device {}
+
+/// The OpenCL interface is actually not thread-safe as it was originally assumed (and told by the
+/// vendor) As a workaround, we serialize every access to the static Device.  OpenCL spec requires
+/// thread-safety, so there is an hypothetical possibility that this bug would
+/// be fixed at some point.
 lazy_static! {
     static ref MEM_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 }
-
-unsafe impl Sync for Device {}
-unsafe impl Send for Device {}
 
 /// Buffer in MPPA RAM.
 pub struct Buffer {
@@ -46,7 +62,9 @@ impl Buffer {
         }
     }
 
-    pub fn raw_ptr(&self) -> *const libc::c_void { unwrap!(self.mem.read()).raw_ptr() }
+    pub fn raw_ptr(&self) -> *const libc::c_void {
+        unwrap!(self.mem.read()).raw_ptr()
+    }
 }
 
 /// A Telajax execution context.
@@ -62,14 +80,16 @@ impl Device {
     /// static immutable reference
     /// It appeared that the Kalray OpenCL is actually not thread-safe at all,
     /// see above
-    pub fn get() -> &'static Device { &DEVICE }
+    pub fn get() -> &'static Device {
+        &DEVICE
+    }
 
     /// Initializes the device.
     fn init() -> Self {
         let mut error = 0;
         let device = unsafe {
             Device {
-                inner: telajax_device_init(0, [].as_mut_ptr(), &mut error),
+                inner: telajax_device_init(0, std::ptr::null_mut(), &mut error),
                 rwlock: Box::new(parking_lot::RwLock::default()),
             }
         };
@@ -78,7 +98,9 @@ impl Device {
     }
 
     /// allocate an array of len bytes on device
-    pub fn allocate_array(&'static self, len: usize) -> Buffer { Buffer::new(self, len) }
+    pub fn allocate_array(&'static self, len: usize) -> Buffer {
+        Buffer::new(self, len)
+    }
 
     /// Build a wrapper for a kernel.
     pub fn build_wrapper(&self, name: &CStr, code: &CStr) -> Wrapper {
@@ -104,8 +126,7 @@ impl Device {
         cflags: &CStr,
         lflags: &CStr,
         wrapper: &Wrapper,
-    ) -> Kernel
-    {
+    ) -> Kernel {
         // FIXME: disable -O3
         // TODO(cc_perf): precompile headers
         // TODO(cc_perf): use double pipes in telajax
@@ -132,12 +153,12 @@ impl Device {
     /// Asynchronously executes a `Kernel`.
     pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Event {
         let _lock = MEM_MUTEX.lock().unwrap();
+        let mut event = Event::new();
         unsafe {
-            let mut event = Event::new_uninitialized();
             let err = telajax_kernel_enqueue(
                 &mut kernel.0 as *mut _,
                 &self.inner as *const _ as *mut _,
-                &mut event.0,
+                &mut event.0 as *mut cl_event,
             );
             if err != 0 {
                 std::mem::drop(_lock);
@@ -155,16 +176,16 @@ impl Device {
 
     /// Executes a `Kernel` and then wait for completion.
     pub fn execute_kernel(&self, kernel: &mut Kernel) {
+        let mut event = Event::new();
         unsafe {
             // We MUST make sure that drop is called on lock before it is called on
             // event, else we will get a deadlock as event drop will try to
             // take the lock
-            let mut event = Event::new_uninitialized();
             let lock = MEM_MUTEX.lock().unwrap();
             let err = telajax_kernel_enqueue(
                 &mut kernel.0 as *mut _,
                 &self.inner as *const _ as *mut _,
-                &mut event.0,
+                &mut event.0 as *mut cl_event,
             );
             if err != 0 {
                 // We must at least explicitly call
@@ -173,7 +194,7 @@ impl Device {
                 std::mem::drop(lock);
                 panic!("error in execute_kernel after kernel_enqueue");
             }
-            let err = telajax_event_wait(1, &event.0 as *const _);
+            let err = telajax_event_wait(1, &mut event.0 as *mut cl_event);
             if err != 0 {
                 std::mem::drop(lock);
                 panic!("error in event_wait");
@@ -214,15 +235,14 @@ impl Device {
         data: &[T],
         mem: &mut Mem,
         wait_events: &[Event],
-    ) -> Event
-    {
+    ) -> Event {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = wait_events.as_ptr() as *const event_t;
         unsafe {
-            let mut event = Event::new_uninitialized();
+            let mut event = Event::new();
             let _lock = MEM_MUTEX.lock().unwrap();
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _,
@@ -231,7 +251,7 @@ impl Device {
                 size,
                 wait_n,
                 wait_ptr,
-                &mut event.0,
+                &mut event.0 as *mut cl_event,
             );
             if res != 0 {
                 // see line 177
@@ -249,8 +269,7 @@ impl Device {
         data: &[T],
         mem: &mut Mem,
         wait_events: &[Event],
-    )
-    {
+    ) {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
@@ -282,8 +301,7 @@ impl Device {
         mem: &Mem,
         data: &mut [T],
         wait_events: &[Event],
-    ) -> Event
-    {
+    ) -> Event {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
@@ -295,7 +313,7 @@ impl Device {
             wait_events.as_ptr() as *const event_t
         };
         unsafe {
-            let mut event = Event::new_uninitialized();
+            let mut event = Event::new();
             let res = telajax_device_mem_read(
                 &self.inner as *const _ as *mut _,
                 mem.ptr,
@@ -303,7 +321,7 @@ impl Device {
                 size,
                 wait_n,
                 wait_ptr,
-                &mut event.0,
+                &mut event.0 as *mut _,
             );
             assert_eq!(res, 0);
             event
@@ -339,7 +357,9 @@ impl Device {
 
     /// Set a callback to call when an event is triggered.
     pub fn set_event_callback<F>(&self, event: &Event, closure: F)
-    where F: FnOnce() + Send {
+    where
+        F: FnOnce() + Send,
+    {
         let callback_data = CallbackData {
             closure,
             rwlock: &*self.rwlock,
@@ -435,13 +455,17 @@ pub struct Mem {
 }
 
 impl Mem {
-    pub fn get_mem_size() -> usize { std::mem::size_of::<mem_t>() }
+    pub fn get_mem_size() -> usize {
+        std::mem::size_of::<mem_t>()
+    }
 
     pub fn raw_ptr(&self) -> *const libc::c_void {
         &self.ptr as *const _ as *const libc::c_void
     }
 
-    pub fn len(&self) -> usize { self.len }
+    pub fn len(&self) -> usize {
+        self.len
+    }
 }
 
 unsafe impl Sync for Mem {}
@@ -461,12 +485,12 @@ impl Drop for Mem {
 pub struct Event(*mut _cl_event);
 
 impl Event {
-    /// In Telajax (and OpenCL) events are directly initialized by calls to function like
-    /// EnqueueReadBuffer (wrapped by device_mem_read). We cannot pass a null pointer as this means
-    /// that the event would not be set, so we have to pass some uninitialized memory
-    unsafe fn new_uninitialized() -> Self {
-        let event_ptr: *mut _cl_event = std::mem::uninitialized();
-        Event(event_ptr)
+    /// Event is always initialized by a call to an OpenCL function (for exemple
+    /// clEnqueueWriteKernel so we just have to pass a null pointer (more precisely, a pointer to a
+    /// null pointer)
+    fn new() -> Self {
+        let event: *mut _cl_event = std::ptr::null_mut();
+        Event(event)
     }
 }
 
@@ -484,8 +508,7 @@ unsafe extern "C" fn callback_wrapper<F: FnOnce()>(
     _: cl_event,
     _: i32,
     data: *mut std::os::raw::c_void,
-)
-{
+) {
     let data = Box::from_raw(data as *mut CallbackData<F>);
     let ref lock = *data.rwlock;
     (data.closure)();

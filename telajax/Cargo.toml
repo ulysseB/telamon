@@ -1,7 +1,8 @@
 [package]
-name = "telajax-bind"
+name = "telajax"
 version = "1.0.0"
-authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>", 
+        "Nicolas Tollenaere <nicolas.tollenaere@inria.fr>"]
 edition = "2018"
 
 build = "build.rs"

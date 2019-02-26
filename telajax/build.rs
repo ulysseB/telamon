@@ -21,7 +21,6 @@ fn compile_and_link_telajax() {
 
 fn add_telajax_dependencies() {
     for f in fs::read_dir("telajax/src").unwrap() {
-        //let filepath = format!("{}", f.unwrap().path().display());
         add_dependency(&f.unwrap().path());
     }
 }
