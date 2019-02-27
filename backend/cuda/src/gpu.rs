@@ -1,7 +1,7 @@
 //! Describes CUDA-enabled GPUs.
-use crate::mem_model::{self, MemInfo};
 #[cfg(feature = "real_gpu")]
 use crate::characterize;
+use crate::mem_model::{self, MemInfo};
 use crate::{CudaPrinter, Executor};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
