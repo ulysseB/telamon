@@ -24,6 +24,7 @@ harness = false
 
 [[example]]
 name = "matmul"
+required-features = ["cuda"]
 
 [[example]]
 name = "print_event_log"
@@ -83,7 +84,7 @@ gcc = "0.3.54"
 tempdir = "0.3.7"
 criterion = "0.2.4"
 jemalloc-ctl = "0.1"
-telamon-cuda = { path = "backend/cuda", features = [] }
+telamon-cuda = { path = "backend/cuda", default-features = false }
 
 [features]
 default = []

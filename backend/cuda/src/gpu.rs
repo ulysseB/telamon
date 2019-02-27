@@ -1,6 +1,8 @@
 //! Describes CUDA-enabled GPUs.
 use crate::mem_model::{self, MemInfo};
-use crate::{characterize, CudaPrinter, Executor};
+#[cfg(feature = "real_gpu")]
+use crate::characterize;
+use crate::{CudaPrinter, Executor};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use telamon::codegen::Function;
