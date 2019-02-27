@@ -25,13 +25,14 @@ use log::debug;
 use parking_lot;
 use std;
 use std::ffi::CStr;
+use std::result::Result;
 use std::sync::RwLock;
 use utils::unwrap;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 lazy_static! {
-    static ref DEVICE: Device = Device::init();
+    static ref DEVICE: Device = unwrap!(Device::init());
 }
 
 unsafe impl Sync for Device {}
@@ -54,7 +55,7 @@ pub struct Buffer {
 
 impl Buffer {
     pub fn new(executor: &'static Device, len: usize) -> Self {
-        let mem_block = executor.alloc(len);
+        let mem_block = unwrap!(executor.alloc(len));
         Buffer {
             mem: RwLock::new(mem_block),
             size: len,
@@ -85,7 +86,7 @@ impl Device {
     }
 
     /// Initializes the device.
-    fn init() -> Self {
+    fn init() -> Result<Self, ()> {
         let mut error = 0;
         let device = unsafe {
             Device {
@@ -93,8 +94,11 @@ impl Device {
                 rwlock: Box::new(parking_lot::RwLock::default()),
             }
         };
-        assert_eq!(error, 0);
-        device
+        if error != 0 {
+            Err(())
+        } else {
+            Ok(device)
+        }
     }
 
     /// allocate an array of len bytes on device
@@ -103,7 +107,7 @@ impl Device {
     }
 
     /// Build a wrapper for a kernel.
-    pub fn build_wrapper(&self, name: &CStr, code: &CStr) -> Wrapper {
+    pub fn build_wrapper(&self, name: &CStr, code: &CStr) -> Result<Wrapper, ()> {
         let mut error = 0;
         let flags: &'static CStr = Default::default();
         let wrapper = unsafe {
@@ -115,8 +119,11 @@ impl Device {
                 &mut error,
             )
         };
-        assert_eq!(error, 0);
-        Wrapper(wrapper)
+        if error != 0 {
+            Err(())
+        } else {
+            Ok(Wrapper(wrapper))
+        }
     }
 
     /// Compiles a kernel.
@@ -126,7 +133,7 @@ impl Device {
         cflags: &CStr,
         lflags: &CStr,
         wrapper: &Wrapper,
-    ) -> Kernel {
+    ) -> Result<Kernel, ()> {
         // FIXME: disable -O3
         // TODO(cc_perf): precompile headers
         // TODO(cc_perf): use double pipes in telajax
@@ -145,13 +152,14 @@ impl Device {
         };
         if error != 0 {
             std::mem::drop(_lock);
+            Err(())
+        } else {
+            Ok(Kernel(kernel))
         }
-        assert_eq!(error, 0);
-        Kernel(kernel)
     }
 
     /// Asynchronously executes a `Kernel`.
-    pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Event {
+    pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Result<Event, ()> {
         let _lock = MEM_MUTEX.lock().unwrap();
         let mut event = Event::new();
         unsafe {
@@ -162,9 +170,10 @@ impl Device {
             );
             if err != 0 {
                 std::mem::drop(_lock);
-                assert_eq!(err, 0);
+                Err(())
+            } else {
+                Ok(event)
             }
-            event
         }
     }
 
@@ -175,7 +184,7 @@ impl Device {
     }
 
     /// Executes a `Kernel` and then wait for completion.
-    pub fn execute_kernel(&self, kernel: &mut Kernel) {
+    pub fn execute_kernel(&self, kernel: &mut Kernel) -> Result<(), ()>{
         let mut event = Event::new();
         unsafe {
             // We MUST make sure that drop is called on lock before it is called on
@@ -189,29 +198,35 @@ impl Device {
             );
             if err != 0 {
                 // We must at least explicitly call
-                // drop on _lock before dropping event as event drop will try to take the
+                // drop on lock before dropping event as event drop will try to take the
                 // lock in turn.
                 std::mem::drop(lock);
-                panic!("error in execute_kernel after kernel_enqueue");
+                return Err(());
             }
             let err = telajax_event_wait(1, &mut event.0 as *mut cl_event);
             if err != 0 {
                 std::mem::drop(lock);
-                panic!("error in event_wait");
+                Err(())
+            } else {
+                Ok(())
             }
         }
     }
 
     /// Waits until all kernels have completed their execution.
-    pub fn wait_all(&self) {
+    pub fn wait_all(&self) -> Result<(), ()> {
         let _ = self.rwlock.write();
         unsafe {
-            assert_eq!(telajax_device_waitall(&self.inner as *const _ as *mut _), 0);
+            if telajax_device_waitall(&self.inner as *const _ as *mut _) == 0 {
+                Ok(())
+            } else {
+                Err(())
+            }
         }
     }
 
     /// Allocates a memory buffer.
-    pub fn alloc(&self, size: usize) -> Mem {
+    pub fn alloc(&self, size: usize) -> Result<Mem, ()> {
         let mut error = 0;
         let _lock = MEM_MUTEX.lock().unwrap();
         let mem = unsafe {
@@ -222,10 +237,13 @@ impl Device {
                 &mut error,
             )
         };
-        assert_eq!(error, 0);
-        Mem {
-            ptr: mem,
-            len: size,
+        if error == 0 {
+            Ok(Mem {
+                ptr: mem,
+                len: size,
+            })
+        } else {
+            Err(())
         }
     }
 
@@ -235,15 +253,17 @@ impl Device {
         data: &[T],
         mem: &mut Mem,
         wait_events: &[Event],
-    ) -> Event {
+    ) -> Result<Event, ()> {
         let size = data.len() * std::mem::size_of::<T>();
-        assert!(size <= mem.len);
+        if size > mem.len {
+            return Err(());
+        }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = wait_events.as_ptr() as *const event_t;
         unsafe {
             let mut event = Event::new();
-            let _lock = MEM_MUTEX.lock().unwrap();
+            let lock = MEM_MUTEX.lock().unwrap();
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _,
                 mem.ptr,
@@ -254,12 +274,11 @@ impl Device {
                 &mut event.0 as *mut cl_event,
             );
             if res != 0 {
-                // see line 177
-                std::mem::drop(_lock);
-                panic!("error in mem write");
+                std::mem::drop(lock);
+                Err(())
+            } else {
+                Ok(event)
             }
-            assert_eq!(res, 0);
-            event
         }
     }
 
@@ -269,9 +288,11 @@ impl Device {
         data: &[T],
         mem: &mut Mem,
         wait_events: &[Event],
-    ) {
+    ) -> Result<(), ()> {
         let size = data.len() * std::mem::size_of::<T>();
-        assert!(size <= mem.len);
+        if size > mem.len {
+            return Err(());
+        }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = if wait_n == 0 {
@@ -282,7 +303,7 @@ impl Device {
         let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let null_mut = std::ptr::null_mut();
-            let res = telajax_device_mem_write(
+            if telajax_device_mem_write(
                 &self.inner as *const _ as *mut _,
                 mem.ptr,
                 data_ptr,
@@ -290,8 +311,11 @@ impl Device {
                 wait_n,
                 wait_ptr,
                 null_mut,
-            );
-            assert_eq!(res, 0);
+            ) != 0 {
+                Err(())
+            } else {
+                Ok(())
+            }
         }
     }
 
@@ -301,9 +325,11 @@ impl Device {
         mem: &Mem,
         data: &mut [T],
         wait_events: &[Event],
-    ) -> Event {
+    ) -> Result<Event, ()> {
         let size = data.len() * std::mem::size_of::<T>();
-        assert!(size <= mem.len);
+        if size > mem.len {
+            return Err(());
+        }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as std::os::raw::c_uint;
         let _lock = MEM_MUTEX.lock().unwrap();
@@ -323,15 +349,25 @@ impl Device {
                 wait_ptr,
                 &mut event.0 as *mut _,
             );
-            assert_eq!(res, 0);
-            event
+            if res != 0 {
+                Err(())
+            } else {
+                Ok(event)
+            }
         }
     }
 
     /// Copies a buffer from the device.
-    pub fn read_buffer<T: Copy>(&self, mem: &Mem, data: &mut [T], wait_events: &[Event]) {
+    pub fn read_buffer<T: Copy>(
+        &self,
+        mem: &Mem,
+        data: &mut [T],
+        wait_events: &[Event],
+    ) -> Result<(), ()> {
         let size = data.len() * std::mem::size_of::<T>();
-        assert!(size <= mem.len);
+        if size > mem.len {
+            return Err(());
+        }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let null_mut = std::ptr::null_mut();
         let wait_n = wait_events.len() as std::os::raw::c_uint;
@@ -351,7 +387,11 @@ impl Device {
                 wait_ptr,
                 null_mut,
             );
-            assert_eq!(res, 0);
+            if res != 0 {
+                Err(())
+            } else {
+                Ok(())
+            }
         }
     }
 
@@ -402,38 +442,50 @@ pub struct Kernel(kernel_s);
 
 impl Kernel {
     /// Sets the arguments of the `Kernel`.
-    pub fn set_args(&mut self, sizes: &[usize], args: &[*const libc::c_void]) {
-        assert_eq!(sizes.len(), args.len());
+    pub fn set_args(
+        &mut self,
+        sizes: &[usize],
+        args: &[*const libc::c_void],
+    ) -> Result<(), ()> {
+        if sizes.len() != args.len() {
+            return Err(());
+        };
         let num_arg = sizes.len() as i32;
         let sizes_ptr = sizes.as_ptr();
         unsafe {
             // Needs *mut ptr mostly because they were not specified as const in original
             // c api
-            assert_eq!(
-                telajax_kernel_set_args(
-                    num_arg,
-                    sizes_ptr as *const _ as *mut _,
-                    args.as_ptr() as *const _ as *mut _,
-                    &mut self.0 as *mut _
-                ),
-                0
-            );
+            if telajax_kernel_set_args(
+                num_arg,
+                sizes_ptr as *const _ as *mut _,
+                args.as_ptr() as *const _ as *mut _,
+                &mut self.0 as *mut _,
+            ) == 0
+            {
+                Ok(())
+            } else {
+                Err(())
+            }
         }
     }
 
     /// Sets the number of clusters that must execute the `Kernel`.
-    pub fn set_num_clusters(&mut self, num: usize) {
-        assert!(num <= 16);
+    pub fn set_num_clusters(&mut self, num: usize) -> Result<(), ()> {
+        if num > 16 {
+            return Err(());
+        }
         unsafe {
-            assert_eq!(
-                telajax_kernel_set_dim(
-                    1,
-                    [1].as_ptr(),
-                    [num].as_ptr(),
-                    &mut self.0 as *mut _
-                ),
-                0
-            );
+            if telajax_kernel_set_dim(
+                1,
+                [1].as_ptr(),
+                [num].as_ptr(),
+                &mut self.0 as *mut _,
+            ) == 0
+            {
+                Ok(())
+            } else {
+                Err(())
+            }
         }
     }
 }
