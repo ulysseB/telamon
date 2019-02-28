@@ -150,6 +150,8 @@ pub enum SearchAlgorithm {
     /// Use a multi-armed bandit algorithm.
     #[serde(rename = "bandit")]
     MultiArmedBandit(BanditConfig),
+    /// Use a MCTS algorithm
+    Mcts(BanditConfig),
 }
 
 impl SearchAlgorithm {
@@ -187,6 +189,9 @@ pub struct BanditConfig {
     /// Indicates the initial cut to use (in nanoseconds).  This can be used when an existing
     /// program (e.g. from a precedent run) is known to take that much amount of time.
     pub initial_cut: Option<f64>,
+    /// Indicates whether we should backtrack locally when a dead-end is encountered.  If false,
+    /// dead-ends will cause a restart from the root.
+    pub backtrack_deadends: bool,
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
     pub new_nodes_order: NewNodeOrder,
@@ -352,6 +357,7 @@ impl Default for BanditConfig {
             new_nodes_order: NewNodeOrder::default(),
             tree_policy: TreePolicy::default(),
             choice_ordering: ChoiceOrdering::default(),
+            backtrack_deadends: false,
         }
     }
 }

@@ -2,6 +2,7 @@
 mod bandit_arm;
 mod candidate;
 mod logger;
+mod mcts;
 mod monitor;
 mod parallel_list;
 mod store;
@@ -30,7 +31,7 @@ use futures::executor::block_on;
 use futures::prelude::*;
 use futures::{channel, SinkExt};
 use log::{info, warn};
-use std::sync;
+use std::sync::{self, mpsc};
 use utils::unwrap;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
@@ -45,17 +46,70 @@ use utils::unwrap;
 /// exhaustive search)
 pub fn find_best<'a>(
     config: &Config,
-    context: &Context,
+    context: &dyn Context,
     search_space: Vec<SearchSpace<'a>>,
 ) -> Option<SearchSpace<'a>> {
-    let candidates = search_space
-        .into_iter()
-        .map(|space| {
-            let bound = bound(&space, context);
-            Candidate::new(space, bound)
+    find_best_ex(
+        config,
+        context,
+        search_space
+            .into_iter()
+            .map(|s| {
+                let bound = bound(&s, context);
+                Candidate::new(s, bound)
+            })
+            .collect(),
+    )
+    .map(|c| c.space)
+}
+
+struct MctsBuilder<'a, 'c> {
+    space: SearchSpace<'c>,
+    config: &'a Config,
+    bandit_config: &'a BanditConfig,
+    context: &'a dyn Context,
+}
+
+impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
+    fn search<N, E>(
+        self,
+        tree_policy: Box<dyn mcts::TreePolicy<'c, N, E>>,
+        default_policy: Box<dyn mcts::TreePolicy<'c, N, E>>,
+    ) -> Option<Candidate<'c>>
+    where
+        N: 'c + Sync + Send + std::fmt::Debug + Default,
+        E: 'c + Sync + Send + std::fmt::Debug + Default,
+    {
+        let MctsBuilder {
+            space,
+            config,
+            bandit_config,
+            context,
+        } = self;
+
+        crossbeam::scope(|scope| {
+            let (log_sender, log_receiver) = mpsc::sync_channel(100);
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Logger".to_string())
+                .spawn(|| unwrap!(logger::log(config, log_receiver))));
+
+            let store = mcts::MctsStore::new(
+                space,
+                context,
+                bandit_config,
+                tree_policy,
+                default_policy,
+                log_sender.clone(),
+            );
+
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Search".to_string())
+                .spawn(move || launch_search(config, store, context, log_sender)))
         })
-        .collect();
-    find_best_ex(config, context, candidates).map(|c| c.space)
+        .join()
+    }
 }
 
 struct TreeBuilder<'l, 'a> {
@@ -105,7 +159,7 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
 /// actionsfor the best candidate.
 pub fn find_best_ex<'a>(
     config: &Config,
-    context: &Context,
+    context: &dyn Context,
     candidates: Vec<Candidate<'a>>,
 ) -> Option<Candidate<'a>> {
     match config.algorithm {
@@ -131,6 +185,39 @@ pub fn find_best_ex<'a>(
                 }
             }
         }
+        config::SearchAlgorithm::Mcts(ref bandit_config) => {
+            assert!(candidates.len() == 1);
+
+            let builder = MctsBuilder {
+                space: candidates.into_iter().next().unwrap().space,
+                config,
+                bandit_config,
+                context,
+            };
+
+            let default_policy = Box::new(bandit_config.new_nodes_order);
+
+            match &bandit_config.tree_policy {
+                config::TreePolicy::UCT(uct_config) => builder
+                    .search::<(), mcts::UCTStats>(
+                        Box::new(mcts::UCTPolicy::from(uct_config.clone())),
+                        default_policy,
+                    ),
+                config::TreePolicy::TAG(tag_config) => builder
+                    .search::<(), mcts::TAGStats>(
+                        Box::new(mcts::TAGPolicy::from(tag_config.clone())),
+                        default_policy,
+                    ),
+                config::TreePolicy::Bound => builder.search::<(), ()>(
+                    Box::new(config::NewNodeOrder::Bound),
+                    default_policy,
+                ),
+                config::TreePolicy::WeightedRandom => builder.search::<(), ()>(
+                    Box::new(config::NewNodeOrder::WeightedRandom),
+                    default_policy,
+                ),
+            }
+        }
         config::SearchAlgorithm::BoundOrder => crossbeam::scope(|scope| {
             let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
             unwrap!(scope
@@ -139,6 +226,7 @@ pub fn find_best_ex<'a>(
                 .spawn(|| (unwrap!(logger::log(config, log_receiver)))));
 
             let candidate_list = ParallelCandidateList::new(config.num_workers);
+            candidate_list.insert_many(candidates);
             unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
                 move || launch_search(config, candidate_list, context, log_sender)
             ))

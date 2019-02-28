@@ -4,12 +4,14 @@ use crate::ir;
 use crate::model::{CodePoint, Level};
 use crate::search_space::{DimKind, Domain};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::rc::Rc;
 use std::{cmp, fmt, iter};
 use utils::*;
 
 /// A lower bound on the execution time.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExplainedBound<ORIGIN> {
     value: f64,
     size: usize,
@@ -192,7 +194,7 @@ pub enum FastOrigin {
 }
 
 /// The level at which a bottleneck is computed.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum BottleneckLevel {
     Global,
     Block,
@@ -234,7 +236,7 @@ impl FastOrigin {
         match *self {
             FastOrigin::Latency => Origin::Latency,
             FastOrigin::Bottleneck(id, level) => {
-                Origin::Bottleneck(device.bottlenecks()[id], level)
+                Origin::Bottleneck(device.bottlenecks()[id].into(), level)
             }
             FastOrigin::Chain {
                 ref before,
@@ -272,7 +274,7 @@ impl FastOrigin {
 }
 
 /// A `CodePoint`, but based on dimension ids rather than level ids.
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Point {
     Inst(ir::InstId),
     Entry(Vec<ir::DimId>),
@@ -308,12 +310,12 @@ fn convert_point(levels: &[Level], point: CodePoint) -> Point {
 
 /// The justification behind a lower bound. Is slower to handle than `FastOrigin`
 /// but does not refer internal information.
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Origin {
     /// The bound is caused by the latency between two instructions.
     Latency,
     /// The bound is caused by a bottleneck.
-    Bottleneck(&'static str, BottleneckLevel),
+    Bottleneck(Cow<'static, str>, BottleneckLevel),
     /// The bound is repeated in a loop.
     Loop {
         dims: Vec<ir::DimId>,
@@ -403,7 +405,7 @@ impl fmt::Display for Origin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Origin::Latency => write!(f, "a dependency"),
-            Origin::Bottleneck(name, level) => {
+            Origin::Bottleneck(ref name, level) => {
                 write!(f, "the pressure on {} at the {}", name, level)
             }
             Origin::HardwareEvaluation => write!(f, "the evaluation on the hardware"),

@@ -203,7 +203,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
     /// Updates bounds along the way.
     fn clean_deadends(&self, path: &Path<'a, P::EdgeStats>, cut: f64) {
-        info!("Deadend found in the tree.");
+        debug!("Deadend found in the tree.");
 
         // Statistics and logging
         self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
@@ -222,8 +222,6 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
                 discovery_time: self.timestamp(),
                 thread: self.thread(),
             })));
-        } else {
-            warn!("Deadend was cut by another thread.");
         }
 
         // A `None` bound indicates the path points to a dead-end.
@@ -256,6 +254,25 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             trace!("killing root");
             *unwrap!(self.root.write()) = None;
         }
+    }
+
+    fn implementation(
+        &self,
+        candidate: Candidate<'a>,
+        path: Path<'a, P::EdgeStats>,
+        cut: f64,
+    ) -> (Candidate<'a>, ImplInfo<'a, P::EdgeStats>) {
+        let bound = candidate.bound.value();
+        (
+            candidate,
+            ImplInfo {
+                path,
+                bound,
+                cut,
+                discovery_time: self.timestamp(),
+                thread: self.thread(),
+            },
+        )
     }
 }
 
@@ -314,7 +331,7 @@ where
         loop {
             if self.stop.load(Ordering::Relaxed) {
                 info!("stopping: requested");
-                return None;
+                break None;
             }
 
             let cut: f64 = { *unwrap!(self.cut.read()) };
@@ -329,7 +346,7 @@ where
                 Some(node) => Arc::clone(node),
                 None => {
                     debug!("stopping: deadend at root");
-                    return None;
+                    break None;
                 }
             });
 
@@ -343,53 +360,68 @@ where
 
             // Descent loop
             let mut path = Path::default();
-            loop {
+            if let Some(res) = loop {
                 match state {
                     SubTree::Empty => {
                         self.clean_deadends(&path, env.cut);
-                        break;
+                        break None;
                     }
                     SubTree::Leaf(leaf) => {
-                        let mut rollout_path = Vec::new();
-                        if let Some(implementation) =
-                            rollout.descend_with_path(*leaf, &mut rollout_path)
-                        {
-                            info!("Implementation found.");
+                        if self.config.backtrack_deadends {
+                            if let Some(implementation) = rollout.descend_backtrack(*leaf)
+                            {
+                                info!("Implementation found.");
 
-                            let info = ImplInfo {
-                                path,
-                                bound: implementation.bound.value(),
-                                cut: env.cut,
-                                discovery_time: self.timestamp(),
-                                thread: self.thread(),
-                            };
-
-                            return Some((implementation, info));
-                        } else {
-                            info!("Deadend found during rollout.");
-
-                            if let Some(dead) = rollout_path.last() {
-                                unwrap!(self.log.send(LogMessage::Event(
-                                    TreeEvent::DeadEnd {
-                                        source: DeadEndSource::Rollout {
-                                            actions: dead.actions.clone(),
-                                            depth: path.0.len(),
-                                            bound: dead.bound.value(),
-                                            cut: env.cut,
-                                        },
-                                        discovery_time: self.timestamp(),
-                                        thread: self.thread(),
-                                    }
-                                )));
+                                break Some(self.implementation(
+                                    implementation,
+                                    path,
+                                    env.cut,
+                                ));
                             } else {
-                                warn!("Empty rollout.");
+                                // The current node is an in-tree deadend; this will take care of
+                                // killing it.
+                                self.clean_deadends(&path, env.cut);
+                                break None;
                             }
+                        } else {
+                            let mut rollout_path = Vec::new();
+                            if let Some(implementation) =
+                                rollout.descend_with_path(*leaf, &mut rollout_path)
+                            {
+                                info!("Implementation found.");
 
-                            // Deadend reached while exploring; restart from the root
-                            // TODO(bclement): We should backpropagate explicitely here.
-                            self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+                                break Some(self.implementation(
+                                    implementation,
+                                    path,
+                                    env.cut,
+                                ));
+                            } else {
+                                info!("Deadend found during rollout.");
 
-                            break;
+                                if let Some(dead) = rollout_path.last() {
+                                    unwrap!(self.log.send(LogMessage::Event(
+                                        TreeEvent::DeadEnd {
+                                            source: DeadEndSource::Rollout {
+                                                actions: dead.actions.clone(),
+                                                depth: path.0.len(),
+                                                bound: dead.bound.value(),
+                                                cut: env.cut,
+                                            },
+                                            discovery_time: self.timestamp(),
+                                            thread: self.thread(),
+                                        }
+                                    )));
+                                } else {
+                                    warn!("Empty rollout.");
+                                }
+
+                                // Deadend reached while exploring; restart from the root
+                                // TODO(bclement): We should backpropagate explicitely here.
+                                self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+
+                                // Don't clean deadends here: this is *not* an in-tree deadend.
+                                break None;
+                            }
                         }
                     }
                     SubTree::InternalNode(node) => {
@@ -400,10 +432,14 @@ where
                             state = node.children[idx].descend(&env);
                         } else {
                             trace!("no child available: deadend");
-                            state = SubTree::Empty;
+
+                            self.clean_deadends(&path, env.cut);
+                            break None;
                         }
                     }
                 }
+            } {
+                break Some(res);
             }
         }
     }
@@ -539,17 +575,17 @@ impl<'a, E: Default> Edge<'a, E> {
                                     })
                                     .collect(),
                             ) {
-                                // Newly expanded node, with no stats yet.
+                                // Newly expanded node with no stats yet.
                                 *dst = SubTree::InternalNode(node);
                                 return SubTree::Leaf(candidate);
                             } else {
-                                // Actual dead-end; leave the SubTree::Empty there.
+                                // Propagation dead-end; leave the SubTree::Empty there
                                 return SubTree::Empty;
                             }
                         } else {
                             // Fully specified implementation; we leave the SubTree::Empty here because if
                             // we come back, this becomes a dead-end.  It may not be the smartest thing to
-                            // do because it could throw off the search, but that is probably pretty rate
+                            // do because it could throw off the search, but that is probably pretty rare
                             // anyways.
                             debug!("implementation reached at depth {}", candidate.depth);
                             return SubTree::Leaf(candidate);
@@ -616,7 +652,11 @@ impl TreePolicy for NewNodeOrder {
 
     fn pick_child(&self, env: &Env<'_>, node: &Node<'_, ()>) -> Option<usize> {
         self.pick_index(
-            node.children.iter().map(|edge| edge.bound()).enumerate(),
+            node.children
+                .iter()
+                .map(|edge| edge.bound())
+                .enumerate()
+                .filter(|(_ix, bound)| *bound < env.cut),
             env.cut,
         )
     }
