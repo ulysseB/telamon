@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//pub mod telajax;
-
 //! Unsafe wrapper around  library from Kalray.
+
+
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+
+pub mod opencl_error;
+
+use crate::opencl_error::OpenCLError;
 use lazy_static::lazy_static;
 use libc;
 use log::debug;
@@ -68,6 +72,12 @@ impl Buffer {
     }
 }
 
+#[derive(Debug)]
+pub enum RWError {
+    SizeMismatch(usize, usize),
+    CLError(OpenCLError),
+}
+
 /// A Telajax execution context.
 pub struct Device {
     /// We use an Arc to make sure that no callback is pointing to the device when we try to drop
@@ -87,7 +97,7 @@ impl Device {
     }
 
     /// Initializes the device.
-    fn init() -> Result<Self, ()> {
+    fn init() -> Result<Self, OpenCLError> {
         let mut error = 0;
         let device = unsafe {
             Device {
@@ -95,7 +105,7 @@ impl Device {
             }
         };
         if error != 0 {
-            Err(())
+            Err(error.into())
         } else {
             Ok(device)
         }
@@ -107,7 +117,7 @@ impl Device {
     }
 
     /// Build a wrapper for a kernel.
-    pub fn build_wrapper(&self, name: &CStr, code: &CStr) -> Result<Wrapper, ()> {
+    pub fn build_wrapper(&self, name: &CStr, code: &CStr) -> Result<Wrapper, OpenCLError> {
         let mut error = 0;
         let flags: &'static CStr = Default::default();
         let wrapper = unsafe {
@@ -120,7 +130,7 @@ impl Device {
             )
         };
         if error != 0 {
-            Err(())
+            Err(error.into())
         } else {
             Ok(Wrapper(wrapper))
         }
@@ -133,7 +143,7 @@ impl Device {
         cflags: &CStr,
         lflags: &CStr,
         wrapper: &Wrapper,
-    ) -> Result<Kernel, ()> {
+    ) -> Result<Kernel, OpenCLError> {
         // FIXME: disable -O3
         // TODO(cc_perf): precompile headers
         // TODO(cc_perf): use double pipes in telajax
@@ -152,14 +162,14 @@ impl Device {
         };
         if error != 0 {
             std::mem::drop(_lock);
-            Err(())
+            Err(error.into())
         } else {
             Ok(Kernel(kernel))
         }
     }
 
     /// Asynchronously executes a `Kernel`.
-    pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Result<Event, ()> {
+    pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Result<Event, OpenCLError> {
         let _lock = MEM_MUTEX.lock().unwrap();
         let mut event = Event::new();
         unsafe {
@@ -170,7 +180,7 @@ impl Device {
             );
             if err != 0 {
                 std::mem::drop(_lock);
-                Err(())
+                Err(err.into())
             } else {
                 Ok(event)
             }
@@ -184,7 +194,7 @@ impl Device {
     }
 
     /// Executes a `Kernel` and then wait for completion.
-    pub fn execute_kernel(&self, kernel: &mut Kernel) -> Result<(), ()>{
+    pub fn execute_kernel(&self, kernel: &mut Kernel) -> Result<(), OpenCLError>{
         let mut event = Event::new();
         unsafe {
             // We MUST make sure that drop is called on lock before it is called on
@@ -201,12 +211,12 @@ impl Device {
                 // drop on lock before dropping event as event drop will try to take the
                 // lock in turn.
                 std::mem::drop(lock);
-                return Err(());
+                return Err(err.into());
             }
             let err = telajax_event_wait(1, &mut event.0 as *mut cl_event);
             if err != 0 {
                 std::mem::drop(lock);
-                Err(())
+                Err(err.into())
             } else {
                 Ok(())
             }
@@ -214,18 +224,19 @@ impl Device {
     }
 
     /// Waits until all kernels have completed their execution.
-    pub fn wait_all(&self) -> Result<(), ()> {
+    pub fn wait_all(&self) -> Result<(), OpenCLError> {
         unsafe {
-            if telajax_device_waitall(&self.inner as *const _ as *mut _) == 0 {
+            let err = telajax_device_waitall(&self.inner as *const _ as *mut _);
+            if err == 0 {
                 Ok(())
             } else {
-                Err(())
+                Err(err.into())
             }
         }
     }
 
     /// Allocates a memory buffer.
-    pub fn alloc(&self, size: usize) -> Result<Mem, ()> {
+    pub fn alloc(&self, size: usize) -> Result<Mem, OpenCLError> {
         let mut error = 0;
         let _lock = MEM_MUTEX.lock().unwrap();
         let mem = unsafe {
@@ -242,9 +253,10 @@ impl Device {
                 len: size,
             })
         } else {
-            Err(())
+            Err(error.into())
         }
     }
+
 
     /// Asynchronously copies a buffer to the device.
     pub fn async_write_buffer<T: Copy>(
@@ -252,10 +264,10 @@ impl Device {
         data: &[T],
         mem: &mut Mem,
         wait_events: &[Event],
-    ) -> Result<Event, ()> {
+    ) -> Result<Event, RWError> {
         let size = data.len() * std::mem::size_of::<T>();
         if size > mem.len {
-            return Err(());
+            return Err(RWError::SizeMismatch(size, mem.len));
         }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
@@ -274,7 +286,7 @@ impl Device {
             );
             if res != 0 {
                 std::mem::drop(lock);
-                Err(())
+                Err(RWError::CLError(res.into()))
             } else {
                 Ok(event)
             }
@@ -287,10 +299,10 @@ impl Device {
         data: &[T],
         mem: &mut Mem,
         wait_events: &[Event],
-    ) -> Result<(), ()> {
+    ) -> Result<(), RWError> {
         let size = data.len() * std::mem::size_of::<T>();
         if size > mem.len {
-            return Err(());
+            return Err(RWError::SizeMismatch(size, mem.len));
         }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
@@ -302,7 +314,7 @@ impl Device {
         let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let null_mut = std::ptr::null_mut();
-            if telajax_device_mem_write(
+            let err = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _,
                 mem.ptr,
                 data_ptr,
@@ -310,8 +322,9 @@ impl Device {
                 wait_n,
                 wait_ptr,
                 null_mut,
-            ) != 0 {
-                Err(())
+            ); 
+            if err != 0 {
+                Err(RWError::CLError(err.into()))
             } else {
                 Ok(())
             }
@@ -324,10 +337,10 @@ impl Device {
         mem: &Mem,
         data: &mut [T],
         wait_events: &[Event],
-    ) -> Result<Event, ()> {
+    ) -> Result<Event, RWError> {
         let size = data.len() * std::mem::size_of::<T>();
         if size > mem.len {
-            return Err(());
+            return Err(RWError::SizeMismatch(size, mem.len));
         }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as std::os::raw::c_uint;
@@ -349,7 +362,7 @@ impl Device {
                 &mut event.0 as *mut _,
             );
             if res != 0 {
-                Err(())
+                Err(RWError::CLError(res.into()))
             } else {
                 Ok(event)
             }
@@ -362,10 +375,10 @@ impl Device {
         mem: &Mem,
         data: &mut [T],
         wait_events: &[Event],
-    ) -> Result<(), ()> {
+    ) -> Result<(), RWError> {
         let size = data.len() * std::mem::size_of::<T>();
         if size > mem.len {
-            return Err(());
+            return Err(RWError::SizeMismatch(size, mem.len));
         }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let null_mut = std::ptr::null_mut();
@@ -387,7 +400,7 @@ impl Device {
                 null_mut,
             );
             if res != 0 {
-                Err(())
+                Err(RWError::CLError(res.into()))
             } else {
                 Ok(())
             }
