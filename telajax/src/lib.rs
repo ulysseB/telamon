@@ -26,7 +26,7 @@ use parking_lot;
 use std;
 use std::ffi::CStr;
 use std::result::Result;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use utils::unwrap;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -49,7 +49,7 @@ lazy_static! {
 /// Buffer in MPPA RAM.
 pub struct Buffer {
     pub mem: RwLock<Mem>,
-    pub size: usize,
+    pub len: usize,
     pub executor: &'static Device,
 }
 
@@ -58,7 +58,7 @@ impl Buffer {
         let mem_block = unwrap!(executor.alloc(len));
         Buffer {
             mem: RwLock::new(mem_block),
-            size: len,
+            len,
             executor,
         }
     }
@@ -70,8 +70,9 @@ impl Buffer {
 
 /// A Telajax execution context.
 pub struct Device {
-    inner: device_t,
-    rwlock: Box<parking_lot::RwLock<()>>,
+    /// We use an Arc to make sure that no callback is pointing to the device when we try to drop
+    /// it
+    inner: Arc<device_t>,
 }
 
 impl Device {
@@ -90,8 +91,7 @@ impl Device {
         let mut error = 0;
         let device = unsafe {
             Device {
-                inner: telajax_device_init(0, std::ptr::null_mut(), &mut error),
-                rwlock: Box::new(parking_lot::RwLock::default()),
+                inner: Arc::new(telajax_device_init(0, std::ptr::null_mut(), &mut error)),
             }
         };
         if error != 0 {
@@ -180,7 +180,7 @@ impl Device {
     /// Print func id then execute it
     pub fn execute_kernel_id(&self, kernel: &mut Kernel, kernel_id: u16) {
         println!("Executing kernel {}", kernel_id);
-        self.execute_kernel(kernel);
+        unwrap!(self.execute_kernel(kernel));
     }
 
     /// Executes a `Kernel` and then wait for completion.
@@ -215,7 +215,6 @@ impl Device {
 
     /// Waits until all kernels have completed their execution.
     pub fn wait_all(&self) -> Result<(), ()> {
-        let _ = self.rwlock.write();
         unsafe {
             if telajax_device_waitall(&self.inner as *const _ as *mut _) == 0 {
                 Ok(())
@@ -402,13 +401,12 @@ impl Device {
     {
         let callback_data = CallbackData {
             closure,
-            rwlock: &*self.rwlock,
+            arc_device: Arc::clone(&self.inner),
         };
         let data_ptr = Box::into_raw(Box::new(callback_data));
         let callback = callback_wrapper::<F>;
         let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
-            self.rwlock.raw_read();
             let data_ptr = data_ptr as *mut std::os::raw::c_void;
             telajax_event_set_callback(Some(callback), data_ptr, event.0);
         }
@@ -417,9 +415,14 @@ impl Device {
 
 impl Drop for Device {
     fn drop(&mut self) {
-        let _ = self.rwlock.write();
-        unsafe {
-            telajax_device_finalize(&mut self.inner);
+        if let Some(inner) = Arc::get_mut(&mut self.inner) {
+            unsafe {
+                telajax_device_finalize(inner);
+            }
+        } else {
+        // if None is returned here, this means that some callback still holds a closure to the
+        // Device. This is not supposed to happen, so we panic
+            panic!();
         }
         debug!("MPPA device finalized");
     }
@@ -562,14 +565,12 @@ unsafe extern "C" fn callback_wrapper<F: FnOnce()>(
     data: *mut std::os::raw::c_void,
 ) {
     let data = Box::from_raw(data as *mut CallbackData<F>);
-    let ref lock = *data.rwlock;
     (data.closure)();
-    lock.raw_unlock_read();
 }
 
 type Callback = unsafe extern "C" fn(*const libc::c_void, i32, *mut libc::c_void);
 
 struct CallbackData<F: FnOnce()> {
     closure: F,
-    rwlock: *const parking_lot::RwLock<()>,
+    arc_device: Arc<device_t>,
 }
