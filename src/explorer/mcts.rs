@@ -379,7 +379,8 @@ pub enum Message {
         bound: Option<Bound>,
     },
 
-    /// Path in the tree followed by a specific thread.  Starts at the root of the tree.
+    /// Sequence of actions (moves in the tree) performed by a specific thread.  Starts at the root
+    /// of the tree.
     Trace {
         /// The thread performing the descent.  There can be multiple traces per thread, and they
         /// will share the `thread` field.
@@ -416,7 +417,7 @@ pub struct Tree<'a> {
     env: Env<'a>,
     /// Sequential counter for ID attribution.
     id_counter: &'a AtomicUsize,
-    /// Channel to send trace events to.
+    /// Channel to send log events to.
     logger: &'a mpsc::SyncSender<LogMessage<Message>>,
 }
 
@@ -514,6 +515,7 @@ pub struct NodeCursor<'a, 'c, N, E> {
     path: Vec<(Policy, WeakNode<'c, N, E>, usize)>,
     node: Node<'c, N, E>,
     tree: Tree<'a>,
+    helper: WalkHelper<'a>,
 }
 
 impl<'a, 'c, N, E> NodeCursor<'a, 'c, N, E>
@@ -521,6 +523,29 @@ where
     N: Debug + Default,
     E: Debug + Default,
 {
+    fn check_stop(mut self) -> Result<Self, Error<'a, 'c, N, E>> {
+        if self.helper.stop.load(Ordering::Relaxed) {
+            Err(Error::Aborted)
+        } else {
+            let cut_epoch = self.helper.cut_epoch.load(Ordering::Relaxed);
+            if cut_epoch != self.cut_epoch {
+                // The cut epoch changed; update the known cut and abort the descent if the current
+                // node is dead.
+                self.cut_epoch = cut_epoch;
+                self.cut = *self.helper.cut.read().expect("cut: poisoned");
+                if self.cut() {
+                    Err(Error::DeadEnd(self))
+                } else {
+                    Ok(self)
+                }
+            } else if self.node.is_live() {
+                Ok(self)
+            } else {
+                Err(Error::DeadEnd(self))
+            }
+        }
+    }
+
     /// Apply the current cut to the given node and returns whether it is now dead.  This function
     /// only returns false when the node is still live.
     fn cut_node<F>(&self, node: &Node<'c, N, E>, event_fn: F) -> bool
@@ -686,14 +711,23 @@ where
 
     /// Make a checkpoint of the current pointed-to node then call `func`.  If `func` fails,
     /// restore the resulting cursor to the checkpointed state.
-    fn checkpoint<F, T>(self, func: F) -> Result<T, Self>
+    fn checkpoint<F, T>(self, func: F) -> Result<Result<T, Error<'a, 'c, N, E>>, Self>
     where
-        F: FnOnce(Self) -> Result<T, Self>,
+        F: FnOnce(Self) -> Result<Result<T, Error<'a, 'c, N, E>>, Self>,
     {
         let path_len = self.path.len();
         let checkpoint = self.node.clone();
 
-        match func(self) {
+        let result = if self.helper.config.backtrack_deadends {
+            match func(self) {
+                Ok(Err(Error::DeadEnd(cursor))) => Err(cursor),
+                result => result,
+            }
+        } else {
+            func(self)
+        };
+
+        match result {
             Ok(v) => Ok(v),
             Err(mut cursor) => {
                 cursor.event(
@@ -819,64 +853,25 @@ pub trait TreePolicy<'c, N: 'c, E: 'c>: Send + Sync {
     }
 }
 
-struct MctsWalker<'a, 'c, N, E> {
-    /// The policy to use during rollouts.
-    default_policy: &'a dyn TreePolicy<'c, N, E>,
-    /// The policy to use in the explicit tree where statistics are available.
-    tree_policy: &'a dyn TreePolicy<'c, N, E>,
+#[derive(Copy, Clone)]
+struct WalkHelper<'a> {
     stop: &'a AtomicBool,
     cut: &'a RwLock<f64>,
     cut_epoch: &'a AtomicUsize,
     config: &'a BanditConfig,
 }
 
-impl<'a, 'c, N, E> MctsWalker<'a, 'c, N, E>
+/// Helper structure to walk the tree following a specific policy.
+struct PolicyWalker<'a, 'c, N, E> {
+    policy: &'a dyn TreePolicy<'c, N, E>,
+}
+
+impl<'a, 'c, N, E> PolicyWalker<'a, 'c, N, E>
 where
     N: 'c + Send + Sync + Debug + Default,
     E: 'c + Send + Sync + Debug + Default,
 {
-    fn check_stop(
-        &self,
-        mut cursor: NodeCursor<'a, 'c, N, E>,
-    ) -> Result<NodeCursor<'a, 'c, N, E>, Error<'a, 'c, N, E>> {
-        if self.stop.load(Ordering::Relaxed) {
-            Err(Error::Aborted)
-        } else {
-            let cut_epoch = self.cut_epoch.load(Ordering::Relaxed);
-            if cut_epoch != cursor.cut_epoch {
-                // The cut epoch changed; update the known cut and abort the descent if the current
-                // node is dead.
-                cursor.cut_epoch = cut_epoch;
-                cursor.cut = *self.cut.read().expect("cut: poisoned");
-                if cursor.cut() {
-                    Err(Error::DeadEnd(cursor))
-                } else {
-                    Ok(cursor)
-                }
-            } else if cursor.node.is_live() {
-                Ok(cursor)
-            } else {
-                Err(Error::DeadEnd(cursor))
-            }
-        }
-    }
-
-    fn backtrack_deadends<T>(
-        &self,
-        result: Result<Result<T, Error<'a, 'c, N, E>>, NodeCursor<'a, 'c, N, E>>,
-    ) -> Result<Result<T, Error<'a, 'c, N, E>>, NodeCursor<'a, 'c, N, E>> {
-        if self.config.backtrack_deadends {
-            match result {
-                Ok(Err(Error::DeadEnd(cursor))) => Err(cursor),
-                _ => result,
-            }
-        } else {
-            result
-        }
-    }
-
-    /// Evaluate the underlying node
-    fn evaluate(
+    fn walk(
         &self,
         mut cursor: NodeCursor<'a, 'c, N, E>,
         candidate: SearchSpace<'c>,
@@ -886,89 +881,77 @@ where
             return cursor.evaluate(candidate).map_err(Error::DeadEnd);
         }
 
-        // Now we can actually perform a monte-carlo selection step
         loop {
-            cursor = match self.check_stop(cursor)?.checkpoint(|cursor| {
-                self.backtrack_deadends(
-                    cursor
-                        .select_child(|cursor| {
-                            let (mut edges, mut candidates) = cursor
-                                .live_children_iter_with_candidates(&candidate)
-                                .map(|(edge, node, child_candidate)| {
-                                    ((edge, node), child_candidate)
-                                })
-                                .unzip();
+            cursor = match cursor.check_stop()?.checkpoint(|cursor| {
+                cursor
+                    .select_child(|cursor| {
+                        let (mut edges, mut candidates): (Vec<_>, Vec<_>) = cursor
+                            .live_children_iter_with_candidates(&candidate)
+                            .map(|(edge, node, child_candidate)| {
+                                ((edge, node), child_candidate)
+                            })
+                            .unzip();
 
-                            if let Some((edge, node, child_candidate)) =
-                                self.pick_default(cursor, &mut edges, &mut candidates)
-                            {
-                                Some((
-                                    Policy::Default,
-                                    edge.index(),
-                                    node,
-                                    child_candidate.unwrap_or_else(|| {
-                                        cursor
-                                            .tree
-                                            .env
-                                            .apply_action(
-                                                candidate.clone(),
-                                                edge.action().clone(),
-                                            )
-                                            .unwrap()
-                                    }),
-                                ))
-                            } else {
-                                assert!(edges
-                                    .iter()
-                                    .all(|(_edge, node)| !node.is_live()));
+                        if let Some((edge, node, child_candidate)) = self
+                            .policy
+                            .pick_child(cursor.cut, &cursor.node, &edges[..])
+                            .map(|index| {
+                                let (edge, node) = edges.swap_remove(index);
+                                let candidate = candidates.swap_remove(index);
+                                (edge, node, candidate)
+                            })
+                        {
+                            Some((
+                                Policy::Default,
+                                edge.index(),
+                                node,
+                                child_candidate.unwrap_or_else(|| {
+                                    cursor
+                                        .tree
+                                        .env
+                                        .apply_action(
+                                            candidate.clone(),
+                                            edge.action().clone(),
+                                        )
+                                        .unwrap()
+                                }),
+                            ))
+                        } else {
+                            assert!(edges.iter().all(|(_edge, node)| !node.is_live()));
 
-                                cursor.kill(CauseOfDeath::Backtrack);
-                                None
-                            }
-                        })
-                        .map(|(cursor, candidate)| self.evaluate(cursor, candidate)),
-                )
+                            cursor.kill(CauseOfDeath::Backtrack);
+                            None
+                        }
+                    })
+                    .map(|(cursor, candidate)| self.walk(cursor, candidate))
             }) {
                 Ok(result) => return result,
                 Err(cursor) => cursor,
             }
         }
     }
+}
 
-    fn pick_default<'b, T>(
-        &self,
-        cursor: &NodeCursor<'_, 'c, N, E>,
-        edges: &mut Vec<(&'b Edge<'c, N, E>, Node<'c, N, E>)>,
-        candidates: &mut Vec<T>,
-    ) -> Option<(&'b Edge<'c, N, E>, Node<'c, N, E>, T)> {
-        assert_eq!(edges.len(), candidates.len());
-        self.default_policy
-            .pick_child(cursor.cut, &cursor.node, &edges[..])
-            .map(|index| {
-                let (edge, node) = edges.swap_remove(index);
-                let candidate = candidates.swap_remove(index);
-                (edge, node, candidate)
-            })
-    }
+/// Helper structure to walk the tree using a MCTS algorithm.
+struct MctsWalker<'a, 'c, N, E> {
+    /// The walker to use to perform rollouts.
+    default_walker: PolicyWalker<'a, 'c, N, E>,
+    /// The policy to use in the explicit tree where statistics are available.
+    tree_policy: &'a dyn TreePolicy<'c, N, E>,
+}
 
-    fn pick_to_expand<'b>(
+impl<'a, 'c, N, E> MctsWalker<'a, 'c, N, E>
+where
+    N: 'c + Send + Sync + Debug + Default,
+    E: 'c + Send + Sync + Debug + Default,
+{
+    /// Evaluate the underlying node
+    fn evaluate(
         &self,
-        cursor: &NodeCursor<'_, 'c, N, E>,
-        edges: &mut Vec<(&'b Edge<'c, N, E>, Node<'c, N, E>)>,
-    ) -> Option<(&'b Edge<'c, N, E>, Node<'c, N, E>)> {
-        self.default_policy
-            .pick_child(cursor.cut, &cursor.node, &edges[..])
-            .map(|index| edges.swap_remove(index))
-    }
-
-    fn pick_intree<'b>(
-        &self,
-        cursor: &NodeCursor<'_, 'c, N, E>,
-        edges: &mut Vec<(&'b Edge<'c, N, E>, Node<'c, N, E>)>,
-    ) -> Option<(&'b Edge<'c, N, E>, Node<'c, N, E>)> {
-        self.tree_policy
-            .pick_child(cursor.cut, &cursor.node, &edges[..])
-            .map(|index| edges.swap_remove(index))
+        cursor: NodeCursor<'a, 'c, N, E>,
+        candidate: SearchSpace<'c>,
+    ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Error<'a, 'c, N, E>> {
+        self.default_walker.walk(cursor, candidate)
     }
 
     fn select_intree(
@@ -991,78 +974,78 @@ where
         };
 
         loop {
-            cursor = match self.check_stop(cursor)?.checkpoint(|cursor| {
-                self.backtrack_deadends(
-                    cursor
-                        .select_child(|cursor| {
-                            let mut expanded =
-                                Vec::with_capacity(cursor.node.edges().len());
-                            let mut unexpanded = Vec::new();
-                            for (edge, node) in cursor
-                                .live_children_iter()
-                                .map(|r| r.ok().expect("missing in-tree child"))
-                            {
-                                if node.is_expanded() {
-                                    expanded.push((edge, node));
-                                } else {
-                                    unexpanded.push((edge, node));
-                                }
+            cursor = match cursor.check_stop()?.checkpoint(|cursor| {
+                cursor
+                    .select_child(|cursor| {
+                        let mut expanded = Vec::with_capacity(cursor.node.edges().len());
+                        let mut unexpanded = Vec::new();
+                        for (edge, node) in cursor
+                            .live_children_iter()
+                            .map(|r| r.ok().expect("missing in-tree child"))
+                        {
+                            if node.is_expanded() {
+                                expanded.push((edge, node));
+                            } else {
+                                unexpanded.push((edge, node));
                             }
+                        }
 
-                            if let Some((edge, node)) =
-                                self.pick_to_expand(cursor, &mut unexpanded)
+                        if let Some((edge, node)) = self
+                            .default_walker
+                            .policy
+                            .pick_child(cursor.cut, &cursor.node, &unexpanded[..])
+                            .map(|index| unexpanded.swap_remove(index))
+                        {
+                            Some((
+                                Policy::Default,
+                                edge.index(),
+                                node,
+                                SelectedChild { expand: true },
+                            ))
+                        } else {
+                            assert!(
+                                unexpanded
+                                    .into_iter()
+                                    .all(|(_edge, node)| !node.is_live()),
+                                "live unexpanded child was not selected"
+                            );
+
+                            if let Some((edge, node)) = self
+                                .tree_policy
+                                .pick_child(cursor.cut, &cursor.node, &expanded[..])
+                                .map(|index| expanded.swap_remove(index))
                             {
                                 Some((
-                                    Policy::Default,
+                                    Policy::Bandit,
                                     edge.index(),
                                     node,
-                                    SelectedChild { expand: true },
+                                    SelectedChild { expand: false },
                                 ))
                             } else {
                                 assert!(
-                                    unexpanded
-                                        .into_iter()
-                                        .all(|(_edge, node)| !node.is_live()),
-                                    "live unexpanded child was not selected"
+                                    expanded.iter().all(|(_edge, node)| !node.is_live()),
+                                    "live child was not selected"
                                 );
 
-                                if let Some((edge, node)) =
-                                    self.pick_intree(&cursor, &mut expanded)
-                                {
-                                    Some((
-                                        Policy::Bandit,
-                                        edge.index(),
-                                        node,
-                                        SelectedChild { expand: false },
-                                    ))
-                                } else {
-                                    assert!(
-                                        expanded
-                                            .iter()
-                                            .all(|(_edge, node)| !node.is_live()),
-                                        "live child was not selected"
-                                    );
-
-                                    cursor.kill(CauseOfDeath::Backtrack);
-                                    None
-                                }
+                                cursor.kill(CauseOfDeath::Backtrack);
+                                None
                             }
-                        })
-                        .and_then(|(cursor, selected)| {
-                            if selected.expand {
-                                if let Some(candidate) = cursor.expand() {
-                                    Ok(self.evaluate(cursor, candidate))
-                                } else {
-                                    // If expansion fails, the node was killed or expanded by
-                                    // another thread between the selection and expansion step;
-                                    // retry with another child.
-                                    Err(cursor)
-                                }
+                        }
+                    })
+                    .and_then(|(cursor, selected)| {
+                        if selected.expand {
+                            if let Some(candidate) = cursor.expand() {
+                                Ok(self.evaluate(cursor, candidate))
                             } else {
-                                Ok(self.select_intree(cursor))
+                                // If expansion fails, the node was killed or expanded by
+                                // another thread between the selection and expansion step;
+                                // retry with another child.
+                                Err(cursor)
                             }
-                        }),
-                )
+                        } else {
+                            Ok(self.select_intree(cursor))
+                        }
+                    })
             }) {
                 Ok(result) => return result,
                 Err(cursor) => cursor,
@@ -1191,15 +1174,19 @@ where
                     &self.id_counter,
                     &self.logger,
                 ),
+                helper: WalkHelper {
+                    stop: &self.stop,
+                    cut: &self.cut,
+                    cut_epoch: &self.cut_epoch,
+                    config: self.config,
+                },
             };
 
             let walker = MctsWalker {
-                default_policy: self.default_policy.as_ref(),
+                default_walker: PolicyWalker {
+                    policy: self.default_policy.as_ref(),
+                },
                 tree_policy: self.tree_policy.as_ref(),
-                stop: &self.stop,
-                cut: &self.cut,
-                cut_epoch: &self.cut_epoch,
-                config: self.config,
             };
 
             match walker.select_intree(cursor) {
