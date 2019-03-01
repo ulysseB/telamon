@@ -1043,6 +1043,46 @@
 <span id="1043">1043</span>
 <span id="1044">1044</span>
 <span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
+<span id="1070">1070</span>
+<span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
+<span id="1075">1075</span>
+<span id="1076">1076</span>
+<span id="1077">1077</span>
+<span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">///! Exploration of the search space.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
@@ -1249,7 +1289,7 @@
     <span class="doccomment">/// Removes the dead ends along the given path. Assumes the path points to a dead-end.</span>
     <span class="doccomment">/// Updates bounds along the way.</span>
     <span class="kw">fn</span> <span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) {
-        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Deadend found in the tree.&quot;</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;Deadend found in the tree.&quot;</span>);
 
         <span class="comment">// Statistics and logging</span>
         <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
@@ -1268,8 +1308,6 @@
                 <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
                 <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
             })));
-        } <span class="kw">else</span> {
-            <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Deadend was cut by another thread.&quot;</span>);
         }
 
         <span class="comment">// A `None` bound indicates the path points to a dead-end.</span>
@@ -1302,6 +1340,25 @@
             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;killing root&quot;</span>);
             <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">root</span>.<span class="ident">write</span>()) <span class="op">=</span> <span class="prelude-val">None</span>;
         }
+    }
+
+    <span class="kw">fn</span> <span class="ident">implementation</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">path</span>: <span class="ident">Path</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;</span>,
+        <span class="ident">cut</span>: <span class="ident">f64</span>,
+    ) <span class="op">-&gt;</span> (<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ImplInfo</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>();
+        (
+            <span class="ident">candidate</span>,
+            <span class="ident">ImplInfo</span> {
+                <span class="ident">path</span>,
+                <span class="ident">bound</span>,
+                <span class="ident">cut</span>,
+                <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
+                <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
+            },
+        )
     }
 }
 
@@ -1360,7 +1417,7 @@
         <span class="kw">loop</span> {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stop</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>) {
                 <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;stopping: requested&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">None</span>;
+                <span class="kw">break</span> <span class="prelude-val">None</span>;
             }
 
             <span class="kw">let</span> <span class="ident">cut</span>: <span class="ident">f64</span> <span class="op">=</span> { <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">read</span>()) };
@@ -1375,7 +1432,7 @@
                 <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=&gt;</span> <span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="ident">node</span>),
                 <span class="prelude-val">None</span> <span class="op">=&gt;</span> {
                     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;stopping: deadend at root&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">None</span>;
+                    <span class="kw">break</span> <span class="prelude-val">None</span>;
                 }
             });
 
@@ -1389,53 +1446,68 @@
 
             <span class="comment">// Descent loop</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">default</span>();
-            <span class="kw">loop</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="kw">loop</span> {
                 <span class="kw">match</span> <span class="ident">state</span> {
                     <span class="ident">SubTree</span>::<span class="ident">Empty</span> <span class="op">=&gt;</span> {
                         <span class="self">self</span>.<span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="ident">env</span>.<span class="ident">cut</span>);
-                        <span class="kw">break</span>;
+                        <span class="kw">break</span> <span class="prelude-val">None</span>;
                     }
                     <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">leaf</span>) <span class="op">=&gt;</span> {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rollout_path</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">implementation</span>) <span class="op">=</span>
-                            <span class="ident">rollout</span>.<span class="ident">descend_with_path</span>(<span class="kw-2">*</span><span class="ident">leaf</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rollout_path</span>)
-                        {
-                            <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Implementation found.&quot;</span>);
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">backtrack_deadends</span> {
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">implementation</span>) <span class="op">=</span> <span class="ident">rollout</span>.<span class="ident">descend_backtrack</span>(<span class="kw-2">*</span><span class="ident">leaf</span>)
+                            {
+                                <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Implementation found.&quot;</span>);
 
-                            <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="ident">ImplInfo</span> {
-                                <span class="ident">path</span>,
-                                <span class="ident">bound</span>: <span class="ident">implementation</span>.<span class="ident">bound</span>.<span class="ident">value</span>(),
-                                <span class="ident">cut</span>: <span class="ident">env</span>.<span class="ident">cut</span>,
-                                <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
-                                <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
-                            };
-
-                            <span class="kw">return</span> <span class="prelude-val">Some</span>((<span class="ident">implementation</span>, <span class="ident">info</span>));
-                        } <span class="kw">else</span> {
-                            <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Deadend found during rollout.&quot;</span>);
-
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dead</span>) <span class="op">=</span> <span class="ident">rollout_path</span>.<span class="ident">last</span>() {
-                                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(
-                                    <span class="ident">TreeEvent</span>::<span class="ident">DeadEnd</span> {
-                                        <span class="ident">source</span>: <span class="ident">DeadEndSource</span>::<span class="ident">Rollout</span> {
-                                            <span class="ident">actions</span>: <span class="ident">dead</span>.<span class="ident">actions</span>.<span class="ident">clone</span>(),
-                                            <span class="ident">depth</span>: <span class="ident">path</span>.<span class="number">0</span>.<span class="ident">len</span>(),
-                                            <span class="ident">bound</span>: <span class="ident">dead</span>.<span class="ident">bound</span>.<span class="ident">value</span>(),
-                                            <span class="ident">cut</span>: <span class="ident">env</span>.<span class="ident">cut</span>,
-                                        },
-                                        <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
-                                        <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
-                                    }
-                                )));
+                                <span class="kw">break</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">implementation</span>(
+                                    <span class="ident">implementation</span>,
+                                    <span class="ident">path</span>,
+                                    <span class="ident">env</span>.<span class="ident">cut</span>,
+                                ));
                             } <span class="kw">else</span> {
-                                <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Empty rollout.&quot;</span>);
+                                <span class="comment">// The current node is an in-tree deadend; this will take care of</span>
+                                <span class="comment">// killing it.</span>
+                                <span class="self">self</span>.<span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="ident">env</span>.<span class="ident">cut</span>);
+                                <span class="kw">break</span> <span class="prelude-val">None</span>;
                             }
+                        } <span class="kw">else</span> {
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rollout_path</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">implementation</span>) <span class="op">=</span>
+                                <span class="ident">rollout</span>.<span class="ident">descend_with_path</span>(<span class="kw-2">*</span><span class="ident">leaf</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rollout_path</span>)
+                            {
+                                <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Implementation found.&quot;</span>);
 
-                            <span class="comment">// Deadend reached while exploring; restart from the root</span>
-                            <span class="comment">// TODO(bclement): We should backpropagate explicitely here.</span>
-                            <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
+                                <span class="kw">break</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">implementation</span>(
+                                    <span class="ident">implementation</span>,
+                                    <span class="ident">path</span>,
+                                    <span class="ident">env</span>.<span class="ident">cut</span>,
+                                ));
+                            } <span class="kw">else</span> {
+                                <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Deadend found during rollout.&quot;</span>);
 
-                            <span class="kw">break</span>;
+                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dead</span>) <span class="op">=</span> <span class="ident">rollout_path</span>.<span class="ident">last</span>() {
+                                    <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(
+                                        <span class="ident">TreeEvent</span>::<span class="ident">DeadEnd</span> {
+                                            <span class="ident">source</span>: <span class="ident">DeadEndSource</span>::<span class="ident">Rollout</span> {
+                                                <span class="ident">actions</span>: <span class="ident">dead</span>.<span class="ident">actions</span>.<span class="ident">clone</span>(),
+                                                <span class="ident">depth</span>: <span class="ident">path</span>.<span class="number">0</span>.<span class="ident">len</span>(),
+                                                <span class="ident">bound</span>: <span class="ident">dead</span>.<span class="ident">bound</span>.<span class="ident">value</span>(),
+                                                <span class="ident">cut</span>: <span class="ident">env</span>.<span class="ident">cut</span>,
+                                            },
+                                            <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">timestamp</span>(),
+                                            <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>(),
+                                        }
+                                    )));
+                                } <span class="kw">else</span> {
+                                    <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Empty rollout.&quot;</span>);
+                                }
+
+                                <span class="comment">// Deadend reached while exploring; restart from the root</span>
+                                <span class="comment">// TODO(bclement): We should backpropagate explicitely here.</span>
+                                <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
+
+                                <span class="comment">// Don&#39;t clean deadends here: this is *not* an in-tree deadend.</span>
+                                <span class="kw">break</span> <span class="prelude-val">None</span>;
+                            }
                         }
                     }
                     <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>) <span class="op">=&gt;</span> {
@@ -1446,10 +1518,14 @@
                             <span class="ident">state</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">children</span>[<span class="ident">idx</span>].<span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
                         } <span class="kw">else</span> {
                             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;no child available: deadend&quot;</span>);
-                            <span class="ident">state</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">Empty</span>;
+
+                            <span class="self">self</span>.<span class="ident">clean_deadends</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="ident">env</span>.<span class="ident">cut</span>);
+                            <span class="kw">break</span> <span class="prelude-val">None</span>;
                         }
                     }
                 }
+            } {
+                <span class="kw">break</span> <span class="prelude-val">Some</span>(<span class="ident">res</span>);
             }
         }
     }
@@ -1585,17 +1661,17 @@
                                     })
                                     .<span class="ident">collect</span>(),
                             ) {
-                                <span class="comment">// Newly expanded node, with no stats yet.</span>
+                                <span class="comment">// Newly expanded node with no stats yet.</span>
                                 <span class="kw-2">*</span><span class="ident">dst</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>);
                                 <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">candidate</span>);
                             } <span class="kw">else</span> {
-                                <span class="comment">// Actual dead-end; leave the SubTree::Empty there.</span>
+                                <span class="comment">// Propagation dead-end; leave the SubTree::Empty there</span>
                                 <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">Empty</span>;
                             }
                         } <span class="kw">else</span> {
                             <span class="comment">// Fully specified implementation; we leave the SubTree::Empty here because if</span>
                             <span class="comment">// we come back, this becomes a dead-end.  It may not be the smartest thing to</span>
-                            <span class="comment">// do because it could throw off the search, but that is probably pretty rate</span>
+                            <span class="comment">// do because it could throw off the search, but that is probably pretty rare</span>
                             <span class="comment">// anyways.</span>
                             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;implementation reached at depth {}&quot;</span>, <span class="ident">candidate</span>.<span class="ident">depth</span>);
                             <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">candidate</span>);
@@ -1662,7 +1738,11 @@
 
     <span class="kw">fn</span> <span class="ident">pick_child</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>, <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, ()<span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">pick_index</span>(
-            <span class="ident">node</span>.<span class="ident">children</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">edge</span><span class="op">|</span> <span class="ident">edge</span>.<span class="ident">bound</span>()).<span class="ident">enumerate</span>(),
+            <span class="ident">node</span>.<span class="ident">children</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">edge</span><span class="op">|</span> <span class="ident">edge</span>.<span class="ident">bound</span>())
+                .<span class="ident">enumerate</span>()
+                .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">_ix</span>, <span class="ident">bound</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">bound</span> <span class="op">&lt;</span> <span class="ident">env</span>.<span class="ident">cut</span>),
             <span class="ident">env</span>.<span class="ident">cut</span>,
         )
     }

@@ -554,6 +554,8 @@
 <span id="554">554</span>
 <span id="555">555</span>
 <span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Pressure on the hardware execution units.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Device</span>;
@@ -561,12 +563,14 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::{<span class="ident">CodePoint</span>, <span class="ident">Level</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">Domain</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp</span>, <span class="ident">fmt</span>, <span class="ident">iter</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// A lower bound on the execution time.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExplainedBound</span><span class="op">&lt;</span><span class="ident">ORIGIN</span><span class="op">&gt;</span> {
     <span class="ident">value</span>: <span class="ident">f64</span>,
     <span class="ident">size</span>: <span class="ident">usize</span>,
@@ -749,7 +753,7 @@
 }
 
 <span class="doccomment">/// The level at which a bottleneck is computed.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BottleneckLevel</span> {
     <span class="ident">Global</span>,
     <span class="ident">Block</span>,
@@ -791,7 +795,7 @@
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="ident">FastOrigin</span>::<span class="ident">Latency</span> <span class="op">=&gt;</span> <span class="ident">Origin</span>::<span class="ident">Latency</span>,
             <span class="ident">FastOrigin</span>::<span class="ident">Bottleneck</span>(<span class="ident">id</span>, <span class="ident">level</span>) <span class="op">=&gt;</span> {
-                <span class="ident">Origin</span>::<span class="ident">Bottleneck</span>(<span class="ident">device</span>.<span class="ident">bottlenecks</span>()[<span class="ident">id</span>], <span class="ident">level</span>)
+                <span class="ident">Origin</span>::<span class="ident">Bottleneck</span>(<span class="ident">device</span>.<span class="ident">bottlenecks</span>()[<span class="ident">id</span>].<span class="ident">into</span>(), <span class="ident">level</span>)
             }
             <span class="ident">FastOrigin</span>::<span class="ident">Chain</span> {
                 <span class="kw-2">ref</span> <span class="ident">before</span>,
@@ -829,7 +833,7 @@
 }
 
 <span class="doccomment">/// A `CodePoint`, but based on dimension ids rather than level ids.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Point</span> {
     <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>),
     <span class="ident">Entry</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>),
@@ -865,12 +869,12 @@
 
 <span class="doccomment">/// The justification behind a lower bound. Is slower to handle than `FastOrigin`</span>
 <span class="doccomment">/// but does not refer internal information.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Origin</span> {
     <span class="doccomment">/// The bound is caused by the latency between two instructions.</span>
     <span class="ident">Latency</span>,
     <span class="doccomment">/// The bound is caused by a bottleneck.</span>
-    <span class="ident">Bottleneck</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="ident">BottleneckLevel</span>),
+    <span class="ident">Bottleneck</span>(<span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">BottleneckLevel</span>),
     <span class="doccomment">/// The bound is repeated in a loop.</span>
     <span class="ident">Loop</span> {
         <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
@@ -960,7 +964,7 @@
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="ident">Origin</span>::<span class="ident">Latency</span> <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;a dependency&quot;</span>),
-            <span class="ident">Origin</span>::<span class="ident">Bottleneck</span>(<span class="ident">name</span>, <span class="ident">level</span>) <span class="op">=&gt;</span> {
+            <span class="ident">Origin</span>::<span class="ident">Bottleneck</span>(<span class="kw-2">ref</span> <span class="ident">name</span>, <span class="ident">level</span>) <span class="op">=&gt;</span> {
                 <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the pressure on {} at the {}&quot;</span>, <span class="ident">name</span>, <span class="ident">level</span>)
             }
             <span class="ident">Origin</span>::<span class="ident">HardwareEvaluation</span> <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the evaluation on the hardware&quot;</span>),

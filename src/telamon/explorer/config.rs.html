@@ -493,6 +493,12 @@
 <span id="493">493</span>
 <span id="494">494</span>
 <span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -646,6 +652,8 @@
     <span class="doccomment">/// Use a multi-armed bandit algorithm.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;bandit&quot;</span>)]</span>
     <span class="ident">MultiArmedBandit</span>(<span class="ident">BanditConfig</span>),
+    <span class="doccomment">/// Use a MCTS algorithm</span>
+    <span class="ident">Mcts</span>(<span class="ident">BanditConfig</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">SearchAlgorithm</span> {
@@ -683,6 +691,9 @@
     <span class="doccomment">/// Indicates the initial cut to use (in nanoseconds).  This can be used when an existing</span>
     <span class="doccomment">/// program (e.g. from a precedent run) is known to take that much amount of time.</span>
     <span class="kw">pub</span> <span class="ident">initial_cut</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Indicates whether we should backtrack locally when a dead-end is encountered.  If false,</span>
+    <span class="doccomment">/// dead-ends will cause a restart from the root.</span>
+    <span class="kw">pub</span> <span class="ident">backtrack_deadends</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Indicates how to select between nodes of the search tree when none of their</span>
     <span class="doccomment">/// children have been evaluated.</span>
     <span class="kw">pub</span> <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>,
@@ -848,6 +859,7 @@
             <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>::<span class="ident">default</span>(),
             <span class="ident">tree_policy</span>: <span class="ident">TreePolicy</span>::<span class="ident">default</span>(),
             <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>(),
+            <span class="ident">backtrack_deadends</span>: <span class="bool-val">false</span>,
         }
     }
 }
