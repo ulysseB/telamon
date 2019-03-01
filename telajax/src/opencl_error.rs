@@ -1,7 +1,7 @@
 use std::os::raw::c_int;
 
 #[derive(Debug)]
-pub enum OpenCLError{
+pub enum OpenCLError {
     DEVICE_NOT_FOUND,
     DEVICE_NOT_AVAILABLE,
     COMPILER_NOT_AVAILABLE,

@@ -14,7 +14,6 @@
 
 //! Unsafe wrapper around  library from Kalray.
 
-
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
@@ -27,10 +26,11 @@ use lazy_static::lazy_static;
 use libc;
 use log::debug;
 use parking_lot;
-use std;
-use std::ffi::CStr;
-use std::result::Result;
-use std::sync::{Arc, RwLock};
+use std::{
+    ffi::CStr,
+    result::Result,
+    sync::{Arc, RwLock},
+};
 use utils::unwrap;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -50,33 +50,55 @@ lazy_static! {
     static ref MEM_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 }
 
-/// Buffer in MPPA RAM.
-pub struct Buffer {
-    pub mem: RwLock<Mem>,
-    pub len: usize,
-    pub executor: &'static Device,
+#[derive(Debug)]
+pub enum RWError {
+    SizeMismatch(usize, usize),
+    CLError(OpenCLError),
 }
 
-impl Buffer {
-    pub fn new(executor: &'static Device, len: usize) -> Self {
-        let mem_block = unwrap!(executor.alloc(len));
+/// Buffer in MPPA RAM.
+pub struct Buffer<T:Copy> {
+    pub mem: RwLock<Mem>,
+    /// number of T elements (not of bytes)
+    pub len: usize,
+    pub executor: &'static Device,
+    phantom: std::marker::PhantomData<T>,
+}
+
+
+impl<T:Copy> Buffer<T> {
+    fn new(executor: &'static Device, len: usize) -> Self {
+        let mem_block = unwrap!(executor.alloc(len * std::mem::size_of::<T>()));
         Buffer {
             mem: RwLock::new(mem_block),
             len,
             executor,
+            phantom: std::marker::PhantomData,
         }
     }
 
     pub fn raw_ptr(&self) -> *const libc::c_void {
         unwrap!(self.mem.read()).raw_ptr()
     }
+
+    pub fn read(&self) -> Result<Vec<T>, RWError> {
+        let mut data: Vec<T> = Vec::with_capacity(self.len);
+        let mut mem = unwrap!(self.mem.write());
+        let res = self.executor.read_buffer(&mut mem, data.as_mut_slice(), self.len);
+        if let Err(rw_error) = res {
+            Err(rw_error)
+        } else { 
+            unsafe {Vec::set_len(&mut data, self.len);}
+            Ok(data)
+        }
+    }
+
+    pub fn write(&self, data: &[T]) -> Result<(), RWError> {
+        let mut mem = unwrap!(self.mem.write());
+        self.executor.write_buffer(data, &mut mem)
+    }
 }
 
-#[derive(Debug)]
-pub enum RWError {
-    SizeMismatch(usize, usize),
-    CLError(OpenCLError),
-}
 
 /// A Telajax execution context.
 pub struct Device {
@@ -112,12 +134,16 @@ impl Device {
     }
 
     /// allocate an array of len bytes on device
-    pub fn allocate_array(&'static self, len: usize) -> Buffer {
+    pub fn allocate_array<T:Copy>(&'static self, len: usize) -> Buffer<T> {
         Buffer::new(self, len)
     }
 
     /// Build a wrapper for a kernel.
-    pub fn build_wrapper(&self, name: &CStr, code: &CStr) -> Result<Wrapper, OpenCLError> {
+    pub fn build_wrapper(
+        &self,
+        name: &CStr,
+        code: &CStr,
+    ) -> Result<Wrapper, OpenCLError> {
         let mut error = 0;
         let flags: &'static CStr = Default::default();
         let wrapper = unsafe {
@@ -125,7 +151,7 @@ impl Device {
                 name.as_ptr(),
                 code.as_ptr(),
                 flags.as_ptr(),
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 &mut error,
             )
         };
@@ -149,19 +175,19 @@ impl Device {
         // TODO(cc_perf): use double pipes in telajax
         // TODO(cc_perf): avoid collisions in kernel evaluations
         let mut error = 0;
-        let _lock = MEM_MUTEX.lock().unwrap();
+        let lock = MEM_MUTEX.lock().unwrap();
         let kernel = unsafe {
             telajax_kernel_build(
                 code.as_ptr(),
                 cflags.as_ptr(),
                 lflags.as_ptr(),
                 &wrapper.0 as *const _ as *mut _,
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 &mut error,
             )
         };
         if error != 0 {
-            std::mem::drop(_lock);
+            std::mem::drop(lock);
             Err(error.into())
         } else {
             Ok(Kernel(kernel))
@@ -188,13 +214,17 @@ impl Device {
     }
 
     /// Print func id then execute it
-    pub fn execute_kernel_id(&self, kernel: &mut Kernel, kernel_id: u16) {
+    pub fn execute_kernel_id(
+        &self,
+        kernel: &mut Kernel,
+        kernel_id: u16,
+    ) -> Result<(), OpenCLError> {
         println!("Executing kernel {}", kernel_id);
-        unwrap!(self.execute_kernel(kernel));
+        self.execute_kernel(kernel)
     }
 
     /// Executes a `Kernel` and then wait for completion.
-    pub fn execute_kernel(&self, kernel: &mut Kernel) -> Result<(), OpenCLError>{
+    pub fn execute_kernel(&self, kernel: &mut Kernel) -> Result<(), OpenCLError> {
         let mut event = Event::new();
         unsafe {
             // We MUST make sure that drop is called on lock before it is called on
@@ -203,7 +233,7 @@ impl Device {
             let lock = MEM_MUTEX.lock().unwrap();
             let err = telajax_kernel_enqueue(
                 &mut kernel.0 as *mut _,
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 &mut event.0 as *mut cl_event,
             );
             if err != 0 {
@@ -226,7 +256,7 @@ impl Device {
     /// Waits until all kernels have completed their execution.
     pub fn wait_all(&self) -> Result<(), OpenCLError> {
         unsafe {
-            let err = telajax_device_waitall(&self.inner as *const _ as *mut _);
+            let err = telajax_device_waitall(&*self.inner as *const _ as *mut _);
             if err == 0 {
                 Ok(())
             } else {
@@ -243,7 +273,7 @@ impl Device {
             telajax_device_mem_alloc(
                 size,
                 1 << 0,
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 &mut error,
             )
         };
@@ -256,7 +286,6 @@ impl Device {
             Err(error.into())
         }
     }
-
 
     /// Asynchronously copies a buffer to the device.
     pub fn async_write_buffer<T: Copy>(
@@ -276,7 +305,7 @@ impl Device {
             let mut event = Event::new();
             let lock = MEM_MUTEX.lock().unwrap();
             let res = telajax_device_mem_write(
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 mem.ptr,
                 data_ptr,
                 size,
@@ -298,31 +327,25 @@ impl Device {
         &self,
         data: &[T],
         mem: &mut Mem,
-        wait_events: &[Event],
     ) -> Result<(), RWError> {
         let size = data.len() * std::mem::size_of::<T>();
         if size > mem.len {
             return Err(RWError::SizeMismatch(size, mem.len));
         }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
-        let wait_n = wait_events.len() as libc::c_uint;
-        let wait_ptr = if wait_n == 0 {
-            std::ptr::null() as *const event_t
-        } else {
-            wait_events.as_ptr() as *const event_t
-        };
+        let wait_ptr = std::ptr::null() as *const event_t;
+        let event_ptr = std::ptr::null_mut();
         let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
-            let null_mut = std::ptr::null_mut();
             let err = telajax_device_mem_write(
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 mem.ptr,
                 data_ptr,
                 size,
-                wait_n,
+                0,
                 wait_ptr,
-                null_mut,
-            ); 
+                event_ptr,
+            );
             if err != 0 {
                 Err(RWError::CLError(err.into()))
             } else {
@@ -336,9 +359,10 @@ impl Device {
         &self,
         mem: &Mem,
         data: &mut [T],
+        len: usize,
         wait_events: &[Event],
     ) -> Result<Event, RWError> {
-        let size = data.len() * std::mem::size_of::<T>();
+        let size = len * std::mem::size_of::<T>();
         if size > mem.len {
             return Err(RWError::SizeMismatch(size, mem.len));
         }
@@ -353,7 +377,7 @@ impl Device {
         unsafe {
             let mut event = Event::new();
             let res = telajax_device_mem_read(
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 mem.ptr,
                 data_ptr,
                 size,
@@ -374,24 +398,20 @@ impl Device {
         &self,
         mem: &Mem,
         data: &mut [T],
-        wait_events: &[Event],
+        len: usize,
     ) -> Result<(), RWError> {
-        let size = data.len() * std::mem::size_of::<T>();
+        let size = len * std::mem::size_of::<T>();
         if size > mem.len {
             return Err(RWError::SizeMismatch(size, mem.len));
         }
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let null_mut = std::ptr::null_mut();
-        let wait_n = wait_events.len() as std::os::raw::c_uint;
+        let wait_n = 0;
+        let wait_ptr = std::ptr::null() as *const event_t;
         let _lock = MEM_MUTEX.lock().unwrap();
-        let wait_ptr = if wait_n == 0 {
-            std::ptr::null() as *const event_t
-        } else {
-            wait_events.as_ptr() as *const event_t
-        };
         unsafe {
             let res = telajax_device_mem_read(
-                &self.inner as *const _ as *mut _,
+                &*self.inner as *const _ as *mut _,
                 mem.ptr,
                 data_ptr,
                 size,
@@ -433,8 +453,8 @@ impl Drop for Device {
                 telajax_device_finalize(inner);
             }
         } else {
-        // if None is returned here, this means that some callback still holds a closure to the
-        // Device. This is not supposed to happen, so we panic
+            // if None is returned here, this means that some callback still holds a closure to the
+            // Device. This is not supposed to happen, so we panic
             panic!();
         }
         debug!("MPPA device finalized");
