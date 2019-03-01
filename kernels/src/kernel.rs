@@ -109,6 +109,7 @@ pub trait Kernel<'a>: Sized {
 
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
     /// along with the actual evaluation time.
+    #[allow(clippy::collapsible_if)]
     fn test_bound<AM>(
         params: Self::Parameters,
         num_tests: usize,

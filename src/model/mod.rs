@@ -191,7 +191,7 @@ fn set_latency(
 
 /// Updates the dependency maps to account for the data dependencies to an instruction.
 // TODO(cleanup): refactor to reduce the number of parameters.
-#[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+#[allow(clippy::all)]
 fn set_data_deps(
     space: &SearchSpace,
     local_info: &LocalInfo,
@@ -337,7 +337,7 @@ fn repeat_level(
 
 /// Adds a dependency origination from a dim map.
 // TODO(cleanup): refactor to reduce the number of parameters.
-#[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+#[allow(clippy::all)]
 fn apply_dim_map(
     device: &Device,
     space: &SearchSpace,

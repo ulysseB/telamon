@@ -121,7 +121,7 @@ impl NewObjs {
 
     /// Registers a new memory block.
     pub fn add_mem_block(&mut self, id: MemId) {
-        self.mem_blocks.push(id.into());
+        self.mem_blocks.push(id);
     }
 
     /// Adds a mapping between dimensions.
@@ -283,13 +283,13 @@ where
 
     /// Returns an iterator over the filled elements of the
     /// slice. Holes are skipped.
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T> + Clone {
+    pub fn iter(&self) -> impl Iterator<Item = &T> + Clone {
         self.vec.iter().filter_map(Option::as_ref)
     }
 
     /// Returns a mutable iterator over the filled elements of the
     /// slice. Holes are skipped.
-    pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.vec.iter_mut().filter_map(Option::as_mut)
     }
 }

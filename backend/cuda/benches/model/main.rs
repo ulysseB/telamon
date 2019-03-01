@@ -4,14 +4,12 @@ mod latency;
 mod memory;
 mod tests;
 
-use log::*;
 use regex::Regex;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
 use telamon_cuda as cuda;
-use utils::*;
 
 use log::info;
 use utils::unwrap;

@@ -1,4 +1,5 @@
 //! Generic helper functions.
+#![warn(clippy::all)]
 
 mod cache;
 mod dag;
@@ -192,13 +193,13 @@ pub fn log2_u32(x: u32) -> Option<u32> {
 #[macro_export]
 macro_rules! generated_file {
     ($name:ident) => {
-        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+        #[allow(clippy::all)]
         mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
     };
     (pub $name:ident) => {
-        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+        #[allow(clippy::all)]
         pub mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }

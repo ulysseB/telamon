@@ -43,7 +43,7 @@ impl MMSig {
         let ld_a_k = builder.open_tiled_dim(k_size.clone(), [16][..].into());
         let (ptr, pattern) =
             builder.tensor_access(&"a", None, DATA_TYPE, &[&ld_a_m, &ld_a_k]);
-        let ld_a = builder.ld_nc(DATA_TYPE.clone(), &ptr, pattern);
+        let ld_a = builder.ld_nc(DATA_TYPE, &ptr, pattern);
         builder.close_dim(&ld_a_m);
         builder.close_dim(&ld_a_k);
 
@@ -87,6 +87,7 @@ impl MMSig {
 }
 
 /// Descends in the search tree without saving the candidates.
+#[allow(clippy::let_and_return)]
 pub fn descend_without_copies(mut space: SearchSpace) {
     while let Some(mut choice) = {
         let choice = explorer::choice::default_list(&space).next();
@@ -99,7 +100,7 @@ pub fn descend_without_copies(mut space: SearchSpace) {
                 mem,
                 ref st_dims,
                 ref ld_dims,
-            } => space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
+            } => space.lower_layout(mem, st_dims, ld_dims),
         };
         if res.is_err() {
             return;
@@ -108,6 +109,7 @@ pub fn descend_without_copies(mut space: SearchSpace) {
 }
 
 /// Descends in the search tree and returns the candidates encountered.
+#[allow(clippy::let_and_return)]
 pub fn descend_with_copies(mut space: SearchSpace) -> Vec<SearchSpace> {
     let mut spaces = vec![];
     while let Some(mut choice) = {
@@ -121,7 +123,7 @@ pub fn descend_with_copies(mut space: SearchSpace) -> Vec<SearchSpace> {
                 mem,
                 ref st_dims,
                 ref ld_dims,
-            } => space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
+            } => space.lower_layout(mem, st_dims, ld_dims),
         };
         if res.is_err() {
             return spaces;

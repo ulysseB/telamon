@@ -247,7 +247,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
-    pub fn mem_blocks<'b>(&'b self) -> impl Iterator<Item = &'b mem::Block> {
+    pub fn mem_blocks(&self) -> impl Iterator<Item = &mem::Block> {
         self.mem_blocks.blocks()
     }
 
@@ -312,8 +312,8 @@ impl<'a, L> Function<'a, L> {
     pub(crate) fn lower_layout(
         &mut self,
         id: ir::MemId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
+        st_dims: &[ir::DimId],
+        ld_dims: &[ir::DimId],
     ) where
         L: Clone,
     {
@@ -339,7 +339,7 @@ impl<'a, L> Function<'a, L> {
         dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
         let ty_len = self.mem_blocks.block(id).base_size();
-        self.gen_index(id.into(), ty_len, Operand::Addr(id), &dims)
+        self.gen_index(id, ty_len, Operand::Addr(id), &dims)
     }
 
     /// Generates an access pattern and the corresponding induction variable to access a
@@ -460,7 +460,7 @@ impl<'a> Function<'a, ()> {
     ) -> Result<(ir::LogicalDimId, Vec<ir::DimId>), ir::Error> {
         // TODO(strip-mining): allow all tiling factors at all levels
         let logical_id = ir::LogicalDimId(self.logical_dims.len() as u32);
-        let dim_ids = (0..possible_tile_sizes.len() + 1)
+        let dim_ids = (0..=possible_tile_sizes.len())
             .map(|id| ir::DimId((id + self.dims.len()) as u32))
             .collect_vec();
         // Create the objects, but don't add anythin yet so we can rollback if an error
@@ -616,7 +616,7 @@ impl<'a> Function<'a> {
             Operand::new_inst(self.inst(src_inst), st_dim_map, ir::DimMapScope::Local);
         let st = unwrap!(self.create_inst(
             lowered.store,
-            Operator::TmpSt(st_operand, lowered.mem.into()),
+            Operator::TmpSt(st_operand, lowered.mem),
             lowered.store_dims().collect(),
         ));
         self.insts.set_lazy(lowered.store, st);
@@ -624,7 +624,7 @@ impl<'a> Function<'a> {
         // Build and activate the load instruction
         let ld = unwrap!(self.create_inst(
             lowered.load,
-            Operator::TmpLd(data_type, lowered.mem.into()),
+            Operator::TmpLd(data_type, lowered.mem),
             lowered.load_dims().collect(),
         ));
         self.insts.set_lazy(lowered.load, ld);

@@ -71,7 +71,7 @@ pub enum BinOp {
 
 impl BinOp {
     /// Returns a string representing the operator.
-    fn name(&self) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
             BinOp::Add => "add",
             BinOp::Sub => "sub",
@@ -85,7 +85,7 @@ impl BinOp {
     }
 
     /// Returns the type of the binay operator given the type of its operands.
-    pub fn t(&self, operand_type: ir::Type) -> ir::Type {
+    pub fn t(self, operand_type: ir::Type) -> ir::Type {
         match self {
             BinOp::Lt | BinOp::Leq | BinOp::Equals => ir::Type::I(1),
             _ => operand_type,
@@ -93,7 +93,7 @@ impl BinOp {
     }
 
     /// Indicates if the result must be rounded when operating on floats.
-    fn requires_rounding(&self) -> bool {
+    fn requires_rounding(self) -> bool {
         match self {
             BinOp::Lt | BinOp::Leq | BinOp::Equals => false,
             _ => true,
@@ -113,15 +113,15 @@ pub enum UnaryOp {
 
 impl UnaryOp {
     /// Gives the return type of the operand given its input type.
-    fn t(&self, op_type: ir::Type) -> ir::Type {
+    fn t(self, op_type: ir::Type) -> ir::Type {
         match self {
             UnaryOp::Mov => op_type,
-            UnaryOp::Cast(t) => *t,
+            UnaryOp::Cast(t) => t,
         }
     }
 
     /// Returns the name of the operand.
-    fn name(&self) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
             UnaryOp::Mov => "mov",
             UnaryOp::Cast(..) => "cast",

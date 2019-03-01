@@ -26,21 +26,23 @@ where
     }
 }
 
-impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
+impl<K: Hash + Eq, V> MultiHashMap<K, V, RandomState> {
     /// Creates an empty `MultiHashMap`.
-    pub fn new() -> MultiHashMap<K, V, RandomState> {
+    pub fn new() -> Self {
         MultiHashMap {
             map: hash_map::HashMap::new(),
         }
     }
 
     /// Creates an empty hash map with the given initial capacity.
-    pub fn with_capacity(capacity: usize) -> MultiHashMap<K, V, RandomState> {
+    pub fn with_capacity(capacity: usize) -> Self {
         MultiHashMap {
             map: hash_map::HashMap::with_capacity(capacity),
         }
     }
+}
 
+impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
     /// Creates an empty `MultiHashMap` which will use the given hash builder to hash
     /// keys.
     pub fn with_hasher(hash_builder: S) -> Self {

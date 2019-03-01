@@ -85,7 +85,7 @@ unsafe impl<'a, T> Sync for Array<'a, T> {}
 unsafe impl<'a, T> Send for Array<'a, T> {}
 
 /// Randomize an array of `f32`.
-pub fn randomize_f32(array: &Array<f32>) {
+pub fn randomize_f32(array: &mut Array<f32>) {
     unsafe {
         randomize_float_array(array.context, array.array, array.len as u64, 0.0, 1.0);
     }

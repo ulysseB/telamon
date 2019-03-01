@@ -69,7 +69,7 @@ impl CudaPrinter {
     /// Prints the variables declared by the `Namer`.
     fn var_decls(&mut self, namer: &Namer) -> String {
         let print_decl = |(&t, n)| {
-            let prefix = Namer::gen_prefix(&t);
+            let prefix = Namer::gen_prefix(t);
             format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)
         };
         namer
@@ -115,8 +115,8 @@ impl CudaPrinter {
     }
 
     /// Prints a `Type` for the host.
-    fn host_type(t: &Type) -> &'static str {
-        match *t {
+    fn host_type(t: Type) -> &'static str {
+        match t {
             Type::PtrTo(..) => "CUdeviceptr",
             Type::F(32) => "float",
             Type::F(64) => "double",
@@ -134,7 +134,7 @@ impl CudaPrinter {
         IT: Iterator<Item = &'a Dimension<'a>> + 'a,
     {
         let mut sizes = ["1".to_string(), "1".to_string(), "1".to_string()];
-        for (i, d) in dims.into_iter().enumerate() {
+        for (i, d) in dims.enumerate() {
             assert!(i < 3);
             sizes[i] = Self::host_size(d.size())
         }
@@ -245,7 +245,7 @@ impl CudaPrinter {
                     }
                 }
             }
-            let ind_levels = function.init_induction_levels().into_iter().chain(
+            let ind_levels = function.init_induction_levels().iter().chain(
                 function
                     .block_dims()
                     .iter()
@@ -317,7 +317,7 @@ impl CudaPrinter {
         let extern_params = fun
             .params
             .iter()
-            .map(|p| format!("{} {}", Self::host_type(&p.t), p.name))
+            .map(|p| format!("{} {}", Self::host_type(p.t), p.name))
             .collect_vec()
             .join(", ");
         let res = write!(

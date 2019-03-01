@@ -133,7 +133,7 @@ pub unsafe extern "C" fn kernel_matmul_new(
 /// functions. The `params` pointer becomes invalid and must not be used again
 /// after calling `kernel_free`.
 #[no_mangle]
-pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) -> () {
+pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) {
     std::mem::drop(Box::from_raw(params));
 }
 
@@ -154,7 +154,7 @@ pub unsafe extern "C" fn kernel_optimize(
         };
         Config::from_json(config_str)
     };
-    let _bench_result = match device {
+    match device {
         DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::default()),
         DeviceId::Cuda => {
             #[cfg(feature = "cuda")]

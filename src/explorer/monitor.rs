@@ -63,7 +63,6 @@ impl<'a> Default for Status<'a> {
 /// This function is an interface supposed to make a connection between the
 /// Store and the evaluator. Retrieve evaluations, retains the results and
 /// update the store accordingly.
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 pub fn monitor<'a, T, E>(
     config: &Config,
     candidate_store: &T,

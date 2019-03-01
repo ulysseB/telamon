@@ -34,9 +34,9 @@ pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Ran
     let divisors = size.divisors();
     let factor = param_factors
         .iter()
-        .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
+        .map(|p| u64::from(ctx.param_as_size(&p.name).unwrap()))
         .product::<u64>()
-        * factor as u64;
+        * u64::from(factor);
     let mut total_min = factor.to_biguint().unwrap();
     let mut total_max = total_min.clone();
     for &dim in dim_size_factors {
@@ -62,8 +62,8 @@ pub fn dim_bounds(dim: ir::DimId, space: &SearchSpace) -> Range {
     let size = space.domain().get_size(dim);
     let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
     Range {
-        min: size.min(universe) as u64,
-        max: size.max(universe) as u64,
+        min: size.min(universe).into(),
+        max: size.max(universe).into(),
     }
 }
 
@@ -94,9 +94,9 @@ pub fn factors(
     let divisors = size.divisors();
     let factor = param_factors
         .iter()
-        .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
+        .map(|p| u64::from(ctx.param_as_size(&p.name).unwrap()))
         .product::<u64>()
-        * factor as u64;
+        * u64::from(factor);
     let mut total_gcd = factor.to_biguint().unwrap();
     let mut total_lcm = total_gcd.clone();
     for &dim in dim_size_factors {
@@ -120,7 +120,7 @@ pub fn dim_factors(dim: ir::DimId, space: &SearchSpace) -> FactorRange {
     let size = space.domain().get_size(dim);
     let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
     FactorRange {
-        gcd: size.gcd(universe) as u64,
-        lcm: size.lcm(universe) as u64,
+        gcd: size.gcd(universe).into(),
+        lcm: size.lcm(universe).into(),
     }
 }

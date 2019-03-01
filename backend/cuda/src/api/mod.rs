@@ -55,7 +55,7 @@ mod tests {
             1,
         );
         let kernel = module.kernel("empty_fun");
-        let _ = kernel.execute(&[1, 1, 1], &[1, 1, 1], &mut []);
+        let _ = kernel.execute(&[1, 1, 1], &[1, 1, 1], &[]);
     }
 
     /// Tries to allocate an array.
@@ -80,7 +80,7 @@ mod tests {
         let block_dim: u32 = 16;
         let executor = Executor::init();
         let mut src = executor.allocate_array::<f32>(block_dim as usize);
-        let mut dst = executor.allocate_array::<f32>(block_dim as usize);
+        let dst = executor.allocate_array::<f32>(block_dim as usize);
         array::randomize_f32(&mut src);
         let module = executor.compile_ptx(
             ".version 3.0\n.target sm_30\n.address_size 64\n
@@ -103,11 +103,7 @@ mod tests {
             1,
         );
         let kernel = module.kernel("copy");
-        unwrap!(kernel.execute(
-            &[block_dim, 1, 1],
-            &[1, 1, 1],
-            &mut [&mut src, &mut dst]
-        ));
+        unwrap!(kernel.execute(&[block_dim, 1, 1], &[1, 1, 1], &[&src, &dst]));
         assert!(array::compare_f32(&src, &dst) < 1e-5);
     }
 }

@@ -157,17 +157,13 @@ impl<T: Clone + Ord> Iterator for PartialPermutations<T> {
                 // Move the end of the new permutation into a temporary buffer.
                 let mut tmp_vec = Vec::with_capacity(k - i);
                 let buffer = tmp_vec.as_mut_ptr();
-                std::ptr::copy_nonoverlapping(
-                    perm.offset((n - k + i) as isize),
-                    buffer,
-                    k - i,
-                );
+                std::ptr::copy_nonoverlapping(perm.add(n - k + i), buffer, k - i);
                 // Copy the new unused values.
-                std::ptr::copy(perm.offset(i as isize), perm.offset(k as isize), n - k);
+                std::ptr::copy(perm.add(i), perm.add(k), n - k);
                 // Copy andreverse the new end of the permutation
                 for j in 0..(k - i) {
-                    let src = buffer.offset(j as isize);
-                    let dst = perm.offset((k - j - 1) as isize);
+                    let src = buffer.add(j);
+                    let dst = perm.add(k - j - 1);
                     std::ptr::copy_nonoverlapping(src, dst, 1);
                 }
             }
