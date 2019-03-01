@@ -7,17 +7,14 @@ mod table;
 
 use self::table::Table;
 
-use crate::device::cuda;
-use itertools::Itertools;
-use serde_json;
-use std;
-use xdg;
-
+use crate::{Executor, Gpu, PerfCounter};
 use failure::Fail;
+use itertools::Itertools;
 use lazy_static::lazy_static;
-use log::{info, warn};
-
-use utils::unwrap;
+use log::*;
+use serde_json;
+use utils::*;
+use xdg;
 
 /// Error raised will retrieveing the GPU description
 #[derive(Debug, Fail)]
@@ -31,7 +28,7 @@ enum Error {
 }
 
 /// Retrieve the description of the GPU from the description file. Updates it if needed.
-pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
+pub fn get_gpu_desc(executor: &Executor) -> Gpu {
     let config_path = get_config_path();
     lazy_static! {
         // Ensure that at most one thread runs the characterization.
@@ -41,7 +38,7 @@ pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
     let gpu = std::fs::File::open(&config_path)
         .map_err(Error::FileNotFound)
         .and_then(|f| serde_json::from_reader(&f).map_err(Error::Parser))
-        .and_then(|gpu: cuda::Gpu| {
+        .and_then(|gpu: Gpu| {
             let name = executor.device_name();
             if gpu.name == name {
                 Ok(gpu)
@@ -67,7 +64,7 @@ pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
 }
 
 /// Characterize a GPU.
-pub fn characterize(executor: &cuda::Executor) -> cuda::Gpu {
+pub fn characterize(executor: &Executor) -> Gpu {
     info!("gpu name: {}", executor.device_name());
     let mut gpu = gpu::functional_desc(executor);
     gpu::performance_desc(executor, &mut gpu);
@@ -75,7 +72,7 @@ pub fn characterize(executor: &cuda::Executor) -> cuda::Gpu {
 }
 
 /// Creates an empty `Table` to hold the given performance counters.
-fn create_table(parameters: &[&str], counters: &[cuda::PerfCounter]) -> Table<u64> {
+fn create_table(parameters: &[&str], counters: &[PerfCounter]) -> Table<u64> {
     let header = parameters
         .iter()
         .map(|x| x.to_string())

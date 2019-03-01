@@ -1,16 +1,14 @@
 //! Defines a matrix-matrix multiply kernel.
 #![allow(dead_code)]
-extern crate rand;
-extern crate telamon;
-
-use self::rand::Rng;
-use self::telamon::explorer::choice::ActionEx;
-use self::telamon::search_space::*;
-use self::telamon::{device, explorer, helper, ir};
+use rand::Rng;
+use telamon::explorer::choice::ActionEx;
+use telamon::search_space::*;
+use telamon::{explorer, helper, ir};
+use telamon_cuda as cuda;
 
 lazy_static! {
     /// A fake GPU description, used only to know which candidates are valid.
-    static ref DEVICE: device::cuda::Gpu = device::cuda::Gpu::dummy();
+    static ref DEVICE: cuda::Gpu = cuda::Gpu::dummy();
 
     static ref MM_SIGNATURE: MMSig = MMSig::signature();
     pub static ref MM: SearchSpace<'static> = MM_SIGNATURE.build_body();

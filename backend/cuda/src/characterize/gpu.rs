@@ -1,9 +1,8 @@
 //! Builds the description of a GPU.
-use crate::device::cuda::characterize::instruction;
-use crate::device::cuda::DeviceAttribute::*;
-use crate::device::cuda::{self, Executor, InstDesc};
-use log::warn;
-use std;
+use crate::characterize::instruction;
+use crate::DeviceAttribute::*;
+use crate::{Executor, Gpu, InstDesc};
+use log::*;
 
 const EMPTY_INST_DESC: InstDesc = InstDesc {
     latency: 0.0,
@@ -18,10 +17,10 @@ const EMPTY_INST_DESC: InstDesc = InstDesc {
 };
 
 /// Returns the description of the GPU. Performance-related fields are not filled.
-pub fn functional_desc(executor: &cuda::Executor) -> cuda::Gpu {
+pub fn functional_desc(executor: &Executor) -> Gpu {
     let sm_major = executor.device_attribute(ComputeCapabilityMajor);
     let sm_minor = executor.device_attribute(ComputeCapabilityMinor);
-    cuda::Gpu {
+    Gpu {
         name: executor.device_name(),
         sm_major: sm_major as u8,
         sm_minor: sm_minor as u8,
@@ -129,7 +128,7 @@ fn thread_per_smx(sm_major: i32, sm_minor: i32) -> u32 {
 }
 
 /// Returns the amount of processing power available in a single SMX, in unit per cycle.
-fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
+fn smx_rates(gpu: &Gpu, executor: &Executor) -> InstDesc {
     let (wrap_scheds, issues_per_wrap) = wrap_scheds_per_smx(gpu.sm_major, gpu.sm_minor);
     let issue = wrap_scheds * issues_per_wrap * gpu.wrap_size;
     let (alu, mem, sync) = match (gpu.sm_major, gpu.sm_minor) {
@@ -156,7 +155,7 @@ fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
 }
 
 /// Computes the processing power of a single thread.
-fn thread_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
+fn thread_rates(gpu: &Gpu, smx_rates: &InstDesc) -> InstDesc {
     let (_, issues_per_wrap) = wrap_scheds_per_smx(gpu.sm_major, gpu.sm_minor);
     let wrap_size = f64::from(gpu.wrap_size);
     InstDesc {
@@ -173,7 +172,7 @@ fn thread_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
 }
 
 /// Computes the total processing power from the processing power of a single SMX.
-fn gpu_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
+fn gpu_rates(gpu: &Gpu, smx_rates: &InstDesc) -> InstDesc {
     let num_smx = f64::from(gpu.num_smx);
     InstDesc {
         latency: smx_rates.latency,
@@ -211,7 +210,7 @@ fn ram_bandwidth(executor: &Executor) -> f64 {
 }
 
 /// Updates the gpu description with performance numbers.
-pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
+pub fn performance_desc(executor: &Executor, gpu: &mut Gpu) {
     // TODO(model): l1 and l2 lines rates may not be correct on non-kepler architectures
     // Compute the processing.
     gpu.smx_rates = smx_rates(gpu, executor);
@@ -253,7 +252,7 @@ pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
     }
     gpu.loop_end_latency = instruction::loop_iter_end_latency(gpu, executor, addf32_lat);
     gpu.loop_iter_overhead = instruction::loop_iter_overhead(gpu, executor);
-    gpu.loop_init_overhead = cuda::InstDesc {
+    gpu.loop_init_overhead = InstDesc {
         issue: 1f64,
         alu: 1f64,
         ..EMPTY_INST_DESC

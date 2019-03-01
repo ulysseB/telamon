@@ -1,5 +1,5 @@
-use telamon::device::cuda;
-use utils::unwrap;
+use telamon_cuda as cuda;
+use utils::*;
 
 fn main() {
     env_logger::init();

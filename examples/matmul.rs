@@ -5,11 +5,10 @@
 //! cargo run --example=matmul --features=cuda --release
 //! ```
 //! To display the candidates evaluated, use `RUST_LOG=telamon::explorer::warn`.
-extern crate env_logger;
-extern crate telamon;
 
-use telamon::device::{cuda, Context};
+use telamon::device::Context;
 use telamon::{codegen, explorer, helper, ir, search_space};
+use telamon_cuda as cuda;
 
 // Define the problem size.
 const M: u32 = 1024;

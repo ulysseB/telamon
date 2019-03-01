@@ -1,14 +1,15 @@
 //! Describes CUDA-enabled GPUs.
-use crate::codegen::Function;
-use crate::device::cuda::mem_model::{self, MemInfo};
-use crate::device::cuda::CudaPrinter;
-use crate::device::{self, cuda, Device};
-use crate::ir::{self, Operator, Type};
-use crate::model::{self, HwPressure};
-use crate::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+#[cfg(feature = "real_gpu")]
+use crate::characterize;
+use crate::mem_model::{self, MemInfo};
+use crate::{CudaPrinter, Executor};
 use serde::{Deserialize, Serialize};
-use std;
 use std::io::Write;
+use telamon::codegen::Function;
+use telamon::device::{self, Device};
+use telamon::ir::{self, Operator, Type};
+use telamon::model::{self, HwPressure};
+use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 use utils::*;
 
 // FIXME: fix performance model
@@ -156,14 +157,14 @@ pub struct Gpu {
 
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
-    #[cfg(feature = "cuda")]
-    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
-        cuda::characterize::get_gpu_desc(executor)
+    #[cfg(feature = "real_gpu")]
+    pub fn from_executor(executor: &Executor) -> Gpu {
+        characterize::get_gpu_desc(executor)
     }
 
     /// Returns the GPU model corresponding to `name.
-    #[cfg(not(feature = "cuda"))]
-    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+    #[cfg(not(feature = "real_gpu"))]
+    pub fn from_executor(executor: &Executor) -> Gpu {
         match *executor {}
     }
 
@@ -293,7 +294,7 @@ impl Gpu {
         inst: &ir::Instruction,
         ctx: &device::Context,
     ) -> HwPressure {
-        use crate::ir::Operator::*;
+        use telamon::ir::Operator::*;
         let t = inst.t().map(|t| self.lower_type(t, space).unwrap_or(t));
         match (inst.operator(), t) {
             (&BinOp(ir::BinOp::Add, ..), Some(Type::F(32)))

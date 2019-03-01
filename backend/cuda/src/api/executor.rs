@@ -1,11 +1,11 @@
 //! Allows the execution of kernels on the GPU.
-use crate::device::cuda::api::wrapper::*;
-use crate::device::cuda::api::*;
+use crate::api::wrapper::*;
+use crate::api::*;
 use lazy_static::lazy_static;
 use libc;
 use std::ffi::CStr;
 use std::sync::Mutex;
-use utils::unwrap;
+use utils::*;
 
 lazy_static! {
     static ref JIT_SPAWNER: Mutex<DaemonSpawner> = Mutex::new(DaemonSpawner::new());

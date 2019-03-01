@@ -1,20 +1,17 @@
 //! IR instances compiled into CUDA kernels.
-use crate::codegen;
-use crate::codegen::ParamVal;
-use crate::device;
-use crate::device::cuda::{api, Context, Gpu, JITDaemon};
-use crate::device::Context as ContextTrait;
-#[cfg(feature = "cuda")]
-use device::cuda::PerfCounterSet;
+#[cfg(feature = "real_gpu")]
+use crate::PerfCounterSet;
+use crate::{api, Context, Gpu, JITDaemon};
 use itertools::Itertools;
 use log::warn;
-use std;
+use telamon::codegen::{self, ParamVal};
+use telamon::device::{self, Context as ContextTrait};
 
 /// An IR instance compiled into a CUDA kernel.
 pub struct Kernel<'a, 'b> {
     executor: &'a api::Executor,
     module: api::Module<'a>,
-    function: &'b device::Function<'b>,
+    function: &'b codegen::Function<'b>,
     expected_blocks_per_smx: u32,
     ptx: String,
 }
@@ -22,7 +19,7 @@ pub struct Kernel<'a, 'b> {
 impl<'a, 'b> Kernel<'a, 'b> {
     /// Compiles a device function.
     pub fn compile(
-        fun: &'b device::Function<'b>,
+        fun: &'b codegen::Function<'b>,
         gpu: &Gpu,
         executor: &'a api::Executor,
         opt_level: usize,
@@ -39,7 +36,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
 
     /// Compiles a device function, using a separate process.
     pub fn compile_remote(
-        function: &'b device::Function<'b>,
+        function: &'b codegen::Function<'b>,
         gpu: &Gpu,
         executor: &'a api::Executor,
         jit_daemon: &mut JITDaemon,
@@ -70,7 +67,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
     }
 
     /// Instruments the kernel with the given performance counters.
-    #[cfg(feature = "cuda")]
+    #[cfg(feature = "real_gpu")]
     pub fn instrument(&self, args: &Context, counters: &PerfCounterSet) -> Vec<u64> {
         let cuda_kernel = self.module.kernel(&self.function.name);
         self.gen_args(args)
@@ -98,7 +95,9 @@ impl<'a, 'b> Kernel<'a, 'b> {
             .device_code_args()
             .map(|x| match *x {
                 ParamVal::External(p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
-                ParamVal::Size(ref s) => ThunkArg::Size(args.eval_size(s) as i32),
+                ParamVal::Size(ref s) => {
+                    ThunkArg::Size(Box::new(args.eval_size(s) as i32))
+                }
                 ParamVal::GlobalMem(_, ref size, _) => {
                     tmp_arrays.push(args.eval_size(size) as usize);
                     ThunkArg::TmpArray(tmp_arrays.len() - 1)
@@ -192,7 +191,7 @@ impl<'a> ThunkArgs<'a> {
     }
 
     /// Instruments the kernel.
-    #[cfg(feature = "cuda")]
+    #[cfg(feature = "real_gpu")]
     pub fn instrument(
         &self,
         cuda_kernel: &api::Kernel,
@@ -277,13 +276,13 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 /// An argument of a kernel ready to evaluate.
 enum ThunkArg<'a> {
     ArgRef(&'a api::Argument),
-    Size(i32),
+    Size(Box<dyn device::ScalarArgument>),
     TmpArray(usize),
 }
 
 impl<'a> std::fmt::Debug for ThunkArg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
+        match self {
             ThunkArg::ArgRef(_) => write!(f, "context argument"),
             ThunkArg::Size(size) => write!(f, "size = {}", size),
             ThunkArg::TmpArray(size) => write!(f, "temporary array of size {}", size),

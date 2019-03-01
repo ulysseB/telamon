@@ -1,19 +1,12 @@
 #![cfg(feature = "cuda")]
-extern crate env_logger;
-extern crate itertools;
-extern crate libc;
-extern crate telamon;
-extern crate telamon_utils as utils;
-#[macro_use]
-extern crate log;
-
 mod common;
 
-use common::*;
+use crate::common::*;
 use itertools::Itertools;
-use telamon::device::{cuda, ArrayArgumentExt, Context};
+use telamon::device::{ArrayArgumentExt, Context};
 use telamon::search_space::*;
 use telamon::{helper, ir};
+use telamon_cuda as cuda;
 
 /// Tests the printing of unrolled dimensions.
 #[test]

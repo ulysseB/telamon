@@ -1,17 +1,16 @@
 //! Builds code for micro benchmarks.
-use crate::codegen;
-use crate::device::cuda::characterize::Table;
-use crate::device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
-use crate::device::{ArgMapExt, Device, ScalarArgument};
-use crate::explorer;
-use crate::helper::tensor::DimSize;
-use crate::helper::{AutoOperand, Builder, Reduce};
-use crate::ir::{self, Signature};
-use crate::search_space::*;
+use crate::characterize::Table;
+use crate::{Context, Gpu, Kernel, PerfCounterSet};
 use itertools::Itertools;
-use log::trace;
+use log::*;
 use num::Zero;
-use std;
+use telamon::codegen;
+use telamon::device::{ArgMapExt, Device, ScalarArgument};
+use telamon::explorer;
+use telamon::helper::tensor::DimSize;
+use telamon::helper::{AutoOperand, Builder, Reduce};
+use telamon::ir::{self, Signature};
+use telamon::search_space::*;
 use utils::*;
 
 /// Generates a function base with the given arguments.
