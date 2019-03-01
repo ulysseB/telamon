@@ -29,25 +29,52 @@ pub enum RolloutError {
 }
 
 impl<'a> Rollout<'a> {
-    pub fn is_live(&self, candidate: &Candidate<'_>) -> bool {
-        if candidate.bound.value() > self.cut {
-            return false;
-        }
-
-        if let Some(choice) = choice::list(self.choice_order, &candidate.space).next() {
-            for action in choice {
-                if let Some(child) = candidate.apply_decision(self.context, action).ok() {
-                    if self.is_live(&child) {
-                        // Fully-specified candidate found in this subtree
-                        return true;
+    /// Repeatedly perform rollout steps on the `candidate` until it is fully specified,
+    /// backtracking when deadends are reached.  Returns `None` if the whole subtree is dead.
+    pub fn descend_backtrack<'c>(
+        &self,
+        candidate: Candidate<'c>,
+    ) -> Option<Candidate<'c>> {
+        let choice = choice::list(self.choice_order, &candidate.space).next();
+        if let Some(choice) = choice {
+            let mut children = choice
+                .into_iter()
+                .enumerate()
+                .map(|(ix, action)| {
+                    candidate
+                        .apply_decision(self.context, action)
+                        .ok()
+                        .map(|child| (ix, child.bound.value(), Box::new(child)))
+                })
+                .collect::<Vec<_>>();
+            loop {
+                // Select a child among the valid ones
+                if let Some(ix) = self.node_order.pick_index(
+                    children
+                        .iter()
+                        .filter_map(|t| {
+                            t.as_ref().map(|&(ix, bound, ref _cand)| (ix, bound))
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                    self.cut,
+                ) {
+                    // If we fail the recursive `descend` call, the corresponding entry in the
+                    // vector will be set to `None` and never retried.
+                    if let Some(implementation) =
+                        self.descend_backtrack(*children[ix].take().unwrap().2)
+                    {
+                        // Found something
+                        break Some(implementation);
                     }
+                } else {
+                    // All the children are now invalid: this candidate is dead.
+                    break None;
                 }
             }
-
-            false
         } else {
-            // This is a fully-specified candidate
-            true
+            // This is already a fully-specified implementation
+            Some(candidate)
         }
     }
 
