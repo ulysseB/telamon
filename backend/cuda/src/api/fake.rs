@@ -17,7 +17,7 @@ pub trait Argument: Send + Sync {
 
 impl Argument for Box<dyn device::ScalarArgument> {
     fn as_size(&self) -> Option<u32> {
-        (self.deref()).as_size()
+        (*self).as_size()
     }
 }
 

@@ -104,7 +104,7 @@ impl<'a> Context<'a> {
         // min and median with N outliers).
         let runtimes = (0..num_evals).map(|_| thunk.execute());
         let runtimes_by_value =
-            (process_results(runtimes, |iter| iter.sorted())?).collect_vec();
+            process_results(runtimes, |iter| iter.sorted())?.collect_vec();
         let median = self.ticks_to_ns(runtimes_by_value[num_evals / 2]);
         let runtimes_by_delta = runtimes_by_value
             .into_iter()
