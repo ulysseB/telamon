@@ -173,8 +173,13 @@ telajax_kernel_build(
 
 	// build the OpenCL kernel associated with program_final
 	cl_kernel kernel_final = clCreateKernel(program_final, wrapper->_name, &err);
-	assert(kernel_final);
-	assert(!err);
+  if (err) {
+    printf("Error in kernel build: %s\n", get_ocl_error(err));
+    goto ERROR;
+  }
+	if(kernel_final == NULL){
+		err = -1; goto ERROR;
+	}
 
 	// delete rand_file_path_src and rand_file_path_obj
 	remove(rand_file_path_obj);
