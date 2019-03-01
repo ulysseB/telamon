@@ -1,14 +1,14 @@
 //! Parallel PTX compilation.
-use crate::device::cuda::api::{wrapper::*, Module};
+use crate::api::wrapper::*;
+use crate::api::Module;
 use errno::errno;
 use ipc_channel::ipc;
 use libc;
-use log::{debug, error, info, trace};
+use log::*;
 use prctl;
-use std;
 use std::ffi::CString;
 use std::slice;
-use utils::unwrap;
+use utils::*;
 
 /// A process that compiles PTX in a separate process.
 pub struct JITDaemon {

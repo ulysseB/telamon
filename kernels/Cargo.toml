@@ -14,23 +14,18 @@ num = "0.2.0"
 num_cpus = "1.8.0"
 rayon = "1.0.1"
 rand = "0.5.5"
+cuda-sys = { optional = true, version = "0.1.0" }
+
+telamon = { path = "../" }
+telamon-cuda = { path = "../backend/cuda", optional=true }
+telamon-utils = { path = "../telamon-utils" }
 
 [dev-dependencies]
 futures = "0.1.23"
 
-[dependencies.cuda-sys]
-optional = true
-version = "0.1.0"
-
-[dependencies.telamon]
-path = "../"
-
-[dependencies.telamon-utils]
-path = "../telamon-utils"
-
 [features]
 cuda = [
-    "telamon/cuda",
+    "telamon-cuda",
     "cuda-sys",
 ]
 

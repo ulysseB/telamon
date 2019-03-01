@@ -2,9 +2,10 @@
 //! is not installed. This allows us to reference the CUDA-specific types without cuda
 //! installed and to run tests on functions that do not rely on the executor.
 
-use crate::device;
-use crate::device::cuda::api;
+use crate::api;
 use std::marker::PhantomData;
+use std::ops::Deref;
+use telamon::device;
 
 /// An argument that can be passed to the executor.
 pub trait Argument: Send + Sync {
@@ -14,18 +15,9 @@ pub trait Argument: Send + Sync {
     }
 }
 
-impl<T> Argument for T
-where
-    T: device::ScalarArgument,
-{
-    fn as_size(&self) -> Option<u32> {
-        device::ScalarArgument::as_size(self)
-    }
-}
-
 impl Argument for Box<dyn device::ScalarArgument> {
     fn as_size(&self) -> Option<u32> {
-        device::ScalarArgument::as_size(self.as_ref())
+        (*self).as_size()
     }
 }
 

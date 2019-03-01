@@ -1,11 +1,5 @@
 //! Rust script to compile non-rust files.
-extern crate cc;
-extern crate failure;
-extern crate glob;
-extern crate telamon_gen;
-
-use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Orders to Cargo to link a library.
 fn add_lib(lib: &str) {
@@ -14,40 +8,6 @@ fn add_lib(lib: &str) {
 
 fn add_dependency(dep: &Path) {
     println!("cargo:rerun-if-changed={}", dep.display());
-}
-
-/// Compiles and links the cuda wrapper and libraries.
-fn compile_link_cuda() {
-    let mut builder = cc::Build::new();
-
-    // If CUDA_HOME is defined, use the cuda headers and libraries from there.
-    if let Some(cuda_home) = env::var_os("CUDA_HOME").map(PathBuf::from) {
-        println!(
-            "cargo:rustc-link-search=native={}",
-            cuda_home.join("lib64").display()
-        );
-        println!(
-            "cargo:rustc-link-search=native={}",
-            cuda_home
-                .join("extras")
-                .join("CUPTI")
-                .join("lib64")
-                .display()
-        );
-
-        builder
-            .include(cuda_home.join("include"))
-            .include(cuda_home.join("extras").join("CUPTI").join("include"));
-    }
-
-    builder
-        .flag("-Werror")
-        .file("src/device/cuda/api/wrapper.c")
-        .compile("libdevice_cuda_wrapper.a");
-    add_dependency(Path::new("src/device/cuda/api/wrapper.c"));
-    add_lib("cuda");
-    add_lib("curand");
-    add_lib("cupti");
 }
 
 fn main() {
@@ -67,9 +27,6 @@ fn main() {
         eprintln!("could not compile EXH file: {}", err);
         std::process::exit(-1);
     });
-    if cfg!(feature = "cuda") {
-        compile_link_cuda();
-    }
 
     if cfg!(feature = "mppa") {
         add_lib("telajax");

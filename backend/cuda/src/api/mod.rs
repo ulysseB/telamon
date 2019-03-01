@@ -18,10 +18,11 @@ pub use self::module::{Argument, Kernel, Module};
 use self::jit_daemon::DaemonSpawner;
 
 #[cfg(test)]
-#[cfg(feature = "cuda")]
+#[cfg(feature = "real_gpu")]
 mod tests {
     use super::array;
     use super::*;
+    use utils::*;
 
     /// Tries to initialize a CUDA execution context.
     #[test]

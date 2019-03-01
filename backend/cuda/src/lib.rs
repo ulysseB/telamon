@@ -1,7 +1,7 @@
 //! Defines the CUDA target.
-#[cfg(feature = "cuda")]
+#[cfg(feature = "real_gpu")]
 mod api;
-#[cfg(not(feature = "cuda"))]
+#[cfg(not(feature = "real_gpu"))]
 mod api {
     mod error;
     mod fake;
@@ -14,25 +14,24 @@ mod kernel;
 mod mem_model;
 mod printer;
 
-#[cfg(feature = "cuda")]
+#[cfg(feature = "real_gpu")]
 pub mod characterize;
 
 // Constructs to retrieve information on the GPU, that are not needed for the regular
 // operation of Telamon and thus only present if the cuda feature is.
 pub use self::api::{Array, Executor, JITDaemon};
-#[cfg(feature = "cuda")]
+#[cfg(feature = "real_gpu")]
 pub use self::api::{DeviceAttribute, PerfCounter, PerfCounterSet};
 pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 pub use self::printer::CudaPrinter;
 
-use crate::codegen;
-use crate::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
-use std;
+use telamon::codegen;
+use telamon::ir;
 use utils::*;
 
 #[derive(Default)]

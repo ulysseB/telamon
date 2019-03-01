@@ -1,7 +1,6 @@
 //! Table with named columns.
 #![allow(dead_code)]
 use prettytable;
-use std;
 
 pub struct Table<T: std::fmt::Display> {
     header: Vec<String>,

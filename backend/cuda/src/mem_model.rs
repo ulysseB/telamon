@@ -1,13 +1,13 @@
 //! Memory accesses analysis.
-use crate::device::{cuda, Context};
-use crate::ir;
-use crate::model::size;
-use crate::search_space::*;
+use crate::Gpu;
 use binary_heap_plus::BinaryHeap;
 use itertools::Itertools;
 use log::trace;
 use num::Integer;
-use std;
+use telamon::device::Context;
+use telamon::ir;
+use telamon::model::size;
+use telamon::search_space::*;
 use utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
@@ -35,7 +35,7 @@ pub struct MemInfo {
 /// Runs the memory analysis.
 pub fn analyse(
     space: &SearchSpace,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
     inst: &ir::Instruction,
     sizes: &HashMap<ir::DimId, size::Range>,
     ctx: &Context,
@@ -67,7 +67,7 @@ pub fn analyse(
 }
 
 /// Computes the `MemInfo` when the access pattern is unknown.
-fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
+fn unknown_info(is_shared_access: Trivalent, gpu: &Gpu) -> MemInfo {
     let mut info = MemInfo::default();
     if is_shared_access.maybe_true() {
         info.replay_factor = 1.0;
@@ -92,7 +92,7 @@ fn info(
     inst: &ir::Instruction,
     dims: &HashMap<ir::DimId, ir::PartialSize>,
     is_shared_access: Trivalent,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
     sizes: &HashMap<ir::DimId, size::Range>,
     ctx: &Context,
 ) -> MemInfo {
@@ -239,7 +239,7 @@ fn sort_thread_dims(
     dims: Vec<ThreadDimInfo>,
     use_gcd: bool,
     space: &SearchSpace,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
 ) -> Vec<ThreadDimInfo> {
     let sure_thread_dims = dims
         .iter()
@@ -289,7 +289,7 @@ fn cmp_thread_dims(
     lhs: &ThreadDimInfo,
     rhs: &ThreadDimInfo,
     use_gcd: bool,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
 ) -> std::cmp::Ordering {
     let (lhs_val, rhs_val) = if use_gcd {
         let replay_distance = u64::from(gpu.wrap_size * gpu.shared_bank_stride);
@@ -309,7 +309,7 @@ fn cmp_thread_dims(
 fn wrap_access_offsets(
     thread_dims: &[ThreadDimInfo],
     use_gcd: bool,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
 ) -> Vec<u64> {
     let mut offsets = Vec::with_capacity(gpu.wrap_size as usize);
     offsets.push(0);
@@ -366,7 +366,7 @@ fn shared_replay_factor(
     tensor_dims: &HashMap<ir::DimId, ir::PartialSize>,
     dim_sizes: &HashMap<ir::DimId, size::Range>,
     space: &SearchSpace,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
 ) -> f64 {
     let thread_dims = sort_thread_dims(thread_dims, true, space, gpu);
     // Handle replays caused by offsets.
@@ -406,7 +406,7 @@ fn shared_replay_factor(
 }
 
 /// Computes the replay factor for a list of shared memory access.
-fn offsets_shared_replay_factor(offsets: &[u64], gpu: &cuda::Gpu) -> u32 {
+fn offsets_shared_replay_factor(offsets: &[u64], gpu: &Gpu) -> u32 {
     // We only need to account for hits on the first bank. Other banks will have a smaller
     // replay factor.
     let mut hits: HashSet<_> = std::iter::once(0).collect();
@@ -424,7 +424,7 @@ fn offsets_shared_replay_factor(offsets: &[u64], gpu: &cuda::Gpu) -> u32 {
 fn global_coalescing(
     thread_dims: Vec<ThreadDimInfo>,
     space: &SearchSpace,
-    gpu: &cuda::Gpu,
+    gpu: &Gpu,
 ) -> (f64, f64, f64) {
     let thread_dims = sort_thread_dims(thread_dims, false, space, gpu);
     let offsets = wrap_access_offsets(&thread_dims, true, gpu);
@@ -448,7 +448,7 @@ fn global_coalescing(
 }
 
 /// Computes the L1, L2 coalescing and replay factor for a global memory access.
-fn offsets_global_coalescing(offsets: &[u64], gpu: &cuda::Gpu) -> (f64, f64, f64) {
+fn offsets_global_coalescing(offsets: &[u64], gpu: &Gpu) -> (f64, f64, f64) {
     let mut l1_lines: HashSet<_> = std::iter::once(0).collect();
     let mut l2_lines: HashSet<_> = std::iter::once(0).collect();
     // Compute the lines accessed by each tread in a wrap.
@@ -590,16 +590,15 @@ else { None }
 */
 
 #[cfg(test)]
-#[cfg(feature = "cuda")]
+#[cfg(feature = "real_gpu")]
 mod tests {
     use super::*;
-    use device::cuda::{self, Gpu};
-    use device::Device;
+    use crate::{Context, Executor, Gpu};
     use env_logger;
-    use helper;
-    use ir;
-    use model::size::Range;
-    use search_space::Order;
+    use telamon::device::Device;
+    use telamon::model::size::Range;
+    use telamon::search_space::Order;
+    use telamon::{helper, ir};
 
     /// Generates function with a load in two thread dimensions, with non-coalesced
     /// accessed on the first one.
@@ -642,9 +641,9 @@ mod tests {
     #[test]
     fn global_full_coalescing() {
         let _ = env_logger::try_init();
-        let executor = cuda::Executor::init();
-        let ctx = cuda::Context::new(&executor);
-        let gpu = cuda::Gpu::from_executor(&executor);
+        let executor = Executor::init();
+        let ctx = Context::new(&executor);
+        let gpu = Gpu::from_executor(&executor);
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
@@ -658,9 +657,9 @@ mod tests {
     #[test]
     fn global_no_coalescing() {
         let _ = env_logger::try_init();
-        let executor = cuda::Executor::init();
-        let ctx = cuda::Context::new(&executor);
-        let gpu = cuda::Gpu::from_executor(&executor);
+        let executor = Executor::init();
+        let ctx = Context::new(&executor);
+        let gpu = Gpu::from_executor(&executor);
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
         let inst = space.ir_instance().inst(inst);

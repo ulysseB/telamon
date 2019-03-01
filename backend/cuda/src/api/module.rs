@@ -1,12 +1,13 @@
 //! Interface with CUDA Modules and Kernels.
-#[cfg(feature = "cuda")]
-use crate::device::cuda::api::PerfCounterSet;
-use crate::device::{self, cuda::api::wrapper::*};
+use crate::api::wrapper::*;
+#[cfg(feature = "real_gpu")]
+use crate::api::PerfCounterSet;
 use itertools::Itertools;
 use libc;
-use log::debug;
+use log::*;
 use std::ffi::CString;
-use utils::unwrap;
+use telamon::device;
+use utils::*;
 
 /// A CUDA module.
 pub struct Module<'a> {
@@ -90,7 +91,7 @@ impl<'a> Kernel<'a> {
     }
 
     /// Instruments the kernel with the given performance counters.
-    #[cfg(feature = "cuda")]
+    #[cfg(feature = "real_gpu")]
     pub fn instrument(
         &self,
         blocks: &[u32; 3],
@@ -146,19 +147,6 @@ pub trait Argument: Sync + Send {
     /// Returns the argument value if it can represent a size.
     fn as_size(&self) -> Option<u32> {
         None
-    }
-}
-
-impl<T> Argument for T
-where
-    T: device::ScalarArgument,
-{
-    fn raw_ptr(&self) -> *const libc::c_void {
-        device::ScalarArgument::raw_ptr(self)
-    }
-
-    fn as_size(&self) -> Option<u32> {
-        device::ScalarArgument::as_size(self)
     }
 }
 

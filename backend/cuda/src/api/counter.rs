@@ -1,6 +1,6 @@
 //! Allows the execution of kernels on the GPU.
-use crate::device::cuda::api::wrapper::*;
-use crate::device::cuda::api::Argument;
+use crate::api::wrapper::*;
+use crate::api::Argument;
 use itertools::Itertools;
 use std::ffi::CString;
 use std::fmt;

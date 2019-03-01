@@ -1,14 +1,13 @@
 //! Microbenchmarks to get the description of each instruction.
-use crate::codegen;
-use crate::device::cuda::characterize::{create_table, gen, math, Table};
-use crate::device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
-use crate::device::{Device, ScalarArgument};
-use crate::helper::tensor::DimSize;
-use crate::ir;
+use crate::characterize::{create_table, gen, math, Table};
+use crate::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
 use itertools::Itertools;
-use log::{info, trace};
+use log::*;
 use num::Zero;
-use std;
+use telamon::codegen;
+use telamon::device::{Device, ScalarArgument};
+use telamon::helper::tensor::DimSize;
+use telamon::ir;
 use utils::*;
 
 /// Instruments a single thread with a loop containing chained instructions.

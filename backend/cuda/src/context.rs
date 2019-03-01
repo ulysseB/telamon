@@ -1,17 +1,14 @@
-use crate::device::context::AsyncCallback;
-use crate::device::cuda::api::Argument;
-use crate::device::cuda::kernel::Thunk;
-use crate::device::cuda::{Executor, Gpu, JITDaemon, Kernel};
-use crate::device::{self, Device, EvalMode, ScalarArgument};
-use crate::explorer;
-use crate::ir;
+use crate::api::Argument;
+use crate::kernel::Thunk;
+use crate::{Executor, Gpu, JITDaemon, Kernel};
 ///! Defines the CUDA evaluation context.
 use crossbeam;
 use itertools::{process_results, Itertools};
 use log::{debug, info};
-use std;
 use std::f64;
 use std::sync::{atomic, mpsc, Arc};
+use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
+use telamon::{codegen, explorer, ir};
 use utils::*;
 
 /// Max number of candidates waiting to be evaluated.
@@ -106,12 +103,14 @@ impl<'a> Context<'a> {
         // earlier and make tests to know when (for example, measure the MAX delta between
         // min and median with N outliers).
         let runtimes = (0..num_evals).map(|_| thunk.execute());
-        let runtimes_by_value = process_results(runtimes, |iter| iter.sorted())?;
+        let runtimes_by_value =
+            process_results(runtimes, |iter| iter.sorted())?.collect_vec();
         let median = self.ticks_to_ns(runtimes_by_value[num_evals / 2]);
         let runtimes_by_delta = runtimes_by_value
             .into_iter()
             .map(|t| self.ticks_to_ns(t))
-            .sorted_by(|lhs, rhs| cmp_f64((lhs - median).abs(), (rhs - median).abs()));
+            .sorted_by(|lhs, rhs| cmp_f64((lhs - median).abs(), (rhs - median).abs()))
+            .collect_vec();
         let average = runtimes_by_delta[..num_samples]
             .iter()
             .cloned()
@@ -158,7 +157,7 @@ impl<'a> device::Context for Context<'a> {
         self.get_param(name).as_size()
     }
 
-    fn evaluate(&self, function: &device::Function, mode: EvalMode) -> Result<f64, ()> {
+    fn evaluate(&self, function: &codegen::Function, mode: EvalMode) -> Result<f64, ()> {
         let gpu = &self.gpu_model;
         let kernel = Kernel::compile(function, gpu, self.executor, Self::opt_level(mode));
         kernel
@@ -166,7 +165,7 @@ impl<'a> device::Context for Context<'a> {
             .map(|t| t as f64 / self.gpu_model.smx_clock)
     }
 
-    fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
+    fn benchmark(&self, function: &codegen::Function, num_samples: usize) -> Vec<f64> {
         let gpu = &self.gpu_model;
         let kernel = Kernel::compile(function, gpu, self.executor, 4);
         kernel.evaluate_real(self, num_samples)
@@ -194,11 +193,11 @@ impl<'a> device::Context for Context<'a> {
                 unwrap!(scope
                     .builder()
                     .name("Telamon - Explorer Thread".to_string())
-                    .spawn(move || inner(&mut evaluator)));
+                    .spawn(move |_| inner(&mut evaluator)));
             }
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
-            let res = scope.builder().name(eval_thread_name).spawn(move || {
+            let res = scope.builder().name(eval_thread_name).spawn(move |_| {
                 let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
                     let bound = candidate.bound.value();
@@ -216,7 +215,8 @@ impl<'a> device::Context for Context<'a> {
             });
             unwrap!(res);
             std::mem::drop(send);
-        });
+        })
+        .unwrap();
         let blocked_time = blocked_time.load(atomic::Ordering::SeqCst);
         info!(
             "Total time blocked on `add_kernel`: {:.4e}ns",
@@ -248,7 +248,7 @@ where
         callback: device::AsyncCallback<'a, 'c>,
     ) {
         let thunk = {
-            let dev_fun = device::Function::build(&candidate.space);
+            let dev_fun = codegen::Function::build(&candidate.space);
             let gpu = &self.context.gpu();
             debug!(
                 "compiling kernel with bound {} and actions {:?}",

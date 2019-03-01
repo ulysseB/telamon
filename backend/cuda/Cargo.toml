@@ -1,0 +1,52 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+name = "telamon-cuda"
+version = "1.0.0"
+edition = "2018"
+
+[build-dependencies]
+cc = "1.0"
+
+[dependencies]
+binary-heap-plus = "0.1"
+crossbeam = "0.7"
+ipc-channel = { version = "0.10", optional = true }
+lazy_static = { version = "1.0", optional = true }
+libc = { version = "0.2", optional = true }
+errno = { version = "0.2", optional = true }
+env_logger = "0.5"
+failure = "0.1"
+itertools = "0.8"
+log = "0.4"
+num = "0.2"
+prctl = { version = "1.0", optional = true }
+prettytable-rs = { version = "0.6", optional = true }
+serde = "1.0"
+serde_json = "1.0.22"
+telamon = {path = "../../"}
+utils = {package = "telamon-utils", path = "../../telamon-utils"}
+xdg = { version = "2.1", optional = true }
+
+[dev-dependencies]
+regex = "0.2"
+
+[features]
+real_gpu = [
+  "errno",
+  "ipc-channel",
+  "lazy_static",
+  "libc",
+  "prctl",
+  "prettytable-rs",
+  "xdg",
+]
+default = ["real_gpu"]
+
+[[bin]]
+name = "characterize"
+required-features = ["real_gpu"]
+
+[[bench]]
+name = "model"
+path = "benches/model/main.rs"
+required-features = ["real_gpu"]

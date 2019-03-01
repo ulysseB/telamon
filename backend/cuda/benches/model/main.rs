@@ -1,15 +1,17 @@
 //! Tests the accuracy of the performance model. A pattern can be passed as argument to
 //! specify the tests to run.
-
 mod latency;
 mod memory;
 mod tests;
 
+use log::*;
 use regex::Regex;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
+use telamon_cuda as cuda;
+use utils::*;
 
 use log::info;
 use utils::unwrap;
@@ -43,8 +45,8 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
     if !pattern.is_match(T::name()) {
         return;
     }
-    let executor = telamon::device::cuda::Executor::init();
-    let mut context = telamon::device::cuda::Context::new(&executor);
+    let executor = cuda::Executor::init();
+    let mut context = cuda::Context::new(&executor);
     let base = {
         let mut base_builder = helper::SignatureBuilder::new(T::name(), &mut context);
         T::gen_signature(&mut base_builder);

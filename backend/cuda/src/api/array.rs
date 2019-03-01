@@ -1,10 +1,9 @@
 //! Allows the execution of kernels on the GPU.
-use crate::device;
-use crate::device::cuda::api::wrapper::*;
-use crate::device::cuda::api::Argument;
+use crate::api::wrapper::*;
+use crate::api::Argument;
 use libc;
 use num::integer::div_rem;
-use std;
+use telamon::device;
 
 /// An array allocated on a CUDA device.
 pub struct Array<'a, T> {

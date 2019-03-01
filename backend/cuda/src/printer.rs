@@ -1,13 +1,12 @@
 //! Provides functions to print PTX code.
-use crate::codegen::*;
-use crate::device::cuda::{Gpu, Namer};
-use crate::ir::{self, op, Type};
-use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use crate::{Gpu, Namer};
 use itertools::Itertools;
-use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use std::io::Write;
+use telamon::codegen::*;
+use telamon::ir::{self, op, Type};
+use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use utils::*;
 
 #[derive(Default)]
