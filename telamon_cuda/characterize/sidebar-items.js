@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["characterize","Characterize a GPU."],["get_config_path","Returns the name of the configuration file."],["get_gpu_desc","Retrieve the description of the GPU from the description file. Updates it if needed."]]});
