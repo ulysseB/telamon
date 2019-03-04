@@ -42,6 +42,12 @@ harness = false
 required-features = ["cuda"]
 
 [[bench]]
+name = "cuda-depth"
+path = "benches/cuda_depth.rs"
+harness = false
+required-features = ["cuda"]
+
+[[bench]]
 name = "cuda-bound"
 path = "benches/cuda_bound.rs"
 harness = false

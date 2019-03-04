@@ -234,6 +234,37 @@ pub trait Kernel<'a>: Sized {
             .count();
         num_deadends as f64 / num_samples as f64
     }
+
+    /// Estimates the average depth of a random path in the search tree.
+    fn path_depth<AM>(
+        params: Self::Parameters,
+        num_samples: usize,
+        context: &mut AM,
+    ) -> statistics::Estimate
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        let candidates = kernel.build_body(&signature, context);
+        let values = (0..num_samples)
+            .into_par_iter()
+            .flat_map(|_| {
+                let order = explorer::config::NewNodeOrder::Random;
+                let ordering = explorer::config::ChoiceOrdering::default();
+                let inf = std::f64::INFINITY;
+                let candidate_idx = order.pick_candidate(&candidates, inf);
+                let candidate = candidates[unwrap!(candidate_idx)].clone();
+                local_selection::descend(&ordering, order, context, candidate, inf)
+            })
+            .map(|c| c.depth as f64)
+            .collect();
+        statistics::estimate_mean(values, 0.95, "")
+    }
 }
 
 /// Descend along a path in the search tree and stores the bounds encountered on the way.
