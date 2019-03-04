@@ -1,5 +1,6 @@
 // Enables `quote!` to work on bigger chunks of code.
 #![recursion_limit = "256"]
+#![allow(clippy::all)]
 
 use utils::generated_file;
 pub mod ast;

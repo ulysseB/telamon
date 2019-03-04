@@ -69,7 +69,7 @@ impl<'a> Candidate<'a> {
                 mem,
                 ref st_dims,
                 ref ld_dims,
-            } => space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
+            } => space.lower_layout(mem, st_dims, ld_dims),
         }?;
         let bound = bound(&space, context);
         let delta = 1.0e-2 * self.bound.value();

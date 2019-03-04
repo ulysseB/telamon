@@ -69,25 +69,19 @@ where
             // Iterate simultaneously on both vectors to remove duplicate elements.
             let (mut lhs_idx, mut lhs_del, mut rhs_idx, mut rhs_del) = (0, 0, 0, 0);
             while lhs_idx < lhs_old_len && rhs_idx < rhs_old_len {
-                let lhs = self.data.as_mut_ptr().offset(lhs_idx as isize);
-                let rhs = other.data.as_mut_ptr().offset(rhs_idx as isize);
+                let lhs = self.data.as_mut_ptr().add(lhs_idx);
+                let rhs = other.data.as_mut_ptr().add(rhs_idx);
                 match (*lhs).cmp(&*rhs) {
                     std::cmp::Ordering::Less => {
                         if lhs_del > 0 {
-                            let lhs_dst = self
-                                .data
-                                .as_mut_ptr()
-                                .offset((lhs_idx - lhs_del) as isize);
+                            let lhs_dst = self.data.as_mut_ptr().add(lhs_idx - lhs_del);
                             std::ptr::copy_nonoverlapping(lhs, lhs_dst, 1);
                         }
                         lhs_idx += 1;
                     }
                     std::cmp::Ordering::Greater => {
                         if rhs_del > 0 {
-                            let rhs_dst = other
-                                .data
-                                .as_mut_ptr()
-                                .offset((rhs_idx - rhs_del) as isize);
+                            let rhs_dst = other.data.as_mut_ptr().add(rhs_idx - rhs_del);
                             std::ptr::copy_nonoverlapping(rhs, rhs_dst, 1);
                         }
                         rhs_idx += 1;
@@ -104,14 +98,13 @@ where
             }
             // Complete vectors that are not yet explored.
             if lhs_idx < lhs_old_len && lhs_del > 0 {
-                let lhs_src = self.data.as_ptr().offset(lhs_idx as isize);
-                let lhs_dst = self.data.as_mut_ptr().offset((lhs_idx - lhs_del) as isize);
+                let lhs_src = self.data.as_ptr().add(lhs_idx);
+                let lhs_dst = self.data.as_mut_ptr().add(lhs_idx - lhs_del);
                 std::ptr::copy(lhs_src, lhs_dst, lhs_old_len - lhs_idx);
             }
             if rhs_idx < rhs_old_len && rhs_del > 0 {
-                let rhs_src = other.data.as_ptr().offset(rhs_idx as isize);
-                let rhs_dst =
-                    other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
+                let rhs_src = other.data.as_ptr().add(rhs_idx);
+                let rhs_dst = other.data.as_mut_ptr().add(rhs_idx - rhs_del);
                 std::ptr::copy(rhs_src, rhs_dst, rhs_old_len - rhs_idx);
             }
             // Set the size of vectors to the correct size since we can now safely panic.

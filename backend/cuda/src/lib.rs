@@ -42,8 +42,8 @@ struct Namer {
 
 impl Namer {
     /// Generate a variable name prefix from a type.
-    fn gen_prefix(t: &ir::Type) -> &'static str {
-        match *t {
+    fn gen_prefix(t: ir::Type) -> &'static str {
+        match t {
             ir::Type::I(1) => "p",
             ir::Type::I(8) => "c",
             ir::Type::I(16) => "s",
@@ -59,7 +59,7 @@ impl Namer {
 
 impl codegen::Namer for Namer {
     fn name(&mut self, t: ir::Type) -> String {
-        let prefix = Namer::gen_prefix(&t);
+        let prefix = Namer::gen_prefix(t);
         let entry = self.num_var.entry(t).or_insert(0);
         let name = format!("%{}{}", prefix, *entry);
         *entry += 1;

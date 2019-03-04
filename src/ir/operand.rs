@@ -123,7 +123,7 @@ impl<'a, L> Operand<'a, L> {
         match *self {
             Int(_, n_bit) => Type::I(n_bit),
             Float(_, n_bit) => Type::F(n_bit),
-            Addr(mem) => ir::Type::PtrTo(mem.into()),
+            Addr(mem) => ir::Type::PtrTo(mem),
             Index(..) => Type::I(32),
             Param(p) => p.t,
             Variable(_, t) => t,

@@ -172,7 +172,7 @@ where
             node: Box::new(Node {
                 children: Default::default(),
                 evaluations: vec![],
-                id: id,
+                id,
                 tag: None,
             }),
         });

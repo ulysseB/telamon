@@ -52,7 +52,7 @@ impl<'a> Builder<'a> {
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
-        let rounding = default_rounding(&lhs_op.t());
+        let rounding = default_rounding(lhs_op.t());
         self.inst(op::BinOp(op, lhs_op, rhs_op, rounding))
     }
 
@@ -83,7 +83,7 @@ impl<'a> Builder<'a> {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
         let t = lhs_op.t();
-        let rounding = default_rounding(&t);
+        let rounding = default_rounding(t);
         self.inst(op::Mul(lhs_op, rhs_op, rounding, t))
     }
 
@@ -96,7 +96,7 @@ impl<'a> Builder<'a> {
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
-        let rounding = default_rounding(&t);
+        let rounding = default_rounding(t);
         let op = op::Mul(lhs_op, rhs_op, rounding, t);
         self.inst(op)
     }
@@ -112,7 +112,7 @@ impl<'a> Builder<'a> {
         let mul_lhs_op = self.get_op(mul_lhs);
         let mul_rhs_op = self.get_op(mul_rhs);
         let add_rhs_op = self.get_op(add_rhs);
-        let rounding = default_rounding(&mul_lhs_op.t());
+        let rounding = default_rounding(mul_lhs_op.t());
         let op = op::Mad(mul_lhs_op, mul_rhs_op, add_rhs_op, rounding);
         self.inst(op)
     }
@@ -349,8 +349,7 @@ impl<'a> Builder<'a> {
     /// Allocates a memory block in shared memory.
     pub fn allocate_shared(&mut self, size: u32) -> ir::MemId {
         let id = self.allocate(size, true);
-        self.actions
-            .push(Action::MemSpace(id.into(), MemSpace::SHARED));
+        self.actions.push(Action::MemSpace(id, MemSpace::SHARED));
         id
     }
 
@@ -435,7 +434,7 @@ impl<'a> Builder<'a> {
         dims: &[&'b LogicalDim],
     ) -> Vec<(&'b LogicalDim, ir::Size<'a>)> {
         let data_size = ir::Size::new_const(unwrap!(t.len_byte()));
-        dims.into_iter()
+        dims.iter()
             .rev()
             .scan(data_size, |size, &dim| {
                 let increment = size.clone();
@@ -481,7 +480,7 @@ impl<'a> Builder<'a> {
 }
 
 /// Returns the default rounding for a given operand type.
-fn default_rounding(t: &Type) -> op::Rounding {
+fn default_rounding(t: Type) -> op::Rounding {
     if t.is_integer() {
         op::Rounding::Exact
     } else {

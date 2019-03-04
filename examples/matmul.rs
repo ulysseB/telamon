@@ -15,6 +15,7 @@ const M: u32 = 1024;
 const N: u32 = 1024;
 const K: u32 = 1024;
 
+#[allow(clippy::many_single_char_names)]
 fn main() {
     // Step 0. Setup logging and the CUDA interface.
     env_logger::init();

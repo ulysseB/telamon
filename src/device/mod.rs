@@ -20,6 +20,7 @@ use std::io::Write;
 use utils::*;
 
 /// Holds the specifications of a target.
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub trait Device: Sync {
     /// Prints the code corresponding to a device `Function`.
     fn print(&self, function: &Function, out: &mut Write);

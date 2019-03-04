@@ -55,7 +55,7 @@ macro_rules! register_template {
         file.read_to_string(&mut template).unwrap();*/
 
         let name = concat_sep!(".", $(stringify!($name)),*);
-        $engine.register_template_string(name, template.trim_right()).unwrap();
+        $engine.register_template_string(name, template.trim_end()).unwrap();
     }
 }
 

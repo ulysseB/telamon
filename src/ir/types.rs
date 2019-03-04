@@ -16,24 +16,24 @@ pub enum Type {
 
 impl Type {
     /// Returns true if the type is an integer.
-    pub fn is_integer(&self) -> bool {
-        match *self {
+    pub fn is_integer(self) -> bool {
+        match self {
             Type::I(_) | Type::PtrTo(_) => true,
             Type::F(_) => false,
         }
     }
 
     /// Returns true if the type is a float.
-    pub fn is_float(&self) -> bool {
-        match *self {
+    pub fn is_float(self) -> bool {
+        match self {
             Type::F(_) => true,
             Type::I(_) | Type::PtrTo(..) => false,
         }
     }
 
     /// Returns the number of bytes of the type.
-    pub fn len_byte(&self) -> Option<u32> {
-        match *self {
+    pub fn len_byte(self) -> Option<u32> {
+        match self {
             Type::I(i) | Type::F(i) => Some(u32::from(div_ceil(i, 8))),
             Type::PtrTo(_) => None,
         }
@@ -42,7 +42,7 @@ impl Type {
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             Type::I(s) => write!(f, "i{}", s),
             Type::F(s) => write!(f, "f{}", s),
             Type::PtrTo(mem) => write!(f, "ptr to {:?}", mem),

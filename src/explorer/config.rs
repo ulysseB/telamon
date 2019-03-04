@@ -493,7 +493,7 @@ impl FromStr for ChoiceOrdering {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(ChoiceOrdering(
-            s.split(",")
+            s.split(',')
                 .map(str::parse)
                 .collect::<Result<Vec<_>, _>>()?,
         ))

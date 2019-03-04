@@ -1,4 +1,6 @@
 //! Linera algebra kernels.
+#![allow(clippy::many_single_char_names)]
+
 use crate::kernel::Kernel;
 use crate::utils::*;
 use crate::{build_candidate, create_size, infer_tiling, Scalar};

@@ -9,6 +9,8 @@
 //! The MctsWalker, parameterized with the appropriate bandit and rollout policies, can be used to
 //! explore the resulting search tree in an MCTS-like fashion.
 
+#![allow(clippy::type_complexity)]
+
 use std::cell::RefCell;
 use std::cmp::PartialEq;
 use std::fmt::{self, Debug, Display};
@@ -68,6 +70,7 @@ struct NodeInner<'c, N, E> {
     ///
     /// This is directly a pointer to the parent node and edge index in order to avoid an
     /// additional indirection through the `Edge` when following a path upwards.
+    #[allow(dead_code)]
     parent: Option<(WeakNode<'c, N, E>, usize)>,
 
     /// Child edges.  Edges have a backward pointer to the node and additional metadata such as the
@@ -95,6 +98,7 @@ struct NodeInner<'c, N, E> {
     candidate: RwLock<Option<Box<SearchSpace<'c>>>>,
 
     /// Additional algorithm-specific data associated with the node.
+    #[allow(dead_code)]
     data: N,
 }
 
@@ -167,6 +171,7 @@ impl<'c, N, E> Node<'c, N, E> {
     }
 
     /// Pointer to the algorithm-specific data payload.
+    #[allow(dead_code)]
     fn data(&self) -> &N {
         &self.inner.data
     }
@@ -295,7 +300,7 @@ impl<'a> Env<'a> {
     pub fn list_actions(&self, candidate: &SearchSpace<'_>) -> Vec<Action> {
         choice::list(self.choice_ordering, candidate)
             .next()
-            .unwrap_or(Vec::new())
+            .unwrap_or_default()
     }
 
     /// Apply an action to an existing candidate, consuming the existing candidate.
@@ -310,7 +315,7 @@ impl<'a> Env<'a> {
                 mem,
                 st_dims,
                 ld_dims,
-            } => candidate.lower_layout(mem, st_dims, ld_dims),
+            } => candidate.lower_layout(mem, &st_dims, &ld_dims),
         } {
             Some(candidate)
         } else {

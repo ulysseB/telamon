@@ -159,7 +159,7 @@ impl PerfModelTest for SharedLoad {
         let (ptr_0, pattern) =
             builder.tensor_access(&mem, mem.into(), ir::Type::F(64), &[&d1, &d0]);
         let ptr_1 = builder.mov(&ptr_0);
-        let ptr_to_mem_type = ir::Type::PtrTo(mem.into());
+        let ptr_to_mem_type = ir::Type::PtrTo(mem);
         let ptr_zero = builder.cast(&"arg_zero", ptr_to_mem_type);
         let acc_0 = builder.mov(&0f32);
         let d2 = builder.open_dim_ex(size_2, DimKind::LOOP);
@@ -274,7 +274,7 @@ impl PerfModelTest for SharedReplay {
         let mem = builder.allocate_shared(8 * 32 * 32 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
-        let ptr_to_mem_type = ir::Type::PtrTo(mem.into());
+        let ptr_to_mem_type = ir::Type::PtrTo(mem);
         let ptr_zero = builder.cast(&"arg_zero", ptr_to_mem_type);
         let init = builder.mov(&0f32);
         let (addr_0, pattern) =
@@ -327,7 +327,7 @@ impl PerfModelTest for VectorSharedReplay {
         let mem = builder.allocate_shared(mem_size);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
-        let ptr_to_mem_type = ir::Type::PtrTo(mem.into());
+        let ptr_to_mem_type = ir::Type::PtrTo(mem);
         let ptr_zero = builder.cast(&"arg_zero", ptr_to_mem_type);
         let init = builder.mov(&0f32);
         let idx = builder.mad(&d0, &32i32, &d1);

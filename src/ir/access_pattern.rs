@@ -27,7 +27,7 @@ pub enum AccessPattern<'a> {
 
 impl<'a> AccessPattern<'a> {
     /// Indicates if memory accesses access to consecutive elements on the given dimension.
-    pub fn is_consecutive(&self, dim: ir::DimId, t: &ir::Type) -> bool {
+    pub fn is_consecutive(&self, dim: ir::DimId, t: ir::Type) -> bool {
         match self {
             AccessPattern::Unknown(..) => false,
             AccessPattern::Tensor { dims, .. } => dims

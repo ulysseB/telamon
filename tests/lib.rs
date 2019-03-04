@@ -1,7 +1,4 @@
 //! Contains integration tests for Exhaust.
-#[macro_use]
-extern crate log;
-
 mod common;
 
 use crate::common::*;
@@ -251,27 +248,15 @@ fn block_dims() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim(Size::new_const(4));
     let inst = builder.mov(&0i32);
-    let s1 = n.into_ir_size(&builder);
+    let s1 = n.to_ir_size(&builder);
     let d1 = builder.open_dim_ex(s1, DimKind::BLOCK);
     let d2 = builder.open_dim_ex(Size::new_const(2), DimKind::BLOCK);
     let d3 = builder.open_dim_ex(Size::new_const(3), DimKind::BLOCK);
     let space = builder.get();
-    assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d0[0]),
-        Bool::TRUE
-    );
-    assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d1[0]),
-        Bool::TRUE
-    );
-    assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d2[0]),
-        Bool::TRUE
-    );
-    assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d3[0]),
-        Bool::TRUE
-    );
+    assert_eq!(space.domain().get_is_iteration_dim(inst, d0[0]), Bool::TRUE);
+    assert_eq!(space.domain().get_is_iteration_dim(inst, d1[0]), Bool::TRUE);
+    assert_eq!(space.domain().get_is_iteration_dim(inst, d2[0]), Bool::TRUE);
+    assert_eq!(space.domain().get_is_iteration_dim(inst, d3[0]), Bool::TRUE);
     assert_eq!(
         space.domain().get_dim_kind(d0[0]),
         DimKind::LOOP | DimKind::THREAD | DimKind::UNROLL
@@ -340,7 +325,7 @@ fn unroll_dims() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim(Size::new_const(64));
     let d1 = builder.open_dim(Size::new_const(4096));
-    let s2 = n.into_ir_size(&builder);
+    let s2 = n.to_ir_size(&builder);
     let d2 = builder.open_dim(s2);
     builder.mov(&0i32);
     let space = builder.get();
@@ -364,7 +349,7 @@ fn reduce_dim_invariants() {
     builder.close_dim(&d0);
 
     let d1 = builder.open_dim(Size::new_const(4));
-    builder.action(Action::IsIterationDim(reduce.into(), d1[0], Bool::TRUE));
+    builder.action(Action::IsIterationDim(reduce, d1[0], Bool::TRUE));
     builder.close_dim(&d1);
     let d2 = builder.open_dim(Size::new_const(4));
     builder.mov(&0i32);
@@ -381,7 +366,7 @@ fn reduce_dim_invariants() {
     );
     assert!(Order::OUTER.contains(space.domain().get_order(d1[0].into(), init.into())));
     assert_eq!(
-        space.domain().get_is_iteration_dim(reduce.into(), d2[0]),
+        space.domain().get_is_iteration_dim(reduce, d2[0]),
         Bool::FALSE
     );
     gen_best(&context, space);

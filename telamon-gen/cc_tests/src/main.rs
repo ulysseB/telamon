@@ -1,7 +1,7 @@
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, clippy::all)]
 extern crate itertools;
 #[macro_use]
-extern crate telamon_utils as utils;
+extern crate utils;
 #[macro_use]
 extern crate log;
 extern crate env_logger;

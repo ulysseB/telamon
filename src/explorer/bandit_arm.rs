@@ -197,7 +197,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 
     fn timestamp(&self) -> f64 {
         let time = self.start_time.elapsed();
-        time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9
+        time.as_secs() as f64 + f64::from(time.subsec_nanos()) * 1e-9
     }
 
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.

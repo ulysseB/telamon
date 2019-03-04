@@ -141,7 +141,7 @@ impl BlockMap {
     }
 
     /// Returns the list of memory blocks.
-    pub fn blocks<'b>(&'b self) -> impl Iterator<Item = &'b Block> {
+    pub fn blocks(&self) -> impl Iterator<Item = &Block> {
         self.blocks.iter()
     }
 

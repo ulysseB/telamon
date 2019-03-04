@@ -7,6 +7,7 @@ use telamon_gen::lexer::*;
 use errno::Errno;
 
 #[test]
+#[allow(clippy::cyclomatic_complexity)]
 fn lexer_initial() {
     // Invalid's Token
     assert_eq!(

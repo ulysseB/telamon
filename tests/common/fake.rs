@@ -46,9 +46,9 @@ impl device::Device for Device {
             Operator::TmpLd(..)
             | Operator::TmpSt(..)
             | Operator::BinOp(ir::BinOp::Add, ..) => true,
-            Operator::Ld(ref t, _, ref pattern) => pattern.is_consecutive(dim.id(), t),
+            Operator::Ld(t, _, ref pattern) => pattern.is_consecutive(dim.id(), t),
             Operator::St(_, ref operand, _, ref pattern) => {
-                pattern.is_consecutive(dim.id(), &operand.t())
+                pattern.is_consecutive(dim.id(), operand.t())
             }
             _ => false,
         }

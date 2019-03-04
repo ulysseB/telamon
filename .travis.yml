@@ -29,9 +29,8 @@ jobs:
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - script: cargo fmt --all -- --check
       before_script: rustup component add rustfmt
-    # Comment Clippy's control like suggested: https://github.com/ulysseB/telamon/pull/130#pullrequestreview-157534346
-    # - script: cargo clippy
-    #   before_script: rustup component add clippy-preview
+    - script: cargo clippy --all --all-targets --tests --benches
+      before_script: rustup component add clippy
     - stage: documentation
       if: branch IN (master, staging)
       script: cargo doc --no-deps --all

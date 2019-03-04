@@ -143,12 +143,10 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 name_map
                     .insts
                     .insert(inst.id(), name_map.variables[&var].clone());
-            } else {
-                if let Some((inst_id, dim_map)) = inst.as_reduction() {
-                    name_map.decl_alias(inst, inst_id, dim_map);
-                } else if inst.t().is_some() {
-                    name_map.decl_inst(inst);
-                }
+            } else if let Some((inst_id, dim_map)) = inst.as_reduction() {
+                name_map.decl_alias(inst, inst_id, dim_map);
+            } else if inst.t().is_some() {
+                name_map.decl_inst(inst);
             }
         }
         name_map

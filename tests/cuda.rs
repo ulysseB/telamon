@@ -100,7 +100,7 @@ fn thread_reduction_map() {
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
     let init = builder.mov(&0f32);
-    builder.open_mapped_dim(&d0.into());
+    builder.open_mapped_dim(&d0);
     let cst_size_2 = builder.cst_size(2);
     builder.open_dim_ex(cst_size_2, DimKind::LOOP);
     builder.add(&helper::Reduce(init), &1f32);
@@ -148,8 +148,8 @@ fn induction_var_nested() {
     let size_1 = builder.cst_size(1);
     let size_4 = builder.cst_size(4);
     let size_5 = builder.cst_size(5);
-    let size_k = k.into_ir_size(&builder);
-    let size_k_tile_4 = k4.into_ir_size(&builder);
+    let size_k = k.to_ir_size(&builder);
+    let size_k_tile_4 = k4.to_ir_size(&builder);
     let d0 = builder.open_dim_ex(size_k_tile_4.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_4, DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);
@@ -273,7 +273,7 @@ fn perf_model_0() {
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_16 = builder.cst_size(16);
-    let n_tiled = n.into_ir_size(&builder);
+    let n_tiled = n.to_ir_size(&builder);
 
     let _d0 = builder.open_dim_ex(n_tiled.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);

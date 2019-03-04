@@ -284,7 +284,7 @@ pub fn smx_read_bandwidth_l2_lines(gpu: &Gpu, executor: &Executor) -> f64 {
     info!("L2 lines SMX read bandwidth");
     let wraps = gpu.max_threads() / gpu.wrap_size;
     let line_len = gpu.l2_cache_line / 4;
-    let strides = (1..line_len + 1).collect_vec();
+    let strides = (1..=line_len).collect_vec();
     let access_per_wrap = f64::from(gpu.wrap_size / line_len);
     infer_smx_bandwidth(gpu, executor, wraps, &strides, true) * access_per_wrap
 }
@@ -294,7 +294,7 @@ pub fn smx_write_bandwidth_l2_lines(gpu: &Gpu, executor: &Executor) -> f64 {
     info!("L2 lines SMX write bandwidth");
     let wraps = gpu.max_threads() / gpu.wrap_size;
     let line_len = gpu.l2_cache_line / 4;
-    let strides = (1..line_len + 1).collect_vec();
+    let strides = (1..=line_len).collect_vec();
     let access_per_wrap = f64::from(gpu.wrap_size / line_len);
     infer_smx_bandwidth(gpu, executor, wraps, &strides, false) * access_per_wrap
 }
@@ -357,7 +357,7 @@ pub fn infer_smx_bandwidth(
 }
 
 /// In-depth analysis of memory accesses bandwidth.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn smx_bandwidth(
     gpu: &Gpu,
     executor: &Executor,
@@ -411,7 +411,7 @@ pub fn smx_bandwidth(
 }
 
 /// In-depth analysis of memory stores bandwidth.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn smx_store_bandwidth(
     gpu: &Gpu,
     executor: &Executor,

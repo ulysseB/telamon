@@ -49,8 +49,8 @@ pub fn two_empty_loops<'a>(
     inner: &DimSize,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
-    let outer_size = outer.into_ir_size(&builder);
-    let inner_size = inner.into_ir_size(&builder);
+    let outer_size = outer.to_ir_size(&builder);
+    let inner_size = inner.to_ir_size(&builder);
     let d0 = builder.open_dim_ex(outer_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(inner_size, DimKind::LOOP);
     builder.mov(&0i32);
@@ -68,7 +68,7 @@ pub fn loop_chained_adds<'a>(
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
     let init = builder.mov(&0f32);
-    let loop_size = loop_size.into_ir_size(&builder);
+    let loop_size = loop_size.to_ir_size(&builder);
     let unroll_size = builder.cst_size(chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -106,7 +106,7 @@ where
 {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&T::zero());
-    let loop_size = n_iter.into_ir_size(&builder);
+    let loop_size = n_iter.to_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -141,18 +141,21 @@ pub fn init_stride_array<'a>(
     let next_addr = builder.mad(&byte_stride, &1i32, &addr);
     let pattern0 = ir::AccessPattern::Unknown(None);
     builder.st_ex(&addr, &next_addr, true, pattern0, InstFlag::CACHE_GLOBAL);
-    dim.as_ref().map(|dim| builder.close_dim(dim));
+    if let Some(dim) = dim.as_ref() {
+        builder.close_dim(dim);
+    }
     let last_addr = builder.mad(&byte_stride, &(n as i32 - 1), &array);
 
     let pattern1 = ir::AccessPattern::Unknown(None);
     builder.st_ex(&last_addr, &array, true, pattern1, InstFlag::CACHE_GLOBAL);
-    dim.as_ref()
-        .map(|dim| builder.order(dim, &last_addr, Order::BEFORE));
+    if let Some(dim) = dim.as_ref() {
+        builder.order(dim, &last_addr, Order::BEFORE);
+    }
     builder.get()
 }
 
 /// Generates a function that performs chained loads.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn load_chain<'a>(
     signature: &'a Signature,
     device: &'a Device,
@@ -164,7 +167,7 @@ pub fn load_chain<'a>(
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&array);
-    let loop_size = n_iter.into_ir_size(&builder);
+    let loop_size = n_iter.to_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -201,7 +204,7 @@ pub fn shared_load_chain<'a>(
     let array = builder.allocate_shared(4 * array_size);
     let init_dim = builder.open_dim_ex(array_dim_size.clone(), DimKind::LOOP);
     let init_addr = builder.mad(&init_dim, &4i32, &array);
-    let increment = builder.cast(&4i32, ir::Type::PtrTo(array.into()));
+    let increment = builder.cast(&4i32, ir::Type::PtrTo(array));
     let next_addr = builder.add(&init_addr, &increment);
     let array_pattern = ir::AccessPattern::Unknown(Some(array));
     builder.st(&init_addr, &next_addr, array_pattern.clone());
@@ -209,7 +212,7 @@ pub fn shared_load_chain<'a>(
     let last_st = builder.st(&init_addr, &array, array_pattern.clone());
 
     let addr_init = builder.mov(&array);
-    let loop_size = n_iter.into_ir_size(&builder);
+    let loop_size = n_iter.to_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -225,7 +228,7 @@ pub fn shared_load_chain<'a>(
 }
 
 /// Generates many parallel loads in a single block.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn parallel_load<'a>(
     signature: &'a Signature,
     gpu: &'a Gpu,
@@ -240,7 +243,7 @@ pub fn parallel_load<'a>(
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
-    let block_size = num_blocks.into_ir_size(&builder);
+    let block_size = num_blocks.to_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
     let d1_0_a = if num_wraps > 1 {
@@ -253,7 +256,7 @@ pub fn parallel_load<'a>(
 
     let init = builder.mov(&0f32);
     // Sum in the result.
-    let loop_size = n.into_ir_size(&builder);
+    let loop_size = n.to_ir_size(&builder);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1_1_a = d1_0_a
         .as_ref()
@@ -303,7 +306,7 @@ pub fn parallel_load<'a>(
 }
 
 /// Generates many parallel stores.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn parallel_store<'a>(
     signature: &'a Signature,
     gpu: &'a Gpu,
@@ -317,9 +320,9 @@ pub fn parallel_store<'a>(
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
-    let block_size = num_blocks.into_ir_size(&builder);
+    let block_size = num_blocks.to_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
-    let loop_size = n.into_ir_size(&builder);
+    let loop_size = n.to_ir_size(&builder);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
 
     let d1_0 = if num_wraps > 1 {
@@ -363,7 +366,7 @@ pub fn syncthread<'a>(
     wrap_size: u32,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
-    let loop_size = n_iter.into_ir_size(&builder);
+    let loop_size = n_iter.to_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let thread_size = builder.cst_size(wrap_size);
 
@@ -383,7 +386,7 @@ pub fn syncthread<'a>(
 }
 
 /// Generates a wrap of syncthreads separated by a single instruction.
-#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
+#[allow(clippy::too_many_arguments)]
 pub fn chain_in_syncthread<'a>(
     signature: &'a Signature,
     device: &'a Device,
@@ -394,7 +397,7 @@ pub fn chain_in_syncthread<'a>(
     out: &str,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
-    let loop_size = n_iter.into_ir_size(&builder);
+    let loop_size = n_iter.to_ir_size(&builder);
     let sync_unroll_size = builder.cst_size(sync_chained);
     let thread_size = builder.cst_size(wrap_size);
     let add_unroll_size = builder.cst_size(add_chained);
@@ -451,7 +454,7 @@ pub fn load_in_loop<'a>(
     let acc_init = builder.mov(&0f32);
     builder.close_dim(&unroll_dim_0_0);
 
-    let k_size = k_size.into_ir_size(&builder);
+    let k_size = k_size.to_ir_size(&builder);
     let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
     // Load A
     let unroll_dim_a = builder.open_dim_ex(size_4.clone(), DimKind::VECTOR);
