@@ -1702,6 +1702,12 @@
 <span id="1702">1702</span>
 <span id="1703">1703</span>
 <span id="1704">1704</span>
+<span id="1705">1705</span>
+<span id="1706">1706</span>
+<span id="1707">1707</span>
+<span id="1708">1708</span>
+<span id="1709">1709</span>
+<span id="1710">1710</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Search space exploration using MCTS-style algorithm</span>
 <span class="doccomment">//!</span>
@@ -1742,13 +1748,19 @@
 
 <span class="doccomment">/// Newtype wrapper to represent a node identifier.  Node identifiers should be unique inside a</span>
 <span class="doccomment">/// tree.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">transparent</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeId</span>(<span class="ident">usize</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeId</span>(<span class="ident">u64</span>);
 
 <span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">NodeId</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;#{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">u64</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">v</span>: <span class="ident">NodeId</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">v</span>.<span class="number">0</span>
     }
 }
 
@@ -2184,7 +2196,7 @@
             <span class="ident">cause_of_death</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">CauseOfDeath</span>::<span class="ident">Constraints</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="self">self</span>.<span class="ident">id_counter</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>));
+        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="self">self</span>.<span class="ident">id_counter</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>) <span class="kw">as</span> <span class="ident">u64</span>);
 
         <span class="comment">// Log node creation so that other events can refer to it using its ID only.</span>
         <span class="self">self</span>.<span class="ident">log</span>(<span class="ident">Message</span>::<span class="ident">Node</span> {
