@@ -2,7 +2,6 @@
 mod bandit_arm;
 mod candidate;
 mod logger;
-mod mcts;
 mod monitor;
 mod parallel_list;
 mod store;
@@ -10,6 +9,7 @@ mod store;
 pub mod choice;
 pub mod config;
 pub mod local_selection;
+pub mod mcts;
 
 pub use self::bandit_arm::{DeadEndSource, TreeEvent};
 pub use self::candidate::Candidate;
