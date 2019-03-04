@@ -320,6 +320,7 @@
 <span id="320">320</span>
 <span id="321">321</span>
 <span id="322">322</span>
+<span id="323">323</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">statistics</span>;
@@ -432,6 +433,7 @@
 
     <span class="doccomment">/// Tests the correctness of the bound of kernels and returns the list of tested leafs</span>
     <span class="doccomment">/// along with the actual evaluation time.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">collapsible_if</span>)]</span>
     <span class="kw">fn</span> <span class="ident">test_bound</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(
         <span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>,
         <span class="ident">num_tests</span>: <span class="ident">usize</span>,

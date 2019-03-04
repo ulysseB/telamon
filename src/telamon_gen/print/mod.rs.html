@@ -853,7 +853,7 @@
         file.read_to_string(&amp;mut template).unwrap();*/</span>
 
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">concat_sep</span><span class="macro">!</span>(<span class="string">&quot;.&quot;</span>, $(<span class="macro">stringify</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)),<span class="kw-2">*</span>);
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">engine</span>.<span class="ident">register_template_string</span>(<span class="ident">name</span>, <span class="ident">template</span>.<span class="ident">trim_right</span>()).<span class="ident">unwrap</span>();
+        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">engine</span>.<span class="ident">register_template_string</span>(<span class="ident">name</span>, <span class="ident">template</span>.<span class="ident">trim_end</span>()).<span class="ident">unwrap</span>();
     }
 }
 

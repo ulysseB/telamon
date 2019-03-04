@@ -1399,10 +1399,10 @@
 <span id="1399">1399</span>
 <span id="1400">1400</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>, <span class="ident">clippy</span>::<span class="ident">all</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_utils</span> <span class="kw">as</span> <span class="ident">utils</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">utils</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;

@@ -111,8 +111,8 @@
 
 <span class="kw">impl</span> <span class="ident">Namer</span> {
     <span class="doccomment">/// Generate a variable name prefix from a type.</span>
-    <span class="kw">fn</span> <span class="ident">gen_prefix</span>(<span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">t</span> {
+    <span class="kw">fn</span> <span class="ident">gen_prefix</span>(<span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+        <span class="kw">match</span> <span class="ident">t</span> {
             <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">1</span>) <span class="op">=&gt;</span> <span class="string">&quot;p&quot;</span>,
             <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">8</span>) <span class="op">=&gt;</span> <span class="string">&quot;c&quot;</span>,
             <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">16</span>) <span class="op">=&gt;</span> <span class="string">&quot;s&quot;</span>,
@@ -129,7 +129,7 @@
 
 <span class="kw">impl</span> <span class="ident">codegen</span>::<span class="ident">Namer</span> <span class="kw">for</span> <span class="ident">Namer</span> {
     <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="ident">Namer</span>::<span class="ident">gen_prefix</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>);
+        <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="ident">Namer</span>::<span class="ident">gen_prefix</span>(<span class="ident">t</span>);
         <span class="kw">match</span> <span class="ident">t</span> {
             <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(..) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="ident">prefix</span>, <span class="self">self</span>.<span class="ident">num_glob_ptr</span>);

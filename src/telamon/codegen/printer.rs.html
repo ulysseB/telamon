@@ -505,6 +505,7 @@
 <span id="505">505</span>
 <span id="506">506</span>
 <span id="507">507</span>
+<span id="508">508</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
@@ -533,6 +534,7 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">too_many_arguments</span>)]</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Printer</span> {
     <span class="doccomment">/// Get the representation of an integer in the target language.</span>
     <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="ident">n</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span>;
@@ -861,7 +863,7 @@
             <span class="kw">return</span>;
         }
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_addr</span>(<span class="ident">block</span>.<span class="ident">id</span>());
-        <span class="kw">let</span> <span class="ident">addr_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">block</span>.<span class="ident">id</span>().<span class="ident">into</span>()), <span class="ident">fun</span>);
+        <span class="kw">let</span> <span class="ident">addr_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">block</span>.<span class="ident">id</span>()), <span class="ident">fun</span>);
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_size</span>(<span class="ident">block</span>.<span class="ident">local_size</span>(), <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
         <span class="kw">let</span> <span class="ident">d0</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_index</span>(<span class="ident">fun</span>.<span class="ident">block_dims</span>()[<span class="number">0</span>].<span class="ident">id</span>()).<span class="ident">to_string</span>();
         <span class="kw">let</span> <span class="ident">var</span> <span class="op">=</span> <span class="ident">fun</span>.<span class="ident">block_dims</span>()[<span class="number">1</span>..].<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">d0</span>, <span class="op">|</span><span class="ident">old_var</span>, <span class="ident">dim</span><span class="op">|</span> {

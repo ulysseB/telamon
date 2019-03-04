@@ -431,7 +431,7 @@
 
 <span class="kw">impl</span> <span class="ident">BinOp</span> {
     <span class="doccomment">/// Returns a string representing the operator.</span>
-    <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">name</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>::<span class="ident">Add</span> <span class="op">=&gt;</span> <span class="string">&quot;add&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Sub</span> <span class="op">=&gt;</span> <span class="string">&quot;sub&quot;</span>,
@@ -445,7 +445,7 @@
     }
 
     <span class="doccomment">/// Returns the type of the binay operator given the type of its operands.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">operand_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="self">self</span>, <span class="ident">operand_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">1</span>),
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">operand_type</span>,
@@ -453,7 +453,7 @@
     }
 
     <span class="doccomment">/// Indicates if the result must be rounded when operating on floats.</span>
-    <span class="kw">fn</span> <span class="ident">requires_rounding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">requires_rounding</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="bool-val">true</span>,
@@ -473,15 +473,15 @@
 
 <span class="kw">impl</span> <span class="ident">UnaryOp</span> {
     <span class="doccomment">/// Gives the return type of the operand given its input type.</span>
-    <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+    <span class="kw">fn</span> <span class="ident">t</span>(<span class="self">self</span>, <span class="ident">op_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">op_type</span>,
-            <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="kw-2">*</span><span class="ident">t</span>,
+            <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
         }
     }
 
     <span class="doccomment">/// Returns the name of the operand.</span>
-    <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">name</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="string">&quot;mov&quot;</span>,
             <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;cast&quot;</span>,

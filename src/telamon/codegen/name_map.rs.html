@@ -560,8 +560,6 @@
 <span id="560">560</span>
 <span id="561">561</span>
 <span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::{
     <span class="self">self</span>, <span class="ident">AllocationScheme</span>, <span class="ident">Dimension</span>, <span class="ident">Function</span>, <span class="ident">Instruction</span>, <span class="ident">ParamValKey</span>,
@@ -708,12 +706,10 @@
                 <span class="ident">name_map</span>
                     .<span class="ident">insts</span>
                     .<span class="ident">insert</span>(<span class="ident">inst</span>.<span class="ident">id</span>(), <span class="ident">name_map</span>.<span class="ident">variables</span>[<span class="kw-2">&amp;</span><span class="ident">var</span>].<span class="ident">clone</span>());
-            } <span class="kw">else</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">inst_id</span>, <span class="ident">dim_map</span>)) <span class="op">=</span> <span class="ident">inst</span>.<span class="ident">as_reduction</span>() {
-                    <span class="ident">name_map</span>.<span class="ident">decl_alias</span>(<span class="ident">inst</span>, <span class="ident">inst_id</span>, <span class="ident">dim_map</span>);
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">t</span>().<span class="ident">is_some</span>() {
-                    <span class="ident">name_map</span>.<span class="ident">decl_inst</span>(<span class="ident">inst</span>);
-                }
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">inst_id</span>, <span class="ident">dim_map</span>)) <span class="op">=</span> <span class="ident">inst</span>.<span class="ident">as_reduction</span>() {
+                <span class="ident">name_map</span>.<span class="ident">decl_alias</span>(<span class="ident">inst</span>, <span class="ident">inst_id</span>, <span class="ident">dim_map</span>);
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">t</span>().<span class="ident">is_some</span>() {
+                <span class="ident">name_map</span>.<span class="ident">decl_inst</span>(<span class="ident">inst</span>);
             }
         }
         <span class="ident">name_map</span>

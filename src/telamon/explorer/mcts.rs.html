@@ -1697,6 +1697,11 @@
 <span id="1697">1697</span>
 <span id="1698">1698</span>
 <span id="1699">1699</span>
+<span id="1700">1700</span>
+<span id="1701">1701</span>
+<span id="1702">1702</span>
+<span id="1703">1703</span>
+<span id="1704">1704</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Search space exploration using MCTS-style algorithm</span>
 <span class="doccomment">//!</span>
@@ -1708,6 +1713,8 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The MctsWalker, parameterized with the appropriate bandit and rollout policies, can be used to</span>
 <span class="doccomment">//! explore the resulting search tree in an MCTS-like fashion.</span>
+
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">type_complexity</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">PartialEq</span>;
@@ -1768,6 +1775,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This is directly a pointer to the parent node and edge index in order to avoid an</span>
     <span class="doccomment">/// additional indirection through the `Edge` when following a path upwards.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">WeakNode</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
 
     <span class="doccomment">/// Child edges.  Edges have a backward pointer to the node and additional metadata such as the</span>
@@ -1795,6 +1803,7 @@
     <span class="ident">candidate</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;&gt;</span><span class="op">&gt;&gt;</span>,
 
     <span class="doccomment">/// Additional algorithm-specific data associated with the node.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="ident">data</span>: <span class="ident">N</span>,
 }
 
@@ -1867,6 +1876,7 @@
     }
 
     <span class="doccomment">/// Pointer to the algorithm-specific data payload.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="kw">fn</span> <span class="ident">data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">N</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">data</span>
     }
@@ -1995,7 +2005,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_actions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">candidate</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span> {
         <span class="ident">choice</span>::<span class="ident">list</span>(<span class="self">self</span>.<span class="ident">choice_ordering</span>, <span class="ident">candidate</span>)
             .<span class="ident">next</span>()
-            .<span class="ident">unwrap_or</span>(<span class="ident">Vec</span>::<span class="ident">new</span>())
+            .<span class="ident">unwrap_or_default</span>()
     }
 
     <span class="doccomment">/// Apply an action to an existing candidate, consuming the existing candidate.</span>
@@ -2010,7 +2020,7 @@
                 <span class="ident">mem</span>,
                 <span class="ident">st_dims</span>,
                 <span class="ident">ld_dims</span>,
-            } <span class="op">=&gt;</span> <span class="ident">candidate</span>.<span class="ident">lower_layout</span>(<span class="ident">mem</span>, <span class="ident">st_dims</span>, <span class="ident">ld_dims</span>),
+            } <span class="op">=&gt;</span> <span class="ident">candidate</span>.<span class="ident">lower_layout</span>(<span class="ident">mem</span>, <span class="kw-2">&amp;</span><span class="ident">st_dims</span>, <span class="kw-2">&amp;</span><span class="ident">ld_dims</span>),
         } {
             <span class="prelude-val">Some</span>(<span class="ident">candidate</span>)
         } <span class="kw">else</span> {

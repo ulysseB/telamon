@@ -326,7 +326,7 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">DimSize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Convert the size into the size type used by the IR.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_ir_size</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="ident">Builder</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_ir_size</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="ident">Builder</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">builder</span>.<span class="ident">find_param</span>(<span class="ident">p</span>)).<span class="ident">collect</span>();
         <span class="ident">ir</span>::<span class="ident">Size</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">factor</span>, <span class="ident">params</span>, <span class="self">self</span>.<span class="ident">max_size</span>)
     }
@@ -495,7 +495,7 @@
             .<span class="ident">iter</span>()
             .<span class="ident">zip_eq</span>(<span class="ident">tiling</span>)
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">dim</span>, <span class="ident">tiling</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">dim</span>.<span class="number">0</span>.<span class="ident">into_ir_size</span>(<span class="ident">builder</span>);
+                <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">dim</span>.<span class="number">0</span>.<span class="ident">to_ir_size</span>(<span class="ident">builder</span>);
                 <span class="ident">builder</span>.<span class="ident">open_tiled_dim</span>(<span class="ident">size</span>, <span class="ident">tiling</span>)
             })
             .<span class="ident">collect_vec</span>();
@@ -504,7 +504,7 @@
             <span class="kw">let</span> <span class="ident">increments</span> <span class="op">=</span> <span class="ident">dims</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">zip_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">iter_dims</span>)
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">dim</span>, (<span class="kw">_</span>, <span class="ident">stride</span>))<span class="op">|</span> (<span class="ident">dim</span>, <span class="ident">stride</span>.<span class="ident">into_ir_size</span>(<span class="ident">builder</span>)))
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">dim</span>, (<span class="kw">_</span>, <span class="ident">stride</span>))<span class="op">|</span> (<span class="ident">dim</span>, <span class="ident">stride</span>.<span class="ident">to_ir_size</span>(<span class="ident">builder</span>)))
                 .<span class="ident">collect_vec</span>();
             <span class="ident">ptr</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">induction_var</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>, <span class="ident">increments</span>.<span class="ident">clone</span>());
             <span class="ident">pattern</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor_access_pattern</span>(<span class="prelude-val">None</span>, <span class="ident">increments</span>);

@@ -418,13 +418,6 @@
 <span id="418">418</span>
 <span id="419">419</span>
 <span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Sets backed by ordered vectors.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -497,25 +490,19 @@
             <span class="comment">// Iterate simultaneously on both vectors to remove duplicate elements.</span>
             <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">lhs_idx</span>, <span class="kw-2">mut</span> <span class="ident">lhs_del</span>, <span class="kw-2">mut</span> <span class="ident">rhs_idx</span>, <span class="kw-2">mut</span> <span class="ident">rhs_del</span>) <span class="op">=</span> (<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);
             <span class="kw">while</span> <span class="ident">lhs_idx</span> <span class="op">&lt;</span> <span class="ident">lhs_old_len</span> <span class="op">&amp;&amp;</span> <span class="ident">rhs_idx</span> <span class="op">&lt;</span> <span class="ident">rhs_old_len</span> {
-                <span class="kw">let</span> <span class="ident">lhs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">offset</span>(<span class="ident">lhs_idx</span> <span class="kw">as</span> <span class="ident">isize</span>);
-                <span class="kw">let</span> <span class="ident">rhs</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">offset</span>(<span class="ident">rhs_idx</span> <span class="kw">as</span> <span class="ident">isize</span>);
+                <span class="kw">let</span> <span class="ident">lhs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">add</span>(<span class="ident">lhs_idx</span>);
+                <span class="kw">let</span> <span class="ident">rhs</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">add</span>(<span class="ident">rhs_idx</span>);
                 <span class="kw">match</span> (<span class="kw-2">*</span><span class="ident">lhs</span>).<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">rhs</span>) {
                     <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>::<span class="ident">Less</span> <span class="op">=&gt;</span> {
                         <span class="kw">if</span> <span class="ident">lhs_del</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="kw">let</span> <span class="ident">lhs_dst</span> <span class="op">=</span> <span class="self">self</span>
-                                .<span class="ident">data</span>
-                                .<span class="ident">as_mut_ptr</span>()
-                                .<span class="ident">offset</span>((<span class="ident">lhs_idx</span> <span class="op">-</span> <span class="ident">lhs_del</span>) <span class="kw">as</span> <span class="ident">isize</span>);
+                            <span class="kw">let</span> <span class="ident">lhs_dst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">add</span>(<span class="ident">lhs_idx</span> <span class="op">-</span> <span class="ident">lhs_del</span>);
                             <span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">copy_nonoverlapping</span>(<span class="ident">lhs</span>, <span class="ident">lhs_dst</span>, <span class="number">1</span>);
                         }
                         <span class="ident">lhs_idx</span> <span class="op">+=</span> <span class="number">1</span>;
                     }
                     <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>::<span class="ident">Greater</span> <span class="op">=&gt;</span> {
                         <span class="kw">if</span> <span class="ident">rhs_del</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="kw">let</span> <span class="ident">rhs_dst</span> <span class="op">=</span> <span class="ident">other</span>
-                                .<span class="ident">data</span>
-                                .<span class="ident">as_mut_ptr</span>()
-                                .<span class="ident">offset</span>((<span class="ident">rhs_idx</span> <span class="op">-</span> <span class="ident">rhs_del</span>) <span class="kw">as</span> <span class="ident">isize</span>);
+                            <span class="kw">let</span> <span class="ident">rhs_dst</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">add</span>(<span class="ident">rhs_idx</span> <span class="op">-</span> <span class="ident">rhs_del</span>);
                             <span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">copy_nonoverlapping</span>(<span class="ident">rhs</span>, <span class="ident">rhs_dst</span>, <span class="number">1</span>);
                         }
                         <span class="ident">rhs_idx</span> <span class="op">+=</span> <span class="number">1</span>;
@@ -532,14 +519,13 @@
             }
             <span class="comment">// Complete vectors that are not yet explored.</span>
             <span class="kw">if</span> <span class="ident">lhs_idx</span> <span class="op">&lt;</span> <span class="ident">lhs_old_len</span> <span class="op">&amp;&amp;</span> <span class="ident">lhs_del</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="kw">let</span> <span class="ident">lhs_src</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_ptr</span>().<span class="ident">offset</span>(<span class="ident">lhs_idx</span> <span class="kw">as</span> <span class="ident">isize</span>);
-                <span class="kw">let</span> <span class="ident">lhs_dst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">offset</span>((<span class="ident">lhs_idx</span> <span class="op">-</span> <span class="ident">lhs_del</span>) <span class="kw">as</span> <span class="ident">isize</span>);
+                <span class="kw">let</span> <span class="ident">lhs_src</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_ptr</span>().<span class="ident">add</span>(<span class="ident">lhs_idx</span>);
+                <span class="kw">let</span> <span class="ident">lhs_dst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">add</span>(<span class="ident">lhs_idx</span> <span class="op">-</span> <span class="ident">lhs_del</span>);
                 <span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">copy</span>(<span class="ident">lhs_src</span>, <span class="ident">lhs_dst</span>, <span class="ident">lhs_old_len</span> <span class="op">-</span> <span class="ident">lhs_idx</span>);
             }
             <span class="kw">if</span> <span class="ident">rhs_idx</span> <span class="op">&lt;</span> <span class="ident">rhs_old_len</span> <span class="op">&amp;&amp;</span> <span class="ident">rhs_del</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="kw">let</span> <span class="ident">rhs_src</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_ptr</span>().<span class="ident">offset</span>(<span class="ident">rhs_idx</span> <span class="kw">as</span> <span class="ident">isize</span>);
-                <span class="kw">let</span> <span class="ident">rhs_dst</span> <span class="op">=</span>
-                    <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">offset</span>((<span class="ident">rhs_idx</span> <span class="op">-</span> <span class="ident">rhs_del</span>) <span class="kw">as</span> <span class="ident">isize</span>);
+                <span class="kw">let</span> <span class="ident">rhs_src</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_ptr</span>().<span class="ident">add</span>(<span class="ident">rhs_idx</span>);
+                <span class="kw">let</span> <span class="ident">rhs_dst</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">data</span>.<span class="ident">as_mut_ptr</span>().<span class="ident">add</span>(<span class="ident">rhs_idx</span> <span class="op">-</span> <span class="ident">rhs_del</span>);
                 <span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">copy</span>(<span class="ident">rhs_src</span>, <span class="ident">rhs_dst</span>, <span class="ident">rhs_old_len</span> <span class="op">-</span> <span class="ident">rhs_idx</span>);
             }
             <span class="comment">// Set the size of vectors to the correct size since we can now safely panic.</span>

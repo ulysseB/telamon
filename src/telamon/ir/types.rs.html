@@ -68,24 +68,24 @@
 
 <span class="kw">impl</span> <span class="ident">Type</span> {
     <span class="doccomment">/// Returns true if the type is an integer.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_integer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_integer</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
             <span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
         }
     }
 
     <span class="doccomment">/// Returns true if the type is a float.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_float</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
             <span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">Type</span>::<span class="ident">PtrTo</span>(..) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
         }
     }
 
     <span class="doccomment">/// Returns the number of bytes of the type.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len_byte</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len_byte</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Type</span>::<span class="ident">I</span>(<span class="ident">i</span>) <span class="op">|</span> <span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">i</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">u32</span>::<span class="ident">from</span>(<span class="ident">div_ceil</span>(<span class="ident">i</span>, <span class="number">8</span>))),
             <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
         }
@@ -94,7 +94,7 @@
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Type</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Type</span>::<span class="ident">I</span>(<span class="ident">s</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;i{}&quot;</span>, <span class="ident">s</span>),
             <span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">s</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;f{}&quot;</span>, <span class="ident">s</span>),
             <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;ptr to {:?}&quot;</span>, <span class="ident">mem</span>),
