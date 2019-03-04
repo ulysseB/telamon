@@ -1,4 +1,4 @@
-use telamon::explorer::TreeEvent;
+use telamon::explorer::bandit_arm::TreeEvent;
 use utils::tfrecord::{ReadError, RecordReader};
 
 fn main() -> Result<(), ReadError> {

@@ -73,8 +73,8 @@ impl<'a> SearchSpace<'a> {
     pub fn lower_layout(
         &mut self,
         mem: ir::MemId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
+        st_dims: &[ir::DimId],
+        ld_dims: &[ir::DimId],
     ) -> Result<(), ()> {
         let actions = {
             let ir_instance = Arc::make_mut(&mut self.ir_instance);

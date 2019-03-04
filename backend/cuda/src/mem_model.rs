@@ -591,6 +591,7 @@ else { None }
 
 #[cfg(test)]
 #[cfg(feature = "real_gpu")]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
     use crate::{Context, Executor, Gpu};
@@ -614,15 +615,15 @@ mod tests {
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
-        let stride = ir::Size::new_const(gpu.l1_cache_line).into();
+        let stride = ir::Size::new_const(gpu.l1_cache_line);
         let pattern = builder.tensor_access_pattern(None, vec![(&d0, stride)]);
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.order(&d0, &d1, d0_d1_order);
 
         let mut size_map = HashMap::default();
         let wrap_size = Range {
-            min: gpu.wrap_size as u64,
-            max: gpu.wrap_size as u64,
+            min: gpu.wrap_size.into(),
+            max: gpu.wrap_size.into(),
         };
         size_map.insert(d0[0], wrap_size);
         size_map.insert(d1[0], wrap_size);
@@ -648,8 +649,8 @@ mod tests {
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map, &ctx);
-        assert_eq!(inst_info.l1_coalescing, 1.0 / gpu.wrap_size as f64);
-        assert_eq!(inst_info.l2_coalescing, 1.0 / gpu.wrap_size as f64);
+        assert_eq!(inst_info.l1_coalescing, 1.0 / f64::from(gpu.wrap_size));
+        assert_eq!(inst_info.l2_coalescing, 1.0 / f64::from(gpu.wrap_size));
         assert_eq!(inst_info.replay_factor, 1.0);
     }
 
@@ -666,7 +667,7 @@ mod tests {
         let inst_info = analyse(&space, &gpu, &inst, &size_map, &ctx);
         assert_eq!(inst_info.l1_coalescing, 1.0);
         assert_eq!(inst_info.l2_coalescing, 1.0);
-        assert_eq!(inst_info.replay_factor, gpu.wrap_size as f64);
+        assert_eq!(inst_info.replay_factor, f64::from(gpu.wrap_size));
     }
 
     fn thread_dim_info(

@@ -10,8 +10,8 @@ use log::debug;
 pub fn lower_layout(
     fun: &mut ir::Function,
     mem: ir::MemId,
-    st_dims: Vec<ir::DimId>,
-    ld_dims: Vec<ir::DimId>,
+    st_dims: &[ir::DimId],
+    ld_dims: &[ir::DimId],
     domain: &DomainStore,
 ) -> Result<Vec<Action>, ()> {
     debug!("lower_layout({:?}) triggered", mem);
@@ -27,7 +27,7 @@ pub fn lower_layout(
         actions.extend(dim_kind::restrict_delayed(ld_dim, fun, domain, not_vec)?);
     }
     fun.lower_layout(mem, st_dims, ld_dims);
-    for &inst_id in fun.mem_block(mem.into()).uses() {
+    for &inst_id in fun.mem_block(mem).uses() {
         let inst = fun.inst(inst_id);
         actions.extend(operand::inst_invariants(fun, inst));
     }
@@ -53,10 +53,7 @@ fn lower_dim_map(
         ));
     }
     // FIXME: allow global memory
-    actions.push(Action::MemSpace(
-        lowered_dim_map.mem.into(),
-        MemSpace::SHARED,
-    ));
+    actions.push(Action::MemSpace(lowered_dim_map.mem, MemSpace::SHARED));
     //actions.push(Action::InstFlag(st, InstFlag::COHERENT));
     //actions.push(Action::InstFlag(ld, InstFlag::COHERENT));
     let store = lowered_dim_map.store;

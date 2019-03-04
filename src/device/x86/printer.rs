@@ -33,7 +33,7 @@ impl X86printer {
         let print_decl = |(&t, &n)| match t {
             Type::PtrTo(..) => String::new(),
             _ => {
-                let prefix = Namer::gen_prefix(&t);
+                let prefix = Namer::gen_prefix(t);
                 let mut s = format!("{} ", Self::get_type(t));
                 s.push_str(
                     &(0..n)
@@ -133,7 +133,7 @@ impl X86printer {
                 }
             }
             // INIT
-            let ind_levels = function.init_induction_levels().into_iter().chain(
+            let ind_levels = function.init_induction_levels().iter().chain(
                 function
                     .block_dims()
                     .iter()
@@ -202,8 +202,8 @@ impl X86printer {
         for i in 0..n {
             let start = format!("d{}", i);
             let mut vec_str = vec![start];
-            for j in 0..i {
-                vec_str.push(format!("{}", unwrap!(dims[j].size().as_int())));
+            for dim in dims.iter().take(i) {
+                vec_str.push(format!("{}", unwrap!(dim.size().as_int())));
             }
             vec_ret.push(vec_str.join(" * "));
         }
@@ -226,7 +226,7 @@ impl X86printer {
     /// Prints code that generates the required number of threads, stores the handles in an array
     fn thread_gen(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
-            return format!(include_str!("template/monothread_init.c.template"));
+            return include_str!("template/monothread_init.c.template").to_string();
         }
         let mut loop_decl = String::new();
         let mut ind_vec = Vec::new();

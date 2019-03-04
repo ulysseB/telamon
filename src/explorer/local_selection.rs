@@ -151,7 +151,7 @@ impl NewNodeOrder {
     /// Called in montecarlo_descend, dispatch the choice of the next candidate according to our
     /// configuration
     pub fn pick_candidate<'a>(
-        &self,
+        self,
         new_nodes: &[Candidate<'a>],
         cut: f64,
     ) -> Option<usize> {
@@ -160,13 +160,13 @@ impl NewNodeOrder {
     }
 
     /// Returns the index of the next candidate to consider.
-    pub fn pick_index<IT>(&self, nodes: IT, cut: f64) -> Option<usize>
+    pub fn pick_index<IT>(self, nodes: IT, cut: f64) -> Option<usize>
     where
         IT: Iterator<Item = (usize, f64)> + Clone,
     {
-        let nodes = nodes.filter(|&(_, b)| b < cut);
+        let mut nodes = nodes.filter(|&(_, b)| b < cut);
         match self {
-            NewNodeOrder::Api => nodes.into_iter().next().map(|(idx, _)| idx),
+            NewNodeOrder::Api => nodes.next().map(|(idx, _)| idx),
             NewNodeOrder::WeightedRandom => choose_cand_weighted(nodes, cut),
             NewNodeOrder::Bound => choose_cand_best(nodes),
             NewNodeOrder::Random => choose_cand_rand(nodes),

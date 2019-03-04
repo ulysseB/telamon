@@ -177,7 +177,7 @@ impl SearchAlgorithm {
 
 impl Default for SearchAlgorithm {
     fn default() -> Self {
-        SearchAlgorithm::MultiArmedBandit(BanditConfig::default())
+        SearchAlgorithm::Mcts(BanditConfig::default())
     }
 }
 
@@ -493,7 +493,7 @@ impl FromStr for ChoiceOrdering {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(ChoiceOrdering(
-            s.split(",")
+            s.split(',')
                 .map(str::parse)
                 .collect::<Result<Vec<_>, _>>()?,
         ))

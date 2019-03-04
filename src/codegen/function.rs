@@ -300,7 +300,7 @@ impl<'a> MemoryRegion<'a> {
         block_dims: &[Dimension<'a>],
     ) -> Vec<ParamVal<'a>> {
         let mut out = if self.mem_space == MemSpace::GLOBAL {
-            let t = ir::Type::PtrTo(self.id.into());
+            let t = ir::Type::PtrTo(self.id);
             let t = unwrap!(space.ir_instance().device().lower_type(t, space));
             vec![ParamVal::GlobalMem(self.id, self.alloc_size(), t)]
         } else {

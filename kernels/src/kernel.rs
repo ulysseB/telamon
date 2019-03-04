@@ -1,15 +1,15 @@
 //! Abstracts kernels so we can build generic methods to test them.
 use crate::statistics;
-use crate::utils::*;
 use itertools::Itertools;
+use log::*;
 use num_cpus;
 use rayon::prelude::*;
-use std;
 use std::sync::{atomic, Mutex};
 use telamon::explorer::{local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
 use telamon::{codegen, device, explorer, ir};
+use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
 const CUT: f64 = 2e8f64;
@@ -109,6 +109,7 @@ pub trait Kernel<'a>: Sized {
 
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
     /// along with the actual evaluation time.
+    #[allow(clippy::collapsible_if)]
     fn test_bound<AM>(
         params: Self::Parameters,
         num_tests: usize,

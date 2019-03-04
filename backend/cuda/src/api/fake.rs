@@ -4,7 +4,6 @@
 
 use crate::api;
 use std::marker::PhantomData;
-use std::ops::Deref;
 use telamon::device;
 
 /// An argument that can be passed to the executor.
@@ -17,7 +16,7 @@ pub trait Argument: Send + Sync {
 
 impl Argument for Box<dyn device::ScalarArgument> {
     fn as_size(&self) -> Option<u32> {
-        (*self).as_size()
+        (**self).as_size()
     }
 }
 

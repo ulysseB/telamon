@@ -25,6 +25,7 @@ impl MulMode {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait Printer {
     /// Get the representation of an integer in the target language.
     fn get_int(n: u32) -> String;
@@ -353,7 +354,7 @@ pub trait Printer {
             return;
         }
         let addr = namer.name_addr(block.id());
-        let addr_type = Self::lower_type(Type::PtrTo(block.id().into()), fun);
+        let addr_type = Self::lower_type(Type::PtrTo(block.id()), fun);
         let size = namer.name_size(block.local_size(), Type::I(32));
         let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
         let var = fun.block_dims()[1..].iter().fold(d0, |old_var, dim| {

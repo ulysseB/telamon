@@ -1,6 +1,5 @@
 //! Statistical analysis for benchmarking.
-use crate::utils::*;
-use std;
+use utils::*;
 
 /// Estimates a mean within a confidence interval.
 pub struct Estimate {

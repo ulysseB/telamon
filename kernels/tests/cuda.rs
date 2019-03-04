@@ -1,9 +1,5 @@
 #![cfg(feature = "cuda")]
-extern crate env_logger;
-extern crate telamon;
-extern crate telamon_kernels;
-
-use telamon::device::cuda;
+use telamon_cuda as cuda;
 use telamon_kernels::{linalg, Kernel};
 
 macro_rules! test_output {

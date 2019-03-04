@@ -171,7 +171,7 @@ enum ThunkArg {
 /// Given a function string and its arguments as ThunkArg, compile to a binary, executes it and
 /// returns the time elapsed. Converts ThunkArgs to HoldTHunk as we want to allocate memory for
 /// temporary arrays at the last possible moment
-fn function_evaluate(fun_str: &str, args: &Vec<ThunkArg>) -> Result<f64, ()> {
+fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
     debug!("running code {}", fun_str);
     let temp_dir = unwrap!(tempfile::tempdir());
     let templib_name = temp_dir

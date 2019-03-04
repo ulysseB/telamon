@@ -1,7 +1,9 @@
 //! Linera algebra kernels.
+#![allow(clippy::many_single_char_names)]
+
 use crate::kernel::Kernel;
-use crate::utils::*;
 use crate::{build_candidate, create_size, infer_tiling, Scalar};
+#[rustfmt::skip]
 use ::ndarray::{Array1, Array2, Array3, ArrayD};
 use itertools::Itertools;
 use rand;
@@ -11,6 +13,7 @@ use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
+use utils::*;
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S>
@@ -162,10 +165,17 @@ where
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
         let a_shape = (self.m as usize, self.n as usize);
-        unwrap!(self.a.read_to_host(context).into_shape(a_shape)).dot(&unwrap!(self
-            .x
+        self.a
             .read_to_host(context)
-            .into_shape(self.n as usize)))
+            .into_shape(a_shape)
+            .unwrap()
+            .dot(
+                &self
+                    .x
+                    .read_to_host(context)
+                    .into_shape(self.n as usize)
+                    .unwrap(),
+            )
     }
 
     fn check_result(
@@ -173,7 +183,11 @@ where
         expected: &Self::ExpectedOutput,
         context: &device::Context,
     ) -> Result<(), String> {
-        let y = unwrap!(self.y.read_to_host(context).into_shape(self.m as usize));
+        let y = self
+            .y
+            .read_to_host(context)
+            .into_shape(self.m as usize)
+            .unwrap();
         if y.iter()
             .zip_eq(expected)
             .any(|(&y0, &y1)| (y0 - y1).is_err_ok())
@@ -642,8 +656,16 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let m = self.params.m as usize;
         let n = self.params.n as usize;
         let k = self.params.k as usize;
-        let a = unwrap!(self.a.read_to_host(context).into_shape((batch, m, k)));
-        let b = unwrap!(self.b.read_to_host(context).into_shape((batch, k, n)));
+        let a = self
+            .a
+            .read_to_host(context)
+            .into_shape((batch, m, k))
+            .unwrap();
+        let b = self
+            .b
+            .read_to_host(context)
+            .into_shape((batch, k, n))
+            .unwrap();
         let mut c = Array3::zeros((batch, m, n));
         for (mut c, (a, b)) in c.outer_iter_mut().zip(a.outer_iter().zip(b.outer_iter()))
         {
@@ -659,7 +681,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
     ) -> Result<(), String> {
         let batch = self.params.batch as usize;
         let c_shape = (batch, self.params.m as usize, self.params.n as usize);
-        let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
+        let c = self.c.read_to_host(context).into_shape(c_shape).unwrap();
         if c.iter()
             .zip_eq(expected)
             .any(|(&c0, &c1)| (c0 - c1).is_err_ok())

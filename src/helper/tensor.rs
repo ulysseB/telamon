@@ -18,7 +18,7 @@ pub struct DimSize<'a> {
 
 impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
-    pub fn into_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
+    pub fn to_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
         let params = self.params.iter().map(|p| builder.find_param(p)).collect();
         ir::Size::new(self.factor, params, self.max_size)
     }
@@ -187,7 +187,7 @@ where
             .iter()
             .zip_eq(tiling)
             .map(|(dim, tiling)| {
-                let size = dim.0.into_ir_size(builder);
+                let size = dim.0.to_ir_size(builder);
                 builder.open_tiled_dim(size, tiling)
             })
             .collect_vec();
@@ -196,7 +196,7 @@ where
             let increments = dims
                 .iter()
                 .zip_eq(&self.iter_dims)
-                .map(|(dim, (_, stride))| (dim, stride.into_ir_size(builder)))
+                .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder)))
                 .collect_vec();
             ptr = builder.induction_var(&self.name, increments.clone());
             pattern = builder.tensor_access_pattern(None, increments);

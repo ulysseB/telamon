@@ -1,17 +1,16 @@
 //! exploration of the search space.
-mod bandit_arm;
 mod candidate;
 mod logger;
-mod mcts;
 mod monitor;
 mod parallel_list;
 mod store;
 
+pub mod bandit_arm;
 pub mod choice;
 pub mod config;
 pub mod local_selection;
+pub mod mcts;
 
-pub use self::bandit_arm::{DeadEndSource, TreeEvent};
 pub use self::candidate::Candidate;
 pub use self::config::{BanditConfig, Config, SearchAlgorithm};
 pub use self::logger::LogMessage;
@@ -237,7 +236,6 @@ pub fn find_best_ex<'a>(
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 fn launch_search<'a, T: Store<'a>>(
     config: &Config,
     candidate_store: T,
