@@ -37,13 +37,19 @@ use crate::search_space::SearchSpace;
 
 /// Newtype wrapper to represent a node identifier.  Node identifiers should be unique inside a
 /// tree.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 #[repr(transparent)]
-pub struct NodeId(usize);
+pub struct NodeId(u64);
 
 impl Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "#{}", self.0)
+    }
+}
+
+impl From<NodeId> for u64 {
+    fn from(v: NodeId) -> Self {
+        v.0
     }
 }
 
@@ -479,7 +485,7 @@ impl<'a> Tree<'a> {
             cause_of_death = Some(CauseOfDeath::Constraints);
         }
 
-        let id = NodeId(self.id_counter.fetch_add(1, Ordering::Relaxed));
+        let id = NodeId(self.id_counter.fetch_add(1, Ordering::Relaxed) as u64);
 
         // Log node creation so that other events can refer to it using its ID only.
         self.log(Message::Node {
