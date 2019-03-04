@@ -1,10 +1,6 @@
 #![cfg(feature = "cuda")]
-extern crate env_logger;
-extern crate telamon;
-extern crate telamon_kernels;
-
-use telamon::device::cuda;
-use telamon_kernels::{linalg, Kernel};
+use telamon_cuda as cuda;
+use telamon_kernels::{Kernel, linalg};
 
 macro_rules! test_output {
     ($name:ident, $kernel:ty, $num_tests:expr, $params:expr) => {
