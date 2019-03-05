@@ -147,12 +147,11 @@ impl<'c, N, E> Node<'c, N, E> {
 
     /// Returns whether the node is still live.
     pub fn is_live(&self) -> bool {
-        self.inner.bound.is_some() && !self.inner.dead.load(Ordering::Acquire)
+        self.inner.bound.is_some() && !self.inner.dead.load(Ordering::SeqCst)
     }
 
     fn kill(&self) {
-        // TODO: Do not overwrite cause if there already is one?
-        self.inner.dead.store(true, Ordering::Release);
+        self.inner.dead.store(true, Ordering::SeqCst);
 
         // Clear the candidate if there is one.  Always do it after killing the node so that if
         // somebody tries to take the candidate and it fails, they will always see the node as dead
@@ -966,25 +965,18 @@ where
         self.default_walker.walk(cursor, candidate)
     }
 
+    /// Select a child in the explicit tree.  The node pointed to by the cursor must already be
+    /// expanded (= in the explicit tree), and must not be an implementation (in that case it
+    /// should be evaluated instead).
     fn select_intree(
         &self,
         mut cursor: NodeCursor<'a, 'c, N, E>,
     ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Error<'a, 'c, N, E>> {
-        if !cursor.node.is_expanded() {
-            if let Some(candidate) = cursor.expand() {
-                return self.evaluate(cursor, candidate);
-            }
-        }
-
-        assert!(cursor.node.is_expanded());
-
-        // If we reached an implementation in-tree and we did not expand it, it must have been
-        // evaluated by another thread -- backtrack.
-        if cursor.node.is_implementation() {
-            // We don't assert! that the node is dead because the other thread could be currently
-            // evaluating it.
-            return Err(Error::DeadEnd(cursor));
-        }
+        assert!(cursor.node.is_expanded(), "not in the explicit tree");
+        assert!(
+            !cursor.node.is_implementation(),
+            "implementation in the explicit tree"
+        );
 
         // Information about the selected chidl
         struct SelectedChild {
@@ -1062,7 +1054,16 @@ where
                                 Err(cursor)
                             }
                         } else {
-                            Ok(self.select_intree(cursor))
+                            assert!(cursor.node.is_expanded());
+
+                            if cursor.node.is_implementation() {
+                                // If the target node is an implementation but was expanded, we
+                                // must have selected it while another thread was expanding it but
+                                // before it marked it as already evaluated; try again.
+                                Err(cursor)
+                            } else {
+                                Ok(self.select_intree(cursor))
+                            }
                         }
                     })
             }) {
@@ -1133,6 +1134,37 @@ where
             config,
         }
     }
+
+    fn cursor<'b>(&'b self, context: &'b dyn Context) -> NodeCursor<'b, 'c, N, E> {
+        NodeCursor {
+            start_time: std::time::Instant::now(),
+            events: Vec::new().into(),
+            cut: *self.cut.read().expect("cut: poisoned"),
+            cut_epoch: self.cut_epoch.load(Ordering::Relaxed),
+            path: Vec::new(),
+            node: self.root.clone(),
+            tree: Tree::new(
+                Env::new(&self.config.choice_ordering, context),
+                &self.id_counter,
+                &self.logger,
+            ),
+            helper: WalkHelper {
+                stop: &self.stop,
+                cut: &self.cut,
+                cut_epoch: &self.cut_epoch,
+                config: self.config,
+            },
+        }
+    }
+
+    fn walker(&self) -> MctsWalker<'_, 'c, N, E> {
+        MctsWalker {
+            default_walker: PolicyWalker {
+                policy: self.default_policy.as_ref(),
+            },
+            tree_policy: self.tree_policy.as_ref(),
+        }
+    }
 }
 
 impl<'a, 'c, N: 'c, E: 'c> Store<'c> for MctsStore<'a, 'c, N, E>
@@ -1181,49 +1213,38 @@ where
 
     fn explore(&self, context: &dyn Context) -> Option<(Candidate<'c>, Self::PayLoad)> {
         loop {
-            let cursor = NodeCursor {
-                start_time: std::time::Instant::now(),
-                events: Vec::new().into(),
-                cut: *self.cut.read().expect("cut: poisoned"),
-                cut_epoch: self.cut_epoch.load(Ordering::Relaxed),
-                path: Vec::new(),
-                node: self.root.clone(),
-                tree: Tree::new(
-                    Env::new(&self.config.choice_ordering, context),
-                    &self.id_counter,
-                    &self.logger,
-                ),
-                helper: WalkHelper {
-                    stop: &self.stop,
-                    cut: &self.cut,
-                    cut_epoch: &self.cut_epoch,
-                    config: self.config,
-                },
-            };
+            let cursor = self.cursor(context);
+            let walker = self.walker();
 
             // Stop if the root node is dead.
             if cursor.cut() {
                 break None;
             }
 
-            let walker = MctsWalker {
-                default_walker: PolicyWalker {
-                    policy: self.default_policy.as_ref(),
-                },
-                tree_policy: self.tree_policy.as_ref(),
-            };
-
-            match walker.select_intree(cursor) {
-                Ok((candidate, trace)) => {
-                    break Some((
-                        Candidate::new(candidate, trace.node.bound().unwrap().clone()),
-                        trace,
-                    ));
+            // Expand the root node if it has not yet been expanded
+            if !cursor.node.is_expanded() {
+                if let Some(candidate) = cursor.expand() {
+                    match walker.evaluate(cursor, candidate) {
+                        Ok((candidate, trace)) => break Some((candidate, trace)),
+                        Err(Error::DeadEnd(_cursor)) => continue,
+                        Err(_err) => break None,
+                    }
                 }
+            }
+
+            // Otherwise perform monte-carlo selection
+            match walker.select_intree(cursor) {
+                Ok((candidate, trace)) => break Some((candidate, trace)),
                 Err(Error::DeadEnd(_cursor)) => continue,
                 Err(_err) => break None,
             }
         }
+        .map(|(candidate, trace)| {
+            (
+                Candidate::new(candidate, trace.node.bound().unwrap().clone()),
+                trace,
+            )
+        })
     }
 
     fn stop_exploration(&self) {
