@@ -6,7 +6,7 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
-use telamon::explorer::{choice::ActionEx, TreeEvent};
+use telamon::explorer::{bandit_arm::TreeEvent, choice::ActionEx};
 use utils::tfrecord::{ReadError, RecordReader};
 
 use flate2::read::{GzDecoder, ZlibDecoder};
