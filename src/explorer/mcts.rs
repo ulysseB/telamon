@@ -87,8 +87,8 @@ struct NodeInner<'c, N, E> {
     /// and was never live.
     bound: Option<Box<Bound>>,
 
-    /// If the node is dead, the reason for which it was killed.
-    cause_of_death: RwLock<Option<CauseOfDeath>>,
+    /// Whether the node is dead.
+    dead: AtomicBool,
 
     /// Whether the node was expanded.
     ///
@@ -147,13 +147,20 @@ impl<'c, N, E> Node<'c, N, E> {
 
     /// Returns whether the node is still live.
     pub fn is_live(&self) -> bool {
-        self.inner.bound.is_some()
-            && self
-                .inner
-                .cause_of_death
-                .read()
-                .expect("cause_of_death: poisoned")
-                .is_none()
+        self.inner.bound.is_some() && !self.inner.dead.load(Ordering::Acquire)
+    }
+
+    fn kill(&self) {
+        // TODO: Do not overwrite cause if there already is one?
+        self.inner.dead.store(true, Ordering::Release);
+
+        // Clear the candidate if there is one.  Always do it after killing the node so that if
+        // somebody tries to take the candidate and it fails, they will always see the node as dead
+        // afterwards.
+        self.take_candidate();
+
+        // TODO: node.data.clear()
+        // TODO: for child in node.children { child.data.clear() }
     }
 
     /// Returns whether the node is an implementation, i.e. represents a fully-specified candidate.
@@ -461,7 +468,7 @@ impl<'a> Tree<'a> {
     {
         assert!(parent.is_some() || candidate.is_some());
 
-        let (children, bound, cause_of_death);
+        let (children, bound);
         if let Some(candidate) = candidate {
             children = self
                 .env
@@ -478,11 +485,9 @@ impl<'a> Tree<'a> {
                 })
                 .collect();
             bound = Some(self.env.bound(candidate));
-            cause_of_death = None;
         } else {
             children = Vec::new();
             bound = None;
-            cause_of_death = Some(CauseOfDeath::Constraints);
         }
 
         let id = NodeId(self.id_counter.fetch_add(1, Ordering::Relaxed) as u64);
@@ -501,8 +506,8 @@ impl<'a> Tree<'a> {
                 depth: parent.map(|(parent, _)| parent.depth() + 1).unwrap_or(0),
                 parent: parent.map(|(parent, index)| (parent.downgrade(), index)),
                 children,
+                dead: AtomicBool::new(bound.is_none()),
                 bound: bound.map(Box::new),
-                cause_of_death: RwLock::new(cause_of_death),
                 data: N::default(),
                 candidate: RwLock::new(None),
                 expanded: RwLock::new(false),
@@ -669,18 +674,7 @@ where
         // TODO: Do not overwrite cause if there already is one?
         self.event(self.start_time.elapsed(), event_fn(cause));
 
-        *node
-            .inner
-            .cause_of_death
-            .write()
-            .expect("cause_of_death: poisoned") = Some(cause);
-
-        // Clear the candidate if there is one.  Always do it after killing the node so that if
-        // somebody tries to take the candidate and it fails, they will always see the node as dead
-        // afterwards.
-        node.take_candidate();
-        // TODO: node.data.clear()
-        // TODO: for child in node.children { child.data.clear() }
+        node.kill();
     }
 
     /// Kill the currently pointed-to node.
@@ -887,9 +881,16 @@ where
         mut cursor: NodeCursor<'a, 'c, N, E>,
         candidate: SearchSpace<'c>,
     ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Error<'a, 'c, N, E>> {
-        // If we point to an implementation, we are done.
+        // If we point to an implementation, we are done.  We mark it as dead to avoid evaluating
+        // it again later.
         if cursor.node.is_implementation() {
-            return cursor.evaluate(candidate).map_err(Error::DeadEnd);
+            return cursor
+                .evaluate(candidate)
+                .map(|(candidate, trace)| {
+                    trace.node.kill();
+                    (candidate, trace)
+                })
+                .map_err(Error::DeadEnd);
         }
 
         loop {
@@ -976,7 +977,14 @@ where
         }
 
         assert!(cursor.node.is_expanded());
-        assert!(!cursor.node.is_implementation());
+
+        // If we reached an implementation in-tree and we did not expand it, it must have been
+        // evaluated by another thread -- backtrack.
+        if cursor.node.is_implementation() {
+            // We don't assert! that the node is dead because the other thread could be currently
+            // evaluating it.
+            return Err(Error::DeadEnd(cursor));
+        }
 
         // Information about the selected chidl
         struct SelectedChild {
@@ -1192,6 +1200,11 @@ where
                     config: self.config,
                 },
             };
+
+            // Stop if the root node is dead.
+            if cursor.cut() {
+                break None;
+            }
 
             let walker = MctsWalker {
                 default_walker: PolicyWalker {

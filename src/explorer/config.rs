@@ -177,7 +177,7 @@ impl SearchAlgorithm {
 
 impl Default for SearchAlgorithm {
     fn default() -> Self {
-        SearchAlgorithm::MultiArmedBandit(BanditConfig::default())
+        SearchAlgorithm::Mcts(BanditConfig::default())
     }
 }
 
