@@ -317,22 +317,20 @@
 <span id="317">317</span>
 <span id="318">318</span>
 <span id="319">319</span>
-<span id="320">320</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
-<span class="kw">mod</span> <span class="ident">bandit_arm</span>;
 <span class="kw">mod</span> <span class="ident">candidate</span>;
 <span class="kw">mod</span> <span class="ident">logger</span>;
 <span class="kw">mod</span> <span class="ident">monitor</span>;
 <span class="kw">mod</span> <span class="ident">parallel_list</span>;
 <span class="kw">mod</span> <span class="ident">store</span>;
 
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">bandit_arm</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">choice</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">local_selection</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mcts</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">bandit_arm</span>::{<span class="ident">DeadEndSource</span>, <span class="ident">TreeEvent</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">config</span>::{<span class="ident">BanditConfig</span>, <span class="ident">Config</span>, <span class="ident">SearchAlgorithm</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">logger</span>::<span class="ident">LogMessage</span>;
