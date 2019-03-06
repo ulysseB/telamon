@@ -62,6 +62,7 @@ pub enum Error {
     InvalidDevicePartitionCount,
     InvalidPipeSize,
     InvalidDeviceQueue,
+    OtherTelajaxProblem,
 }
 
 impl From<c_int> for Error {
@@ -128,6 +129,7 @@ impl From<c_int> for Error {
             -68 => InvalidDevicePartitionCount,
             -69 => InvalidPipeSize,
             -70 => InvalidDeviceQueue,
+            -1111 => OtherTelajaxProblem,
             _ => panic!("Invalid OpenCL error code"),
         }
     }
