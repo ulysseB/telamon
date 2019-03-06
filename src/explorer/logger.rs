@@ -1,21 +1,16 @@
-use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
-use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
 
 use crate::explorer::config::Config;
+use crate::explorer::eventlog::EventLog;
 use crate::explorer::monitor;
 use bincode;
 use failure::Fail;
-use flate2::write::{GzEncoder, ZlibEncoder};
-use flate2::Compression;
 use serde::{Deserialize, Serialize};
 
 use utils::tfrecord;
-use utils::tfrecord::RecordWriter;
-use utils::unwrap;
 
 #[derive(Serialize, Deserialize)]
 pub enum LogMessage<E> {
@@ -34,8 +29,6 @@ pub enum LogError {
     IOError(#[cause] ::std::io::Error),
     #[fail(display = "event serialization failed")]
     SerializationError(#[cause] bincode::Error),
-    #[fail(display = "tfrecord serialization failed")]
-    TFRecordError(#[cause] tfrecord::WriteError),
     #[fail(display = "{}", _0)]
     RecvError(mpsc::RecvError),
 }
@@ -49,12 +42,6 @@ impl From<::std::io::Error> for LogError {
 impl From<bincode::Error> for LogError {
     fn from(error: bincode::Error) -> LogError {
         LogError::SerializationError(error)
-    }
-}
-
-impl From<tfrecord::WriteError> for LogError {
-    fn from(error: tfrecord::WriteError) -> LogError {
-        LogError::TFRecordError(error)
     }
 }
 
@@ -87,19 +74,17 @@ pub fn log<E: Send + Serialize>(
             }
         }
     }
-    record_writer.finish_box()?.flush()?;
     write_buffer.flush()?;
+    record_writer
+        .into_inner()
+        .map_err(io::Error::from)?
+        .finish()?
+        .flush()?;
     Ok(())
 }
 
-fn init_eventlog(config: &Config) -> io::Result<Box<dyn RecordWriter<Writer = File>>> {
-    let path = Path::new(&config.event_log);
-    let raw_file = File::create(&path)?;
-    Ok(match path.extension().and_then(OsStr::to_str) {
-        Some("gz") => Box::new(GzEncoder::new(raw_file, Compression::default())),
-        Some("zz") => Box::new(ZlibEncoder::new(raw_file, Compression::default())),
-        _ => Box::new(raw_file),
-    })
+fn init_eventlog(config: &Config) -> io::Result<tfrecord::Writer<EventLog>> {
+    Ok(EventLog::create(&config.event_log)?)
 }
 
 fn init_log(config: &Config) -> io::Result<BufWriter<File>> {
@@ -123,5 +108,5 @@ fn log_monitor(
          {} candidates evaluated\n",
         score, n_hours, n_minutes, n_seconds, cpt
     );
-    unwrap!(write_buffer.write_all(message.as_bytes()));
+    write_buffer.write_all(message.as_bytes()).unwrap();
 }
