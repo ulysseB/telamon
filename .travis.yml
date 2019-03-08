@@ -33,7 +33,7 @@ jobs:
       before_script: rustup component add clippy
     - stage: documentation
       if: branch IN (master, staging)
-      script: cargo doc --no-deps --all
+      script: cargo doc --no-deps --all --exclude telajax
       deploy:
         provider: pages
         local-dir: target/doc
