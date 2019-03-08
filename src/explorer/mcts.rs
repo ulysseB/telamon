@@ -713,6 +713,13 @@ where
         }
     }
 
+    pub fn deadend(self) {
+        self.tree.log(Message::Trace {
+            thread: format!("{:?}", std::thread::current().id()),
+            events: self.events.into_inner(),
+        });
+    }
+
     /// Make a checkpoint of the current pointed-to node then call `func`.  If `func` fails,
     /// restore the resulting cursor to the checkpointed state.
     fn checkpoint<F, T>(self, func: F) -> Result<Result<T, Error<'a, 'c, N, E>>, Self>
@@ -1226,7 +1233,10 @@ where
                 if let Some(candidate) = cursor.expand() {
                     match walker.evaluate(cursor, candidate) {
                         Ok((candidate, trace)) => break Some((candidate, trace)),
-                        Err(Error::DeadEnd(_cursor)) => continue,
+                        Err(Error::DeadEnd(cursor)) => {
+                            cursor.deadend();
+                            continue;
+                        }
                         Err(_err) => break None,
                     }
                 }
@@ -1235,7 +1245,10 @@ where
             // Otherwise perform monte-carlo selection
             match walker.select_intree(cursor) {
                 Ok((candidate, trace)) => break Some((candidate, trace)),
-                Err(Error::DeadEnd(_cursor)) => continue,
+                Err(Error::DeadEnd(cursor)) => {
+                    cursor.deadend();
+                    continue;
+                }
                 Err(_err) => break None,
             }
         }
