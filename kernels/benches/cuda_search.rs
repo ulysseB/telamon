@@ -1,17 +1,8 @@
 //! Benchmarks the exploration on CUDA gpus.
-extern crate cuda_sys;
-extern crate env_logger;
-extern crate libc;
-extern crate num;
-extern crate telamon;
-extern crate telamon_kernels;
-#[macro_use]
-extern crate telamon_utils as utils;
-
 use cuda_sys::cublas::*;
 use cuda_sys::cuda::*;
-use telamon::device::cuda;
 use telamon::explorer::config::Config;
+use telamon_cuda as cuda;
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel};
 

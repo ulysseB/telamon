@@ -47,7 +47,7 @@ fn compile_link_cuda() {
 }
 
 fn main() {
-    if cfg!(feature = "driver") {
+    if cfg!(feature = "real_gpu") {
         compile_link_cuda();
     }
 }
