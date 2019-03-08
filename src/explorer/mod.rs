@@ -182,6 +182,9 @@ pub fn find_best_ex<'a>(
                 self::config::TreePolicy::WeightedRandom => {
                     builder.build(self::config::NewNodeOrder::WeightedRandom)
                 }
+                self::config::TreePolicy::RoundRobin => panic!(
+                    "Round-robin policy not supported with legacy 'bandit' implementation.  Use `'mcts'` instead."
+                ),
             }
         }
         config::SearchAlgorithm::Mcts(ref bandit_config) => {
@@ -215,6 +218,11 @@ pub fn find_best_ex<'a>(
                     Box::new(config::NewNodeOrder::WeightedRandom),
                     default_policy,
                 ),
+                config::TreePolicy::RoundRobin => builder
+                    .search::<(), mcts::CommonStats>(
+                        Box::new(mcts::RoundRobinPolicy),
+                        default_policy,
+                    ),
             }
         }
         config::SearchAlgorithm::BoundOrder => crossbeam::scope(|scope| {
