@@ -20,7 +20,7 @@ before_script:
 jobs:
   include:
     - stage: test
-      script: cargo check --all --all-targets --tests --benches
+      script: cargo check --all --exclude telajax  --all-targets --tests --benches
     - script: cargo test
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
@@ -29,7 +29,7 @@ jobs:
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - script: cargo fmt --all -- --check
       before_script: rustup component add rustfmt
-    - script: cargo clippy --all --all-targets --tests --benches
+    - script: cargo clippy --all --exclude telajax --all-targets --tests --benches
       before_script: rustup component add clippy
     - stage: documentation
       if: branch IN (master, staging)
