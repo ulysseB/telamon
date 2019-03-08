@@ -18,8 +18,10 @@ use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
     mpsc, Arc, RwLock, Weak,
 };
-use std::{cmp, slice};
+use std::{cmp, iter, ops, slice};
 
+use rand::distributions::{Weighted, WeightedChoice};
+use rand::prelude::*;
 use rpds::List;
 use serde::{Deserialize, Serialize};
 use utils::cmp_f64;
@@ -36,7 +38,7 @@ use crate::model::{bound, Bound};
 use crate::search_space::SearchSpace;
 
 /// Newtype wrapper to represent a node identifier.  Node identifiers should be unique inside a
-/// tree.
+/// tree.  We use a fixed-size representation for consistency of the serialization format.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 pub struct NodeId(u64);
@@ -49,6 +51,24 @@ impl Display for NodeId {
 
 impl From<NodeId> for u64 {
     fn from(v: NodeId) -> Self {
+        v.0
+    }
+}
+
+/// Newtype wrapper to represent an edge index.  Like `NodeId`, we use a fixed-size representation
+/// for consistency of the serialization format.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[repr(transparent)]
+pub struct EdgeIndex(u16);
+
+impl Display for EdgeIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, ".[{}]", self.0)
+    }
+}
+
+impl From<EdgeIndex> for u16 {
+    fn from(v: EdgeIndex) -> Self {
         v.0
     }
 }
@@ -77,7 +97,7 @@ struct NodeInner<'c, N, E> {
     /// This is directly a pointer to the parent node and edge index in order to avoid an
     /// additional indirection through the `Edge` when following a path upwards.
     #[allow(dead_code)]
-    parent: Option<(WeakNode<'c, N, E>, usize)>,
+    parent: Option<(WeakNode<'c, N, E>, EdgeIndex)>,
 
     /// Child edges.  Edges have a backward pointer to the node and additional metadata such as the
     /// action it correspond to.
@@ -142,7 +162,7 @@ impl<'c, N, E> Node<'c, N, E> {
     /// Bound from the performance model.  If `None`, the node is dead and was killed by constraint
     /// propagation.
     pub fn bound(&self) -> Option<&Bound> {
-        self.inner.bound.as_ref().map(|b| b.as_ref())
+        self.inner.bound.as_ref().map(Box::as_ref)
     }
 
     /// Returns whether the node is still live.
@@ -210,6 +230,14 @@ impl<'c, N, E> Node<'c, N, E> {
     }
 }
 
+impl<'c, N, E> ops::Index<EdgeIndex> for Node<'c, N, E> {
+    type Output = Edge<'c, N, E>;
+
+    fn index(&self, index: EdgeIndex) -> &Self::Output {
+        &self.inner.children[index.0 as usize]
+    }
+}
+
 /// Non-owning reference to a node.  The node can be accessed through `upgrade`.
 pub struct WeakNode<'c, N, E> {
     inner: Weak<NodeInner<'c, N, E>>,
@@ -228,7 +256,7 @@ struct EdgeInner<'c, N, E> {
     node: RwLock<Option<Node<'c, N, E>>>,
 
     /// Edge index across the parent's children
-    index: usize,
+    index: EdgeIndex,
 
     /// Action associated with the edge.
     action: Action,
@@ -272,7 +300,7 @@ impl<'c, N, E> Edge<'c, N, E> {
     }
 
     /// Edge index across the parent's children.
-    pub fn index(&self) -> usize {
+    pub fn index(&self) -> EdgeIndex {
         self.inner.index
     }
 
@@ -349,19 +377,19 @@ pub enum Policy {
 }
 
 /// The possible events in a trace.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Event {
     /// Move to a node given by its ID.  This is typically used at the start of the trace and for
     /// backtracking purposes.
     SelectNode(NodeId),
     /// Select the `n`th child of the current node.
-    SelectChild(usize, Policy),
+    SelectChild(EdgeIndex, Policy, Selector<EdgeIndex>),
     /// Expand the current node.
     Expand,
     /// Kill the current node for the given reason.
     Kill(CauseOfDeath),
     /// Kill the `n`th child of the current node for the given reason.
-    KillChild(usize, CauseOfDeath),
+    KillChild(EdgeIndex, CauseOfDeath),
     /// An implementation was found.  This should occur at most once per trace and will be the last
     /// event on the trace when it does occur.
     Implementation,
@@ -387,7 +415,7 @@ pub enum Message {
         id: NodeId,
         /// Parent of the node, if it exists.  This is a pair containing the node identifier of the
         /// parent and index in the `children` list.
-        parent: Option<(NodeId, usize)>,
+        parent: Option<(NodeId, EdgeIndex)>,
         /// All available children for this node.  This includes *all* actions ever considered,
         /// even those that end up being forbidden due to constraint propagation.
         children: Vec<Action>,
@@ -420,7 +448,7 @@ pub enum Message {
 pub struct Trace<'c, N, E> {
     /// List of edges taken.  For each edge, we also record the policy that was used to select it,
     /// so that it can be used appropriately for backpropagation.
-    path: Vec<(Policy, WeakNode<'c, N, E>, usize)>,
+    path: Vec<(Policy, WeakNode<'c, N, E>, EdgeIndex)>,
     /// The final node reached at the end of the trace.  This is provided for convenience and
     /// should always be the node pointed to by the last edge in the `path`.
     node: Node<'c, N, E>,
@@ -458,7 +486,7 @@ impl<'a> Tree<'a> {
     /// candidate.
     pub fn node<'c, N, E>(
         &self,
-        parent: Option<(&Node<'c, N, E>, usize)>,
+        parent: Option<(&Node<'c, N, E>, EdgeIndex)>,
         candidate: Option<&SearchSpace<'c>>,
     ) -> Node<'c, N, E>
     where
@@ -477,7 +505,7 @@ impl<'a> Tree<'a> {
                 .map(|(ix, action)| Edge {
                     inner: Arc::new(EdgeInner {
                         node: RwLock::new(None),
-                        index: ix,
+                        index: EdgeIndex(ix as u16),
                         action,
                         data: E::default(),
                     }),
@@ -527,7 +555,7 @@ pub struct NodeCursor<'a, 'c, N, E> {
     events: RefCell<Vec<Timed<Event>>>,
     cut: f64,
     cut_epoch: usize,
-    path: Vec<(Policy, WeakNode<'c, N, E>, usize)>,
+    path: Vec<(Policy, WeakNode<'c, N, E>, EdgeIndex)>,
     node: Node<'c, N, E>,
     tree: Tree<'a>,
     helper: WalkHelper<'a>,
@@ -588,23 +616,33 @@ where
     ///
     /// If the nodes pointed to by some of the edges don't exist, return the edge instead (it may
     /// be live, but the candidate is needed to compute the bound).
-    pub fn live_children_iter<'b>(
-        &'b self,
-    ) -> impl Iterator<Item = Result<(&'b Edge<'c, N, E>, Node<'c, N, E>), &'b Edge<'c, N, E>>>
-    {
-        self.node.edges().iter().filter_map(move |edge| {
-            if let Some(opt) = edge.try_with_node(|node| {
-                if self.cut_node(node, |cause| Event::KillChild(edge.index(), cause)) {
-                    None
+    pub fn live_children_iter(
+        &'_ self,
+    ) -> impl Iterator<
+        Item = Result<(&'_ Edge<'c, N, E>, Node<'c, N, E>), &'_ Edge<'c, N, E>>,
+    > + '_ {
+        self.node
+            .edges()
+            .iter()
+            .map(move |edge| {
+                if let Some(opt) = edge.try_with_node(|node| {
+                    if self.cut_node(node, |cause| Event::KillChild(edge.index(), cause))
+                    {
+                        None
+                    } else {
+                        Some((edge, node.clone()))
+                    }
+                }) {
+                    Ok(opt)
                 } else {
-                    Some((edge, node.clone()))
+                    Err(edge)
                 }
-            }) {
-                opt.map(Ok)
-            } else {
-                Some(Err(edge))
-            }
-        })
+            })
+            .filter_map(|result| match result {
+                Ok(None) => None,
+                Ok(Some((edge, node))) => Some(Ok((edge, node))),
+                Err(err) => Some(Err(err)),
+            })
     }
 
     /// An iterator on the live children of the pointed-to nodes with their associated search
@@ -616,7 +654,7 @@ where
     pub fn live_children_iter_with_candidates<'b>(
         &'b self,
         candidate: &'b SearchSpace<'c>,
-    ) -> impl Iterator<Item = (&'b Edge<'c, N, E>, Node<'c, N, E>, Option<SearchSpace<'c>>)>
+    ) -> impl Iterator<Item = (&'b Edge<'c, N, E>, Node<'c, N, E>, Option<SearchSpace<'c>>)> + 'b
     {
         self.live_children_iter().filter_map(move |result| {
             result
@@ -752,12 +790,15 @@ where
     /// returned in an `Err` result.
     fn select_child<F, T>(mut self, func: F) -> Result<(Self, T), Self>
     where
-        F: FnOnce(&Self) -> Option<(Policy, usize, Node<'c, N, E>, T)>,
+        F: FnOnce(
+            &Self,
+        )
+            -> Option<(Policy, Selector<EdgeIndex>, EdgeIndex, Node<'c, N, E>, T)>,
     {
         let start_time = self.start_time.elapsed();
-        if let Some((policy, index, node, value)) = func(&self) {
-            self.event(start_time, Event::SelectChild(index, policy));
-            self.path.push((policy, self.node.downgrade(), index));
+        if let Some((policy, selector, eindex, node, value)) = func(&self) {
+            self.event(start_time, Event::SelectChild(eindex, policy, selector));
+            self.path.push((policy, self.node.downgrade(), eindex));
             self.node = node;
             Ok((self, value))
         } else {
@@ -787,9 +828,10 @@ where
         }
 
         if let Some(candidate) = self.node.take_candidate() {
-            for (edge, node, child) in self.live_children_iter_with_candidates(&candidate)
+            for (edge, node, child_candidate) in
+                self.live_children_iter_with_candidates(&candidate)
             {
-                node.store_candidate(child.unwrap_or_else(|| {
+                node.store_candidate(child_candidate.unwrap_or_else(|| {
                     self.tree
                         .env
                         .apply_action(candidate.clone(), edge.action().clone())
@@ -844,14 +886,13 @@ pub trait TreePolicy<'c, N: 'c, E: 'c>: Send + Sync {
     fn pick_child(
         &'_ self,
         cut: f64,
-        parent: &'_ Node<'c, N, E>,
-        edges: &'_ [(&'_ Edge<'c, N, E>, Node<'c, N, E>)],
-    ) -> Option<usize>;
+        children: &NodeView<'_, 'c, N, E>,
+    ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)>;
 
     fn backpropagate(
         &'_ self,
         _parent: &'_ Node<'c, N, E>,
-        _index: usize,
+        _index: EdgeIndex,
         _eval: Option<f64>,
     ) {
     }
@@ -903,17 +944,17 @@ where
                             })
                             .unzip();
 
-                        if let Some((edge, node, child_candidate)) = self
+                        if let Some((index, selector)) = self
                             .policy
-                            .pick_child(cursor.cut, &cursor.node, &edges[..])
-                            .map(|index| {
-                                let (edge, node) = edges.swap_remove(index);
-                                let candidate = candidates.swap_remove(index);
-                                (edge, node, candidate)
-                            })
+                            .pick_child(cursor.cut, &NodeView::new(&cursor.node, &edges))
                         {
+                            let (edge, node) = edges.swap_remove(usize::from(index));
+                            let child_candidate =
+                                candidates.swap_remove(usize::from(index));
+
                             Some((
                                 Policy::Default,
+                                selector,
                                 edge.index(),
                                 node,
                                 child_candidate.unwrap_or_else(|| {
@@ -1001,14 +1042,17 @@ where
                             }
                         }
 
-                        if let Some((edge, node)) = self
-                            .default_walker
-                            .policy
-                            .pick_child(cursor.cut, &cursor.node, &unexpanded[..])
-                            .map(|index| unexpanded.swap_remove(index))
+                        if let Some((index, selector)) =
+                            self.default_walker.policy.pick_child(
+                                cursor.cut,
+                                &NodeView::new(&cursor.node, &unexpanded),
+                            )
                         {
+                            let (edge, node) = unexpanded.swap_remove(usize::from(index));
+
                             Some((
                                 Policy::Default,
+                                selector,
                                 edge.index(),
                                 node,
                                 SelectedChild { expand: true },
@@ -1021,13 +1065,16 @@ where
                                 "live unexpanded child was not selected"
                             );
 
-                            if let Some((edge, node)) = self
-                                .tree_policy
-                                .pick_child(cursor.cut, &cursor.node, &expanded[..])
-                                .map(|index| expanded.swap_remove(index))
-                            {
+                            if let Some((index, selector)) = self.tree_policy.pick_child(
+                                cursor.cut,
+                                &NodeView::new(&cursor.node, &expanded),
+                            ) {
+                                let (edge, node) =
+                                    expanded.swap_remove(usize::from(index));
+
                                 Some((
                                     Policy::Bandit,
+                                    selector,
                                     edge.index(),
                                     node,
                                     SelectedChild { expand: false },
@@ -1098,6 +1145,9 @@ pub struct MctsStore<'a, 'c, N, E> {
 
     /// Bandit configuration
     config: &'a BanditConfig,
+
+    /// Time at which the search started
+    start_time: std::time::Instant,
 }
 
 impl<'a, 'c, N, E> MctsStore<'a, 'c, N, E>
@@ -1132,12 +1182,13 @@ where
             id_counter,
             logger,
             config,
+            start_time: std::time::Instant::now(),
         }
     }
 
     fn cursor<'b>(&'b self, context: &'b dyn Context) -> NodeCursor<'b, 'c, N, E> {
         NodeCursor {
-            start_time: std::time::Instant::now(),
+            start_time: self.start_time,
             events: Vec::new().into(),
             cut: *self.cut.read().expect("cut: poisoned"),
             cut_epoch: self.cut_epoch.load(Ordering::Relaxed),
@@ -1254,21 +1305,53 @@ where
     fn print_stats(&self) {}
 }
 
+impl NewNodeOrder {
+    pub fn into_selector<IT, T>(self, cut: f64, bounds: IT) -> Option<Selector<T>>
+    where
+        IT: Iterator<Item = (T, f64)>,
+    {
+        let bounds = bounds.filter(|(_, b)| *b < cut);
+        match self {
+            NewNodeOrder::Api => bounds
+                .take(1)
+                .map(|(idx, _)| idx)
+                .next()
+                .map(Selector::exact),
+            NewNodeOrder::WeightedRandom => {
+                if cut.is_infinite() {
+                    Selector::random(bounds.map(|(idx, b)| (idx, b.recip())).collect())
+                } else {
+                    Selector::random(bounds.map(|(idx, b)| (idx, 1. - b / cut)).collect())
+                }
+            }
+            NewNodeOrder::Bound => {
+                Selector::maximum(bounds.map(|(idx, b)| (idx, -b)).collect())
+            }
+            NewNodeOrder::Random => {
+                Selector::random(bounds.map(|(idx, _)| (idx, 1.)).collect())
+            }
+        }
+    }
+}
+
 impl<'c, N: 'c, E: 'c> TreePolicy<'c, N, E> for NewNodeOrder {
     fn pick_child(
         &'_ self,
         cut: f64,
-        _parent: &'_ Node<'c, N, E>,
-        edges: &'_ [(&'_ Edge<'c, N, E>, Node<'c, N, E>)],
-    ) -> Option<usize> {
-        self.pick_index(
-            edges
-                .iter()
-                .map(|(_edge, node)| node.bound().unwrap().value())
-                .enumerate()
-                .filter(|(_ix, bound)| *bound < cut),
+        children: &NodeView<'_, 'c, N, E>,
+    ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
+        self.into_selector(
             cut,
+            children.iter().filter_map(|(idx, _edge, node)| {
+                let b = node.bound().unwrap().value();
+                if b < cut {
+                    Some((idx, b))
+                } else {
+                    None
+                }
+            }),
         )
+        .map(|selector| children.select_with(selector))
     }
 }
 
@@ -1357,76 +1440,219 @@ impl UCTPolicy {
     }
 }
 
+/// A newtype wrapper holding the indices in the `frozen` children list, which typically doesn't
+/// contain all the children and hence does not use `EdgeIndex`.
+#[derive(Debug, Copy, Clone)]
+pub struct EdgeViewIndex(usize);
+
+impl From<EdgeViewIndex> for usize {
+    fn from(v: EdgeViewIndex) -> Self {
+        v.0
+    }
+}
+
+type ChildView<'a, 'c, N, E> = (&'a Edge<'c, N, E>, Node<'c, N, E>);
+
+/// A locally frozen view on a node, where only some children may be present.  This typically only
+/// contains the children satisfying a certain condition, such as live children or (un)expanded
+/// children.
+pub struct NodeView<'a, 'c, N, E> {
+    #[allow(dead_code)]
+    parent: &'a Node<'c, N, E>,
+    edges: &'a [ChildView<'a, 'c, N, E>],
+}
+
+impl<'a, 'c, N, E> NodeView<'a, 'c, N, E> {
+    fn new(parent: &'a Node<'c, N, E>, edges: &'a [ChildView<'a, 'c, N, E>]) -> Self {
+        NodeView { parent, edges }
+    }
+
+    fn iter(&'_ self) -> ChildViewIter<'_, 'a, 'c, N, E> {
+        ChildViewIter {
+            iter: self.edges.iter().enumerate(),
+        }
+    }
+
+    fn select_with(
+        &self,
+        selector: Selector<EdgeViewIndex>,
+    ) -> (EdgeViewIndex, Selector<EdgeIndex>) {
+        (
+            selector.select(),
+            selector.map(|index| self[index].0.index()),
+        )
+    }
+}
+
+impl<'a, 'c, N, E> ops::Index<EdgeViewIndex> for NodeView<'a, 'c, N, E> {
+    type Output = (&'a Edge<'c, N, E>, Node<'c, N, E>);
+
+    fn index(&self, index: EdgeViewIndex) -> &Self::Output {
+        &self.edges[usize::from(index)]
+    }
+}
+
+pub struct ChildViewIter<'a, 'b, 'c, N, E> {
+    iter: iter::Enumerate<slice::Iter<'a, (&'b Edge<'c, N, E>, Node<'c, N, E>)>>,
+}
+
+impl<'a, 'b, 'c, N, E> Iterator for ChildViewIter<'a, 'b, 'c, N, E> {
+    type Item = (EdgeViewIndex, &'a &'b Edge<'c, N, E>, &'a Node<'c, N, E>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next()
+            .map(|(idx, (edge, node))| (EdgeViewIndex(idx), edge, node))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Selector<T> {
+    Random { weights: Vec<(T, f64)> },
+    Maximum { scores: Vec<(T, f64)> },
+    Exact { value: T },
+}
+
+impl<T> Selector<T> {
+    pub fn random(weights: Vec<(T, f64)>) -> Option<Self> {
+        if weights.is_empty() {
+            None
+        } else {
+            Some(Selector::Random { weights })
+        }
+    }
+
+    pub fn maximum(scores: Vec<(T, f64)>) -> Option<Self> {
+        if scores.is_empty() {
+            None
+        } else {
+            Some(Selector::Maximum { scores })
+        }
+    }
+
+    pub fn exact(value: T) -> Self {
+        Selector::Exact { value }
+    }
+
+    pub fn map<F, U>(self, f: F) -> Selector<U>
+    where
+        F: Fn(T) -> U,
+    {
+        match self {
+            Selector::Random { weights } => Selector::Random {
+                weights: weights
+                    .into_iter()
+                    .map(|(value, w)| (f(value), w))
+                    .collect(),
+            },
+            Selector::Maximum { scores } => Selector::Maximum {
+                scores: scores.into_iter().map(|(value, w)| (f(value), w)).collect(),
+            },
+            Selector::Exact { value } => Selector::Exact { value: f(value) },
+        }
+    }
+}
+
+impl<T: Clone> Selector<T> {
+    pub fn select(&self) -> T {
+        match self {
+            Selector::Random { weights } => {
+                let resolution = f64::from(u32::max_value() / weights.len() as u32);
+                let total_weight = weights.iter().map(|&(_, w)| w).sum::<f64>();
+                let index = WeightedChoice::new(
+                    &mut weights
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, &(_, w))| Weighted {
+                            item: idx,
+                            weight: ((w / total_weight) * resolution) as u32,
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .sample(&mut thread_rng());
+                weights[index].0.clone()
+            }
+            Selector::Maximum { scores } => scores
+                .iter()
+                .max_by(|(_, lhs), (_, rhs)| cmp_f64(*lhs, *rhs))
+                .unwrap()
+                .0
+                .clone(),
+            Selector::Exact { value } => value.clone(),
+        }
+    }
+}
+
 impl<'c, N: 'c> TreePolicy<'c, N, UCTStats> for UCTPolicy {
     fn pick_child(
         &'_ self,
         cut: f64,
-        _parent: &'_ Node<'c, N, UCTStats>,
-        edges: &'_ [(&'_ Edge<'c, N, UCTStats>, Node<'c, N, UCTStats>)],
-    ) -> Option<usize> {
-        let stats = edges
+        children: &NodeView<'_, 'c, N, UCTStats>,
+    ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
+        let stats = children
             .iter()
-            .enumerate()
-            .map(|(idx, (edge, node))| {
-                (idx, node.bound().unwrap().value(), self.value(edge.data()))
+            .map(|(index, edge, node)| {
+                (
+                    index,
+                    (node.bound().unwrap().value(), self.value(edge.data())),
+                )
             })
-            .filter(|(_, bound, (_value, _visits))| *bound < cut)
             .collect::<Vec<_>>();
 
-        // Pick an edge which was not explored yet, if there is some...
+        // If there are unvisited nodes, pick from them
         NewNodeOrder::WeightedRandom
-            .pick_index(
+            .into_selector(
+                cut,
                 stats
                     .iter()
-                    .filter(|(_, _bound, (_value, visits))| {
-                        // Use the default policy if one of the following is true:
-                        //  1. The node was never visited
-                        //  2. The cut is infinite (we never got back any evaluation results yet)
+                    .cloned()
+                    .filter(|(_idx, (_bound, (_value, visits)))| {
                         cut.is_infinite() || *visits == 0
                     })
-                    .map(|(idx, bound, (_value, _visits))| (*idx, *bound)),
-                cut,
+                    .map(|(idx, (b, _))| (idx, b)),
             )
-            .or_else(|| {
+            .or_else(move || {
                 // Otherwise apply the UCT formula
                 let total_visits = stats
                     .iter()
-                    .map(|(_idx, _bound, (_value, visits))| visits)
+                    .map(|(_idx, (_bound, (_value, visits)))| visits)
                     .sum::<usize>() as f64;
 
                 let num_children = stats.len();
 
-                stats
-                    .into_iter()
-                    .map(|(idx, _bound, (value, visits))| {
-                        (
-                            idx,
-                            value
-                                + self.exploration_term(
-                                    cut,
-                                    visits as f64,
-                                    total_visits,
-                                    num_children,
-                                ),
-                        )
-                    })
-                    .max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
-                    .map(|(idx, _)| idx)
+                Selector::maximum(
+                    stats
+                        .into_iter()
+                        .map(|(idx, (_bound, (value, visits)))| {
+                            (
+                                idx,
+                                value
+                                    + self.exploration_term(
+                                        cut,
+                                        visits as f64,
+                                        total_visits,
+                                        num_children,
+                                    ),
+                            )
+                        })
+                        .collect(),
+                )
             })
-            .map(|idx| {
-                edges[idx].0.data().down();
-                idx
+            .map(|selector| {
+                let (index, selector) = children.select_with(selector);
+                children[index].0.data().down();
+                (index, selector)
             })
     }
 
     fn backpropagate(
         &'_ self,
         parent: &'_ Node<'c, N, UCTStats>,
-        index: usize,
+        index: EdgeIndex,
         eval: Option<f64>,
     ) {
         if let Some(eval) = eval {
-            parent.edges()[index].data().up(self.reward(eval))
+            parent[index].data().up(self.reward(eval))
         }
     }
 }
@@ -1536,36 +1762,33 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
     fn pick_child(
         &'_ self,
         cut: f64,
-        _parent: &'_ Node<'c, N, TAGStats>,
-        edges: &'_ [(&'_ Edge<'c, N, TAGStats>, Node<'c, N, TAGStats>)],
-    ) -> Option<usize> {
+        children: &NodeView<'_, 'c, N, TAGStats>,
+    ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
         // Ignore cut children.  Also, we compute the number of visits beforehand to ensure that it
         // doesn't get changed by concurrent accesses.
-        let children = edges
+        let edges = children
             .iter()
-            .map(|(edge, node)| (edge, node, edge.data().num_visits()))
-            .enumerate()
+            .map(|(index, edge, node)| (index, (edge, node, edge.data().num_visits())))
             .filter(|(_idx, (_edge, node, _num_visits))| {
                 node.bound().unwrap().value() < cut
             })
             .collect::<Vec<_>>();
 
-        // Pick an edge which was not explored yet, if there is some
         NewNodeOrder::WeightedRandom
-            .pick_index(
-                children
+            .into_selector(
+                cut,
+                edges
                     .iter()
                     .filter(|(_idx, (_edge, _node, num_visits))| *num_visits == 0)
                     .map(|(idx, (_edge, node, _num_visits))| {
                         (*idx, node.bound().unwrap().value())
                     }),
-                cut,
             )
             .or_else(move || {
                 // Compute the threshold to use so that we only have `config.topk` children
                 let threshold = {
                     let mut evalns = Evaluations::with_capacity(self.topk);
-                    for (_idx, (edge, _node, _num_visits)) in &children {
+                    for (_idx, (edge, _node, _num_visits)) in &edges {
                         // Evaluations are sorted; we can bail out early.
                         for &eval in &*edge
                             .data()
@@ -1584,7 +1807,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
                     evalns.max().unwrap_or(std::f64::INFINITY)
                 };
 
-                let stats = children
+                let stats = edges
                     .into_iter()
                     .map(|(ix, (edge, _node, num_visits))| {
                         (
@@ -1608,34 +1831,36 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
                 // Total number of children, excluding ones which were cut
                 let num_children = stats.len();
 
-                stats
-                    .into_iter()
-                    .map(|(ix, child_successes, child_visits)| {
-                        let score = self.heval(
-                            child_successes,
-                            child_visits,
-                            num_visits,
-                            num_children,
-                        );
-                        (ix, score)
-                    })
-                    .max_by(|x1, x2| cmp_f64(x1.1, x2.1))
-                    .map(|(ix, _)| ix)
+                Selector::maximum(
+                    stats
+                        .into_iter()
+                        .map(|(ix, child_successes, child_visits)| {
+                            let score = self.heval(
+                                child_successes,
+                                child_visits,
+                                num_visits,
+                                num_children,
+                            );
+                            (ix, score)
+                        })
+                        .collect(),
+                )
             })
-            .map(|idx| {
-                edges[idx].0.data().down();
-                idx
+            .map(|selector| {
+                let (index, selector) = children.select_with(selector);
+                children[index].0.data().down();
+                (index, selector)
             })
     }
 
     fn backpropagate(
         &'_ self,
         parent: &'_ Node<'c, N, TAGStats>,
-        index: usize,
+        index: EdgeIndex,
         eval: Option<f64>,
     ) {
         if let Some(eval) = eval {
-            parent.edges()[index].data().up(eval, self.topk)
+            parent[index].data().up(eval, self.topk)
         }
     }
 }
