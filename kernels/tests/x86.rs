@@ -1,7 +1,3 @@
-extern crate env_logger;
-extern crate telamon;
-extern crate telamon_kernels;
-
 use telamon::device::x86;
 use telamon_kernels::{linalg, Kernel};
 
