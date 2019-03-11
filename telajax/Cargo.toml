@@ -1,0 +1,21 @@
+[package]
+name = "telajax"
+version = "1.0.0"
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>", 
+        "Nicolas Tollenaere <nicolas.tollenaere@inria.fr>"]
+edition = "2018"
+
+build = "build.rs"
+
+[build-dependencies]
+cc = "1.0.12"
+bindgen = "0.37.4"
+cmake = "0.1.31"
+
+
+[dependencies]
+lazy_static = "1.0.0"
+log = "0.4.1"
+parking_lot = "0.5.5"
+libc = "0.2.40"
+utils = {package = "telamon-utils", path = "../telamon-utils"}

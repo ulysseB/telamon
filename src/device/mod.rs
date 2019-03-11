@@ -1,7 +1,5 @@
 //! Code generation and candidate evaluation for specific targets.
 pub mod fake;
-#[cfg(feature = "mppa")]
-pub mod mppa;
 pub mod x86;
 
 mod argument;

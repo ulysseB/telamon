@@ -1,0 +1,3 @@
+[submodule "telajax/telajax"]
+	path = telajax/telajax
+	url = git@github.com:nicoTolly/telajax.git

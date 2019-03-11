@@ -78,6 +78,8 @@ dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
 tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
+telajax = {path = "telajax", optional = true}
+
 
 [dev-dependencies]
 gcc = "0.3.54"
@@ -90,14 +92,15 @@ telamon-cuda = { path = "backend/cuda", default-features = false }
 default = []
 format_exh = []
 lex = []
-mppa = []
 cuda = ["telamon-cuda/real_gpu"]
+mppa = ["telajax"]
 
 [workspace]
 members = [
     "backend/cuda",
     "kernels",
     "telamon-gen",
+    "telajax",
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
