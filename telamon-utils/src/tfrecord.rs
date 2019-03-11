@@ -21,60 +21,11 @@
 //! masked_crc = ((crc >> 15) | (crc << 17)) + 0xa282ead8u32
 //!
 
-use std::fs::File;
-use std::io::{self, BufWriter, Read, Write};
+use std::io::{self, Read, Write};
+use std::{error, fmt};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use crc::crc32::checksum_castagnoli;
-use failure::Fail;
-use flate2::write::{GzEncoder, ZlibEncoder};
-
-/// The error type for errors occuring while reading a tfrecord file.
-#[derive(Debug, Fail)]
-pub enum ReadError {
-    /// An I/O error occured.
-    #[fail(display = "{}", _0)]
-    IOError(#[cause] io::Error),
-    /// The underlying data was shorter than advertised in the
-    /// header's length field. If this happens because the end-of-file
-    /// was reached, an I/O error will be raised instead.
-    #[fail(display = "truncated record")]
-    TruncatedRecord,
-    /// Either the header or the data was corrupted and failed the CRC
-    /// check.
-    #[fail(display = "corrupted record")]
-    CorruptedRecord,
-}
-
-/// For usage with ? when creating `ReadError`s.
-impl From<io::Error> for ReadError {
-    #[inline]
-    fn from(error: io::Error) -> ReadError {
-        ReadError::IOError(error)
-    }
-}
-
-/// The error type for errors occuring while writing a tfrecord file.
-#[derive(Debug, Fail)]
-pub enum WriteError {
-    /// An I/O error occured.
-    #[fail(display = "{}", _0)]
-    IOError(#[cause] io::Error),
-}
-
-/// For usage with ? when creating `WriteError`s.
-impl From<io::Error> for WriteError {
-    fn from(error: io::Error) -> WriteError {
-        WriteError::IOError(error)
-    }
-}
-
-/// For usage with ? when creating `WriteError`s
-impl<W> From<io::IntoInnerError<W>> for WriteError {
-    fn from(error: io::IntoInnerError<W>) -> WriteError {
-        WriteError::IOError(error.into())
-    }
-}
 
 /// Compute a masked CRC32. See module documentation for details.
 fn masked_crc32(bytes: &[u8]) -> u32 {
@@ -102,20 +53,46 @@ fn retry_read<R: Read + ?Sized>(read: &mut R, mut buf: &mut [u8]) -> io::Result<
     Ok(nread)
 }
 
-/// A trait extension for reading records.
+/// A tfrecord reader.
 ///
 /// Inspired from the C++ implementation at: *
 ///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_reader.h
 ///  *
 ///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_reader.cc
-pub trait RecordReader: Read {
-    /// Read a single record, placing the bytes into `buf`.
+#[derive(Debug)]
+pub struct Reader<R> {
+    // The underlying reader
+    reader: R,
+}
+
+impl<R: Read> Reader<R> {
+    /// Create a new TFRecord reader from the given reader.
+    pub fn from_reader(reader: R) -> Reader<R> {
+        Reader { reader }
+    }
+
+    /// Returns a reference to the underlying reader.
+    pub fn get_ref(&self) -> &R {
+        &self.reader
+    }
+
+    /// Returns a mutable reference to the underlying reader.
+    pub fn get_mut(&mut self) -> &mut R {
+        &mut self.reader
+    }
+
+    /// Unwraps the tfrecord reader, returning the underlying reader.
     ///
-    /// All bytes read from this source will be appended to the specified buffer `buf`.
+    /// Note that any leftover data in the reader's internal buffer is lost.
+    pub fn into_inner(self) -> R {
+        self.reader
+    }
+
+    /// Read a single record, appending the bytes to `buf`.  Returns `false` when no record could
+    /// be read.
     ///
-    /// If successful, this function returns the total number of bytes read, including the tfrecord
-    /// header and footer sizes.  If the total number of bytes read is `0`, then the reader has
-    /// reached end of file.
+    /// This functions performs at most one reallocation of `buf` if it is not large enough to
+    /// contain the read data.
     ///
     /// # Errors
     ///
@@ -125,15 +102,15 @@ pub trait RecordReader: Read {
     /// If any other read error is encountered then this function immediately returns.  Any bytes
     /// which have already been read will be appended to `buf`.  If an error occurs while reading
     /// the initial tfrecord header, buf is unchanged.
-    fn read_record(&mut self, buf: &mut Vec<u8>) -> Result<usize, ReadError> {
+    pub fn read_record(&mut self, buf: &mut Vec<u8>) -> io::Result<bool> {
         let len = {
             let mut len_bytes = [0u8; 8];
-            if retry_read(self, &mut len_bytes)? == 0 {
-                return Ok(0);
+            if retry_read(&mut self.reader, &mut len_bytes)? == 0 {
+                return Ok(false);
             }
 
-            if self.read_u32::<LittleEndian>()? != masked_crc32(&len_bytes) {
-                return Err(ReadError::CorruptedRecord);
+            if self.reader.read_u32::<LittleEndian>()? != masked_crc32(&len_bytes) {
+                return Err(io::Error::new(io::ErrorKind::Other, "corrupted record"));
             }
 
             // We `unwrap` here because reading from the on-stack
@@ -145,61 +122,102 @@ pub trait RecordReader: Read {
         // buffer here.
         let buf_start = buf.len();
         buf.reserve_exact(len as usize);
-        let nread = self.take(len).read_to_end(buf)?;
+        let nread = (&mut self.reader).take(len).read_to_end(buf)?;
         if nread as u64 != len {
-            return Err(ReadError::TruncatedRecord);
+            return Err(io::Error::new(io::ErrorKind::Other, "truncated record"));
         }
-        if self.read_u32::<LittleEndian>()? != masked_crc32(&buf[buf_start..]) {
-            return Err(ReadError::CorruptedRecord);
+        if self.reader.read_u32::<LittleEndian>()? != masked_crc32(&buf[buf_start..]) {
+            return Err(io::Error::new(io::ErrorKind::Other, "corrupted record"));
         }
 
-        Ok(8 + 4 + 4 + nread)
+        Ok(true)
     }
 
     /// Transforms this `Read` instance to an `Iterator` over the contained records.
     ///
-    /// The returned type implements `Iterator` where the `Item` is `Result<u8, ReadError>`.  The
-    /// yielded item is `Ok` if a record was successfuly read and `Err` otherwise.  EOF is mapped
-    /// to returning `None` from this iterator.
-    fn records(self) -> Records<Self>
-    where
-        Self: Sized,
-    {
-        Records { read: self }
+    /// The returned type implements `Iterator` where the `Item` is `io::Result<u8>`.  The yielded
+    /// item is `Ok` if a record was successfuly read and `Err` otherwise.  EOF is mapped to
+    /// returning `None` from this iterator.
+    pub fn records(self) -> Records<R> {
+        Records::new(self)
     }
 }
-
-impl<R: Read + ?Sized> RecordReader for R {}
 
 /// A simple iterator over the records stored in a file.
 #[derive(Debug)]
 pub struct Records<R> {
-    read: R,
+    reader: Reader<R>,
+}
+
+impl<R: Read> Records<R> {
+    fn new(reader: Reader<R>) -> Records<R> {
+        Records { reader }
+    }
 }
 
 impl<R: Read> Iterator for Records<R> {
-    type Item = Result<Vec<u8>, ReadError>;
+    type Item = io::Result<Vec<u8>>;
 
-    fn next(&mut self) -> Option<Result<Vec<u8>, ReadError>> {
-        let mut buf = Vec::new();
-        match self.read.read_record(&mut buf) {
-            Ok(0) => None,
-            Ok(..) => Some(Ok(buf)),
-            Err(e) => Some(Err(e)),
+    fn next(&mut self) -> Option<io::Result<Vec<u8>>> {
+        let mut buffer = Vec::new();
+
+        match self.reader.read_record(&mut buffer) {
+            Err(err) => Some(Err(err)),
+            Ok(true) => Some(Ok(buffer)),
+            Ok(false) => None,
         }
     }
 }
 
-/// A trait extension for writing records.
+/// A tfrecord writer.
 ///
 /// Inspired from the C++ implementation at: *
 ///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_writer.h
 ///  *
 ///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_writer.cc
-pub trait RecordWriter: Write {
-    type Writer;
+#[derive(Debug)]
+pub struct Writer<W> {
+    writer: W,
+}
 
-    fn write_record(&mut self, bytes: &[u8]) -> Result<(), WriteError> {
+/// An error returned by `into_inner` which combines an error that happened while writing out the
+/// buffer, and the records writer object which may be used to recover from the condition.
+#[derive(Debug)]
+pub struct IntoInnerError<W>(W, io::Error);
+
+impl<W: Write> Writer<W> {
+    /// Creates a new tfrecord writer.
+    pub fn from_writer(w: W) -> Writer<W> {
+        Writer { writer: w }
+    }
+
+    /// Acquires a reference to the underlying writer.
+    pub fn get_ref(&self) -> &W {
+        &self.writer
+    }
+
+    /// Acquires a mutable reference to the underlying writer.
+    ///
+    /// Note that mutation of the writer may result in surprising results if the `Writer` is
+    /// continued to be used.
+    pub fn get_mut(&mut self) -> &mut W {
+        &mut self.writer
+    }
+
+    pub fn flush(&mut self) -> io::Result<()> {
+        self.writer.flush()
+    }
+
+    /// Flush the contents of the internal buffer and return the underlying writer.
+    pub fn into_inner(mut self) -> Result<W, IntoInnerError<Writer<W>>> {
+        match self.flush() {
+            Ok(()) => Ok(self.writer),
+            Err(err) => Err(IntoInnerError(self, err)),
+        }
+    }
+
+    /// Write data into a single record.
+    pub fn write_record(&mut self, bytes: &[u8]) -> io::Result<()> {
         // We use a temporary buffer on the stack for the header
         // because we need to compute its crc32. We `unwrap` here
         // because writing to the on-stack buffer cannot fail.
@@ -209,69 +227,37 @@ pub trait RecordWriter: Write {
             .write_u64::<LittleEndian>(bytes.len() as u64)
             .unwrap();
 
-        self.write_all(&len_bytes)?;
-        self.write_u32::<LittleEndian>(masked_crc32(&len_bytes))?;
-        self.write_all(bytes)?;
-        self.write_u32::<LittleEndian>(masked_crc32(bytes))?;
+        self.writer.write_all(&len_bytes)?;
+        self.writer
+            .write_u32::<LittleEndian>(masked_crc32(&len_bytes))?;
+        self.writer.write_all(bytes)?;
+        self.writer.write_u32::<LittleEndian>(masked_crc32(bytes))?;
         Ok(())
     }
-
-    /// Writes all output to the file and conclude the stream. Returns
-    /// the underlying writer. *Does not* flush the underlying writer.
-    ///
-    /// This is the conceptual equivalent of RecordWriter::Close in
-    /// TensorFlow's C++ implementation.
-    fn finish(self) -> Result<Self::Writer, WriteError>;
-
-    /// Equivalent to `finish` for boxed trait objects, because we
-    /// otherwise can't move out of the unsized trait object.
-    fn finish_box(self: Box<Self>) -> Result<Self::Writer, WriteError>;
 }
 
-impl RecordWriter for File {
-    type Writer = File;
-
-    fn finish(self) -> Result<File, WriteError> {
-        Ok(self)
+impl<W> IntoInnerError<W> {
+    /// Returns the error which caused the call to `into_inner()` to fail.
+    pub fn error(&self) -> &io::Error {
+        &self.1
     }
 
-    fn finish_box(self: Box<Self>) -> Result<File, WriteError> {
-        RecordWriter::finish(*self)
+    /// Returns the TFRecord writer instance which generated the error.
+    pub fn into_inner(self) -> W {
+        self.0
     }
 }
 
-impl<W: Write> RecordWriter for BufWriter<W> {
-    type Writer = W;
-
-    fn finish(self) -> Result<W, WriteError> {
-        Ok(BufWriter::into_inner(self)?)
-    }
-
-    fn finish_box(self: Box<Self>) -> Result<W, WriteError> {
-        RecordWriter::finish(*self)
+impl<W> From<IntoInnerError<W>> for io::Error {
+    fn from(iie: IntoInnerError<W>) -> io::Error {
+        iie.1
     }
 }
 
-impl<W: Write> RecordWriter for GzEncoder<W> {
-    type Writer = W;
+impl<W: Send + fmt::Debug> error::Error for IntoInnerError<W> {}
 
-    fn finish(self) -> Result<W, WriteError> {
-        Ok(GzEncoder::finish(self)?)
-    }
-
-    fn finish_box(self: Box<Self>) -> Result<W, WriteError> {
-        RecordWriter::finish(*self)
-    }
-}
-
-impl<W: Write> RecordWriter for ZlibEncoder<W> {
-    type Writer = W;
-
-    fn finish(self) -> Result<W, WriteError> {
-        Ok(ZlibEncoder::finish(self)?)
-    }
-
-    fn finish_box(self: Box<Self>) -> Result<W, WriteError> {
-        RecordWriter::finish(*self)
+impl<W> fmt::Display for IntoInnerError<W> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.error().fmt(f)
     }
 }

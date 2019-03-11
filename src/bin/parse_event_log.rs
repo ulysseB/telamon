@@ -2,14 +2,11 @@
 /// graphviz (.dot) graph recapitulating the run.
 use std::collections::HashMap;
 
-use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io;
 use std::path::PathBuf;
-use telamon::explorer::{bandit_arm::TreeEvent, choice::ActionEx};
-use utils::tfrecord::{ReadError, RecordReader};
+use telamon::explorer::{bandit_arm::TreeEvent, choice::ActionEx, eventlog::EventLog};
 
-use flate2::read::{GzDecoder, ZlibDecoder};
 use structopt::StructOpt;
 
 struct Edge {
@@ -207,21 +204,9 @@ struct Opt {
     min_evals: Option<u32>,
 }
 
-impl Opt {
-    fn open_eventlog(&self) -> io::Result<Box<dyn Read>> {
-        let raw_file = File::open(&self.eventlog)?;
-        Ok(match self.eventlog.extension().and_then(OsStr::to_str) {
-            Some("gz") => Box::new(GzDecoder::new(raw_file)),
-            Some("zz") => Box::new(ZlibDecoder::new(raw_file)),
-            _ => Box::new(raw_file),
-        })
-    }
-}
-
-fn main() -> Result<(), ReadError> {
+fn main() -> io::Result<()> {
     let opt = Opt::from_args();
 
-    let f = opt.open_eventlog()?;
     let mut root = Node {
         children: Default::default(),
         evaluations: vec![],
@@ -231,7 +216,7 @@ fn main() -> Result<(), ReadError> {
 
     let mut evals = Vec::new();
 
-    for (id, record_bytes) in f.records().enumerate() {
+    for (id, record_bytes) in EventLog::open(&opt.eventlog)?.records().enumerate() {
         match bincode::deserialize(&record_bytes?).unwrap() {
             TreeEvent::Evaluation { actions, score }
             | TreeEvent::EvaluationV2 { actions, score, .. } => {
@@ -260,14 +245,14 @@ fn main() -> Result<(), ReadError> {
         format!("graph-top{}.dot", opt.topk)
     );
     {
-        let mut f = std::fs::File::create(format!("graph-top{}.dot", opt.topk)).unwrap();
+        let mut f = File::create(format!("graph-top{}.dot", opt.topk)).unwrap();
         dot::render(&root.info(opt.max_depth, opt.min_evals), &mut f).unwrap();
     }
 
     // Print the csv
     println!("Writing out.csv...");
     {
-        let mut f = std::fs::File::create("out.csv")?;
+        let mut f = File::create("out.csv")?;
         let mut writer = csv::Writer::from_writer(&mut f);
         writer.write_record(&["Id", "Time"]).unwrap();
         for (id, eval) in evals.iter().enumerate() {

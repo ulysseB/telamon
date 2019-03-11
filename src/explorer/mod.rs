@@ -8,6 +8,7 @@ mod store;
 pub mod bandit_arm;
 pub mod choice;
 pub mod config;
+pub mod eventlog;
 pub mod local_selection;
 pub mod mcts;
 
