@@ -1,9 +1,10 @@
 //! Describes CUDA-enabled GPUs.
-use crate::codegen::Function;
-use crate::device;
-use crate::ir::{self, Type};
-use crate::model::{self, HwPressure};
-use crate::search_space::*;
+use telamon::codegen::Function;
+use telamon::device;
+use telamon::ir::{self, Type};
+use telamon::model::{self, HwPressure};
+use telamon::search_space::*;
+
 use num_cpus;
 use std::io::Write;
 use utils::*;

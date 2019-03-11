@@ -195,7 +195,7 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::x86::Cpu;
+    use telamon_x86::Cpu;
     use crate::helper;
     use crate::ir;
     use std;

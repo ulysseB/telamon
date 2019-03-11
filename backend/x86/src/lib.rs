@@ -1,17 +1,16 @@
 //! Defines the CPU target.
 mod context;
 mod cpu;
-//mod mem_model;
 mod compile;
 mod cpu_argument;
 mod printer;
 
-pub use self::context::Context;
-pub use self::cpu::Cpu;
-pub use self::printer::X86printer;
+pub use crate::context::Context;
+pub use crate::cpu::Cpu;
+pub use crate::printer::X86printer;
 
-use crate::codegen;
-use crate::ir;
+use telamon::codegen;
+use telamon::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;

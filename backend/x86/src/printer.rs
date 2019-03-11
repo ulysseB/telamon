@@ -1,11 +1,11 @@
-use crate::codegen::*;
-use crate::device::x86::Namer;
-use crate::ir::{self, op, Type};
-use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use crate::Namer;
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use utils::unwrap;
+use telamon::codegen::*;
+use telamon::ir::{self, op, Type};
+use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
 // TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]

@@ -1,13 +1,15 @@
 ///! Defines the CPU evaluation context.
-use crate::codegen::ParamVal;
-use crate::device::context::AsyncCallback;
-use crate::device::x86::compile;
-use crate::device::x86::cpu::Cpu;
-use crate::device::x86::cpu_argument::{ArgLock, Argument, CpuArray};
-use crate::device::x86::printer::X86printer;
-use crate::device::{self, Device, EvalMode, ScalarArgument};
-use crate::explorer;
-use crate::ir;
+use telamon::codegen::ParamVal;
+use crate::compile;
+use crate::cpu::Cpu;
+use crate::cpu_argument::{ArgLock, Argument, CpuArray};
+use crate::printer::X86printer;
+
+use telamon::codegen;
+use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
+use telamon::explorer;
+use telamon::ir;
+
 use crossbeam;
 use itertools::Itertools;
 use libc;
@@ -44,7 +46,7 @@ impl Context {
     }
 
     /// Generates a structure holding parameters for function call
-    fn gen_args(&self, func: &device::Function) -> Vec<ThunkArg> {
+    fn gen_args(&self, func: &codegen::Function) -> Vec<ThunkArg> {
         func.device_code_args()
             .map(|pval| match pval {
                 ParamVal::External(par, _) => {
@@ -106,14 +108,14 @@ impl device::Context for Context {
     }
 
     /// Evaluation in sequential mode
-    fn evaluate(&self, func: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
+    fn evaluate(&self, func: &codegen::Function, _mode: EvalMode) -> Result<f64, ()> {
         let mut printer = X86printer::default();
         let fun_str = printer.wrapper_function(func);
         function_evaluate(&fun_str, &self.gen_args(func))
     }
 
     /// returns a vec containing num_sample runs of function_evaluate
-    fn benchmark(&self, func: &device::Function, num_samples: usize) -> Vec<f64> {
+    fn benchmark(&self, func: &codegen::Function, num_samples: usize) -> Vec<f64> {
         let mut printer = X86printer::default();
         let fun_str = printer.wrapper_function(func);
         let args = self.gen_args(func);
@@ -138,20 +140,21 @@ impl device::Context for Context {
                     context: self,
                     sender: send.clone(),
                 };
-                unwrap!(scope
+                scope
                     .builder()
                     .name("Telamon - Explorer Thread".to_string())
-                    .spawn(move || inner(&mut evaluator)));
+                    .spawn(move |_| inner(&mut evaluator))
+                    .unwrap();
             }
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
-            unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
+            scope.builder().name(eval_thread_name).spawn(move |_| {
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
                     let eval = unwrap!(function_evaluate(&fun_str, &code_args));
                     callback.call(candidate, eval);
                 }
-            }));
-        });
+            }).unwrap();
+        }).unwrap();
     }
 }
 
@@ -239,7 +242,7 @@ where
     ) {
         let (fun_str, code_args);
         {
-            let dev_fun = device::Function::build(&candidate.space);
+            let dev_fun = codegen::Function::build(&candidate.space);
             code_args = self.context.gen_args(&dev_fun);
             let mut printer = X86printer::default();
             fun_str = printer.wrapper_function(&dev_fun);

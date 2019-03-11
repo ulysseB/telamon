@@ -1,4 +1,4 @@
-use crate::device::{self, ScalarArgument};
+use telamon::device::{self, ScalarArgument};
 use libc;
 use std::sync::{Mutex, MutexGuard};
 use utils::unwrap;
