@@ -110,40 +110,20 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ffi</span>::<span class="ident">OsStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">BufWriter</span>, <span class="ident">Write</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::<span class="ident">Path</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">eventlog</span>::<span class="ident">EventLog</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">monitor</span>;
 <span class="kw">use</span> <span class="ident">bincode</span>;
 <span class="kw">use</span> <span class="ident">failure</span>::<span class="ident">Fail</span>;
-<span class="kw">use</span> <span class="ident">flate2</span>::<span class="ident">write</span>::{<span class="ident">GzEncoder</span>, <span class="ident">ZlibEncoder</span>};
-<span class="kw">use</span> <span class="ident">flate2</span>::<span class="ident">Compression</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">tfrecord</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">tfrecord</span>::<span class="ident">RecordWriter</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
@@ -162,8 +142,6 @@
     <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> ::<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Error</span>),
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;event serialization failed&quot;</span>)]</span>
     <span class="ident">SerializationError</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> <span class="ident">bincode</span>::<span class="ident">Error</span>),
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;tfrecord serialization failed&quot;</span>)]</span>
-    <span class="ident">TFRecordError</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> <span class="ident">tfrecord</span>::<span class="ident">WriteError</span>),
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{}&quot;</span>, <span class="ident">_0</span>)]</span>
     <span class="ident">RecvError</span>(<span class="ident">mpsc</span>::<span class="ident">RecvError</span>),
 }
@@ -177,12 +155,6 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">bincode</span>::<span class="ident">Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LogError</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">bincode</span>::<span class="ident">Error</span>) <span class="op">-&gt;</span> <span class="ident">LogError</span> {
         <span class="ident">LogError</span>::<span class="ident">SerializationError</span>(<span class="ident">error</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">tfrecord</span>::<span class="ident">WriteError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LogError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">tfrecord</span>::<span class="ident">WriteError</span>) <span class="op">-&gt;</span> <span class="ident">LogError</span> {
-        <span class="ident">LogError</span>::<span class="ident">TFRecordError</span>(<span class="ident">error</span>)
     }
 }
 
@@ -215,19 +187,17 @@
             }
         }
     }
-    <span class="ident">record_writer</span>.<span class="ident">finish_box</span>()<span class="question-mark">?</span>.<span class="ident">flush</span>()<span class="question-mark">?</span>;
     <span class="ident">write_buffer</span>.<span class="ident">flush</span>()<span class="question-mark">?</span>;
+    <span class="ident">record_writer</span>
+        .<span class="ident">into_inner</span>()
+        .<span class="ident">map_err</span>(<span class="ident">io</span>::<span class="ident">Error</span>::<span class="ident">from</span>)<span class="question-mark">?</span>
+        .<span class="ident">finish</span>()<span class="question-mark">?</span>
+        .<span class="ident">flush</span>()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn</span> <span class="ident">init_eventlog</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">RecordWriter</span><span class="op">&lt;</span><span class="ident">Writer</span> <span class="op">=</span> <span class="ident">File</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">event_log</span>);
-    <span class="kw">let</span> <span class="ident">raw_file</span> <span class="op">=</span> <span class="ident">File</span>::<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">path</span>.<span class="ident">extension</span>().<span class="ident">and_then</span>(<span class="ident">OsStr</span>::<span class="ident">to_str</span>) {
-        <span class="prelude-val">Some</span>(<span class="string">&quot;gz&quot;</span>) <span class="op">=&gt;</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">GzEncoder</span>::<span class="ident">new</span>(<span class="ident">raw_file</span>, <span class="ident">Compression</span>::<span class="ident">default</span>())),
-        <span class="prelude-val">Some</span>(<span class="string">&quot;zz&quot;</span>) <span class="op">=&gt;</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">ZlibEncoder</span>::<span class="ident">new</span>(<span class="ident">raw_file</span>, <span class="ident">Compression</span>::<span class="ident">default</span>())),
-        <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">raw_file</span>),
-    })
+<span class="kw">fn</span> <span class="ident">init_eventlog</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">tfrecord</span>::<span class="ident">Writer</span><span class="op">&lt;</span><span class="ident">EventLog</span><span class="op">&gt;&gt;</span> {
+    <span class="prelude-val">Ok</span>(<span class="ident">EventLog</span>::<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">event_log</span>)<span class="question-mark">?</span>)
 }
 
 <span class="kw">fn</span> <span class="ident">init_log</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BufWriter</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;&gt;</span> {
@@ -251,7 +221,7 @@
          {} candidates evaluated\n&quot;</span>,
         <span class="ident">score</span>, <span class="ident">n_hours</span>, <span class="ident">n_minutes</span>, <span class="ident">n_seconds</span>, <span class="ident">cpt</span>
     );
-    <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">write_buffer</span>.<span class="ident">write_all</span>(<span class="ident">message</span>.<span class="ident">as_bytes</span>()));
+    <span class="ident">write_buffer</span>.<span class="ident">write_all</span>(<span class="ident">message</span>.<span class="ident">as_bytes</span>()).<span class="ident">unwrap</span>();
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>

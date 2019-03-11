@@ -261,20 +261,6 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module provides Read and Write extensions for reading and</span>
 <span class="doccomment">//! writing TFRecord files. TFRecord is a simple container file format</span>
@@ -299,60 +285,11 @@
 <span class="doccomment">//! masked_crc = ((crc &gt;&gt; 15) | (crc &lt;&lt; 17)) + 0xa282ead8u32</span>
 <span class="doccomment">//!</span>
 
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">BufWriter</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">error</span>, <span class="ident">fmt</span>};
 
 <span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">LittleEndian</span>, <span class="ident">ReadBytesExt</span>, <span class="ident">WriteBytesExt</span>};
 <span class="kw">use</span> <span class="ident">crc</span>::<span class="ident">crc32</span>::<span class="ident">checksum_castagnoli</span>;
-<span class="kw">use</span> <span class="ident">failure</span>::<span class="ident">Fail</span>;
-<span class="kw">use</span> <span class="ident">flate2</span>::<span class="ident">write</span>::{<span class="ident">GzEncoder</span>, <span class="ident">ZlibEncoder</span>};
-
-<span class="doccomment">/// The error type for errors occuring while reading a tfrecord file.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ReadError</span> {
-    <span class="doccomment">/// An I/O error occured.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{}&quot;</span>, <span class="ident">_0</span>)]</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> <span class="ident">io</span>::<span class="ident">Error</span>),
-    <span class="doccomment">/// The underlying data was shorter than advertised in the</span>
-    <span class="doccomment">/// header&#39;s length field. If this happens because the end-of-file</span>
-    <span class="doccomment">/// was reached, an I/O error will be raised instead.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;truncated record&quot;</span>)]</span>
-    <span class="ident">TruncatedRecord</span>,
-    <span class="doccomment">/// Either the header or the data was corrupted and failed the CRC</span>
-    <span class="doccomment">/// check.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;corrupted record&quot;</span>)]</span>
-    <span class="ident">CorruptedRecord</span>,
-}
-
-<span class="doccomment">/// For usage with ? when creating `ReadError`s.</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="ident">Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ReadError</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">io</span>::<span class="ident">Error</span>) <span class="op">-&gt;</span> <span class="ident">ReadError</span> {
-        <span class="ident">ReadError</span>::<span class="ident">IOError</span>(<span class="ident">error</span>)
-    }
-}
-
-<span class="doccomment">/// The error type for errors occuring while writing a tfrecord file.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WriteError</span> {
-    <span class="doccomment">/// An I/O error occured.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{}&quot;</span>, <span class="ident">_0</span>)]</span>
-    <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> <span class="ident">io</span>::<span class="ident">Error</span>),
-}
-
-<span class="doccomment">/// For usage with ? when creating `WriteError`s.</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="ident">Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WriteError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">io</span>::<span class="ident">Error</span>) <span class="op">-&gt;</span> <span class="ident">WriteError</span> {
-        <span class="ident">WriteError</span>::<span class="ident">IOError</span>(<span class="ident">error</span>)
-    }
-}
-
-<span class="doccomment">/// For usage with ? when creating `WriteError`s</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">WriteError</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">io</span>::<span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">WriteError</span> {
-        <span class="ident">WriteError</span>::<span class="ident">IOError</span>(<span class="ident">error</span>.<span class="ident">into</span>())
-    }
-}
 
 <span class="doccomment">/// Compute a masked CRC32. See module documentation for details.</span>
 <span class="kw">fn</span> <span class="ident">masked_crc32</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="ident">u32</span> {
@@ -380,20 +317,46 @@
     <span class="prelude-val">Ok</span>(<span class="ident">nread</span>)
 }
 
-<span class="doccomment">/// A trait extension for reading records.</span>
+<span class="doccomment">/// A tfrecord reader.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Inspired from the C++ implementation at: *</span>
 <span class="doccomment">///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_reader.h</span>
 <span class="doccomment">///  *</span>
 <span class="doccomment">///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_reader.cc</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RecordReader</span>: <span class="ident">Read</span> {
-    <span class="doccomment">/// Read a single record, placing the bytes into `buf`.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Reader</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+    <span class="comment">// The underlying reader</span>
+    <span class="ident">reader</span>: <span class="ident">R</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span> <span class="ident">Reader</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Create a new TFRecord reader from the given reader.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader</span>(<span class="ident">reader</span>: <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="ident">Reader</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+        <span class="ident">Reader</span> { <span class="ident">reader</span> }
+    }
+
+    <span class="doccomment">/// Returns a reference to the underlying reader.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">R</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">reader</span>
+    }
+
+    <span class="doccomment">/// Returns a mutable reference to the underlying reader.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">reader</span>
+    }
+
+    <span class="doccomment">/// Unwraps the tfrecord reader, returning the underlying reader.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// All bytes read from this source will be appended to the specified buffer `buf`.</span>
+    <span class="doccomment">/// Note that any leftover data in the reader&#39;s internal buffer is lost.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_inner</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">R</span> {
+        <span class="self">self</span>.<span class="ident">reader</span>
+    }
+
+    <span class="doccomment">/// Read a single record, appending the bytes to `buf`.  Returns `false` when no record could</span>
+    <span class="doccomment">/// be read.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If successful, this function returns the total number of bytes read, including the tfrecord</span>
-    <span class="doccomment">/// header and footer sizes.  If the total number of bytes read is `0`, then the reader has</span>
-    <span class="doccomment">/// reached end of file.</span>
+    <span class="doccomment">/// This functions performs at most one reallocation of `buf` if it is not large enough to</span>
+    <span class="doccomment">/// contain the read data.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Errors</span>
     <span class="doccomment">///</span>
@@ -403,15 +366,15 @@
     <span class="doccomment">/// If any other read error is encountered then this function immediately returns.  Any bytes</span>
     <span class="doccomment">/// which have already been read will be appended to `buf`.  If an error occurs while reading</span>
     <span class="doccomment">/// the initial tfrecord header, buf is unchanged.</span>
-    <span class="kw">fn</span> <span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">ReadError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">len_bytes</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">8</span>];
-            <span class="kw">if</span> <span class="ident">retry_read</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">len_bytes</span>)<span class="question-mark">?</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
+            <span class="kw">if</span> <span class="ident">retry_read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">reader</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">len_bytes</span>)<span class="question-mark">?</span> <span class="op">==</span> <span class="number">0</span> {
+                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
             }
 
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">CorruptedRecord</span>);
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>) {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io</span>::<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">Other</span>, <span class="string">&quot;corrupted record&quot;</span>));
             }
 
             <span class="comment">// We `unwrap` here because reading from the on-stack</span>
@@ -423,61 +386,102 @@
         <span class="comment">// buffer here.</span>
         <span class="kw">let</span> <span class="ident">buf_start</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>();
         <span class="ident">buf</span>.<span class="ident">reserve_exact</span>(<span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">let</span> <span class="ident">nread</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">take</span>(<span class="ident">len</span>).<span class="ident">read_to_end</span>(<span class="ident">buf</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">nread</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">reader</span>).<span class="ident">take</span>(<span class="ident">len</span>).<span class="ident">read_to_end</span>(<span class="ident">buf</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="ident">nread</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">!=</span> <span class="ident">len</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">TruncatedRecord</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io</span>::<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">Other</span>, <span class="string">&quot;truncated record&quot;</span>));
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">buf_start</span>..]) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">CorruptedRecord</span>);
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">buf_start</span>..]) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">io</span>::<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">Other</span>, <span class="string">&quot;corrupted record&quot;</span>));
         }
 
-        <span class="prelude-val">Ok</span>(<span class="number">8</span> <span class="op">+</span> <span class="number">4</span> <span class="op">+</span> <span class="number">4</span> <span class="op">+</span> <span class="ident">nread</span>)
+        <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
     }
 
     <span class="doccomment">/// Transforms this `Read` instance to an `Iterator` over the contained records.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// The returned type implements `Iterator` where the `Item` is `Result&lt;u8, ReadError&gt;`.  The</span>
-    <span class="doccomment">/// yielded item is `Ok` if a record was successfuly read and `Err` otherwise.  EOF is mapped</span>
-    <span class="doccomment">/// to returning `None` from this iterator.</span>
-    <span class="kw">fn</span> <span class="ident">records</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="self">Self</span>: <span class="ident">Sized</span>,
-    {
-        <span class="ident">Records</span> { <span class="ident">read</span>: <span class="self">self</span> }
+    <span class="doccomment">/// The returned type implements `Iterator` where the `Item` is `io::Result&lt;u8&gt;`.  The yielded</span>
+    <span class="doccomment">/// item is `Ok` if a record was successfuly read and `Err` otherwise.  EOF is mapped to</span>
+    <span class="doccomment">/// returning `None` from this iterator.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">records</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+        <span class="ident">Records</span>::<span class="ident">new</span>(<span class="self">self</span>)
     }
 }
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span><span class="op">&gt;</span> <span class="ident">RecordReader</span> <span class="kw">for</span> <span class="ident">R</span> {}
 
 <span class="doccomment">/// A simple iterator over the records stored in a file.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="ident">read</span>: <span class="ident">R</span>,
+    <span class="ident">reader</span>: <span class="ident">Reader</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">reader</span>: <span class="ident">Reader</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+        <span class="ident">Records</span> { <span class="ident">reader</span> }
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ReadError</span><span class="op">&gt;</span>;
+    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ReadError</span><span class="op">&gt;&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">read</span>.<span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>) {
-            <span class="prelude-val">Ok</span>(<span class="number">0</span>) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
-            <span class="prelude-val">Ok</span>(..) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">buf</span>)),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)),
+    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buffer</span>) {
+            <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">err</span>)),
+            <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">buffer</span>)),
+            <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="doccomment">/// A trait extension for writing records.</span>
+<span class="doccomment">/// A tfrecord writer.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Inspired from the C++ implementation at: *</span>
 <span class="doccomment">///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_writer.h</span>
 <span class="doccomment">///  *</span>
 <span class="doccomment">///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_writer.cc</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RecordWriter</span>: <span class="ident">Write</span> {
-    <span class="kw">type</span> <span class="ident">Writer</span>;
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Writer</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
+    <span class="ident">writer</span>: <span class="ident">W</span>,
+}
 
-    <span class="kw">fn</span> <span class="ident">write_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">WriteError</span><span class="op">&gt;</span> {
+<span class="doccomment">/// An error returned by `into_inner` which combines an error that happened while writing out the</span>
+<span class="doccomment">/// buffer, and the records writer object which may be used to recover from the condition.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span>(<span class="ident">W</span>, <span class="ident">io</span>::<span class="ident">Error</span>);
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span> <span class="ident">Writer</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Creates a new tfrecord writer.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_writer</span>(<span class="ident">w</span>: <span class="ident">W</span>) <span class="op">-&gt;</span> <span class="ident">Writer</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
+        <span class="ident">Writer</span> { <span class="ident">writer</span>: <span class="ident">w</span> }
+    }
+
+    <span class="doccomment">/// Acquires a reference to the underlying writer.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">W</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">writer</span>
+    }
+
+    <span class="doccomment">/// Acquires a mutable reference to the underlying writer.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Note that mutation of the writer may result in surprising results if the `Writer` is</span>
+    <span class="doccomment">/// continued to be used.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">writer</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">flush</span>()
+    }
+
+    <span class="doccomment">/// Flush the contents of the internal buffer and return the underlying writer.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_inner</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">Writer</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">flush</span>() {
+            <span class="prelude-val">Ok</span>(()) <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">writer</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">IntoInnerError</span>(<span class="self">self</span>, <span class="ident">err</span>)),
+        }
+    }
+
+    <span class="doccomment">/// Write data into a single record.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="comment">// We use a temporary buffer on the stack for the header</span>
         <span class="comment">// because we need to compute its crc32. We `unwrap` here</span>
         <span class="comment">// because writing to the on-stack buffer cannot fail.</span>
@@ -487,70 +491,38 @@
             .<span class="ident">write_u64</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>(<span class="ident">bytes</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>)
             .<span class="ident">unwrap</span>();
 
-        <span class="self">self</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">write_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>(<span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>))<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">write_all</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">write_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>(<span class="ident">masked_crc32</span>(<span class="ident">bytes</span>))<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">writer</span>
+            .<span class="ident">write_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>(<span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>))<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">write_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>(<span class="ident">masked_crc32</span>(<span class="ident">bytes</span>))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
-
-    <span class="doccomment">/// Writes all output to the file and conclude the stream. Returns</span>
-    <span class="doccomment">/// the underlying writer. *Does not* flush the underlying writer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is the conceptual equivalent of RecordWriter::Close in</span>
-    <span class="doccomment">/// TensorFlow&#39;s C++ implementation.</span>
-    <span class="kw">fn</span> <span class="ident">finish</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Writer</span>, <span class="ident">WriteError</span><span class="op">&gt;</span>;
-
-    <span class="doccomment">/// Equivalent to `finish` for boxed trait objects, because we</span>
-    <span class="doccomment">/// otherwise can&#39;t move out of the unsized trait object.</span>
-    <span class="kw">fn</span> <span class="ident">finish_box</span>(<span class="self">self</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Writer</span>, <span class="ident">WriteError</span><span class="op">&gt;</span>;
 }
 
-<span class="kw">impl</span> <span class="ident">RecordWriter</span> <span class="kw">for</span> <span class="ident">File</span> {
-    <span class="kw">type</span> <span class="ident">Writer</span> <span class="op">=</span> <span class="ident">File</span>;
-
-    <span class="kw">fn</span> <span class="ident">finish</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">File</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> <span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Returns the error which caused the call to `into_inner()` to fail.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">io</span>::<span class="ident">Error</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">1</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">finish_box</span>(<span class="self">self</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">File</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="ident">RecordWriter</span>::<span class="ident">finish</span>(<span class="kw-2">*</span><span class="self">self</span>)
+    <span class="doccomment">/// Returns the TFRecord writer instance which generated the error.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_inner</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">W</span> {
+        <span class="self">self</span>.<span class="number">0</span>
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span> <span class="ident">RecordWriter</span> <span class="kw">for</span> <span class="ident">BufWriter</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Writer</span> <span class="op">=</span> <span class="ident">W</span>;
-
-    <span class="kw">fn</span> <span class="ident">finish</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">BufWriter</span>::<span class="ident">into_inner</span>(<span class="self">self</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="kw">fn</span> <span class="ident">finish_box</span>(<span class="self">self</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="ident">RecordWriter</span>::<span class="ident">finish</span>(<span class="kw-2">*</span><span class="self">self</span>)
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">io</span>::<span class="ident">Error</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">iie</span>: <span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="ident">Error</span> {
+        <span class="ident">iie</span>.<span class="number">1</span>
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span> <span class="ident">RecordWriter</span> <span class="kw">for</span> <span class="ident">GzEncoder</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Writer</span> <span class="op">=</span> <span class="ident">W</span>;
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">fmt</span>::<span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">error</span>::<span class="ident">Error</span> <span class="kw">for</span> <span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {}
 
-    <span class="kw">fn</span> <span class="ident">finish</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">GzEncoder</span>::<span class="ident">finish</span>(<span class="self">self</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="kw">fn</span> <span class="ident">finish_box</span>(<span class="self">self</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="ident">RecordWriter</span>::<span class="ident">finish</span>(<span class="kw-2">*</span><span class="self">self</span>)
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span> <span class="ident">RecordWriter</span> <span class="kw">for</span> <span class="ident">ZlibEncoder</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Writer</span> <span class="op">=</span> <span class="ident">W</span>;
-
-    <span class="kw">fn</span> <span class="ident">finish</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">ZlibEncoder</span>::<span class="ident">finish</span>(<span class="self">self</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="kw">fn</span> <span class="ident">finish_box</span>(<span class="self">self</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="ident">RecordWriter</span>::<span class="ident">finish</span>(<span class="kw-2">*</span><span class="self">self</span>)
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">IntoInnerError</span><span class="op">&lt;</span><span class="ident">W</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="self">self</span>.<span class="ident">error</span>().<span class="ident">fmt</span>(<span class="ident">f</span>)
     }
 }
 </pre></div>
