@@ -1319,7 +1319,12 @@ impl NewNodeOrder {
                 .map(Selector::exact),
             NewNodeOrder::WeightedRandom => {
                 if cut.is_infinite() {
-                    Selector::random(bounds.map(|(idx, b)| (idx, b.recip())).collect())
+                    let epsilon = 1e-6;
+                    Selector::random(
+                        bounds
+                            .map(|(idx, b)| (idx, (b + epsilon).recip()))
+                            .collect(),
+                    )
                 } else {
                     Selector::random(bounds.map(|(idx, b)| (idx, 1. - b / cut)).collect())
                 }
