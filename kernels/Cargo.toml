@@ -18,7 +18,7 @@ cuda-sys = { optional = true, version = "0.1.0" }
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional=true }
-telamon-utils = { path = "../telamon-utils" }
+utils = { package = "telamon-utils", path = "../telamon-utils" }
 
 [dev-dependencies]
 futures = "0.1.23"

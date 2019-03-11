@@ -15,12 +15,19 @@ addons:
   apt:
     packages:
       - flex
+install:
+  - CUDA="10.1.105-1"
+  - wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_${CUDA}_amd64.deb
+  - sudo dpkg -i cuda-repo-ubuntu1404_${CUDA}_amd64.deb
+  - sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/7fa2af80.pub
+  - sudo apt-get update
+  - sudo apt-get install cuda-cupti-10-1 cuda-curand-dev-10-1 libcublas-dev cuda-libraries-dev-10-1 cuda-license-10-1
 before_script:
   - flex --version
 jobs:
   include:
     - stage: test
-      script: cargo check --all --exclude telajax  --all-targets --tests --benches
+      script: CUDA_HOME=/usr/local/cuda-10.1 cargo check --all --exclude telajax --all-targets --tests --benches
     - script: cargo test
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
@@ -29,11 +36,11 @@ jobs:
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - script: cargo fmt --all -- --check
       before_script: rustup component add rustfmt
-    - script: cargo clippy --all --exclude telajax --all-targets --tests --benches
+    - script: CUDA_HOME=/usr/local/cuda-10.1 cargo clippy --all --exclude telajax --all-targets --tests --benches
       before_script: rustup component add clippy
     - stage: documentation
       if: branch IN (master, staging)
-      script: cargo doc --no-deps --all --exclude telajax
+      script: CUDA_HOME=/usr/local/cuda-10.1 cargo doc --no-deps --all
       deploy:
         provider: pages
         local-dir: target/doc

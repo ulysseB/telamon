@@ -1,22 +1,14 @@
 //! Benchmarks the variance of measures on the GPU.
-extern crate env_logger;
-extern crate futures;
-extern crate itertools;
-#[macro_use]
-extern crate log;
-extern crate telamon;
-extern crate telamon_kernels;
-#[macro_use]
-extern crate telamon_utils as utils;
-
 use futures::sync::oneshot;
 use futures::Future;
 use itertools::Itertools;
+use log::*;
 use std::sync::Mutex;
 use std::time::Duration;
-use telamon::device::{cuda, Context};
+use telamon::device::Context;
 use telamon::explorer::local_selection;
 use telamon::{device, explorer, helper};
+use telamon_cuda as cuda;
 use telamon_kernels::{linalg, Kernel};
 use utils::*;
 
