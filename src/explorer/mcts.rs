@@ -398,9 +398,9 @@ pub enum Event {
 /// Wrapper struct to annotate events with timing information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Timed<T> {
-    start_time: std::time::Duration,
-    end_time: std::time::Duration,
-    value: T,
+    pub start_time: std::time::Duration,
+    pub end_time: std::time::Duration,
+    pub value: T,
 }
 
 /// A log message.
@@ -422,6 +422,8 @@ pub enum Message {
         /// Explained bound from the performance model.  `None` if the node was killed due to
         /// constraint propagation, in which case we can't run the performance model.
         bound: Option<Bound>,
+        /// Time at which the node was discovered.
+        discovery_time: std::time::Duration,
     },
 
     /// Sequence of actions (moves in the tree) performed by a specific thread.  Starts at the root
@@ -441,6 +443,8 @@ pub enum Message {
         /// Evaluation result.  If `None`, the node was cut at evaluation time or otherwise timed
         /// out.
         value: Option<f64>,
+        /// Time at which the evaluation results were made available and backpropagation started.
+        result_time: std::time::Duration,
     },
 }
 
@@ -464,6 +468,8 @@ pub struct Tree<'a> {
     id_counter: &'a AtomicUsize,
     /// Channel to send log events to.
     logger: &'a mpsc::SyncSender<LogMessage<Message>>,
+    /// Time at which exploration started.  Used as an epoch for timestamps.
+    epoch: std::time::Instant,
 }
 
 impl<'a> Tree<'a> {
@@ -472,11 +478,13 @@ impl<'a> Tree<'a> {
         env: Env<'a>,
         id_counter: &'a AtomicUsize,
         logger: &'a mpsc::SyncSender<LogMessage<Message>>,
+        epoch: std::time::Instant,
     ) -> Self {
         Tree {
             env,
             id_counter,
             logger,
+            epoch,
         }
     }
 
@@ -525,6 +533,7 @@ impl<'a> Tree<'a> {
             parent: parent.map(|(parent, index)| (parent.id(), index)),
             children: children.iter().map(|edge| edge.action().clone()).collect(),
             bound: bound.clone(),
+            discovery_time: self.epoch.elapsed(),
         });
 
         Node {
@@ -551,7 +560,6 @@ impl<'a> Tree<'a> {
 
 /// A cursor which can be moved in the tree and remembers its trajectory.
 pub struct NodeCursor<'a, 'c, N, E> {
-    start_time: std::time::Instant,
     events: RefCell<Vec<Timed<Event>>>,
     cut: f64,
     cut_epoch: usize,
@@ -709,7 +717,7 @@ where
         F: FnOnce(CauseOfDeath) -> Event,
     {
         // TODO: Do not overwrite cause if there already is one?
-        self.event(self.start_time.elapsed(), event_fn(cause));
+        self.event(self.tree.epoch.elapsed(), event_fn(cause));
 
         node.kill();
     }
@@ -723,7 +731,7 @@ where
     fn event(&self, start_time: std::time::Duration, event: Event) {
         self.events.borrow_mut().push(Timed {
             start_time,
-            end_time: self.start_time.elapsed(),
+            end_time: self.tree.epoch.elapsed(),
             value: event,
         });
     }
@@ -735,7 +743,7 @@ where
         if self.cut() {
             Err(self)
         } else {
-            self.event(self.start_time.elapsed(), Event::Implementation);
+            self.event(self.tree.epoch.elapsed(), Event::Implementation);
             self.tree.log(Message::Trace {
                 thread: format!("{:?}", std::thread::current().id()),
                 events: self.events.into_inner(),
@@ -780,7 +788,7 @@ where
             Ok(v) => Ok(v),
             Err(mut cursor) => {
                 cursor.event(
-                    cursor.start_time.elapsed(),
+                    cursor.tree.epoch.elapsed(),
                     Event::SelectNode(checkpoint.id()),
                 );
                 cursor.path.truncate(path_len);
@@ -802,7 +810,7 @@ where
         )
             -> Option<(Policy, Selector<EdgeIndex>, EdgeIndex, Node<'c, N, E>, T)>,
     {
-        let start_time = self.start_time.elapsed();
+        let start_time = self.tree.epoch.elapsed();
         if let Some((policy, selector, eindex, node, value)) = func(&self) {
             self.event(start_time, Event::SelectChild(eindex, policy, selector));
             self.path.push((policy, self.node.downgrade(), eindex));
@@ -821,7 +829,7 @@ where
             return None;
         }
 
-        let start_time = self.start_time.elapsed();
+        let start_time = self.tree.epoch.elapsed();
 
         let mut expanded_mut = self
             .node
@@ -1153,8 +1161,8 @@ pub struct MctsStore<'a, 'c, N, E> {
     /// Bandit configuration
     config: &'a BanditConfig,
 
-    /// Time at which the search started
-    start_time: std::time::Instant,
+    /// Time at which the search started.  Used as an epoch for timestamps.
+    epoch: std::time::Instant,
 }
 
 impl<'a, 'c, N, E> MctsStore<'a, 'c, N, E>
@@ -1170,11 +1178,14 @@ where
         default_policy: Box<dyn TreePolicy<'c, N, E>>,
         logger: mpsc::SyncSender<LogMessage<Message>>,
     ) -> Self {
+        let epoch = std::time::Instant::now();
+
         let id_counter = AtomicUsize::new(0);
         let root = Tree::new(
             Env::new(&config.choice_ordering, context),
             &id_counter,
             &logger,
+            epoch,
         )
         .node(None, Some(&space));
         root.store_candidate(space);
@@ -1189,13 +1200,12 @@ where
             id_counter,
             logger,
             config,
-            start_time: std::time::Instant::now(),
+            epoch,
         }
     }
 
     fn cursor<'b>(&'b self, context: &'b dyn Context) -> NodeCursor<'b, 'c, N, E> {
         NodeCursor {
-            start_time: self.start_time,
             events: Vec::new().into(),
             cut: *self.cut.read().expect("cut: poisoned"),
             cut_epoch: self.cut_epoch.load(Ordering::Relaxed),
@@ -1205,6 +1215,7 @@ where
                 Env::new(&self.config.choice_ordering, context),
                 &self.id_counter,
                 &self.logger,
+                self.epoch,
             ),
             helper: WalkHelper {
                 stop: &self.stop,
@@ -1247,6 +1258,7 @@ where
         trace: Self::PayLoad,
         eval: f64,
     ) {
+        let result_time = self.epoch.elapsed();
         let id = trace.node.id();
         let eval = if eval.is_finite() { Some(eval) } else { None };
 
@@ -1265,7 +1277,11 @@ where
         }
 
         self.logger
-            .send(LogMessage::Event(Message::Evaluation { id, value: eval }))
+            .send(LogMessage::Event(Message::Evaluation {
+                id,
+                result_time,
+                value: eval,
+            }))
             .expect("sending message");
     }
 
