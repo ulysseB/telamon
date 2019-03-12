@@ -14,6 +14,9 @@ name = "expandconfig"
 [[bin]]
 name = "parse_event_log"
 
+[[bin]]
+name = "aftermath_convert_log"
+
 [[bench]]
 name = "descent"
 harness = false
@@ -39,6 +42,7 @@ path = "telamon-gen"
 
 [dependencies]
 binary-heap-plus = "0.1.4"
+bit-set = "0.5"
 boxfnonce = "0.1.0"
 byteorder = "1"
 config = "0.8.0"
@@ -65,6 +69,7 @@ rand = "0.5.5"
 rayon = "1.0.1"
 regex = "0.2.10"
 rpds = { version = "0.5.0", features = ["serde"] }
+scan_fmt = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 serde_json = "1.0.22"
