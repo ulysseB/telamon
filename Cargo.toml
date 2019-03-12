@@ -40,6 +40,7 @@ path = "telamon-gen"
 [dependencies]
 binary-heap-plus = "0.1.4"
 boxfnonce = "0.1.0"
+byteorder = "1"
 config = "0.8.0"
 crossbeam = "0.3.2"
 env_logger = "0.5.9"
