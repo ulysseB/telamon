@@ -195,7 +195,6 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use telamon_x86::Cpu;
     use crate::helper;
     use crate::ir;
     use std;
@@ -206,59 +205,5 @@ mod tests {
         V: Copy,
     {
         content.iter().cloned().collect()
-    }
-
-    /// Ensures chained aliases work correctly.
-    #[test]
-    fn chained_alias() {
-        let _ = ::env_logger::try_init();
-        let device = Cpu::dummy_cpu();
-        let signature = ir::Signature::new("test".to_string());
-        let mut builder = helper::Builder::new(&signature, &device);
-        // This code builds the following function:
-        // ```pseudocode
-        // for i in 0..16:
-        //   for j in 0..16:
-        //      src[i] = 0;
-        // for i in 0..16:
-        //   dst = src[i]
-        // ```
-        // where all loops are unrolled.
-        let dim0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
-        let dim1 = builder.open_dim_ex(ir::Size::new_const(8), DimKind::UNROLL);
-        let src = builder.mov(&0i32);
-        let src_var = builder.get_inst_variable(src);
-        builder.close_dim(&dim1);
-        let last_var = builder.create_last_variable(src_var, &[&dim1]);
-        let dim2 = builder.open_mapped_dim(&dim0);
-        builder.action(Action::DimKind(dim2[0], DimKind::UNROLL));
-        builder.order(&dim0, &dim2, Order::BEFORE);
-        let mapped_var = builder.create_dim_map_variable(last_var, &[(&dim0, &dim2)]);
-        builder.mov(&mapped_var);
-        let space = builder.get();
-        let wrappers = wrap_variables(&space);
-        // `wrap_variables` orders variables according to data dependencies.
-        assert_eq!(wrappers[0].variable.id(), src_var);
-        assert_eq!(wrappers[1].variable.id(), last_var);
-        assert_eq!(wrappers[2].variable.id(), mapped_var);
-        // Check `src_var`.
-        assert_eq!(wrappers[0].instantiation_dims, mk_map(&[(dim0[0], 4)]));
-        assert!(wrappers[0].alias.is_none());
-        // Check `last_var`
-        assert_eq!(wrappers[1].instantiation_dims, mk_map(&[(dim0[0], 4)]));
-        if let Some(ref alias) = wrappers[1].alias {
-            assert_eq!(alias.other_variable, src_var);
-            assert_eq!(alias.dim_mapping, mk_map(&[(dim1[0], None)]));
-        } else {
-            panic!("expected an alias for last_var");
-        }
-        // Check `mapped_var`
-        assert_eq!(wrappers[2].instantiation_dims, mk_map(&[(dim2[0], 4)]));
-        if let Some(ref alias) = wrappers[2].alias {
-            assert_eq!(alias.other_variable, last_var);
-            assert_eq!(alias.dim_mapping, mk_map(&[(dim0[0], Some(dim2[0]))]));
-        } else {
-            panic!("expected an alias for mapped_var");
-        }
     }
 }
