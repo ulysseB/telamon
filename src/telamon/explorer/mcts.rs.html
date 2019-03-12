@@ -1985,6 +1985,22 @@
 <span id="1985">1985</span>
 <span id="1986">1986</span>
 <span id="1987">1987</span>
+<span id="1988">1988</span>
+<span id="1989">1989</span>
+<span id="1990">1990</span>
+<span id="1991">1991</span>
+<span id="1992">1992</span>
+<span id="1993">1993</span>
+<span id="1994">1994</span>
+<span id="1995">1995</span>
+<span id="1996">1996</span>
+<span id="1997">1997</span>
+<span id="1998">1998</span>
+<span id="1999">1999</span>
+<span id="2000">2000</span>
+<span id="2001">2001</span>
+<span id="2002">2002</span>
+<span id="2003">2003</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Search space exploration using MCTS-style algorithm</span>
 <span class="doccomment">//!</span>
@@ -2386,9 +2402,9 @@
 <span class="doccomment">/// Wrapper struct to annotate events with timing information.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Timed</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>,
-    <span class="ident">end_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>,
-    <span class="ident">value</span>: <span class="ident">T</span>,
+    <span class="kw">pub</span> <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>,
+    <span class="kw">pub</span> <span class="ident">end_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>,
+    <span class="kw">pub</span> <span class="ident">value</span>: <span class="ident">T</span>,
 }
 
 <span class="doccomment">/// A log message.</span>
@@ -2410,6 +2426,8 @@
         <span class="doccomment">/// Explained bound from the performance model.  `None` if the node was killed due to</span>
         <span class="doccomment">/// constraint propagation, in which case we can&#39;t run the performance model.</span>
         <span class="ident">bound</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bound</span><span class="op">&gt;</span>,
+        <span class="doccomment">/// Time at which the node was discovered.</span>
+        <span class="ident">discovery_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>,
     },
 
     <span class="doccomment">/// Sequence of actions (moves in the tree) performed by a specific thread.  Starts at the root</span>
@@ -2429,6 +2447,8 @@
         <span class="doccomment">/// Evaluation result.  If `None`, the node was cut at evaluation time or otherwise timed</span>
         <span class="doccomment">/// out.</span>
         <span class="ident">value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+        <span class="doccomment">/// Time at which the evaluation results were made available and backpropagation started.</span>
+        <span class="ident">result_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>,
     },
 }
 
@@ -2452,6 +2472,8 @@
     <span class="ident">id_counter</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">AtomicUsize</span>,
     <span class="doccomment">/// Channel to send log events to.</span>
     <span class="ident">logger</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;&gt;</span>,
+    <span class="doccomment">/// Time at which exploration started.  Used as an epoch for timestamps.</span>
+    <span class="ident">epoch</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -2460,11 +2482,13 @@
         <span class="ident">env</span>: <span class="ident">Env</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
         <span class="ident">id_counter</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">AtomicUsize</span>,
         <span class="ident">logger</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">epoch</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Tree</span> {
             <span class="ident">env</span>,
             <span class="ident">id_counter</span>,
             <span class="ident">logger</span>,
+            <span class="ident">epoch</span>,
         }
     }
 
@@ -2513,6 +2537,7 @@
             <span class="ident">parent</span>: <span class="ident">parent</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">parent</span>, <span class="ident">index</span>)<span class="op">|</span> (<span class="ident">parent</span>.<span class="ident">id</span>(), <span class="ident">index</span>)),
             <span class="ident">children</span>: <span class="ident">children</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">edge</span><span class="op">|</span> <span class="ident">edge</span>.<span class="ident">action</span>().<span class="ident">clone</span>()).<span class="ident">collect</span>(),
             <span class="ident">bound</span>: <span class="ident">bound</span>.<span class="ident">clone</span>(),
+            <span class="ident">discovery_time</span>: <span class="self">self</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>(),
         });
 
         <span class="ident">Node</span> {
@@ -2539,7 +2564,6 @@
 
 <span class="doccomment">/// A cursor which can be moved in the tree and remembers its trajectory.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeCursor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
     <span class="ident">events</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Timed</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
     <span class="ident">cut</span>: <span class="ident">f64</span>,
     <span class="ident">cut_epoch</span>: <span class="ident">usize</span>,
@@ -2697,7 +2721,7 @@
         <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="ident">CauseOfDeath</span>) <span class="op">-&gt;</span> <span class="ident">Event</span>,
     {
         <span class="comment">// TODO: Do not overwrite cause if there already is one?</span>
-        <span class="self">self</span>.<span class="ident">event</span>(<span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>(), <span class="ident">event_fn</span>(<span class="ident">cause</span>));
+        <span class="self">self</span>.<span class="ident">event</span>(<span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>(), <span class="ident">event_fn</span>(<span class="ident">cause</span>));
 
         <span class="ident">node</span>.<span class="ident">kill</span>();
     }
@@ -2711,7 +2735,7 @@
     <span class="kw">fn</span> <span class="ident">event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>, <span class="ident">event</span>: <span class="ident">Event</span>) {
         <span class="self">self</span>.<span class="ident">events</span>.<span class="ident">borrow_mut</span>().<span class="ident">push</span>(<span class="ident">Timed</span> {
             <span class="ident">start_time</span>,
-            <span class="ident">end_time</span>: <span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>(),
+            <span class="ident">end_time</span>: <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>(),
             <span class="ident">value</span>: <span class="ident">event</span>,
         });
     }
@@ -2723,7 +2747,7 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">cut</span>() {
             <span class="prelude-val">Err</span>(<span class="self">self</span>)
         } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">event</span>(<span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>(), <span class="ident">Event</span>::<span class="ident">Implementation</span>);
+            <span class="self">self</span>.<span class="ident">event</span>(<span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>(), <span class="ident">Event</span>::<span class="ident">Implementation</span>);
             <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">log</span>(<span class="ident">Message</span>::<span class="ident">Trace</span> {
                 <span class="ident">thread</span>: <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">std</span>::<span class="ident">thread</span>::<span class="ident">current</span>().<span class="ident">id</span>()),
                 <span class="ident">events</span>: <span class="self">self</span>.<span class="ident">events</span>.<span class="ident">into_inner</span>(),
@@ -2768,7 +2792,7 @@
             <span class="prelude-val">Ok</span>(<span class="ident">v</span>) <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">v</span>),
             <span class="prelude-val">Err</span>(<span class="kw-2">mut</span> <span class="ident">cursor</span>) <span class="op">=&gt;</span> {
                 <span class="ident">cursor</span>.<span class="ident">event</span>(
-                    <span class="ident">cursor</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>(),
+                    <span class="ident">cursor</span>.<span class="ident">tree</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>(),
                     <span class="ident">Event</span>::<span class="ident">SelectNode</span>(<span class="ident">checkpoint</span>.<span class="ident">id</span>()),
                 );
                 <span class="ident">cursor</span>.<span class="ident">path</span>.<span class="ident">truncate</span>(<span class="ident">path_len</span>);
@@ -2790,7 +2814,7 @@
         )
             <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Policy</span>, <span class="ident">Selector</span><span class="op">&lt;</span><span class="ident">EdgeIndex</span><span class="op">&gt;</span>, <span class="ident">EdgeIndex</span>, <span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>, <span class="ident">T</span>)<span class="op">&gt;</span>,
     {
-        <span class="kw">let</span> <span class="ident">start_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>();
+        <span class="kw">let</span> <span class="ident">start_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">policy</span>, <span class="ident">selector</span>, <span class="ident">eindex</span>, <span class="ident">node</span>, <span class="ident">value</span>)) <span class="op">=</span> <span class="ident">func</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
             <span class="self">self</span>.<span class="ident">event</span>(<span class="ident">start_time</span>, <span class="ident">Event</span>::<span class="ident">SelectChild</span>(<span class="ident">eindex</span>, <span class="ident">policy</span>, <span class="ident">selector</span>));
             <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">push</span>((<span class="ident">policy</span>, <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">downgrade</span>(), <span class="ident">eindex</span>));
@@ -2809,7 +2833,7 @@
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">start_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">start_time</span>.<span class="ident">elapsed</span>();
+        <span class="kw">let</span> <span class="ident">start_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">expanded_mut</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">node</span>
@@ -3141,8 +3165,8 @@
     <span class="doccomment">/// Bandit configuration</span>
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BanditConfig</span>,
 
-    <span class="doccomment">/// Time at which the search started</span>
-    <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
+    <span class="doccomment">/// Time at which the search started.  Used as an epoch for timestamps.</span>
+    <span class="ident">epoch</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> <span class="ident">MctsStore</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>
@@ -3158,11 +3182,14 @@
         <span class="ident">default_policy</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">TreePolicy</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span>,
         <span class="ident">logger</span>: <span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>::<span class="ident">now</span>();
+
         <span class="kw">let</span> <span class="ident">id_counter</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">Tree</span>::<span class="ident">new</span>(
             <span class="ident">Env</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">choice_ordering</span>, <span class="ident">context</span>),
             <span class="kw-2">&amp;</span><span class="ident">id_counter</span>,
             <span class="kw-2">&amp;</span><span class="ident">logger</span>,
+            <span class="ident">epoch</span>,
         )
         .<span class="ident">node</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>));
         <span class="ident">root</span>.<span class="ident">store_candidate</span>(<span class="ident">space</span>);
@@ -3177,13 +3204,12 @@
             <span class="ident">id_counter</span>,
             <span class="ident">logger</span>,
             <span class="ident">config</span>,
-            <span class="ident">start_time</span>: <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>::<span class="ident">now</span>(),
+            <span class="ident">epoch</span>,
         }
     }
 
     <span class="kw">fn</span> <span class="ident">cursor</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">NodeCursor</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
         <span class="ident">NodeCursor</span> {
-            <span class="ident">start_time</span>: <span class="self">self</span>.<span class="ident">start_time</span>,
             <span class="ident">events</span>: <span class="ident">Vec</span>::<span class="ident">new</span>().<span class="ident">into</span>(),
             <span class="ident">cut</span>: <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">read</span>().<span class="ident">expect</span>(<span class="string">&quot;cut: poisoned&quot;</span>),
             <span class="ident">cut_epoch</span>: <span class="self">self</span>.<span class="ident">cut_epoch</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>),
@@ -3193,6 +3219,7 @@
                 <span class="ident">Env</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">config</span>.<span class="ident">choice_ordering</span>, <span class="ident">context</span>),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">id_counter</span>,
                 <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">logger</span>,
+                <span class="self">self</span>.<span class="ident">epoch</span>,
             ),
             <span class="ident">helper</span>: <span class="ident">WalkHelper</span> {
                 <span class="ident">stop</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">stop</span>,
@@ -3235,6 +3262,7 @@
         <span class="ident">trace</span>: <span class="self">Self</span>::<span class="ident">PayLoad</span>,
         <span class="ident">eval</span>: <span class="ident">f64</span>,
     ) {
+        <span class="kw">let</span> <span class="ident">result_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>();
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">id</span>();
         <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">eval</span>.<span class="ident">is_finite</span>() { <span class="prelude-val">Some</span>(<span class="ident">eval</span>) } <span class="kw">else</span> { <span class="prelude-val">None</span> };
 
@@ -3253,7 +3281,11 @@
         }
 
         <span class="self">self</span>.<span class="ident">logger</span>
-            .<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(<span class="ident">Message</span>::<span class="ident">Evaluation</span> { <span class="ident">id</span>, <span class="ident">value</span>: <span class="ident">eval</span> }))
+            .<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(<span class="ident">Message</span>::<span class="ident">Evaluation</span> {
+                <span class="ident">id</span>,
+                <span class="ident">result_time</span>,
+                <span class="ident">value</span>: <span class="ident">eval</span>,
+            }))
             .<span class="ident">expect</span>(<span class="string">&quot;sending message&quot;</span>);
     }
 
