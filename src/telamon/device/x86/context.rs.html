@@ -275,7 +275,7 @@
 <span class="doccomment">/// A CPU evaluation context.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span> {
     <span class="ident">cpu_model</span>: <span class="ident">Cpu</span>,
-    <span class="ident">parameters</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Argument</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Argument</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Context</span> {
@@ -317,7 +317,7 @@
         <span class="kw">let</span> <span class="ident">default_cpu</span> <span class="op">=</span> <span class="ident">Cpu</span>::<span class="ident">dummy_cpu</span>();
         <span class="ident">Context</span> {
             <span class="ident">cpu_model</span>: <span class="ident">default_cpu</span>,
-            <span class="ident">parameters</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
         }
     }
 }

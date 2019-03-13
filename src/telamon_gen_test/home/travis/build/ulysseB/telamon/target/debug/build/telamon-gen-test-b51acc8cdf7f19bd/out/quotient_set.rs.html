@@ -2215,19 +2215,19 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainStore</span> {
     
-        <span class="ident">order</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)
+        <span class="ident">order</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)
 , <span class="ident">Order</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">repr_inst</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
+        <span class="ident">repr_inst</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">active_dim</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
+        <span class="ident">active_dim</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">repr_inst_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
+        <span class="ident">repr_inst_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
 , <span class="ident">Range</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">active_dim_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
+        <span class="ident">active_dim_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 , <span class="ident">Range</span><span class="op">&gt;&gt;</span>,
     
 }
@@ -2561,23 +2561,23 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainDiff</span> {
     
-        <span class="kw">pub</span> <span class="ident">order</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">order</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">Order</span>, <span class="ident">Order</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">repr_inst</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">repr_inst</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">active_dim</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">active_dim</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">repr_inst_class_counter</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">repr_inst_class_counter</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">active_dim_class_counter</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">active_dim_class_counter</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span>,
     

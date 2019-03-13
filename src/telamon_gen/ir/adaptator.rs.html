@@ -72,8 +72,8 @@
 <span class="doccomment">/// Represent a transformation to apply to a rule to fir it in a new context.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Adaptator</span> {
-    <span class="ident">variables</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Variable</span><span class="op">&gt;</span>,
-    <span class="ident">inputs</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, (<span class="ident">usize</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
+    <span class="ident">variables</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Variable</span><span class="op">&gt;</span>,
+    <span class="ident">inputs</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, (<span class="ident">usize</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Adaptator</span> {

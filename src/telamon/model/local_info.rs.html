@@ -365,12 +365,12 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LocalInfo</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// The loops inside and outside each Stmt.</span>
-    <span class="kw">pub</span> <span class="ident">nesting</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">Nesting</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">nesting</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">Nesting</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="doccomment">/// The pressure incured by a signle instance of each Stmt.</span>
-    <span class="kw">pub</span> <span class="ident">hw_pressure</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">HwPressure</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">hw_pressure</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">HwPressure</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The pressure induced by a single iteration of each dimension and the exit latency</span>
     <span class="doccomment">/// of the loop.</span>
-    <span class="kw">pub</span> <span class="ident">dim_overhead</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">HwPressure</span>, <span class="ident">HwPressure</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">dim_overhead</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">HwPressure</span>, <span class="ident">HwPressure</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// The overhead to initialize a thread.</span>
     <span class="kw">pub</span> <span class="ident">thread_overhead</span>: <span class="ident">HwPressure</span>,
     <span class="doccomment">/// Available parallelism in the kernel.</span>
@@ -385,7 +385,7 @@
             .<span class="ident">dims</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> (<span class="ident">d</span>.<span class="ident">id</span>(), <span class="ident">size</span>::<span class="ident">bounds</span>(<span class="ident">d</span>.<span class="ident">size</span>(), <span class="ident">space</span>, <span class="ident">context</span>)))
             .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">nesting</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">space</span>
+        <span class="kw">let</span> <span class="ident">nesting</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">space</span>
             .<span class="ident">ir_instance</span>()
             .<span class="ident">statements</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> (<span class="ident">stmt</span>.<span class="ident">stmt_id</span>(), <span class="ident">Nesting</span>::<span class="ident">compute</span>(<span class="ident">space</span>, <span class="ident">stmt</span>.<span class="ident">stmt_id</span>())))
@@ -455,10 +455,10 @@
 <span class="kw">fn</span> <span class="ident">add_indvar_pressure</span>(
     <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="ident">Device</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-    <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
+    <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
     <span class="ident">indvar</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">InductionVar</span>,
-    <span class="ident">hw_pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">HwPressure</span><span class="op">&gt;</span>,
-    <span class="ident">dim_overhead</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">HwPressure</span>, <span class="ident">HwPressure</span>)<span class="op">&gt;</span>,
+    <span class="ident">hw_pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">HwPressure</span><span class="op">&gt;</span>,
+    <span class="ident">dim_overhead</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">HwPressure</span>, <span class="ident">HwPressure</span>)<span class="op">&gt;</span>,
     <span class="ident">thread_overhead</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>,
 ) {
     <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">dim</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">indvar</span>.<span class="ident">dims</span>() {
@@ -664,7 +664,7 @@
 
 <span class="doccomment">/// Computes the minimal and maximal parallelism accross instructions.</span>
 <span class="kw">fn</span> <span class="ident">parallelism</span>(
-    <span class="ident">nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">Nesting</span><span class="op">&gt;</span>,
+    <span class="ident">nesting</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">Nesting</span><span class="op">&gt;</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
 ) <span class="op">-&gt;</span> <span class="ident">Parallelism</span> {

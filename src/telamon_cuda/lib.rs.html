@@ -128,7 +128,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">struct</span> <span class="ident">Namer</span> {
-    <span class="ident">num_var</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
+    <span class="ident">num_var</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="ident">num_sizes</span>: <span class="ident">usize</span>,
 }
 

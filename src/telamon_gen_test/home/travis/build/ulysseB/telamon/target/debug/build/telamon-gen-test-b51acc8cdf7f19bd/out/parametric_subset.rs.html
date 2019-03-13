@@ -2036,19 +2036,19 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainStore</span> {
     
-        <span class="ident">param_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,)
+        <span class="ident">param_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,)
 , <span class="ident">ParamChoice</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">value_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="ident">value_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 , <span class="ident">ValueChoice</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">param_value_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="ident">param_value_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 , <span class="ident">ParamValueChoice</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">param_value_choice_2</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="ident">param_value_choice_2</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 , <span class="ident">ParamValueChoice2</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">value_ab_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="ident">value_ab_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 , <span class="ident">ValueAbChoice</span><span class="op">&gt;&gt;</span>,
     
 }
@@ -2334,23 +2334,23 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainDiff</span> {
     
-        <span class="kw">pub</span> <span class="ident">param_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">param_choice</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">ParamChoice</span>, <span class="ident">ParamChoice</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">value_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">value_choice</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">ValueChoice</span>, <span class="ident">ValueChoice</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">param_value_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">param_value_choice</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">ParamValueChoice</span>, <span class="ident">ParamValueChoice</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">param_value_choice_2</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">param_value_choice_2</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">ParamValueChoice2</span>, <span class="ident">ParamValueChoice2</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">value_ab_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">value_ab_choice</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">ValueAbChoice</span>, <span class="ident">ValueAbChoice</span>)<span class="op">&gt;</span>,
     

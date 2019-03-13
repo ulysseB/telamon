@@ -263,7 +263,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockMap</span> {
     <span class="ident">blocks</span>: <span class="ident">ir</span>::<span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">MemId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
-    <span class="ident">layouts</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">MemId</span><span class="op">&gt;</span>,
+    <span class="ident">layouts</span>: <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">MemId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BlockMap</span> {

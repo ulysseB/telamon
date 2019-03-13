@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["MultiHashMap","A `HashMap` with mutiple values for each key."]]});
+initSidebarItems({"struct":[["MultiHashMap","A `FnvHashMap` with mutiple values for each key."]]});

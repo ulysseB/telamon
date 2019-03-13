@@ -255,7 +255,7 @@
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">traits</span>::{<span class="ident">Signed</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">unwrap</span>, <span class="ident">HashMap</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">unwrap</span>, <span class="ident">FnvHashMap</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoweringMap</span> {
@@ -265,12 +265,12 @@
     <span class="doccomment">/// lowering.</span>
     <span class="ident">st_inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
     <span class="doccomment">/// Maps the lhs dimensions in `map` to their lowered dimension.</span>
-    <span class="ident">st_map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
+    <span class="ident">st_map</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Instruction ID to use for the `load` instruction when</span>
     <span class="doccomment">/// lowering.</span>
     <span class="ident">ld_inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
     <span class="doccomment">/// Maps the rhs dimensions in `map` to their lowered dimension.</span>
-    <span class="ident">ld_map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
+    <span class="ident">ld_map</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">LoweringMap</span> {

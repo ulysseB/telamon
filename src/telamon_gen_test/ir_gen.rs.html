@@ -299,7 +299,7 @@
             <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Clone</span>)]</span>
             <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span> {
                 <span class="ident">next_id</span>: <span class="ident">usize</span>,
-                $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="macro">define_ir</span><span class="macro">!</span>(@<span class="ident">full_id</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">param</span>),
+                $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="macro">define_ir</span><span class="macro">!</span>(@<span class="ident">full_id</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">param</span>),
                                  ::<span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>::<span class="ident">Obj</span><span class="op">&gt;&gt;</span>,)<span class="op">*</span>
             }
 

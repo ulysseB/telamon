@@ -13381,88 +13381,88 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainStore</span> {
     
-        <span class="ident">inst_flag</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="ident">inst_flag</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 , <span class="ident">InstFlag</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">NumericSet</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">is_thread_dim</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">is_thread_dim</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">thread_mapping</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">thread_mapping</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">ThreadMapping</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">is_iteration_dim</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">is_iteration_dim</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">memory_space</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">VarId</span>,)
+        <span class="ident">memory_space</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">VarId</span>,)
 , <span class="ident">MemorySpace</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">mem_space</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
+        <span class="ident">mem_space</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
 , <span class="ident">MemSpace</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">dim_kind</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">dim_kind</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">DimKind</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">order</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">StmtId</span>,<span class="ident">ir</span>::<span class="ident">StmtId</span>,)
+        <span class="ident">order</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">StmtId</span>,<span class="ident">ir</span>::<span class="ident">StmtId</span>,)
 , <span class="ident">Order</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">dim_mapping</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">dim_mapping</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">DimMapping</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">increment_tiling_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">increment_tiling_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">tiling_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,)
+        <span class="ident">tiling_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,)
 , <span class="ident">Range</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">is_thread_dim_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">is_thread_dim_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Range</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">num_threads</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>()
+        <span class="ident">num_threads</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">num_thread_dims</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>()
+        <span class="ident">num_thread_dims</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">is_iteration_dim_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">is_iteration_dim_class_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Range</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">increment_mem_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">increment_mem_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">mem_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
+        <span class="ident">mem_size</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">shared_mem_used</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>()
+        <span class="ident">shared_mem_used</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">increment_unroll_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">increment_unroll_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">unroll_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="ident">unroll_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">increment_inner_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">increment_inner_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">inner_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="ident">inner_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">increment_outer_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">increment_outer_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">outer_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="ident">outer_vector_factor</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">increment_num_block_dims</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">increment_num_block_dims</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">Bool</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">num_block_dims</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="ident">num_block_dims</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">num_nested_inst</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="ident">num_nested_inst</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 , <span class="ident">HalfRange</span><span class="op">&gt;&gt;</span>,
     
 }
@@ -15105,115 +15105,115 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainDiff</span> {
     
-        <span class="kw">pub</span> <span class="ident">inst_flag</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="kw">pub</span> <span class="ident">inst_flag</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 ,
             (<span class="ident">InstFlag</span>, <span class="ident">InstFlag</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">size</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">size</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">NumericSet</span>, <span class="ident">NumericSet</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">is_thread_dim</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">is_thread_dim</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">thread_mapping</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">thread_mapping</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">ThreadMapping</span>, <span class="ident">ThreadMapping</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">is_iteration_dim</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">is_iteration_dim</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">memory_space</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">VarId</span>,)
+        <span class="kw">pub</span> <span class="ident">memory_space</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">VarId</span>,)
 ,
             (<span class="ident">MemorySpace</span>, <span class="ident">MemorySpace</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">mem_space</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
+        <span class="kw">pub</span> <span class="ident">mem_space</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
 ,
             (<span class="ident">MemSpace</span>, <span class="ident">MemSpace</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">dim_kind</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">dim_kind</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">DimKind</span>, <span class="ident">DimKind</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">order</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">StmtId</span>,<span class="ident">ir</span>::<span class="ident">StmtId</span>,)
+        <span class="kw">pub</span> <span class="ident">order</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">StmtId</span>,<span class="ident">ir</span>::<span class="ident">StmtId</span>,)
 ,
             (<span class="ident">Order</span>, <span class="ident">Order</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">dim_mapping</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">dim_mapping</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">DimMapping</span>, <span class="ident">DimMapping</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">increment_tiling_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">increment_tiling_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">tiling_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,)
+        <span class="kw">pub</span> <span class="ident">tiling_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">LogicalDimId</span>,)
 ,
             (<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">is_thread_dim_class_counter</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">is_thread_dim_class_counter</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">num_threads</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>()
+        <span class="kw">pub</span> <span class="ident">num_threads</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">num_thread_dims</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>()
+        <span class="kw">pub</span> <span class="ident">num_thread_dims</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">is_iteration_dim_class_counter</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">is_iteration_dim_class_counter</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">increment_mem_size</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">increment_mem_size</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">mem_size</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
+        <span class="kw">pub</span> <span class="ident">mem_size</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>,)
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">shared_mem_used</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>()
+        <span class="kw">pub</span> <span class="ident">shared_mem_used</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">increment_unroll_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">increment_unroll_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">unroll_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="kw">pub</span> <span class="ident">unroll_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">increment_inner_vector_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">increment_inner_vector_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">inner_vector_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="kw">pub</span> <span class="ident">inner_vector_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">increment_outer_vector_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">increment_outer_vector_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">outer_vector_factor</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="kw">pub</span> <span class="ident">outer_vector_factor</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">increment_num_block_dims</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">increment_num_block_dims</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">Bool</span>, <span class="ident">Bool</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">num_block_dims</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
+        <span class="kw">pub</span> <span class="ident">num_block_dims</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>,)
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">num_nested_inst</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
+        <span class="kw">pub</span> <span class="ident">num_nested_inst</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>,)
 ,
             (<span class="ident">HalfRange</span>, <span class="ident">HalfRange</span>)<span class="op">&gt;</span>,
     

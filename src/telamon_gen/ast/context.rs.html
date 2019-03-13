@@ -61,14 +61,14 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ast</span>::<span class="ident">SetRef</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">lexer</span>::<span class="ident">Spanned</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">HashMap</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">FnvHashMap</span>;
 
 <span class="doccomment">/// CheckContext is a type system.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CheckerContext</span> {
     <span class="doccomment">/// Map Name of unique identifiant.</span>
-    <span class="ident">hash_set</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">hash_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">hash_set</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">hash_choice</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">CheckerContext</span> {

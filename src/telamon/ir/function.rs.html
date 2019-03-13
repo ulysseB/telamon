@@ -794,7 +794,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">id</span>: <span class="ident">InstId</span>,
         <span class="ident">op</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>,
-        <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
+        <span class="ident">iter_dims</span>: <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="comment">// Create and check the instruction.</span>
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Instruction</span>::<span class="ident">new</span>(<span class="ident">op</span>, <span class="ident">id</span>, <span class="ident">iter_dims</span>, <span class="self">self</span>)<span class="question-mark">?</span>;
@@ -1105,7 +1105,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_inst</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">op</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span>,
-        <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
+        <span class="ident">iter_dims</span>: <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">InstId</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="comment">// Create dimension mappings for the operands.</span>
         <span class="comment">// TODO(cleanup): the operands should list `DimMapping` rather that pairs of</span>

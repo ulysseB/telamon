@@ -402,15 +402,15 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ast</span>::<span class="ident">context</span>::<span class="ident">CheckerContext</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ast</span>::<span class="ident">error</span>::{<span class="ident">Hint</span>, <span class="ident">TypeError</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ast</span>::{
-    <span class="ident">ChoiceInstance</span>, <span class="ident">Condition</span>, <span class="ident">EnumStatement</span>, <span class="ident">EnumStatements</span>, <span class="ident">HashSet</span>, <span class="ident">SetRef</span>, <span class="ident">Symmetry</span>,
-    <span class="ident">VarDef</span>, <span class="ident">VarMap</span>,
+    <span class="ident">ChoiceInstance</span>, <span class="ident">Condition</span>, <span class="ident">EnumStatement</span>, <span class="ident">EnumStatements</span>, <span class="ident">SetRef</span>, <span class="ident">Symmetry</span>, <span class="ident">VarDef</span>,
+    <span class="ident">VarMap</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">lexer</span>::<span class="ident">Spanned</span>;
 
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">trace</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">HashMap</span>, <span class="ident">RcStr</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">FnvHashMap</span>, <span class="ident">FnvHashSet</span>, <span class="ident">RcStr</span>};
 
 <span class="doccomment">/// A toplevel definition or constraint.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
@@ -424,7 +424,7 @@
 <span class="kw">impl</span> <span class="ident">EnumDef</span> {
     <span class="doccomment">/// This checks that there isn&#39;t any doublon in the field list.</span>
     <span class="kw">fn</span> <span class="ident">check_redefinition_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">symmetric</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Spanned</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">antisymmetric</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Spanned</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
@@ -467,7 +467,7 @@
 
     <span class="doccomment">/// This checks that there isn&#39;t any doublon in parameter list.</span>
     <span class="kw">fn</span> <span class="ident">check_redefinition_parameter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
         <span class="kw">for</span> <span class="ident">VarDef</span> { <span class="ident">name</span>, .. } <span class="kw">in</span> <span class="self">self</span>.<span class="ident">variables</span>.<span class="ident">as_slice</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">before</span>) <span class="op">=</span> <span class="ident">hash</span>.<span class="ident">insert</span>(<span class="ident">name</span>.<span class="ident">data</span>.<span class="ident">to_string</span>(), <span class="ident">name</span>.<span class="ident">with_data</span>(())) {
                 <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Redefinition</span> {
@@ -519,7 +519,7 @@
 
     <span class="doccomment">/// Checks if the values referenced in EnumStatements are defined.</span>
     <span class="kw">fn</span> <span class="ident">check_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
 
         <span class="kw">for</span> <span class="ident">stmt</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">iter</span>() {
             <span class="kw">match</span> <span class="ident">stmt</span> {
@@ -718,7 +718,7 @@
         );
         <span class="kw">let</span> <span class="ident">inverse</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">Symmetry</span>::<span class="ident">AntiSymmetric</span>(<span class="ident">mapping</span>)) <span class="op">=</span> <span class="ident">stmts</span>.<span class="ident">symmetry</span> {
             {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mapped</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">default</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mapped</span> <span class="op">=</span> <span class="ident">FnvHashSet</span>::<span class="ident">default</span>();
                 <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">mapping</span> {
                     <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">stmts</span>.<span class="ident">values</span>.<span class="ident">contains_key</span>(<span class="ident">lhs</span>), <span class="string">&quot;unknown value {}&quot;</span>, <span class="ident">lhs</span>);
                     <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">stmts</span>.<span class="ident">values</span>.<span class="ident">contains_key</span>(<span class="ident">rhs</span>), <span class="string">&quot;unknown value {}&quot;</span>, <span class="ident">rhs</span>);
@@ -737,7 +737,7 @@
         }
         <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="ident">stmts</span>.<span class="ident">aliases</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect_vec</span>() {
             <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">enum_</span>.<span class="ident">values</span>().<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>));
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">expanded_values</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">expanded_values</span> <span class="op">=</span> <span class="ident">FnvHashSet</span>::<span class="ident">default</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">stmts</span>
                 .<span class="ident">aliases</span>
                 .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>)
