@@ -176,6 +176,7 @@ enum ThunkArg {
 /// temporary arrays at the last possible moment
 fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
     debug!("running code {}", fun_str);
+    println!("running code {}", fun_str);
     let temp_dir = unwrap!(tempfile::tempdir());
     let templib_name = temp_dir
         .path()

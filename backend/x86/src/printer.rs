@@ -51,14 +51,18 @@ impl X86printer {
             .map(print_decl)
             .collect_vec()
             .join("\n  ");
-        format!(
-            "intptr_t {};\n{}",
-            &(0..namer.num_glob_ptr)
+        if namer.num_glob_ptr == 0 {
+            other_var_decl
+        } else {
+            format!(
+                "intptr_t {};\n{}",
+                &(0..namer.num_glob_ptr)
                 .map(|i| format!("ptr{}", i))
                 .collect_vec()
                 .join(", "),
-            other_var_decl,
-        )
+                other_var_decl,
+                )
+        }
     }
 
     /// Declares block and thread indexes.
@@ -84,11 +88,17 @@ impl X86printer {
                 .collect_vec()
                 .join(",\n  ");
             // SIGNATURE AND OPEN BRACKET
-            return_string = format!(
+            return_string = if function.device_code_args().count() == 0 {
+                format!(
+                include_str!("template/signature_no_arg.c.template"),
+                name = function.name,
+            )
+            } else {
+                format!(
                 include_str!("template/signature.c.template"),
                 name = function.name,
                 params = param_decls
-            );
+            )};
             // INDEX LOADS
             let idx_loads = self.decl_par_indexes(function, name_map);
             unwrap!(writeln!(self.buffer, "{}", idx_loads));
@@ -309,17 +319,28 @@ impl X86printer {
     /// wrap the kernel call into a function with a fixed interface
     pub fn wrapper_function(&mut self, func: &Function) -> String {
         let fun_str = self.function(func);
-        let fun_params = self.params_call(func);
-        format!(
-            include_str!("template/host.c.template"),
-            fun_name = func.name,
-            fun_str = fun_str,
-            fun_params_cast = self.fun_params_cast(func),
-            fun_params = fun_params,
-            gen_threads = self.thread_gen(func),
-            dim_decl = self.build_thread_id_struct(func),
-            thread_join = self.thread_join(func),
-        )
+        if func.device_code_args().count() == 0 {
+            format!(
+                include_str!("template/host_no_arg.c.template"),
+                fun_name = func.name,
+                fun_str = fun_str,
+                gen_threads = self.thread_gen(func),
+                dim_decl = self.build_thread_id_struct(func),
+                thread_join = self.thread_join(func),
+                )
+        } else {
+            let fun_params = self.params_call(func);
+            format!(
+                include_str!("template/host.c.template"),
+                fun_name = func.name,
+                fun_str = fun_str,
+                fun_params_cast = self.fun_params_cast(func),
+                fun_params = fun_params,
+                gen_threads = self.thread_gen(func),
+                dim_decl = self.build_thread_id_struct(func),
+                thread_join = self.thread_join(func),
+                )
+        }
     }
 
     fn get_type(t: Type) -> String {

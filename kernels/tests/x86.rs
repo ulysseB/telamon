@@ -1,4 +1,4 @@
-use telamon::device::x86;
+use telamon_x86 as x86;
 use telamon_kernels::{linalg, Kernel};
 
 macro_rules! test_output {

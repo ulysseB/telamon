@@ -1,4 +1,3 @@
-
 void {name}(
     thread_dim_id_t tid,
   {params}
