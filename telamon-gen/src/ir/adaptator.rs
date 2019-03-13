@@ -4,8 +4,8 @@ use utils::*;
 /// Represent a transformation to apply to a rule to fir it in a new context.
 #[derive(Default)]
 pub struct Adaptator {
-    variables: HashMap<ir::Variable, ir::Variable>,
-    inputs: HashMap<usize, (usize, bool)>,
+    variables: FnvHashMap<ir::Variable, ir::Variable>,
+    inputs: FnvHashMap<usize, (usize, bool)>,
 }
 
 impl Adaptator {

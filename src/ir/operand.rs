@@ -4,7 +4,7 @@ use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
-use utils::{unwrap, HashMap};
+use utils::{unwrap, FnvHashMap};
 
 #[derive(Clone, Debug)]
 pub struct LoweringMap {
@@ -14,12 +14,12 @@ pub struct LoweringMap {
     /// lowering.
     st_inst: ir::InstId,
     /// Maps the lhs dimensions in `map` to their lowered dimension.
-    st_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
+    st_map: FnvHashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
     /// Instruction ID to use for the `load` instruction when
     /// lowering.
     ld_inst: ir::InstId,
     /// Maps the rhs dimensions in `map` to their lowered dimension.
-    ld_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
+    ld_map: FnvHashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
 }
 
 impl LoweringMap {

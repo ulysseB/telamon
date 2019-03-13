@@ -78,7 +78,7 @@ fn generate(space: &SearchSpace, levels: &[Level]) -> Vec<CodePoint> {
 #[derive(Debug)]
 pub struct CodePointDag {
     pub dag: Dag<CodePoint>,
-    pub ids: HashMap<CodePoint, usize>,
+    pub ids: FnvHashMap<CodePoint, usize>,
 }
 
 impl CodePointDag {
@@ -159,7 +159,7 @@ fn convert_order(
 }
 
 /// Creates a map from code point to code point IDs.
-fn code_point_ids(code_points: &Dag<CodePoint>) -> HashMap<CodePoint, usize> {
+fn code_point_ids(code_points: &Dag<CodePoint>) -> FnvHashMap<CodePoint, usize> {
     code_points
         .nodes()
         .iter()

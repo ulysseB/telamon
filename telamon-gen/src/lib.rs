@@ -89,7 +89,7 @@ pub fn process<T: io::Write>(
     let (mut ir_desc, constraints) = ast.type_check().unwrap();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.
-    let mut filters = MultiHashMap::default();
+    let mut filters = FnvMultiHashMap::default();
     for mut constraint in constraints {
         constraint.dedup_inputs(&ir_desc);
         for (choice, filter) in constraint.gen_filters(&ir_desc) {

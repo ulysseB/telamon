@@ -290,7 +290,7 @@ impl Gpu {
     fn inst_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &HashMap<ir::DimId, model::size::Range>,
+        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
         inst: &ir::Instruction,
         ctx: &device::Context,
     ) -> HwPressure {
@@ -506,8 +506,8 @@ impl device::Device for Gpu {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &HashMap<ir::DimId, model::size::Range>,
-        _nesting: &HashMap<ir::StmtId, model::Nesting>,
+        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
+        _nesting: &FnvHashMap<ir::StmtId, model::Nesting>,
         stmt: &ir::Statement,
         ctx: &device::Context,
     ) -> model::HwPressure {

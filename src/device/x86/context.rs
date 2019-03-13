@@ -25,7 +25,7 @@ const EVAL_BUFFER_SIZE: usize = 100;
 /// A CPU evaluation context.
 pub struct Context {
     cpu_model: Cpu,
-    parameters: HashMap<String, Arc<Argument>>,
+    parameters: FnvHashMap<String, Arc<Argument>>,
 }
 
 impl Context {
@@ -67,7 +67,7 @@ impl Default for Context {
         let default_cpu = Cpu::dummy_cpu();
         Context {
             cpu_model: default_cpu,
-            parameters: HashMap::default(),
+            parameters: FnvHashMap::default(),
         }
     }
 }

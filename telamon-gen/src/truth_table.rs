@@ -82,7 +82,7 @@ type RuleConds = (Vec<ir::Condition>, ir::SetConstraints);
 /// The rules that applies to a particular combination of choices.
 #[derive(Debug, PartialEq, Eq)]
 struct Cell {
-    rules: HashMap<RuleConds, Vec<ir::ValueSet>>,
+    rules: FnvHashMap<RuleConds, Vec<ir::ValueSet>>,
 }
 
 impl Cell {
@@ -92,7 +92,7 @@ impl Cell {
         inputs: &[ir::ChoiceInstance],
         ir_desc: &ir::IrDesc,
     ) -> Cell {
-        let mut rule_map: HashMap<_, Vec<ir::ValueSet>> = HashMap::default();
+        let mut rule_map: FnvHashMap<_, Vec<ir::ValueSet>> = FnvHashMap::default();
         for mut rule in rules {
             rule.normalize(inputs, ir_desc);
             match rule_map.entry((rule.conditions, rule.set_constraints)) {

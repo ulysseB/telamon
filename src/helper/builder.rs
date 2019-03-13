@@ -12,7 +12,7 @@ use utils::*;
 /// Helper to build a `Function`.
 pub struct Builder<'a> {
     function: Function<'a, ()>,
-    open_dims: HashMap<ir::DimId, ir::DimId>,
+    open_dims: FnvHashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
 
@@ -21,7 +21,7 @@ impl<'a> Builder<'a> {
     pub fn new(signature: &'a Signature, device: &'a Device) -> Builder<'a> {
         Builder {
             function: Function::new(signature, device),
-            open_dims: HashMap::default(),
+            open_dims: FnvHashMap::default(),
             actions: Vec::new(),
         }
     }

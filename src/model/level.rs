@@ -441,7 +441,7 @@ impl RepeatLevel {
 /// Exposes the levels application order.
 #[derive(Debug)]
 pub struct LevelDag {
-    node_ids: HashMap<VecSet<ir::DimId>, usize>,
+    node_ids: FnvHashMap<VecSet<ir::DimId>, usize>,
     nodes: Vec<(Vec<RepeatLevel>, Vec<DimMap>, DependencyMap)>,
 }
 
@@ -452,7 +452,7 @@ pub struct DagNodeId(usize);
 impl LevelDag {
     /// Creates and empty `LevelDag`, with only the root node.
     fn new(space: &SearchSpace, dep_map_size: usize) -> Self {
-        let mut node_ids = HashMap::default();
+        let mut node_ids = FnvHashMap::default();
         let all_dims = space
             .ir_instance()
             .dims()

@@ -104,8 +104,8 @@ impl device::Device for Cpu {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &HashMap<ir::DimId, model::size::Range>,
-        _: &HashMap<ir::StmtId, model::Nesting>,
+        _: &FnvHashMap<ir::DimId, model::size::Range>,
+        _: &FnvHashMap<ir::StmtId, model::Nesting>,
         _: &ir::Statement,
         _: &device::Context,
     ) -> model::HwPressure {

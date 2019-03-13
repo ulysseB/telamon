@@ -19,7 +19,7 @@ use utils::*;
 
 #[derive(Default)]
 struct Namer {
-    num_var: HashMap<ir::Type, usize>,
+    num_var: FnvHashMap<ir::Type, usize>,
     num_sizes: usize,
     num_glob_ptr: usize,
 }

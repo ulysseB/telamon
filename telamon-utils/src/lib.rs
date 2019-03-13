@@ -15,19 +15,12 @@ pub use self::dag::Dag;
 pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
 pub use self::vec_set::VecSet;
-use fnv::FnvHasher;
+use fnv::FnvBuildHasher;
+pub use fnv::{FnvHashMap, FnvHashSet};
 use num::Integer;
 use serde_derive::Serialize;
-use std::hash::BuildHasherDefault;
 
-/// A fast but not secure `Hasher`.
-pub type DefaultHasher = BuildHasherDefault<FnvHasher>;
-/// An `HashSet` based on `DefaultHasher`.
-pub type HashSet<K> = std::collections::HashSet<K, DefaultHasher>;
-/// An `HashMap` based on `DefaultHasher`.
-pub type HashMap<K, V> = std::collections::HashMap<K, V, DefaultHasher>;
-/// A `HashMap` based on `DefaultHasher`.
-pub type MultiHashMap<K, V> = self::multimap::MultiHashMap<K, V, DefaultHasher>;
+pub type FnvMultiHashMap<K, V> = self::multimap::MultiHashMap<K, V, FnvBuildHasher>;
 
 /// A reference counted string, compatible with `&str`.
 #[derive(Default, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Debug)]

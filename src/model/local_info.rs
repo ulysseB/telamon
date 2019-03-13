@@ -12,12 +12,12 @@ use utils::*;
 #[derive(Debug)]
 pub struct LocalInfo<'a> {
     /// The loops inside and outside each Stmt.
-    pub nesting: HashMap<ir::StmtId, Nesting<'a>>,
+    pub nesting: FnvHashMap<ir::StmtId, Nesting<'a>>,
     /// The pressure incured by a signle instance of each Stmt.
-    pub hw_pressure: HashMap<ir::StmtId, HwPressure>,
+    pub hw_pressure: FnvHashMap<ir::StmtId, HwPressure>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
-    pub dim_overhead: HashMap<ir::DimId, (HwPressure, HwPressure)>,
+    pub dim_overhead: FnvHashMap<ir::DimId, (HwPressure, HwPressure)>,
     /// The overhead to initialize a thread.
     pub thread_overhead: HwPressure,
     /// Available parallelism in the kernel.
@@ -32,7 +32,7 @@ impl<'a> LocalInfo<'a> {
             .dims()
             .map(|d| (d.id(), size::bounds(d.size(), space, context)))
             .collect();
-        let nesting: HashMap<_, _> = space
+        let nesting: FnvHashMap<_, _> = space
             .ir_instance()
             .statements()
             .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
@@ -102,10 +102,10 @@ impl<'a> LocalInfo<'a> {
 fn add_indvar_pressure(
     device: &Device,
     space: &SearchSpace,
-    dim_sizes: &HashMap<ir::DimId, size::Range>,
+    dim_sizes: &FnvHashMap<ir::DimId, size::Range>,
     indvar: &ir::InductionVar,
-    hw_pressure: &mut HashMap<ir::StmtId, HwPressure>,
-    dim_overhead: &mut HashMap<ir::DimId, (HwPressure, HwPressure)>,
+    hw_pressure: &mut FnvHashMap<ir::StmtId, HwPressure>,
+    dim_overhead: &mut FnvHashMap<ir::DimId, (HwPressure, HwPressure)>,
     thread_overhead: &mut HwPressure,
 ) {
     for &(dim, _) in indvar.dims() {
@@ -311,7 +311,7 @@ impl Default for Parallelism {
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
-    nesting: &HashMap<ir::StmtId, Nesting>,
+    nesting: &FnvHashMap<ir::StmtId, Nesting>,
     space: &SearchSpace,
     ctx: &Context,
 ) -> Parallelism {

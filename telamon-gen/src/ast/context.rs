@@ -4,14 +4,14 @@ use crate::ast::error::{Hint, TypeError};
 use crate::ast::SetRef;
 
 use crate::lexer::Spanned;
-use utils::HashMap;
+use utils::FnvHashMap;
 
 /// CheckContext is a type system.
 #[derive(Debug, Default)]
 pub struct CheckerContext {
     /// Map Name of unique identifiant.
-    hash_set: HashMap<String, Spanned<Hint>>,
-    hash_choice: HashMap<String, Spanned<Hint>>,
+    hash_set: FnvHashMap<String, Spanned<Hint>>,
+    hash_choice: FnvHashMap<String, Spanned<Hint>>,
 }
 
 impl CheckerContext {

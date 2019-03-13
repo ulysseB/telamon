@@ -157,7 +157,7 @@ impl<'a, L> Operator<'a, L> {
     /// Ensures the types of the operands are valid.
     pub fn check(
         &self,
-        iter_dims: &HashSet<ir::DimId>,
+        iter_dims: &FnvHashSet<ir::DimId>,
         fun: &ir::Function<L>,
     ) -> Result<(), ir::Error> {
         self.t()
