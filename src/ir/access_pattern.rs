@@ -21,7 +21,7 @@ pub enum AccessPattern<'a> {
     /// dimensions should not overlap.
     Tensor {
         mem_id: Option<ir::MemId>,
-        dims: HashMap<ir::DimId, ir::PartialSize<'a>>,
+        dims: FnvHashMap<ir::DimId, ir::PartialSize<'a>>,
     },
 }
 
@@ -49,7 +49,7 @@ impl<'a> AccessPattern<'a> {
 
     /// Ensure the access pattern is valid for an instruction nested in the dimensions
     /// given in `iter_dims`.
-    pub fn check(&self, iter_dims: &HashSet<ir::DimId>) -> Result<(), ir::Error> {
+    pub fn check(&self, iter_dims: &FnvHashSet<ir::DimId>) -> Result<(), ir::Error> {
         match self {
             AccessPattern::Unknown(..) => Ok(()),
             AccessPattern::Tensor { dims, .. } => {

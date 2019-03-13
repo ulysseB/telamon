@@ -5,13 +5,13 @@ use crate::ast::context::CheckerContext;
 use crate::ast::error::TypeError;
 use crate::ast::{
     type_check_code, type_check_enum_values, ChoiceDef, ChoiceInstance, Condition,
-    CounterBody, CounterVal, HashSet, VarDef, VarMap,
+    CounterBody, CounterVal, VarDef, VarMap,
 };
 use crate::ir::{self, Adaptable};
 use crate::lexer::Spanned;
 use itertools::Itertools;
 use log::trace;
-use utils::RcStr;
+use utils::{FnvHashSet, RcStr};
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
@@ -139,7 +139,7 @@ impl CounterDef {
             }] => {
                 let incr = lhs.type_check(&ir_desc, var_map);
                 // Ensure all forall values are usefull.
-                let mut foralls = HashSet::default();
+                let mut foralls = FnvHashSet::default();
                 for &v in &incr.vars {
                     if let ir::Variable::Forall(i) = v {
                         foralls.insert(i);

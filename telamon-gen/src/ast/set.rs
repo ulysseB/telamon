@@ -16,7 +16,7 @@ use crate::lexer::Spanned;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use log::trace;
-use utils::{HashMap, RcStr};
+use utils::{FnvHashMap, RcStr};
 
 #[derive(Debug, Clone)]
 pub struct SetDef {
@@ -32,7 +32,7 @@ pub struct SetDef {
 impl SetDef {
     /// This checks that thereisn't any keys doublon.
     fn check_redefinition_key(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<_, Spanned<()>> = HashMap::default();
+        let mut hash: FnvHashMap<_, Spanned<()>> = FnvHashMap::default();
         for (key, ..) in self.keys.iter() {
             if let Some(pre) = hash.insert(key.data.to_owned(), key.with_data(())) {
                 Err(TypeError::Redefinition {

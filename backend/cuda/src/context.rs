@@ -29,7 +29,7 @@ const NUM_OUTLIERS: usize = 4;
 pub struct Context<'a> {
     gpu_model: Gpu,
     executor: &'a Executor,
-    parameters: HashMap<String, Arc<Argument + 'a>>,
+    parameters: FnvHashMap<String, Arc<Argument + 'a>>,
 }
 
 impl<'a> Context<'a> {
@@ -38,7 +38,7 @@ impl<'a> Context<'a> {
         Context {
             gpu_model: Gpu::from_executor(executor),
             executor,
-            parameters: HashMap::default(),
+            parameters: FnvHashMap::default(),
         }
     }
 
@@ -47,7 +47,7 @@ impl<'a> Context<'a> {
         Context {
             gpu_model: gpu,
             executor,
-            parameters: HashMap::default(),
+            parameters: FnvHashMap::default(),
         }
     }
 

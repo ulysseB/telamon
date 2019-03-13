@@ -45,7 +45,7 @@ impl Rule {
     pub fn instantiate(
         &self,
         inputs: &[ChoiceInstance],
-        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Option<Rule> {
         let mut conditions = Vec::new();
@@ -351,7 +351,7 @@ impl Condition {
     pub fn instantiate(
         &self,
         inputs: &[ChoiceInstance],
-        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Condition {
         self.evaluate(inputs, input_mapping, ir_desc)
@@ -364,7 +364,7 @@ impl Condition {
     pub fn evaluate(
         &self,
         inputs: &[ChoiceInstance],
-        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Trivalent {
         match *self {
@@ -566,12 +566,12 @@ fn normalize_values<'a, IT>(
     negate: bool,
     inverse: bool,
     choice: &'a ir::Enum,
-) -> HashSet<&'a RcStr>
+) -> FnvHashSet<&'a RcStr>
 where
     IT: IntoIterator<Item = &'a RcStr>,
 {
     let inverser = |x| if inverse { choice.inverse(x) } else { x };
-    let mut values: HashSet<_> = values.into_iter().map(inverser).collect();
+    let mut values: FnvHashSet<_> = values.into_iter().map(inverser).collect();
     if negate {
         values = choice
             .values()
@@ -877,7 +877,7 @@ impl ValueSet {
     /// Instantiates the `ValueSet` for a given input assignment.
     pub fn instantiate(
         &self,
-        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Self {
         match *self {

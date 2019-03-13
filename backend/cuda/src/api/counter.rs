@@ -10,7 +10,7 @@ use utils::*;
 pub struct PerfCounterSet<'a> {
     num_event: usize,
     event_sets: *mut CuptiEventGroupSets,
-    event_pos: HashMap<u32, usize>,
+    event_pos: FnvHashMap<u32, usize>,
     context: &'a CudaContext,
 }
 

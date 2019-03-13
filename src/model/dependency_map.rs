@@ -8,19 +8,19 @@ use utils::*;
 /// Holds the latency between each node and its dependencies. Nodes must be sorted.
 #[derive(Clone, Debug)]
 pub struct DependencyMap {
-    deps: Vec<HashMap<usize, FastBound>>,
+    deps: Vec<FnvHashMap<usize, FastBound>>,
 }
 
 impl DependencyMap {
     /// Creates an empty dependency map.
     pub fn new(size: usize) -> DependencyMap {
         DependencyMap {
-            deps: (0..size).map(|_| HashMap::default()).collect(),
+            deps: (0..size).map(|_| FnvHashMap::default()).collect(),
         }
     }
 
     /// Returns the dependencies of a node.
-    pub fn deps(&self, to: usize) -> &HashMap<usize, FastBound> {
+    pub fn deps(&self, to: usize) -> &FnvHashMap<usize, FastBound> {
         &self.deps[to]
     }
 

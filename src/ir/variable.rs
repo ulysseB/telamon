@@ -182,7 +182,7 @@ impl VarDef {
                 VecSet::new(var.dimensions.difference(dims).cloned().collect())
             }
             VarDef::DimMap(var_id, mapping_ids) => {
-                let mapping: HashMap<_, _> = mapping_ids
+                let mapping: FnvHashMap<_, _> = mapping_ids
                     .iter()
                     .map(|&id| {
                         let dims = fun.dim_mapping(id).dims();
@@ -212,9 +212,9 @@ impl VarDef {
     pub fn production_inst(
         &self,
         fun: &ir::Function,
-    ) -> (ir::InstId, HashMap<ir::DimId, ir::DimId>) {
+    ) -> (ir::InstId, FnvHashMap<ir::DimId, ir::DimId>) {
         match self {
-            VarDef::Inst(inst) => (*inst, HashMap::default()),
+            VarDef::Inst(inst) => (*inst, FnvHashMap::default()),
             VarDef::Last(prev, dims) => {
                 let (inst, mut mapping) = fun.variable(*prev).def().production_inst(fun);
                 for dim in dims {

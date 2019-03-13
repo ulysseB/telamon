@@ -53,8 +53,8 @@ pub trait Device: Sync {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &HashMap<ir::DimId, model::size::Range>,
-        nesting: &HashMap<ir::StmtId, Nesting>,
+        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
+        nesting: &FnvHashMap<ir::StmtId, Nesting>,
         bb: &ir::Statement,
         ctx: &Context,
     ) -> HwPressure;

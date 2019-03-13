@@ -37,27 +37,27 @@ pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
     /// Keeps track of the names of the variables used in the kernel
-    variables: HashMap<ir::VarId, VariableNames>,
+    variables: FnvHashMap<ir::VarId, VariableNames>,
     /// Keeps track of the name of the values produced by instructions.
-    insts: HashMap<InstId, VariableNames>,
+    insts: FnvHashMap<InstId, VariableNames>,
     /// Keeps track of loop index names.
-    indexes: HashMap<ir::DimId, RcStr>,
+    indexes: FnvHashMap<ir::DimId, RcStr>,
     /// Keeps track of parameter names, both in the code and in the arguments.
-    params: HashMap<ParamValKey<'a>, (String, String)>,
+    params: FnvHashMap<ParamValKey<'a>, (String, String)>,
     /// Keeps track of memory block address names.
-    mem_blocks: HashMap<ir::MemId, String>,
+    mem_blocks: FnvHashMap<ir::MemId, String>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
-    current_indexes: HashMap<ir::DimId, usize>,
+    current_indexes: FnvHashMap<ir::DimId, usize>,
     /// Total number threads.
     #[cfg(feature = "mppa")]
     total_num_threads: u32,
     /// Tracks the name of induction variables partial names.
-    induction_vars: HashMap<ir::IndVarId, String>,
-    induction_levels: HashMap<(ir::IndVarId, ir::DimId), String>,
+    induction_vars: FnvHashMap<ir::IndVarId, String>,
+    induction_levels: FnvHashMap<(ir::IndVarId, ir::DimId), String>,
     /// Casted sizes.
-    size_casts: HashMap<(&'a codegen::Size<'a>, ir::Type), String>,
+    size_casts: FnvHashMap<(&'a codegen::Size<'a>, ir::Type), String>,
     /// Guard to use in front of instructions with side effects.
     side_effect_guard: Option<RcStr>,
 }
@@ -65,7 +65,7 @@ pub struct NameMap<'a, 'b> {
 impl<'a, 'b> NameMap<'a, 'b> {
     /// Creates a new `NameMap`.
     pub fn new(function: &'a Function<'a>, namer: &'b mut Namer) -> Self {
-        let mut mem_blocks = HashMap::default();
+        let mut mem_blocks = FnvHashMap::default();
         // Setup parameters names.
         let params = function
             .device_code_args()
@@ -79,7 +79,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             })
             .collect();
         // Name dimensions indexes.
-        let mut indexes = HashMap::default();
+        let mut indexes = FnvHashMap::default();
         for dim in function.dimensions() {
             let name = RcStr::new(namer.name(Type::I(32)));
             for id in dim.dim_ids() {
@@ -87,8 +87,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
             }
         }
         // Name induction levels.
-        let mut induction_levels = HashMap::default();
-        let mut induction_vars = HashMap::default();
+        let mut induction_levels = FnvHashMap::default();
+        let mut induction_vars = FnvHashMap::default();
         for level in function.induction_levels() {
             let name = namer.name(level.t());
             if let Some((dim, _)) = level.increment {
@@ -107,13 +107,13 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let variables = VariableNames::create(function, namer);
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
-            insts: HashMap::default(),
+            insts: FnvHashMap::default(),
             variables,
             num_loop: 0,
-            current_indexes: HashMap::default(),
+            current_indexes: FnvHashMap::default(),
             #[cfg(feature = "mppa")]
             total_num_threads: function.num_threads(),
-            size_casts: HashMap::default(),
+            size_casts: FnvHashMap::default(),
             indexes,
             params,
             mem_blocks,
@@ -188,7 +188,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     fn name_op_with_indexes(
         &self,
         operand: &ir::Operand,
-        indexes: Cow<HashMap<ir::DimId, usize>>,
+        indexes: Cow<FnvHashMap<ir::DimId, usize>>,
     ) -> Cow<str> {
         match *operand {
             ir::Operand::Int(ref val, len) => {
@@ -246,7 +246,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     fn name_mapped_inst(
         &self,
         id: InstId,
-        mut indexes: HashMap<ir::DimId, usize>,
+        mut indexes: FnvHashMap<ir::DimId, usize>,
         dim_map: &DimMap,
     ) -> &str {
         for &(lhs, rhs) in dim_map.iter() {
@@ -274,7 +274,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     fn decl_alias(&mut self, alias: &Instruction, base: InstId, dim_map: &DimMap) {
         // We temporarily rely on `VariableNames` to generate instruction names until we
         // remove the need to rename variables altogether.
-        let mut mapping: HashMap<_, _> = dim_map.iter().cloned().collect();
+        let mut mapping: FnvHashMap<_, _> = dim_map.iter().cloned().collect();
         for &(dim, _) in alias.instantiation_dims() {
             mapping.insert(dim, dim);
         }
@@ -417,7 +417,7 @@ enum VarNameIndex {
 
 impl VariableNames {
     /// Returns the name of the variable for the given dimension indexes.
-    fn get_name(&self, dim_indexes: &HashMap<ir::DimId, usize>) -> &str {
+    fn get_name(&self, dim_indexes: &FnvHashMap<ir::DimId, usize>) -> &str {
         let indexes = self
             .indexes
             .iter()
@@ -434,8 +434,8 @@ impl VariableNames {
     fn create(
         function: &codegen::Function,
         namer: &mut Namer,
-    ) -> HashMap<ir::VarId, Self> {
-        let mut vars_names = HashMap::<_, Self>::default();
+    ) -> FnvHashMap<ir::VarId, Self> {
+        let mut vars_names = FnvHashMap::<_, Self>::default();
         for var in function.variables() {
             let names = if let Some(alias) = var.alias() {
                 // `codegen::Function` lists variables that depend on an alias after the
@@ -469,7 +469,10 @@ impl VariableNames {
     /// Creates a `VariableNames` aliasing with this one, but with the indexes mapped to
     /// different dimensions as specified by `dim_mapping`. We take the last value on
     /// dimensions mapped to `None`.
-    fn create_alias(&self, dim_mapping: &HashMap<ir::DimId, Option<ir::DimId>>) -> Self {
+    fn create_alias(
+        &self,
+        dim_mapping: &FnvHashMap<ir::DimId, Option<ir::DimId>>,
+    ) -> Self {
         let indexes = self
             .indexes
             .iter()
@@ -523,8 +526,8 @@ mod tests {
         }
     }
 
-    /// Converts list of indexes into a `HashMap`.
-    fn mk_index(idx: &[(ir::DimId, usize)]) -> HashMap<ir::DimId, usize> {
+    /// Converts list of indexes into a `FnvHashMap`.
+    fn mk_index(idx: &[(ir::DimId, usize)]) -> FnvHashMap<ir::DimId, usize> {
         idx.iter().cloned().collect()
     }
 

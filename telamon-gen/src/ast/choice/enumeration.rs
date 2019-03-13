@@ -4,15 +4,15 @@ use crate::ast::constrain::Constraint;
 use crate::ast::context::CheckerContext;
 use crate::ast::error::{Hint, TypeError};
 use crate::ast::{
-    ChoiceInstance, Condition, EnumStatement, EnumStatements, HashSet, SetRef, Symmetry,
-    VarDef, VarMap,
+    ChoiceInstance, Condition, EnumStatement, EnumStatements, SetRef, Symmetry, VarDef,
+    VarMap,
 };
 use crate::ir;
 use crate::lexer::Spanned;
 
 use itertools::Itertools;
 use log::trace;
-use utils::{HashMap, RcStr};
+use utils::{FnvHashMap, FnvHashSet, RcStr};
 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
@@ -26,7 +26,7 @@ pub struct EnumDef {
 impl EnumDef {
     /// This checks that there isn't any doublon in the field list.
     fn check_redefinition_field(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<String, _> = HashMap::default();
+        let mut hash: FnvHashMap<String, _> = FnvHashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
         let mut antisymmetric: Option<Spanned<()>> = None;
 
@@ -69,7 +69,7 @@ impl EnumDef {
 
     /// This checks that there isn't any doublon in parameter list.
     fn check_redefinition_parameter(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<String, _> = HashMap::default();
+        let mut hash: FnvHashMap<String, _> = FnvHashMap::default();
         for VarDef { name, .. } in self.variables.as_slice() {
             if let Some(before) = hash.insert(name.data.to_string(), name.with_data(())) {
                 Err(TypeError::Redefinition {
@@ -121,7 +121,7 @@ impl EnumDef {
 
     /// Checks if the values referenced in EnumStatements are defined.
     fn check_field(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<String, _> = HashMap::default();
+        let mut hash: FnvHashMap<String, _> = FnvHashMap::default();
 
         for stmt in self.statements.iter() {
             match stmt {
@@ -320,7 +320,7 @@ impl EnumDef {
         );
         let inverse = if let Some(Symmetry::AntiSymmetric(mapping)) = stmts.symmetry {
             {
-                let mut mapped = HashSet::default();
+                let mut mapped = FnvHashSet::default();
                 for &(ref lhs, ref rhs) in &mapping {
                     assert!(stmts.values.contains_key(lhs), "unknown value {}", lhs);
                     assert!(stmts.values.contains_key(rhs), "unknown value {}", rhs);
@@ -339,7 +339,7 @@ impl EnumDef {
         }
         for name in stmts.aliases.keys().cloned().collect_vec() {
             assert!(!enum_.values().contains_key(&name));
-            let mut expanded_values = HashSet::default();
+            let mut expanded_values = FnvHashSet::default();
             let mut values = stmts
                 .aliases
                 .get_mut(&name)

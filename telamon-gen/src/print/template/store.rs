@@ -6,7 +6,7 @@
 #[derive(Clone, Debug, Default)]
 pub struct DomainStore {
     {{#each choices}}
-        {{name}}: Arc<HashMap<{{>choice_ids this}}, {{>value_type.name value_type}}>>,
+        {{name}}: Arc<FnvHashMap<{{>choice_ids this}}, {{>value_type.name value_type}}>>,
     {{/each}}
 }
 
@@ -46,7 +46,7 @@ impl DomainStore {
 #[derive(Default)]
 pub struct DomainDiff {
     {{#each choices}}
-        pub {{name}}: HashMap<{{>choice_ids this}},
+        pub {{name}}: FnvHashMap<{{>choice_ids this}},
             ({{>value_type.name value_type}}, {{>value_type.name value_type}})>,
     {{/each}}
 }
