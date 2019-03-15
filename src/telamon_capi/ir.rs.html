@@ -497,12 +497,12 @@
 <span id="497">497</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! C API wrappers to create Telamon Kernels.</span>
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Device</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">telamon_utils</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">Device</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>;
 

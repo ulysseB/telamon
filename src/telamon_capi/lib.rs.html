@@ -158,34 +158,12 @@
 <span id="158">158</span>
 <span id="159">159</span>
 <span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! C API wrappers for calling Telamon through FFI.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The goal of the C API is to provide thin wrappers over existing Rust</span>
 <span class="doccomment">//! functionality, and only provides some cosmetic improvements to try and</span>
 <span class="doccomment">//! provide a somewhat idiomatic C interface.</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">libc</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">num</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_cuda</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_kernels</span>;
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_utils</span>;
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">failure</span>;
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;

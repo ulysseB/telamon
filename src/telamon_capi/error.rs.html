@@ -124,13 +124,17 @@
 <span id="124">124</span>
 <span id="125">125</span>
 <span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 
+<span class="kw">use</span> <span class="ident">failure</span>::<span class="ident">Fail</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 
 <span class="kw">use</span> <span class="ident">telamon</span>;
+<span class="kw">use</span> <span class="ident">telamon_utils</span>::<span class="ident">unwrap</span>;
 
 <span class="doccomment">/// Indicates if a telamon function exited correctly.</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
