@@ -10,6 +10,7 @@ extern crate telamon;
 #[cfg(feature = "cuda")]
 extern crate telamon_cuda;
 extern crate telamon_kernels;
+extern crate telamon_x86;
 #[macro_use]
 extern crate telamon_utils;
 #[macro_use]
@@ -23,8 +24,8 @@ pub mod ir;
 pub mod search_space;
 
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
+use telamon_x86 as x86;
 use telamon::device;
-use telamon::device::x86;
 use telamon::explorer::config::Config;
 use telamon::helper::TilingPattern;
 pub use telamon_kernels::{linalg, Kernel};
