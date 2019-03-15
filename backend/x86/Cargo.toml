@@ -4,6 +4,10 @@ name = "telamon-x86"
 version = "1.0.0"
 edition = "2018"
 
+[[bin]]
+name = "generate_dump"
+path = "src/bin/generate_dump.rs"
+
 [build-dependencies]
 cc = "1.0"
 
@@ -19,6 +23,7 @@ libloading = "0.5.0"
 log = "0.4"
 num = "0.2"
 num_cpus = "1.8.0"
+rpds = { version = "0.5.0", features = ["serde"] }
 telamon = {path = "../../"}
 tempfile = "3.0.1"
 utils = {package = "telamon-utils", path = "../../telamon-utils"}

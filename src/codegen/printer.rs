@@ -332,13 +332,16 @@ pub trait Printer {
                 for &(level, ref ind_var, ref incr, ref base) in &incr_levels {
                     if let Some(step) = incr.as_int() {
                         let stepxi = Self::get_int(step * i);
+                        println!("stepxi = {}", stepxi);
                         self.print_add_int(level.t(), ind_var, &stepxi, base);
                     } else {
                         let step = namer.name_size(incr, level.t());
+                        println!("step = {}", step);
                         self.print_add_int(level.t(), ind_var, &step, ind_var);
                     };
                 }
             }
+            for cfg in cfgs {println!("CFG : {:?}", cfg);}
             self.cfg_vec(fun, cfgs, namer);
         }
         namer.unset_current_index(dim);

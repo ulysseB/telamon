@@ -1,4 +1,5 @@
 use bincode;
+use rpds::List;
 use telamon_x86 as x86;
 use telamon::codegen;
 use telamon::device::{self, Context};
@@ -6,9 +7,8 @@ use telamon::helper;
 use telamon::ir;
 use telamon::model;
 use telamon::search_space::*;
-use telamon::explorer::{self, local_selection};
-use std::{fs::File, io::Write};
-use std::io::Error as IoError;
+use telamon::explorer::{self, Candidate, choice::ActionEx, local_selection};
+use std::{convert::AsRef, fs::File, io::{Error as IoError, Write}, path::Path};
 
 #[derive(Debug)]
 enum Error {
@@ -22,36 +22,27 @@ impl From<IoError> for Error {
     }
 }
 
+fn reload_cand<P: AsRef<Path>>(candidate: Candidate, context: &Context, dump_path: P) -> Result<(), Error> {
+
+    // Getting the action taken from log file
+    let cand_bytes = std::fs::read(dump_path)?;
+    let action_list: List<ActionEx> = bincode::deserialize(&cand_bytes).unwrap();
+    let implem = action_list.iter().fold(candidate, |cand, action| cand.apply_decision(&context, action.clone()).expect("Could not apply some action"));
+
+    // Running candidate
+    let device_fn = codegen::Function::build(&implem.space);
+    context.evaluate(&device_fn, device::EvalMode::FindBest).map_err(|_| Error::Telamon)?;
+    Ok(())
+}
+
 #[test]
 fn basic_test() -> Result<(), Error> {
     let context = x86::Context::default();
-    let signature = ir::Signature::new("test".to_string());
-    let mut builder = helper::Builder::new(&signature, context.device());
-    // This code builds the following function:
-    // ```pseudocode
-    // for i in 0..16:
-    //   for j in 0..16:
-    //      src[i] = 0;
-    // for i in 0..16:
-    //   dst = src[i]
-    // ```
-    // where all loops are unrolled.
-    let dim0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
-    let dim1 = builder.open_dim_ex(ir::Size::new_const(8), DimKind::UNROLL);
-    let src = builder.mov(&0i32);
-    let src_var = builder.get_inst_variable(src);
-    builder.close_dim(&dim1);
-    let last_var = builder.create_last_variable(src_var, &[&dim1]);
-    let dim2 = builder.open_mapped_dim(&dim0);
-    builder.action(Action::DimKind(dim2[0], DimKind::UNROLL));
-    builder.order(&dim0, &dim2, Order::BEFORE);
-    let mapped_var = builder.create_dim_map_variable(last_var, &[(&dim0, &dim2)]);
-    builder.mov(&mapped_var);
 
-    let space = builder.get();
+    let signature = ir::Signature::new("test".to_string());
+    let space = build_cand(&signature, &context);
     let bound = model::bound(&space, &context);
     let mut candidate = explorer::Candidate::new(space, bound);
-
     // Building a candidate
     let order = explorer::config::NewNodeOrder::WeightedRandom;
     let ordering = explorer::config::ChoiceOrdering::default();
@@ -69,8 +60,22 @@ fn basic_test() -> Result<(), Error> {
             return Err(Error::Telamon);
         }
     }
-    let dump = bincode::serialize(&candidate.actions).unwrap();
-    let mut file = File::create("cand_dump.log")?;
-    file.write_all(&dump)?;
+    generate_dump(candidate, "cand_dump.log")?;
+    Ok(())
+}
+
+#[test]
+/// Reload a candidate from a dull kernel using the dump
+/// This function always execute the exact same implementation
+fn reload_plain_cand() -> Result<(), Error> {
+    let context = x86::Context::default();
+
+    // Building back the same candidate we used before
+    let signature = ir::Signature::new("test".to_string());
+    let space = build_cand(&signature, &context);
+    let bound = model::bound(&space, &context);
+    let candidate = explorer::Candidate::new(space, bound);
+
+    reload_cand(candidate, &context, "cand_dump.log")?;
     Ok(())
 }
