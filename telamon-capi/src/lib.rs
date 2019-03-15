@@ -24,11 +24,11 @@ pub mod ir;
 pub mod search_space;
 
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
-use telamon_x86 as x86;
 use telamon::device;
 use telamon::explorer::config::Config;
 use telamon::helper::TilingPattern;
 pub use telamon_kernels::{linalg, Kernel};
+use telamon_x86 as x86;
 
 // Pointers to `device::Context` and `device::Device` are not C-like pointers.
 // Instead, they are fat pointers containing both a regular pointer to the
