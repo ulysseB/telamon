@@ -1,10 +1,10 @@
 //! C API wrappers to create Telamon Kernels.
+use crate::Device;
 use libc;
 use num::rational::Ratio;
 use std;
 use telamon::ir;
 use telamon_utils::*;
-use Device;
 
 pub use telamon::ir::op::Rounding;
 

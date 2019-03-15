@@ -1,9 +1,11 @@
 use std;
 use std::cell::RefCell;
 
+use failure::Fail;
 use libc;
 
 use telamon;
+use telamon_utils::unwrap;
 
 /// Indicates if a telamon function exited correctly.
 #[repr(C)]
