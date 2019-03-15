@@ -1,7 +1,7 @@
 //! Defines the CPU target.
+mod compile;
 mod context;
 mod cpu;
-mod compile;
 mod cpu_argument;
 mod printer;
 
@@ -9,11 +9,11 @@ pub use crate::context::Context;
 pub use crate::cpu::Cpu;
 pub use crate::printer::X86printer;
 
-use telamon::codegen;
-use telamon::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
+use telamon::codegen;
+use telamon::ir;
 use utils::*;
 
 #[derive(Default)]

@@ -4,10 +4,6 @@ name = "telamon-x86"
 version = "1.0.0"
 edition = "2018"
 
-[[bin]]
-name = "generate_dump"
-path = "src/bin/generate_dump.rs"
-
 [build-dependencies]
 cc = "1.0"
 

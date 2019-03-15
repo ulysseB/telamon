@@ -1,9 +1,9 @@
-///! Defines the CPU evaluation context.
-use telamon::codegen::ParamVal;
 use crate::compile;
 use crate::cpu::Cpu;
 use crate::cpu_argument::{ArgLock, Argument, CpuArray};
 use crate::printer::X86printer;
+///! Defines the CPU evaluation context.
+use telamon::codegen::ParamVal;
 
 use telamon::codegen;
 use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
@@ -148,13 +148,19 @@ impl device::Context for Context {
             }
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
-            scope.builder().name(eval_thread_name).spawn(move |_| {
-                while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
-                    let eval = unwrap!(function_evaluate(&fun_str, &code_args));
-                    callback.call(candidate, eval);
-                }
-            }).unwrap();
-        }).unwrap();
+            scope
+                .builder()
+                .name(eval_thread_name)
+                .spawn(move |_| {
+                    while let Ok((candidate, fun_str, code_args, callback)) = recv.recv()
+                    {
+                        let eval = unwrap!(function_evaluate(&fun_str, &code_args));
+                        callback.call(candidate, eval);
+                    }
+                })
+                .unwrap();
+        })
+        .unwrap();
     }
 }
 

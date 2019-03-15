@@ -2,10 +2,10 @@ use crate::Namer;
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
-use utils::unwrap;
 use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]
@@ -57,11 +57,11 @@ impl X86printer {
             format!(
                 "intptr_t {};\n{}",
                 &(0..namer.num_glob_ptr)
-                .map(|i| format!("ptr{}", i))
-                .collect_vec()
-                .join(", "),
+                    .map(|i| format!("ptr{}", i))
+                    .collect_vec()
+                    .join(", "),
                 other_var_decl,
-                )
+            )
         }
     }
 
@@ -90,15 +90,16 @@ impl X86printer {
             // SIGNATURE AND OPEN BRACKET
             return_string = if function.device_code_args().count() == 0 {
                 format!(
-                include_str!("template/signature_no_arg.c.template"),
-                name = function.name,
-            )
+                    include_str!("template/signature_no_arg.c.template"),
+                    name = function.name,
+                )
             } else {
                 format!(
-                include_str!("template/signature.c.template"),
-                name = function.name,
-                params = param_decls
-            )};
+                    include_str!("template/signature.c.template"),
+                    name = function.name,
+                    params = param_decls
+                )
+            };
             // INDEX LOADS
             let idx_loads = self.decl_par_indexes(function, name_map);
             unwrap!(writeln!(self.buffer, "{}", idx_loads));
@@ -327,7 +328,7 @@ impl X86printer {
                 gen_threads = self.thread_gen(func),
                 dim_decl = self.build_thread_id_struct(func),
                 thread_join = self.thread_join(func),
-                )
+            )
         } else {
             let fun_params = self.params_call(func);
             format!(
@@ -339,7 +340,7 @@ impl X86printer {
                 gen_threads = self.thread_gen(func),
                 dim_decl = self.build_thread_id_struct(func),
                 thread_join = self.thread_join(func),
-                )
+            )
         }
     }
 

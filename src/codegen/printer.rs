@@ -341,7 +341,9 @@ pub trait Printer {
                     };
                 }
             }
-            for cfg in cfgs {println!("CFG : {:?}", cfg);}
+            for cfg in cfgs {
+                println!("CFG : {:?}", cfg);
+            }
             self.cfg_vec(fun, cfgs, namer);
         }
         namer.unset_current_index(dim);
