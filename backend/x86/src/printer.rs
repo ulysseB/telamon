@@ -1,10 +1,10 @@
-use crate::codegen::*;
-use crate::device::x86::Namer;
-use crate::ir::{self, op, Type};
-use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use crate::Namer;
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
+use telamon::codegen::*;
+use telamon::ir::{self, op, Type};
+use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -51,14 +51,18 @@ impl X86printer {
             .map(print_decl)
             .collect_vec()
             .join("\n  ");
-        format!(
-            "intptr_t {};\n{}",
-            &(0..namer.num_glob_ptr)
-                .map(|i| format!("ptr{}", i))
-                .collect_vec()
-                .join(", "),
-            other_var_decl,
-        )
+        if namer.num_glob_ptr == 0 {
+            other_var_decl
+        } else {
+            format!(
+                "intptr_t {};\n{}",
+                &(0..namer.num_glob_ptr)
+                    .map(|i| format!("ptr{}", i))
+                    .collect_vec()
+                    .join(", "),
+                other_var_decl,
+            )
+        }
     }
 
     /// Declares block and thread indexes.
@@ -84,11 +88,18 @@ impl X86printer {
                 .collect_vec()
                 .join(",\n  ");
             // SIGNATURE AND OPEN BRACKET
-            return_string = format!(
-                include_str!("template/signature.c.template"),
-                name = function.name,
-                params = param_decls
-            );
+            return_string = if function.device_code_args().count() == 0 {
+                format!(
+                    include_str!("template/signature_no_arg.c.template"),
+                    name = function.name,
+                )
+            } else {
+                format!(
+                    include_str!("template/signature.c.template"),
+                    name = function.name,
+                    params = param_decls
+                )
+            };
             // INDEX LOADS
             let idx_loads = self.decl_par_indexes(function, name_map);
             unwrap!(writeln!(self.buffer, "{}", idx_loads));
@@ -309,17 +320,28 @@ impl X86printer {
     /// wrap the kernel call into a function with a fixed interface
     pub fn wrapper_function(&mut self, func: &Function) -> String {
         let fun_str = self.function(func);
-        let fun_params = self.params_call(func);
-        format!(
-            include_str!("template/host.c.template"),
-            fun_name = func.name,
-            fun_str = fun_str,
-            fun_params_cast = self.fun_params_cast(func),
-            fun_params = fun_params,
-            gen_threads = self.thread_gen(func),
-            dim_decl = self.build_thread_id_struct(func),
-            thread_join = self.thread_join(func),
-        )
+        if func.device_code_args().count() == 0 {
+            format!(
+                include_str!("template/host_no_arg.c.template"),
+                fun_name = func.name,
+                fun_str = fun_str,
+                gen_threads = self.thread_gen(func),
+                dim_decl = self.build_thread_id_struct(func),
+                thread_join = self.thread_join(func),
+            )
+        } else {
+            let fun_params = self.params_call(func);
+            format!(
+                include_str!("template/host.c.template"),
+                fun_name = func.name,
+                fun_str = fun_str,
+                fun_params_cast = self.fun_params_cast(func),
+                fun_params = fun_params,
+                gen_threads = self.thread_gen(func),
+                dim_decl = self.build_thread_id_struct(func),
+                thread_join = self.thread_join(func),
+            )
+        }
     }
 
     fn get_type(t: Type) -> String {

@@ -1,6 +1,5 @@
 //! Code generation and candidate evaluation for specific targets.
 pub mod fake;
-pub mod x86;
 
 mod argument;
 mod context;

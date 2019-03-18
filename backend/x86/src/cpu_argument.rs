@@ -1,6 +1,6 @@
-use crate::device::{self, ScalarArgument};
 use libc;
 use std::sync::{Mutex, MutexGuard};
+use telamon::device::{self, ScalarArgument};
 use utils::unwrap;
 
 pub enum ArgLock<'a> {

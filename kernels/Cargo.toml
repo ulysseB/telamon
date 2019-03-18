@@ -22,6 +22,7 @@ utils = { package = "telamon-utils", path = "../telamon-utils" }
 
 [dev-dependencies]
 futures = "0.1.23"
+telamon-x86 = { path = "../backend/x86" }
 
 [features]
 cuda = [

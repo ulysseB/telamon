@@ -1,5 +1,5 @@
-use telamon::device::x86;
 use telamon_kernels::{linalg, Kernel};
+use telamon_x86 as x86;
 
 macro_rules! test_output {
     ($name:ident, $kernel:ty, $num_tests:expr, $params:expr) => {
