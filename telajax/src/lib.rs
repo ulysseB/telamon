@@ -231,7 +231,6 @@ impl Device {
         kernel: &mut Kernel,
         kernel_id: u16,
     ) -> Result<(), opencl::Error> {
-        println!("Executing kernel {}", kernel_id);
         self.execute_kernel(kernel)
     }
 
