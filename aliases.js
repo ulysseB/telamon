@@ -9,6 +9,7 @@ ALIASES["telamon_gen"] = {};
 ALIASES["telamon_gen_test"] = {};
 ALIASES["telamon_kernels"] = {};
 ALIASES["telamon_utils"] = {};
+ALIASES["telamon_x86"] = {};
 ALIASES['expandconfig'] = {};
 ALIASES['parse_event_log'] = {};
 ALIASES['telamon'] = {};

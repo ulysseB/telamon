@@ -174,10 +174,10 @@
 
 <span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_char</span>, <span class="ident">c_int</span>, <span class="ident">c_uint</span>, <span class="ident">size_t</span>, <span class="ident">uint32_t</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>::<span class="ident">x86</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">TilingPattern</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">telamon_kernels</span>::{<span class="ident">linalg</span>, <span class="ident">Kernel</span>};
+<span class="kw">use</span> <span class="ident">telamon_x86</span> <span class="kw">as</span> <span class="ident">x86</span>;
 
 <span class="comment">// Pointers to `device::Context` and `device::Device` are not C-like pointers.</span>
 <span class="comment">// Instead, they are fat pointers containing both a regular pointer to the</span>
