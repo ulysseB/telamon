@@ -506,11 +506,6 @@
 <span id="506">506</span>
 <span id="507">507</span>
 <span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
@@ -846,17 +841,12 @@
                 <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">level</span>, <span class="kw-2">ref</span> <span class="ident">ind_var</span>, <span class="kw-2">ref</span> <span class="ident">incr</span>, <span class="kw-2">ref</span> <span class="ident">base</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">incr_levels</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">step</span>) <span class="op">=</span> <span class="ident">incr</span>.<span class="ident">as_int</span>() {
                         <span class="kw">let</span> <span class="ident">stepxi</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_int</span>(<span class="ident">step</span> <span class="op">*</span> <span class="ident">i</span>);
-                        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;stepxi = {}&quot;</span>, <span class="ident">stepxi</span>);
                         <span class="self">self</span>.<span class="ident">print_add_int</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">stepxi</span>, <span class="ident">base</span>);
                     } <span class="kw">else</span> {
                         <span class="kw">let</span> <span class="ident">step</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_size</span>(<span class="ident">incr</span>, <span class="ident">level</span>.<span class="ident">t</span>());
-                        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;step = {}&quot;</span>, <span class="ident">step</span>);
                         <span class="self">self</span>.<span class="ident">print_add_int</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>, <span class="ident">ind_var</span>);
                     };
                 }
-            }
-            <span class="kw">for</span> <span class="ident">cfg</span> <span class="kw">in</span> <span class="ident">cfgs</span> {
-                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;CFG : {:?}&quot;</span>, <span class="ident">cfg</span>);
             }
             <span class="self">self</span>.<span class="ident">cfg_vec</span>(<span class="ident">fun</span>, <span class="ident">cfgs</span>, <span class="ident">namer</span>);
         }
