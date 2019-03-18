@@ -14,6 +14,7 @@ mod types;
 mod variable;
 
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std;
 use std::marker::PhantomData;
 use utils::unwrap;
@@ -24,7 +25,7 @@ pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
 };
 pub use self::error::{Error, TypeError};
-pub use self::function::{Function, Parameter, Signature};
+pub use self::function::{Body, Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::instruction::{InstId, Instruction};
 pub use self::mem::MemId;
@@ -200,7 +201,7 @@ impl LoweredDimMap {
 /// An index type `I` is also used in order to provide strong typing
 /// guarantees since `SparseVec` is meant to hold `DimId -> Dimension`
 /// and `InstId -> Instruction` mappings.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SparseVec<I, T> {
     vec: Vec<Option<T>>,
     capacity: usize,

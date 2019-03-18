@@ -10,9 +10,9 @@ use utils::*;
 
 /// Local information on the different objects.
 #[derive(Debug)]
-pub struct LocalInfo<'a> {
+pub struct LocalInfo {
     /// The loops inside and outside each Stmt.
-    pub nesting: FnvHashMap<ir::StmtId, Nesting<'a>>,
+    pub nesting: FnvHashMap<ir::StmtId, Nesting>,
     /// The pressure incured by a signle instance of each Stmt.
     pub hw_pressure: FnvHashMap<ir::StmtId, HwPressure>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
@@ -24,9 +24,9 @@ pub struct LocalInfo<'a> {
     pub parallelism: Parallelism,
 }
 
-impl<'a> LocalInfo<'a> {
+impl LocalInfo {
     /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace<'a>, context: &dyn Context) -> Self {
+    pub fn compute(space: &SearchSpace, context: &dyn Context) -> Self {
         let dim_sizes = space
             .ir_instance()
             .dims()
@@ -50,7 +50,7 @@ impl<'a> LocalInfo<'a> {
                 // will be taken multiple times into account.
                 let pressure =
                     if is_thread && nesting[&stmt.stmt_id()].has_inner_thread_dims {
-                        HwPressure::zero(context.device())
+                        HwPressure::zero(&*context.device())
                     } else {
                         context
                             .device()
@@ -68,7 +68,7 @@ impl<'a> LocalInfo<'a> {
                 {
                     // Only keep the overhead on innermost thread dimensions. Otherwise it
                     // will be taken multiple times into account.
-                    let zero = HwPressure::zero(context.device());
+                    let zero = HwPressure::zero(&*context.device());
                     (d.id(), (zero.clone(), zero))
                 } else {
                     (d.id(), context.device().loop_iter_pressure(kind))
@@ -77,10 +77,10 @@ impl<'a> LocalInfo<'a> {
             .collect();
         let parallelism = parallelism(&nesting, space, context);
         // Add the pressure induced by induction variables.
-        let mut thread_overhead = HwPressure::zero(context.device());
+        let mut thread_overhead = HwPressure::zero(&*context.device());
         for (_, var) in space.ir_instance().induction_vars() {
             add_indvar_pressure(
-                context.device(),
+                &*context.device(),
                 space,
                 &dim_sizes,
                 var,
@@ -141,7 +141,7 @@ fn add_indvar_pressure(
 
 /// Nesting of an object.
 #[derive(Debug)]
-pub struct Nesting<'a> {
+pub struct Nesting {
     /// Dimensions nested inside the current Stmt.
     pub inner_dims: VecSet<ir::DimId>,
     /// Basic blocks nested inside the current Stmt.
@@ -158,15 +158,15 @@ pub struct Nesting<'a> {
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
-    pub num_unmapped_threads: ir::PartialSize<'a>,
+    pub num_unmapped_threads: ir::PartialSize,
     /// Maximal number of threads this block can be in, considering only outer dimensions
     /// (an not mapped out dimensions).
-    pub max_threads_per_block: ir::PartialSize<'a>,
+    pub max_threads_per_block: ir::PartialSize,
 }
 
-impl<'a> Nesting<'a> {
+impl Nesting {
     /// Computes the nesting of a `Statement`.
-    fn compute(space: &SearchSpace<'a>, stmt: ir::StmtId) -> Self {
+    fn compute(space: &SearchSpace, stmt: ir::StmtId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_stmts = Vec::new();
         let mut before_self = Vec::new();

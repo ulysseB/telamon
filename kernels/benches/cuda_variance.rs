@@ -43,7 +43,7 @@ where
     let (signature, kernel, context) = KernelBuilder::default()
         .name(name)
         .build::<K, cuda::Context>(params.clone(), &mut context);
-    let candidates = kernel.build_body(&signature, context);
+    let candidates = kernel.build_body(signature.into(), context);
     let candidates = std::iter::repeat(())
         .flat_map(|()| {
             let order = explorer::config::NewNodeOrder::WeightedRandom;

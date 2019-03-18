@@ -3,7 +3,7 @@
 {{/inline~}}
 
 /// Stores the domains of each variable.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct DomainStore {
     {{#each choices}}
         {{name}}: Arc<FnvHashMap<{{>choice_ids this}}, {{>value_type.name value_type}}>>,

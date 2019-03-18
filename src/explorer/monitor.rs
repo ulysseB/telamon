@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 use std::{self, thread};
 use utils::unwrap;
 
-pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, <T as Store<'a>>::PayLoad);
+pub type MonitorMessage<T> = (Candidate, f64, <T as Store>::PayLoad);
 
 /// Indicates why the exploration was terminated.
 #[derive(Serialize, Deserialize)]
@@ -43,12 +43,12 @@ impl std::fmt::Display for TerminationReason {
     }
 }
 
-struct Status<'a> {
-    best_candidate: Option<(Candidate<'a>, f64)>,
+struct Status {
+    best_candidate: Option<(Candidate, f64)>,
     num_evaluations: usize,
 }
 
-impl<'a> Default for Status<'a> {
+impl Default for Status {
     fn default() -> Self {
         Status {
             best_candidate: None,
@@ -60,15 +60,15 @@ impl<'a> Default for Status<'a> {
 /// This function is an interface supposed to make a connection between the
 /// Store and the evaluator. Retrieve evaluations, retains the results and
 /// update the store accordingly.
-pub fn monitor<'a, T, E>(
+pub fn monitor<T, E>(
     config: &Config,
     context: &dyn Context,
     candidate_store: &T,
-    recv: futures::sync::mpsc::Receiver<MonitorMessage<'a, T>>,
+    recv: futures::sync::mpsc::Receiver<MonitorMessage<T>>,
     log_sender: sync::mpsc::SyncSender<LogMessage<E>>,
-) -> Option<Candidate<'a>>
+) -> Option<Candidate>
 where
-    T: Store<'a>,
+    T: Store,
 {
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
@@ -139,17 +139,17 @@ fn get_new_cut(config: &Config, eval: f64) -> f64 {
 
 /// All work that has to be done on reception of a message, meaning updating
 /// the best cand if needed, logging, committing back to candidate_store
-fn handle_message<'a, T, E>(
+fn handle_message<T, E>(
     config: &Config,
     context: &dyn Context,
-    message: MonitorMessage<'a, T>,
+    message: MonitorMessage<T>,
     start_time: Instant,
     candidate_store: &T,
     log_sender: &sync::mpsc::SyncSender<LogMessage<E>>,
-    status: &mut Status<'a>,
+    status: &mut Status,
 ) -> Result<(), TerminationReason>
 where
-    T: Store<'a>,
+    T: Store,
 {
     let (cand, eval, payload) = message;
 

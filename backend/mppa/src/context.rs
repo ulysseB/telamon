@@ -253,11 +253,11 @@ impl device::Context for Context {
         Ok(res as f64)
     }
 
-    fn async_eval<'c, 'd>(
+    fn async_eval<'d>(
         &self,
         num_workers: usize,
         _mode: EvalMode,
-        inner: &(Fn(&mut device::AsyncEvaluator<'c, 'd>) + Sync),
+        inner: &(Fn(&mut device::AsyncEvaluator<'d>) + Sync),
     ) {
         // FIXME: execute in parallel
         let (send, recv) = mpsc::sync_channel(EXECUTION_QUEUE_SIZE);
@@ -318,30 +318,22 @@ impl<'a> device::ArgMap<'a> for Context {
     }
 }
 
-type AsyncPayload<'a, 'b> = (
-    explorer::Candidate<'a>,
-    telajax::Kernel,
-    AsyncCallback<'a, 'b>,
-);
+type AsyncPayload<'b> = (explorer::Candidate, telajax::Kernel, AsyncCallback<'b>);
 
 /// Asynchronous evaluator.
-struct AsyncEvaluator<'a, 'b>
-where
-    'a: 'b,
-{
+struct AsyncEvaluator<'b> {
     context: &'b Context,
-    sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
+    sender: mpsc::SyncSender<AsyncPayload<'b>>,
 }
 
-impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
+impl<'b, 'c> device::AsyncEvaluator<'c> for AsyncEvaluator<'b>
 where
-    'a: 'b,
     'c: 'b,
 {
     fn add_dyn_kernel(
         &mut self,
-        candidate: explorer::Candidate<'a>,
-        callback: device::AsyncCallback<'a, 'c>,
+        candidate: explorer::Candidate,
+        callback: device::AsyncCallback<'c>,
     ) {
         let (kernel, _) = {
             let dev_fun = Function::build(&candidate.space);

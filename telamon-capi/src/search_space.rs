@@ -9,7 +9,7 @@ use telamon::search_space;
 /// Opaque type that abstracts away the lifetime parameter of
 /// `search_space::SearchSpace`.
 #[derive(Clone)]
-pub struct SearchSpace(pub(crate) search_space::SearchSpace<'static>);
+pub struct SearchSpace(pub(crate) search_space::SearchSpace);
 
 /// Creates a new search space from an IR function. The caller stays
 /// is responsible for freeing the instance and action pointers; the

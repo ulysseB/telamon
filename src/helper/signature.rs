@@ -91,7 +91,7 @@ where
         AM: device::ArgMap<'b>,
     {
         self.signature
-            .add_array(self.context.device(), name.to_string(), S::t());
+            .add_array(&*self.context.device(), name.to_string(), S::t());
         let param = unwrap!(self.signature.params.last());
         let array = self.context.bind_array::<S>(param, size);
         let rng = &mut self.rng;

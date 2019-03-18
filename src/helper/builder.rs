@@ -7,18 +7,19 @@ use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpac
 use itertools::Itertools;
 use log::debug;
 use std::borrow::Borrow;
+use std::sync::Arc;
 use utils::*;
 
 /// Helper to build a `Function`.
-pub struct Builder<'a> {
-    function: Function<'a, ()>,
+pub struct Builder {
+    function: Function<()>,
     open_dims: FnvHashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
 
-impl<'a> Builder<'a> {
+impl Builder {
     /// Creates a new `Builder` for a `Function` with the given signature.
-    pub fn new(signature: &'a Signature, device: &'a dyn Device) -> Builder<'a> {
+    pub fn new(signature: Arc<Signature>, device: Arc<dyn Device>) -> Builder {
         Builder {
             function: Function::new(signature, device),
             open_dims: FnvHashMap::default(),
@@ -27,28 +28,28 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns the function created by the builder
-    pub fn get(self) -> SearchSpace<'a> {
+    pub fn get(self) -> SearchSpace {
         debug!("{:?}", self.actions);
         SearchSpace::new(self.function, self.actions).expect("invalid IR instance")
     }
 
     /// Returns the function created by the builder
-    pub fn get_clone(&self) -> SearchSpace<'a> {
+    pub fn get_clone(&self) -> SearchSpace {
         let function = self.function.clone();
         SearchSpace::new(function, self.actions.clone()).expect("invalid IR instance")
     }
 
     /// Returns an operand from an `AutoOperand`.
-    fn get_op<'b: 'a>(&mut self, op: &dyn AutoOperand<'b>) -> Operand<'a, ()> {
+    fn get_op(&mut self, op: &dyn AutoOperand) -> Operand<()> {
         op.get(self)
     }
 
     /// Creates a binary operator.
-    pub fn binop<'b: 'a>(
+    pub fn binop(
         &mut self,
         op: ir::BinOp,
-        lhs: &dyn AutoOperand<'b>,
-        rhs: &dyn AutoOperand<'b>,
+        lhs: &dyn AutoOperand,
+        rhs: &dyn AutoOperand,
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
@@ -57,29 +58,17 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds an `Add` instruction to the fuction.
-    pub fn add<'b: 'a>(
-        &mut self,
-        lhs: &dyn AutoOperand<'b>,
-        rhs: &dyn AutoOperand<'b>,
-    ) -> InstId {
+    pub fn add(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
         self.binop(ir::BinOp::Add, lhs, rhs)
     }
 
     /// Adds a `Sub` instruction to the function.
-    pub fn sub<'b: 'a>(
-        &mut self,
-        lhs: &dyn AutoOperand<'b>,
-        rhs: &dyn AutoOperand<'b>,
-    ) -> InstId {
+    pub fn sub(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
         self.binop(ir::BinOp::Sub, lhs, rhs)
     }
 
     /// Adds a `Mul` instruction to the function. Defaults to low mode.
-    pub fn mul<'b: 'a>(
-        &mut self,
-        lhs: &dyn AutoOperand<'b>,
-        rhs: &dyn AutoOperand<'b>,
-    ) -> InstId {
+    pub fn mul(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
         let t = lhs_op.t();
@@ -88,10 +77,10 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds a 'Mul` instruction with a wide mode to the function.
-    pub fn mul_ex<'b: 'a>(
+    pub fn mul_ex(
         &mut self,
-        lhs: &dyn AutoOperand<'b>,
-        rhs: &dyn AutoOperand<'b>,
+        lhs: &dyn AutoOperand,
+        rhs: &dyn AutoOperand,
         t: Type,
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
@@ -103,11 +92,11 @@ impl<'a> Builder<'a> {
 
     /// Adds a `Mad` or `Fma` instruction to the function. Defaults to low or wide mode
     /// depending on the operand types.
-    pub fn mad<'b: 'a>(
+    pub fn mad(
         &mut self,
-        mul_lhs: &dyn AutoOperand<'b>,
-        mul_rhs: &dyn AutoOperand<'b>,
-        add_rhs: &dyn AutoOperand<'b>,
+        mul_lhs: &dyn AutoOperand,
+        mul_rhs: &dyn AutoOperand,
+        add_rhs: &dyn AutoOperand,
     ) -> InstId {
         let mul_lhs_op = self.get_op(mul_lhs);
         let mul_rhs_op = self.get_op(mul_rhs);
@@ -118,46 +107,42 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds a `Div` instruction to the fuction.
-    pub fn div<'b: 'a>(
-        &mut self,
-        lhs: &dyn AutoOperand<'b>,
-        rhs: &dyn AutoOperand<'b>,
-    ) -> InstId {
+    pub fn div(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
         self.binop(ir::BinOp::Div, lhs, rhs)
     }
 
     /// Adds a `Mov` instruction to the function.
-    pub fn mov<'b: 'a>(&mut self, arg: &dyn AutoOperand<'b>) -> InstId {
+    pub fn mov(&mut self, arg: &dyn AutoOperand) -> InstId {
         let arg_op = self.get_op(arg);
         self.inst(op::UnaryOp(ir::UnaryOp::Mov, arg_op))
     }
 
     /// Adds a coherent load from global memory instruction to the function.
-    pub fn ld<'b: 'a>(
+    pub fn ld(
         &mut self,
         ret_type: Type,
-        addr: &dyn AutoOperand<'b>,
-        pattern: AccessPattern<'a>,
+        addr: &dyn AutoOperand,
+        pattern: AccessPattern,
     ) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::COHERENT)
     }
 
     /// Adds a non-coherent load from global memory instruction to the function.
-    pub fn ld_nc<'b: 'a>(
+    pub fn ld_nc(
         &mut self,
         ret_type: Type,
-        addr: &dyn AutoOperand<'b>,
-        pattern: AccessPattern<'a>,
+        addr: &dyn AutoOperand,
+        pattern: AccessPattern,
     ) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::ALL)
     }
 
     /// Adds a load instruction with the given flags and memory block.
-    pub fn ld_ex<'b: 'a>(
+    pub fn ld_ex(
         &mut self,
         ret_type: Type,
-        addr: &dyn AutoOperand<'b>,
-        pattern: AccessPattern<'a>,
+        addr: &dyn AutoOperand,
+        pattern: AccessPattern,
         flags: InstFlag,
     ) -> InstId {
         let addr_op = self.get_op(addr);
@@ -167,22 +152,22 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds a store instruction.
-    pub fn st<'b: 'a>(
+    pub fn st(
         &mut self,
-        addr: &dyn AutoOperand<'b>,
-        val: &dyn AutoOperand<'b>,
-        pattern: AccessPattern<'a>,
+        addr: &dyn AutoOperand,
+        val: &dyn AutoOperand,
+        pattern: AccessPattern,
     ) -> InstId {
         self.st_ex(addr, val, true, pattern, InstFlag::ALL)
     }
 
     /// Adds a store instruction with the given flags and memory block.
-    pub fn st_ex<'b: 'a>(
+    pub fn st_ex(
         &mut self,
-        addr: &dyn AutoOperand<'b>,
-        val: &dyn AutoOperand<'b>,
+        addr: &dyn AutoOperand,
+        val: &dyn AutoOperand,
         side_effect: bool,
-        pattern: AccessPattern<'a>,
+        pattern: AccessPattern,
         flags: InstFlag,
     ) -> InstId {
         let addr_op = self.get_op(addr);
@@ -193,7 +178,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds a cast instruction to the given type.
-    pub fn cast<'b: 'a>(&mut self, val: &dyn AutoOperand<'b>, t: Type) -> InstId {
+    pub fn cast(&mut self, val: &dyn AutoOperand, t: Type) -> InstId {
         let val_op = self.get_op(val);
         self.inst(op::UnaryOp(ir::UnaryOp::Cast(t), val_op))
     }
@@ -214,7 +199,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Inserts an instruction in the function.
-    fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
+    fn inst(&mut self, op: Operator<()>) -> InstId {
         let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
         unwrap!(self.function.add_inst(op, open_dims))
     }
@@ -266,12 +251,12 @@ impl<'a> Builder<'a> {
     }
 
     /// Opens a new dimension.
-    pub fn open_dim(&mut self, size: ir::Size<'a>) -> LogicalDim {
+    pub fn open_dim(&mut self, size: ir::Size) -> LogicalDim {
         self.open_tiled_dim(size, TilingPattern::default())
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
-    pub fn open_dim_ex(&mut self, size: ir::Size<'a>, kind: DimKind) -> LogicalDim {
+    pub fn open_dim_ex(&mut self, size: ir::Size, kind: DimKind) -> LogicalDim {
         let dim = self.open_dim(size);
         self.actions.push(Action::DimKind(dim[0], kind));
         dim
@@ -280,7 +265,7 @@ impl<'a> Builder<'a> {
     /// Open multiple dimensions to represent a tiled dimension.
     pub fn open_tiled_dim(
         &mut self,
-        size: ir::Size<'a>,
+        size: ir::Size,
         tiling_pattern: TilingPattern,
     ) -> LogicalDim {
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
@@ -342,13 +327,13 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a constant size.
-    pub fn cst_size(&self, size: u32) -> ir::Size<'a> {
+    pub fn cst_size(&self, size: u32) -> ir::Size {
         ir::Size::new_const(size)
     }
 
     /// Returns a parameter size.
-    pub fn param_size(&self, param: &str, max_size: u32) -> ir::Size<'a> {
-        ir::Size::new_param(self.find_param(param), max_size)
+    pub fn param_size(&self, param: &str, max_size: u32) -> ir::Size {
+        ir::Size::new_param(Arc::clone(self.find_param(param)), max_size)
     }
 
     /// Allocates a memory block in shared memory.
@@ -371,11 +356,11 @@ impl<'a> Builder<'a> {
     /// access pattern.
     pub fn tensor_access(
         &mut self,
-        addr: &dyn AutoOperand<'a>,
+        addr: &dyn AutoOperand,
         mem_id: Option<ir::MemId>,
         t: ir::Type,
         dims: &[&LogicalDim],
-    ) -> (ir::IndVarId, ir::AccessPattern<'a>) {
+    ) -> (ir::IndVarId, ir::AccessPattern) {
         let base = self.get_op(addr);
         let logical_increments = self.tensor_increments(t, dims);
         let increments = self.logical_to_real_increments(logical_increments);
@@ -390,8 +375,8 @@ impl<'a> Builder<'a> {
     pub fn tensor_access_pattern(
         &self,
         mem: Option<ir::MemId>,
-        increments: Vec<(&LogicalDim, ir::Size<'a>)>,
-    ) -> AccessPattern<'a> {
+        increments: Vec<(&LogicalDim, ir::Size)>,
+    ) -> AccessPattern {
         let dims = self.logical_to_real_increments(increments);
         AccessPattern::Tensor {
             mem_id: mem,
@@ -402,8 +387,8 @@ impl<'a> Builder<'a> {
     /// Builds an induction variable.
     pub fn induction_var(
         &mut self,
-        base: &dyn AutoOperand<'a>,
-        dims: Vec<(&LogicalDim, ir::Size<'a>)>,
+        base: &dyn AutoOperand,
+        dims: Vec<(&LogicalDim, ir::Size)>,
     ) -> ir::IndVarId {
         let base = self.get_op(base);
         let dims = self.logical_to_real_increments(dims);
@@ -414,8 +399,8 @@ impl<'a> Builder<'a> {
     /// Converts increments on logical dimensions to increment on real dimensions.
     fn logical_to_real_increments(
         &self,
-        increments: Vec<(&LogicalDim, ir::Size<'a>)>,
-    ) -> Vec<(ir::DimId, ir::PartialSize<'a>)> {
+        increments: Vec<(&LogicalDim, ir::Size)>,
+    ) -> Vec<(ir::DimId, ir::PartialSize)> {
         increments
             .into_iter()
             .flat_map(|(dim, size)| {
@@ -437,7 +422,7 @@ impl<'a> Builder<'a> {
         &self,
         t: ir::Type,
         dims: &[&'b LogicalDim],
-    ) -> Vec<(&'b LogicalDim, ir::Size<'a>)> {
+    ) -> Vec<(&'b LogicalDim, ir::Size)> {
         let data_size = ir::Size::new_const(unwrap!(t.len_byte()));
         dims.iter()
             .rev()
@@ -455,7 +440,7 @@ impl<'a> Builder<'a> {
         base: ir::InstId,
         dim_map: &[(&LogicalDim, &LogicalDim)],
         scope: ir::DimMapScope<()>,
-    ) -> ir::Operand<'a, ()> {
+    ) -> ir::Operand<()> {
         let dim_map = dim_map
             .iter()
             .flat_map(|&(lhs, rhs)| lhs.iter().zip_eq(rhs.iter()));
@@ -464,7 +449,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Finds a paramter given its name.
-    pub fn find_param(&self, param: &str) -> &'a Parameter {
+    pub fn find_param(&self, param: &str) -> &Arc<Parameter> {
         unwrap!(self
             .function
             .signature()
@@ -474,7 +459,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a reference to the function being built.
-    pub(super) fn function(&self) -> &ir::Function<'a, ()> {
+    pub(super) fn function(&self) -> &ir::Function<()> {
         &self.function
     }
 

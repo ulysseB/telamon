@@ -16,7 +16,7 @@ use utils::*;
 #[derive(Copy, Clone)]
 pub enum Operand<'a> {
     InductionLevel(ir::IndVarId, ir::DimId),
-    Operand(&'a ir::Operand<'a>),
+    Operand(&'a ir::Operand),
 }
 
 /// Assign names to variables.
@@ -198,27 +198,25 @@ impl<'a, 'b, N: Namer> NameMap<'a, 'b, N> {
         operand: &ir::Operand,
         indexes: Cow<FnvHashMap<ir::DimId, usize>>,
     ) -> Cow<str> {
-        match *operand {
-            ir::Operand::Int(ref val, len) => Cow::Owned(self.namer.name_int(val, len)),
-            ir::Operand::Float(ref val, len) => {
-                Cow::Owned(self.namer.name_float(val, len))
-            }
-            ir::Operand::Inst(id, _, ref dim_map, _)
-            | ir::Operand::Reduce(id, _, ref dim_map, _) => {
-                Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
+        match operand {
+            ir::Operand::Int(val, len) => Cow::Owned(self.namer.name_int(val, *len)),
+            ir::Operand::Float(val, len) => Cow::Owned(self.namer.name_float(val, *len)),
+            ir::Operand::Inst(id, _, dim_map, _)
+            | ir::Operand::Reduce(id, _, dim_map, _) => {
+                Cow::Borrowed(self.name_mapped_inst(*id, indexes.into_owned(), dim_map))
             }
             ir::Operand::Index(id) => {
-                if let Some(idx) = indexes.get(&id) {
+                if let Some(idx) = indexes.get(id) {
                     Cow::Owned(format!("{}", idx))
                 } else {
-                    Cow::Borrowed(&self.indexes[&id])
+                    Cow::Borrowed(&self.indexes[id])
                 }
             }
-            ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
-            ir::Operand::Addr(id) => self.name_addr(id),
-            ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
+            ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(&*p)),
+            ir::Operand::Addr(id) => self.name_addr(*id),
+            ir::Operand::InductionVar(id, _) => self.name_induction_var(*id, None),
             ir::Operand::Variable(val_id, _t) => {
-                Cow::Borrowed(&self.variables[&val_id].get_name(&indexes))
+                Cow::Borrowed(&self.variables[val_id].get_name(&indexes))
             }
         }
     }

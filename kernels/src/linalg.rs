@@ -1,5 +1,6 @@
 //! Linera algebra kernels.
 #![allow(clippy::many_single_char_names)]
+use std::sync::Arc;
 
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
@@ -53,9 +54,9 @@ where
 
     fn build_body<'b>(
         &self,
-        signature: &'b ir::Signature,
+        signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
-    ) -> Vec<Candidate<'b>> {
+    ) -> Vec<Candidate> {
         let tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[1024, 4]);
         let mut builder = Builder::new(signature, ctx.device());
 
@@ -127,12 +128,12 @@ where
 
     fn build_body<'b>(
         &self,
-        signature: &'b ir::Signature,
+        signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
-    ) -> Vec<Candidate<'b>> {
+    ) -> Vec<Candidate> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
-        let mut builder = Builder::new(&signature, ctx.device());
+        let mut builder = Builder::new(signature, ctx.device());
         let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
         let ld_a = self.a.load(vec![m_tiling, n_tiling], &mut builder);
         let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
@@ -235,12 +236,12 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
 
     fn build_body<'b>(
         &self,
-        signature: &'b ir::Signature,
+        signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
-    ) -> Vec<Candidate<'b>> {
+    ) -> Vec<Candidate> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
-        let mut builder = helper::Builder::new(&signature, ctx.device());
+        let mut builder = helper::Builder::new(signature, ctx.device());
         let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
         let ab_tiling = vec![m_tiling, n_tiling];
         let ld_a = self.a.load(ab_tiling.clone(), &mut builder);
@@ -381,9 +382,9 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 
     fn build_body<'b>(
         &self,
-        signature: &'b ir::Signature,
+        signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
-    ) -> Vec<Candidate<'b>> {
+    ) -> Vec<Candidate> {
         let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
         let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
         let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32]);
@@ -567,9 +568,9 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
 
     fn build_body<'b>(
         &self,
-        signature: &'b ir::Signature,
+        signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
-    ) -> Vec<Candidate<'b>> {
+    ) -> Vec<Candidate> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.params.m as u32, &[64]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.params.n as u32, &[64]);
         let k_tiling = helper::TilingPattern::infer_pattern(self.params.k as u32, &[64]);

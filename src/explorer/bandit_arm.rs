@@ -25,10 +25,7 @@ impl<'a> Env<'a> {
     /// List the available actions for a given candidate.
     ///
     /// If `list_actions` return `None`, the candidate is a fully-specified implementation.
-    pub fn list_actions(
-        &self,
-        candidate: &Candidate<'_>,
-    ) -> Option<Vec<choice::ActionEx>> {
+    pub fn list_actions(&self, candidate: &Candidate) -> Option<Vec<choice::ActionEx>> {
         choice::list(&self.config.choice_ordering, &candidate.space).next()
     }
 
@@ -38,11 +35,11 @@ impl<'a> Env<'a> {
     /// resulting vector of candidates may be shorter than the number of decisions in the choice in
     /// two cases: some actions can be discarded through propagation or by applying a
     /// branch-and-bound algorithm.
-    pub fn apply_choice<'c>(
+    pub fn apply_choice(
         &self,
-        candidate: &Candidate<'c>,
+        candidate: &Candidate,
         actions: Vec<choice::ActionEx>,
-    ) -> Vec<Candidate<'c>> {
+    ) -> Vec<Candidate> {
         candidate
             .apply_choice(self.context, actions)
             .into_iter()
@@ -58,15 +55,11 @@ pub trait TreePolicy: Sized {
 
     /// Pick a child in the given environment.  Returns an index for the child, or `None` if the
     /// node has no children.
-    fn pick_child(
-        &self,
-        env: &Env<'_>,
-        node: &Node<'_, Self::EdgeStats>,
-    ) -> Option<usize>;
+    fn pick_child(&self, env: &Env<'_>, node: &Node<Self::EdgeStats>) -> Option<usize>;
 
     /// Record an evaluation across an edge.  This indicates that an evaluation of `eval` was found
     /// in a path which contains edge `node.children[idx]`.
-    fn backpropagate(&self, node: &Node<'_, Self::EdgeStats>, idx: usize, eval: f64);
+    fn backpropagate(&self, node: &Node<Self::EdgeStats>, idx: usize, eval: f64);
 }
 
 /// Global tree statistics
@@ -148,8 +141,8 @@ pub enum TreeEvent {
 }
 
 /// A search tree to perform a multi-armed bandit search.
-pub struct Tree<'a, 'b, P: TreePolicy> {
-    root: RwLock<Option<Arc<Node<'a, P::EdgeStats>>>>,
+pub struct Tree<'b, P: TreePolicy> {
+    root: RwLock<Option<Arc<Node<P::EdgeStats>>>>,
     bound: RwLock<f64>,
     stop: AtomicBool,
     cut: RwLock<f64>,
@@ -162,10 +155,10 @@ pub struct Tree<'a, 'b, P: TreePolicy> {
     start_time: std::time::Instant,
 }
 
-impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
+impl<'b, P: TreePolicy> Tree<'b, P> {
     /// Creates a new search tree containing the given candidates.
     pub fn new(
-        candidates: Vec<Candidate<'a>>,
+        candidates: Vec<Candidate>,
         config: &'b BanditConfig,
         policy: P,
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
@@ -202,7 +195,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
     /// Updates bounds along the way.
-    fn clean_deadends(&self, path: &Path<'a, P::EdgeStats>, cut: f64) {
+    fn clean_deadends(&self, path: &Path<P::EdgeStats>, cut: f64) {
         debug!("Deadend found in the tree.");
 
         // Statistics and logging
@@ -258,10 +251,10 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 
     fn implementation(
         &self,
-        candidate: Candidate<'a>,
-        path: Path<'a, P::EdgeStats>,
+        candidate: Candidate,
+        path: Path<P::EdgeStats>,
         cut: f64,
-    ) -> (Candidate<'a>, ImplInfo<'a, P::EdgeStats>) {
+    ) -> (Candidate, ImplInfo<P::EdgeStats>) {
         let bound = candidate.bound.value();
         (
             candidate,
@@ -276,12 +269,12 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
     }
 }
 
-impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P>
+impl<'b, P: TreePolicy> Store for Tree<'b, P>
 where
     P: Send + Sync,
-    P::EdgeStats: 'a + Send + Sync,
+    P::EdgeStats: Send + Sync,
 {
-    type PayLoad = ImplInfo<'a, P::EdgeStats>;
+    type PayLoad = ImplInfo<P::EdgeStats>;
 
     type Event = TreeEvent;
 
@@ -326,7 +319,7 @@ where
         }
     }
 
-    fn explore(&self, context: &dyn Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, context: &dyn Context) -> Option<(Candidate, Self::PayLoad)> {
         // Retry loop (in case of deadends)
         loop {
             if self.stop.load(Ordering::Relaxed) {
@@ -459,9 +452,9 @@ where
 
 /// Informations on a fully-specified implementation
 #[derive(Clone)]
-pub struct ImplInfo<'a, E> {
+pub struct ImplInfo<E> {
     /// Path to the implementation (in the tree)
-    path: Path<'a, E>,
+    path: Path<E>,
     /// Bound from the performance model
     bound: f64,
     /// Cut at the time the implementation was found
@@ -474,22 +467,22 @@ pub struct ImplInfo<'a, E> {
 
 /// Path to follow to reach a leaf in the tree.
 #[derive(Clone, Default)]
-pub struct Path<'a, E>(Vec<(Weak<Node<'a, E>>, usize)>);
+pub struct Path<E>(Vec<(Weak<Node<E>>, usize)>);
 
 /// The search tree that will be traversed
-enum SubTree<'a, E> {
+enum SubTree<E> {
     /// The subtree has been expanded and has children.
-    InternalNode(Arc<Node<'a, E>>),
+    InternalNode(Arc<Node<E>>),
     /// The subtree has not been expanded yet.  This is a leaf in the MCTS tree.
-    Leaf(Box<Candidate<'a>>),
+    Leaf(Box<Candidate>),
     /// The subtree is empty.
     Empty,
 }
 
 /// An edge in the tree
-struct Edge<'a, E> {
+struct Edge<E> {
     /// The destination of the edge.  This may not be expanded yet.
-    dst: RwLock<SubTree<'a, E>>,
+    dst: RwLock<SubTree<E>>,
 
     /// Edge statistics
     stats: E,
@@ -501,7 +494,7 @@ struct Edge<'a, E> {
     action: Option<choice::ActionEx>,
 }
 
-impl<'a, E: Default> Edge<'a, E> {
+impl<E: Default> Edge<E> {
     /// Kill the edge, replacing it with a dead end.  The bound is erased.
     fn kill(&self) {
         *unwrap!(self.dst.write()) = SubTree::Empty;
@@ -522,7 +515,7 @@ impl<'a, E: Default> Edge<'a, E> {
 
     /// Trims the branch if it has an evaluation time guaranteed to be worse than
     /// `cut`. Returns the childrens to trim if any,
-    fn trim(&self, cut: f64) -> Option<Arc<Node<'a, E>>> {
+    fn trim(&self, cut: f64) -> Option<Arc<Node<E>>> {
         if self.bound() >= cut {
             self.kill();
             None
@@ -537,7 +530,7 @@ impl<'a, E: Default> Edge<'a, E> {
     }
 
     /// Descend one level in the tree, expanding it if necessary.
-    fn descend(&self, env: &Env<'_>) -> SubTree<'a, E> {
+    fn descend(&self, env: &Env<'_>) -> SubTree<E> {
         loop {
             // Most of the time we only need read access
             {
@@ -604,14 +597,14 @@ impl<'a, E: Default> Edge<'a, E> {
 }
 
 /// Holds the children of a `SubTree::InternalNode`.
-pub struct Node<'a, E> {
-    children: Vec<Edge<'a, E>>,
+pub struct Node<E> {
+    children: Vec<Edge<E>>,
 }
 
-impl<'a, E: Default> Node<'a, E> {
+impl<E: Default> Node<E> {
     /// Creates a new children containing the given candidates, if any.
     fn try_from_candidates(
-        candidates: Vec<(Option<choice::ActionEx>, Candidate<'a>)>,
+        candidates: Vec<(Option<choice::ActionEx>, Candidate)>,
     ) -> Option<Arc<Self>> {
         if candidates.is_empty() {
             None
@@ -650,7 +643,7 @@ impl<'a, E: Default> Node<'a, E> {
 impl TreePolicy for NewNodeOrder {
     type EdgeStats = ();
 
-    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, ()>) -> Option<usize> {
+    fn pick_child(&self, env: &Env<'_>, node: &Node<()>) -> Option<usize> {
         self.pick_index(
             node.children
                 .iter()
@@ -752,7 +745,7 @@ impl UCTPolicy {
 impl TreePolicy for UCTPolicy {
     type EdgeStats = UCTStats;
 
-    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, UCTStats>) -> Option<usize> {
+    fn pick_child(&self, env: &Env<'_>, node: &Node<UCTStats>) -> Option<usize> {
         let stats = node
             .children
             .iter()
@@ -903,7 +896,7 @@ impl TAGPolicy {
 impl TreePolicy for TAGPolicy {
     type EdgeStats = TAGStats;
 
-    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, TAGStats>) -> Option<usize> {
+    fn pick_child(&self, env: &Env<'_>, node: &Node<TAGStats>) -> Option<usize> {
         // Ignore cut children.  Also, we compute the number of visits beforehand to ensure that it
         // doesn't get changed by concurrent accesses.
         let children = node

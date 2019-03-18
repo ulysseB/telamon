@@ -1,9 +1,10 @@
 /// Describes the types instruction and operands can take.
 use crate::ir;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use utils::*;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 /// Values and intructions types.
 pub enum Type {
     /// Type for integer values, with a fixed number of bits.

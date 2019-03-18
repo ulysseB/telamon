@@ -28,7 +28,7 @@ const EVAL_BUFFER_SIZE: usize = 100;
 
 /// A CPU evaluation context.
 pub struct Context {
-    cpu_model: Cpu,
+    cpu_model: Arc<Cpu>,
     parameters: FnvHashMap<String, Arc<dyn Argument>>,
 }
 
@@ -70,7 +70,7 @@ impl Default for Context {
     fn default() -> Context {
         let default_cpu = Cpu::dummy_cpu();
         Context {
-            cpu_model: default_cpu,
+            cpu_model: Arc::new(default_cpu),
             parameters: FnvHashMap::default(),
         }
     }
@@ -101,8 +101,8 @@ impl<'a> device::ArgMap<'a> for Context {
 }
 
 impl device::Context for Context {
-    fn device(&self) -> &dyn Device {
-        &self.cpu_model
+    fn device(&self) -> Arc<dyn Device> {
+        Arc::<Cpu>::clone(&self.cpu_model)
     }
 
     fn param_as_size(&self, name: &str) -> Option<u32> {
@@ -128,11 +128,11 @@ impl device::Context for Context {
         res
     }
 
-    fn async_eval<'b, 'c>(
+    fn async_eval<'c>(
         &self,
         num_workers: usize,
         _mode: EvalMode,
-        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'b, 'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'c>) + Sync),
     ) {
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         crossbeam::scope(move |scope| {
@@ -245,30 +245,26 @@ fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
     Ok(time)
 }
 
-type AsyncPayload<'a, 'b> = (
-    explorer::Candidate<'a>,
+type AsyncPayload<'b> = (
+    explorer::Candidate,
     String,
     Vec<ThunkArg>,
-    AsyncCallback<'a, 'b>,
+    AsyncCallback<'b>,
 );
 
-pub struct AsyncEvaluator<'a, 'b>
-where
-    'a: 'b,
-{
+pub struct AsyncEvaluator<'b> {
     context: &'b Context,
-    sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
+    sender: mpsc::SyncSender<AsyncPayload<'b>>,
 }
 
-impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
+impl<'b, 'c> device::AsyncEvaluator<'c> for AsyncEvaluator<'b>
 where
-    'a: 'b,
     'c: 'b,
 {
     fn add_dyn_kernel(
         &mut self,
-        candidate: explorer::Candidate<'a>,
-        callback: device::AsyncCallback<'a, 'c>,
+        candidate: explorer::Candidate,
+        callback: device::AsyncCallback<'c>,
     ) {
         let (fun_str, code_args);
         {

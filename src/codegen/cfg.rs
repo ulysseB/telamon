@@ -224,7 +224,7 @@ impl<'a> fmt::Debug for Cfg<'a> {
 /// Builds the CFG from the list of dimensions and instructions. Also returns the list of
 /// thread and block dimensions.
 pub fn build<'a>(
-    space: &'a SearchSpace<'a>,
+    space: &'a SearchSpace,
     insts: Vec<Instruction<'a>>,
     dims: Vec<Dimension<'a>>,
 ) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Cfg<'a>) {
@@ -316,7 +316,7 @@ impl<'a> fmt::Debug for CfgEvent<'a> {
 
 /// Generates the list of `CfgEvent`s and the list of block and thread dimensions.
 fn gen_events<'a>(
-    space: &'a SearchSpace<'a>,
+    space: &'a SearchSpace,
     insts: Vec<Instruction<'a>>,
     dims: Vec<Dimension<'a>>,
 ) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Vec<CfgEvent<'a>>) {

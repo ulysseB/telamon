@@ -28,7 +28,7 @@ impl<'a> Size<'a> {
     }
 
     /// Converts an `ir::Size` to `Self`.
-    pub fn from_ir(size: &ir::PartialSize<'a>, space: &SearchSpace) -> Self {
+    pub fn from_ir(size: &'a ir::PartialSize, space: &SearchSpace) -> Self {
         let (cst_factor, param_factors, dim_size_factors) = size.factors();
         let dim_size_divisors = size.divisors();
         let factor = cst_factor
@@ -40,7 +40,11 @@ impl<'a> Size<'a> {
             .iter()
             .map(|&d| dim_size(d, space))
             .product();
-        Size::new(factor, param_factors.to_vec(), divisor)
+        Size::new(
+            factor,
+            param_factors.into_iter().map(|p| &**p).collect(),
+            divisor,
+        )
     }
 
     /// Returns the size of a dimension if it is staticaly known.

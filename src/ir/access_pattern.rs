@@ -2,6 +2,7 @@
 use crate::device::Device;
 use crate::ir;
 use crate::search_space::MemSpace;
+use serde::{Deserialize, Serialize};
 use utils::*;
 
 /// A stride on a given dimensions.
@@ -13,19 +14,19 @@ pub enum Stride {
     Unknown,
 }
 
-#[derive(Clone, Debug)]
-pub enum AccessPattern<'a> {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum AccessPattern {
     /// Unknown access pattern.
     Unknown(Option<ir::MemId>),
     /// Access with a fixed stride on each dimensions. Accesses on two different
     /// dimensions should not overlap.
     Tensor {
         mem_id: Option<ir::MemId>,
-        dims: FnvHashMap<ir::DimId, ir::PartialSize<'a>>,
+        dims: FnvHashMap<ir::DimId, ir::PartialSize>,
     },
 }
 
-impl<'a> AccessPattern<'a> {
+impl AccessPattern {
     /// Indicates if memory accesses access to consecutive elements on the given dimension.
     pub fn is_consecutive(&self, dim: ir::DimId, t: ir::Type) -> bool {
         match self {

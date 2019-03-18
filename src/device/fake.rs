@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 use fnv::FnvHashMap;
@@ -165,22 +164,22 @@ impl super::Device for Device {
 /// model, but always return 1 for all evaluation results.
 #[derive(Debug, Default)]
 pub struct Context<D = Device> {
-    device: D,
+    device: Arc<D>,
     parameters: HashMap<String, Option<u32>>,
 }
 
 impl<D: super::Device> Context<D> {
     pub fn new(device: D) -> Self {
         Context {
-            device,
+            device: Arc::new(device),
             parameters: HashMap::new(),
         }
     }
 }
 
 impl<D: super::Device> super::Context for Context<D> {
-    fn device(&self) -> &dyn super::Device {
-        &self.device
+    fn device(&self) -> Arc<dyn super::Device> {
+        Arc::<D>::clone(&self.device)
     }
 
     fn evaluate(&self, _: &codegen::Function, _: EvalMode) -> Result<f64, ()> {
@@ -195,25 +194,19 @@ impl<D: super::Device> super::Context for Context<D> {
         self.parameters[name]
     }
 
-    fn async_eval<'b, 'c>(
+    fn async_eval<'c>(
         &self,
         _: usize,
         _: EvalMode,
-        inner: &(dyn Fn(&mut dyn AsyncEvaluator<'b, 'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn AsyncEvaluator<'c>) + Sync),
     ) {
-        struct FakeEvaluator<'a, 'b> {
-            phantom: PhantomData<(&'a (), &'b ())>,
-        }
+        struct FakeEvaluator;
 
-        impl<'a, 'b, 'c> AsyncEvaluator<'a, 'c> for FakeEvaluator<'a, 'b>
-        where
-            'a: 'b,
-            'c: 'b,
-        {
+        impl<'b> AsyncEvaluator<'b> for FakeEvaluator {
             fn add_dyn_kernel(
                 &mut self,
-                candidate: Candidate<'a>,
-                callback: AsyncCallback<'a, 'c>,
+                candidate: Candidate,
+                callback: AsyncCallback<'b>,
             ) {
                 use std::fmt;
 
@@ -236,9 +229,7 @@ impl<D: super::Device> super::Context for Context<D> {
             }
         }
 
-        inner(&mut FakeEvaluator {
-            phantom: PhantomData,
-        });
+        inner(&mut FakeEvaluator);
     }
 }
 

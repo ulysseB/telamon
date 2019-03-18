@@ -50,7 +50,7 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
         T::gen_signature(&mut base_builder);
         base_builder.get()
     };
-    let mut builder = helper::Builder::new(&base, context.device());
+    let mut builder = helper::Builder::new(base.into(), context.device());
     let state = T::gen_function(&mut builder);
     let actions = T::get_actions(&state);
 

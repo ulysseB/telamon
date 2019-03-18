@@ -54,14 +54,14 @@ impl<'a, 'b> Kernel<'a, 'b> {
 
     /// Runs a kernel and returns the number of cycles it takes to execute in cycles.
     pub fn evaluate(&self, args: &Context) -> Result<u64, ()> {
-        let cuda_kernel = self.module.kernel(&self.function.name);
+        let cuda_kernel = self.module.kernel(self.function.name());
         self.gen_args(args).execute(&cuda_kernel, self.executor)
     }
 
     /// Runs a kernel and returns the number of cycles it takes to execute in nanoseconds,
     /// measured using cuda event rather than hardware counters.
     pub fn evaluate_real(&self, args: &Context, num_samples: usize) -> Vec<f64> {
-        let cuda_kernel = self.module.kernel(&self.function.name);
+        let cuda_kernel = self.module.kernel(self.function.name());
         self.gen_args(args)
             .time_in_real_conds(&cuda_kernel, num_samples, self.executor)
     }
@@ -69,7 +69,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
     /// Instruments the kernel with the given performance counters.
     #[cfg(feature = "real_gpu")]
     pub fn instrument(&self, args: &Context, counters: &PerfCounterSet) -> Vec<u64> {
-        let cuda_kernel = self.module.kernel(&self.function.name);
+        let cuda_kernel = self.module.kernel(self.function.name());
         self.gen_args(args)
             .instrument(&cuda_kernel, counters, self.executor)
     }
@@ -78,7 +78,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
     pub fn gen_thunk(self, args: &'a Context) -> Thunk<'a> {
         let args = self.gen_args(args);
         Thunk {
-            name: self.function.name.clone(),
+            name: self.function.name().to_string(),
             module: self.module,
             executor: self.executor,
             ptx: self.ptx,

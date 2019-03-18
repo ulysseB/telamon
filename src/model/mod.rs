@@ -64,7 +64,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
     trace!("code_points {:?}", code_points);
     populate(
         space,
-        context.device(),
+        &*context.device(),
         &local_info,
         &code_points,
         &mut levels,
@@ -83,7 +83,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
                 &mut levels_dag,
             ),
             level::DagAction::ApplyDimMap(dim_map) => apply_dim_map(
-                context.device(),
+                &*context.device(),
                 space,
                 &local_info,
                 &levels,
@@ -123,7 +123,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         unwrap!(levels[0].repeated_latency.as_ref()).value()
     );
     let bound = cmp::max(latency, throughput_bound);
-    bound.explain(context.device(), &levels, code_points.dag.nodes())
+    bound.explain(&*context.device(), &levels, code_points.dag.nodes())
 }
 
 /// Populates the dependency maps and the levels with dependency edges and back-edges.

@@ -36,8 +36,8 @@ use std::sync::{
 };
 use utils::unwrap;
 
-pub type CheckResultFn<'a, 'c> =
-    dyn Fn(&Candidate<'c>, &dyn Context) -> Result<(), String> + Sync + 'a;
+pub type CheckResultFn<'a> =
+    dyn Fn(&Candidate, &dyn Context) -> Result<(), String> + Sync + 'a;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
 // * choices should be ranked once and then reused for multiple steps.
@@ -49,12 +49,12 @@ pub type CheckResultFn<'a, 'c> =
 /// Entry point of the exploration. This function returns the best candidate that it has found in
 /// the given time (or at whatever point we decided to stop the search - potentially after an
 /// exhaustive search)
-pub fn find_best<'a>(
+pub fn find_best(
     config: &Config,
     context: &dyn Context,
-    search_space: Vec<SearchSpace<'a>>,
-    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
-) -> Option<SearchSpace<'a>> {
+    search_space: Vec<SearchSpace>,
+    check_result_fn: Option<&CheckResultFn<'_>>,
+) -> Option<SearchSpace> {
     find_best_ex(
         config,
         context,
@@ -70,23 +70,23 @@ pub fn find_best<'a>(
     .map(|c| c.space)
 }
 
-struct MctsBuilder<'a, 'c> {
-    space: SearchSpace<'c>,
+struct MctsBuilder<'a> {
+    space: SearchSpace,
     config: &'a Config,
     bandit_config: &'a BanditConfig,
     context: &'a dyn Context,
-    check_result_fn: Option<&'a CheckResultFn<'a, 'c>>,
+    check_result_fn: Option<&'a CheckResultFn<'a>>,
 }
 
-impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
+impl<'a> MctsBuilder<'a> {
     fn search<N, E>(
         self,
-        tree_policy: Box<dyn mcts::TreePolicy<'c, N, E>>,
-        default_policy: Box<dyn mcts::TreePolicy<'c, N, E>>,
-    ) -> Option<Candidate<'c>>
+        tree_policy: Box<dyn mcts::TreePolicy<N, E>>,
+        default_policy: Box<dyn mcts::TreePolicy<N, E>>,
+    ) -> Option<Candidate>
     where
-        N: 'c + Sync + Send + std::fmt::Debug + Default,
-        E: 'c + Sync + Send + std::fmt::Debug + Default,
+        N: Sync + Send + std::fmt::Debug + Default,
+        E: Sync + Send + std::fmt::Debug + Default,
     {
         let MctsBuilder {
             space,
@@ -129,19 +129,19 @@ impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
     }
 }
 
-struct TreeBuilder<'l, 'a> {
-    candidates: Vec<Candidate<'a>>,
+struct TreeBuilder<'l> {
+    candidates: Vec<Candidate>,
     config: &'l Config,
     bandit_config: &'l BanditConfig,
     context: &'l dyn Context,
-    check_result_fn: Option<&'l CheckResultFn<'l, 'a>>,
+    check_result_fn: Option<&'l CheckResultFn<'l>>,
 }
 
-impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
-    fn build<P: bandit_arm::TreePolicy>(self, policy: P) -> Option<Candidate<'a>>
+impl<'l> TreeBuilder<'l> {
+    fn build<P: bandit_arm::TreePolicy>(self, policy: P) -> Option<Candidate>
     where
         P: 'l + Send + Sync,
-        P::EdgeStats: 'a + Send + Sync,
+        P::EdgeStats: Send + Sync,
     {
         let TreeBuilder {
             candidates,
@@ -184,12 +184,12 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
 
 /// Same as `find_best`, but allows to specify pre-existing actions and also returns the
 /// actions for the best candidate.
-pub fn find_best_ex<'a>(
+pub fn find_best_ex(
     config: &Config,
     context: &dyn Context,
-    candidates: Vec<Candidate<'a>>,
-    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
-) -> Option<Candidate<'a>> {
+    candidates: Vec<Candidate>,
+    check_result_fn: Option<&CheckResultFn<'_>>,
+) -> Option<Candidate> {
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref bandit_config) => {
             let builder = TreeBuilder {
@@ -284,13 +284,13 @@ pub fn find_best_ex<'a>(
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T: Store<'a>>(
+fn launch_search<T: Store>(
     config: &Config,
     candidate_store: T,
     context: &dyn Context,
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
-    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
-) -> Option<Candidate<'a>> {
+    check_result_fn: Option<&CheckResultFn<'_>>,
+) -> Option<Candidate> {
     let (monitor_sender, monitor_receiver) = futures::sync::mpsc::channel(100);
     let maybe_candidate = crossbeam::scope(|scope| {
         let best_cand_opt = scope
@@ -325,14 +325,14 @@ fn launch_search<'a, T: Store<'a>>(
 
 /// Defines the work that explorer threads will do in a closure that will be passed to
 /// context.async_eval. Also defines a callback that will be executed by the evaluator
-fn explore_space<'a, T>(
+fn explore_space<T>(
     config: &Config,
     candidate_store: &T,
-    eval_sender: futures::sync::mpsc::Sender<MonitorMessage<'a, T>>,
+    eval_sender: futures::sync::mpsc::Sender<MonitorMessage<T>>,
     context: &dyn Context,
-    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
+    check_result_fn: Option<&CheckResultFn<'_>>,
 ) where
-    T: Store<'a>,
+    T: Store,
 {
     let best_mutex = &Mutex::new(None);
     let n_evals = &AtomicUsize::new(0);

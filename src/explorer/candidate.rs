@@ -16,9 +16,9 @@ use utils::unwrap;
 
 /// A node of the search tree.
 #[derive(Clone)]
-pub struct Candidate<'a> {
+pub struct Candidate {
     /// Represents a part of the full search space.
-    pub space: SearchSpace<'a>,
+    pub space: SearchSpace,
     /// Gives a lower bound in nanoseconds on the execution time of `fun`.
     pub bound: Bound,
     /// The depth of the candidate in the search tree.
@@ -27,13 +27,13 @@ pub struct Candidate<'a> {
     pub actions: List<ActionEx>,
 }
 
-impl<'a> Candidate<'a> {
+impl Candidate {
     /// Creates a new candidate, with depth 0.
-    pub fn new(space: SearchSpace<'a>, bound: Bound) -> Self {
+    pub fn new(space: SearchSpace, bound: Bound) -> Self {
         Self::with_actions(space, bound, std::iter::empty())
     }
 
-    pub fn with_actions<II>(space: SearchSpace<'a>, bound: Bound, actions: II) -> Self
+    pub fn with_actions<II>(space: SearchSpace, bound: Bound, actions: II) -> Self
     where
         II: IntoIterator<Item = ActionEx>,
     {
@@ -51,7 +51,7 @@ impl<'a> Candidate<'a> {
         &self,
         context: &dyn Context,
         choice: Vec<ActionEx>,
-    ) -> Vec<Candidate<'a>> {
+    ) -> Vec<Candidate> {
         let res = choice
             .into_iter()
             .flat_map(|action| {
@@ -129,7 +129,7 @@ impl<'a> Candidate<'a> {
     }
 }
 
-impl<'a> std::fmt::Display for Candidate<'a> {
+impl std::fmt::Display for Candidate {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(
             f,
@@ -143,22 +143,22 @@ impl<'a> std::fmt::Display for Candidate<'a> {
     }
 }
 
-impl<'a> PartialEq for Candidate<'a> {
-    fn eq(&self, rhs: &Candidate<'a>) -> bool {
+impl PartialEq for Candidate {
+    fn eq(&self, rhs: &Candidate) -> bool {
         self.bound == rhs.bound
     }
 }
 
-impl<'a> Eq for Candidate<'a> {}
+impl Eq for Candidate {}
 
-impl<'a> PartialOrd for Candidate<'a> {
-    fn partial_cmp(&self, rhs: &Candidate<'a>) -> Option<Ordering> {
+impl PartialOrd for Candidate {
+    fn partial_cmp(&self, rhs: &Candidate) -> Option<Ordering> {
         self.bound.partial_cmp(&rhs.bound)
     }
 }
 
-impl<'a> Ord for Candidate<'a> {
-    fn cmp(&self, rhs: &Candidate<'a>) -> Ordering {
+impl Ord for Candidate {
+    fn cmp(&self, rhs: &Candidate) -> Ordering {
         unwrap!(self.partial_cmp(rhs))
     }
 }

@@ -1,6 +1,7 @@
 //! Defines a matrix-matrix multiply kernel.
 #![allow(dead_code)]
 use rand::Rng;
+use std::sync::Arc;
 use telamon::explorer::choice::ActionEx;
 use telamon::search_space::*;
 use telamon::{explorer, helper, ir};
@@ -8,17 +9,17 @@ use telamon_cuda as cuda;
 
 lazy_static! {
     /// A fake GPU description, used only to know which candidates are valid.
-    static ref DEVICE: cuda::Gpu = cuda::Gpu::dummy();
+    static ref DEVICE: Arc<cuda::Gpu> = Arc::new(cuda::Gpu::dummy());
 
     static ref MM_SIGNATURE: MMSig = MMSig::signature();
-    pub static ref MM: SearchSpace<'static> = MM_SIGNATURE.build_body();
+    pub static ref MM: SearchSpace = MM_SIGNATURE.build_body();
 }
 
 const DATA_TYPE: ir::Type = ir::Type::F(32);
 
 /// Stores the signature and the external arrays IDs for matrix-matrix multiplication.
 struct MMSig {
-    signature: ir::Signature,
+    signature: Arc<ir::Signature>,
 }
 
 impl MMSig {
@@ -27,14 +28,19 @@ impl MMSig {
         signature.add_scalar("m".to_string(), ir::Type::I(32));
         signature.add_scalar("n".to_string(), ir::Type::I(32));
         signature.add_scalar("k".to_string(), ir::Type::I(32));
-        signature.add_array(&*DEVICE, "a".to_string(), DATA_TYPE);
-        signature.add_array(&*DEVICE, "b".to_string(), DATA_TYPE);
-        signature.add_array(&*DEVICE, "c".to_string(), DATA_TYPE);
-        MMSig { signature }
+        signature.add_array(&**DEVICE, "a".to_string(), DATA_TYPE);
+        signature.add_array(&**DEVICE, "b".to_string(), DATA_TYPE);
+        signature.add_array(&**DEVICE, "c".to_string(), DATA_TYPE);
+        MMSig {
+            signature: Arc::new(signature),
+        }
     }
 
     fn build_body(&self) -> SearchSpace {
-        let mut builder = helper::Builder::new(&self.signature, &*DEVICE);
+        let mut builder = helper::Builder::new(
+            Arc::clone(&self.signature),
+            Arc::<cuda::Gpu>::clone(&DEVICE),
+        );
         let m_size = builder.param_size("m", 32);
         let n_size = builder.param_size("n", 32);
         let k_size = builder.param_size("k", 32);

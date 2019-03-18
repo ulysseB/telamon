@@ -39,17 +39,17 @@ impl From<ir::DimId> for StmtId {
 }
 
 /// Represents a basic block in an Exhaust function.
-pub trait Statement<'a, L = ir::LoweringMap> {
+pub trait Statement<L = ir::LoweringMap> {
     /// Returns the unique identifier of the `Statement`.
     fn stmt_id(&self) -> StmtId;
 
     /// Returns 'self' if it is an instruction.
-    fn as_inst(&self) -> Option<&ir::Instruction<'a, L>> {
+    fn as_inst(&self) -> Option<&ir::Instruction<L>> {
         None
     }
 
     /// Returns 'self' if it is a dimension
-    fn as_dim(&self) -> Option<&ir::Dimension<'a, L>> {
+    fn as_dim(&self) -> Option<&ir::Dimension<L>> {
         None
     }
 

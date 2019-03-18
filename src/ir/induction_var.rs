@@ -1,23 +1,26 @@
 use crate::ir;
+use serde::{Deserialize, Serialize};
 use utils::*;
 
 /// Unique identifier for `InductionVar`
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
 pub struct IndVarId(pub u32);
 
 /// A multidimentional induction variable. No dimension should appear twice in dims.
-#[derive(Clone, Debug)]
-pub struct InductionVar<'a, L = ir::LoweringMap> {
-    dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
-    base: ir::Operand<'a, L>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InductionVar<L = ir::LoweringMap> {
+    dims: Vec<(ir::DimId, ir::PartialSize)>,
+    base: ir::Operand<L>,
 }
 
-impl<'a, L> InductionVar<'a, L> {
+impl<L> InductionVar<L> {
     /// Creates a new induction var. Size represents the increment over each diemnsion
     /// taken independenly.
     pub fn new(
-        dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
-        base: ir::Operand<'a, L>,
+        dims: Vec<(ir::DimId, ir::PartialSize)>,
+        base: ir::Operand<L>,
     ) -> Result<Self, ir::Error> {
         ir::TypeError::check_integer(base.t())?;
         // Assert dimensions are unique.
@@ -50,18 +53,18 @@ impl<'a, L> InductionVar<'a, L> {
     }
 
     /// Returns the base operand of the induction variable.
-    pub fn base(&self) -> &ir::Operand<'a, L> {
+    pub fn base(&self) -> &ir::Operand<L> {
         &self.base
     }
 
     /// Returns the list of induction dimensions along with the corresponding increments.
-    pub fn dims(&self) -> &[(ir::DimId, ir::PartialSize<'a>)] {
+    pub fn dims(&self) -> &[(ir::DimId, ir::PartialSize)] {
         &self.dims
     }
 }
 
-impl<'a> InductionVar<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> InductionVar<'a> {
+impl InductionVar<()> {
+    pub fn freeze(self, cnt: &mut ir::Counter) -> InductionVar {
         InductionVar {
             dims: self.dims,
             base: self.base.freeze(cnt),

@@ -1,7 +1,7 @@
 //! Describe decisions that must be specified.
 use crate::ir::{self, Adaptable};
 use itertools::{Either, Itertools};
-use serde_derive::Serialize;
+use serde::Serialize;
 use std;
 use utils::*;
 

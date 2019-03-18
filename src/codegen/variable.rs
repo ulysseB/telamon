@@ -195,6 +195,7 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
 #[cfg(test)]
 mod tests {
     use std;
+    use std::sync::Arc;
 
     use crate::device::fake;
     use crate::helper;
@@ -213,9 +214,9 @@ mod tests {
     #[test]
     fn chained_alias() {
         let _ = ::env_logger::try_init();
-        let device = fake::Device::default();
-        let signature = ir::Signature::new("test".to_string());
-        let mut builder = helper::Builder::new(&signature, &device);
+        let device = Arc::new(fake::Device::default());
+        let signature = Arc::new(ir::Signature::new("test".to_string()));
+        let mut builder = helper::Builder::new(signature, device);
         // This code builds the following function:
         // ```pseudocode
         // for i in 0..16:

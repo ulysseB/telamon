@@ -11,6 +11,13 @@ fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
     let cublas_handle = CublasHandle::new();
+
+    let params = linalg::MatMulP::new(256, 256, 256);
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+        matmul_reference(&cublas_handle, params, ctx)
+    });
+
+    /*
     // 1.5
     benchmark::<linalg::Axpy<f32>, _>((1 << 25, true), &executor, |params, ctx| {
         saxpy_reference(&cublas_handle, params, ctx)
@@ -75,6 +82,7 @@ fn main() {
     // FIXME: add more input sizes for benchmarks
     // - non-powers of 2
     // - repeat B
+    // */
 }
 
 /// The number of times to run the generated code to evaluate its performance.

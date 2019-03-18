@@ -18,10 +18,10 @@ use telamon::{explorer, model, search_space};
 use ::ndarray::{ArrayBase, Data, Dimension, FoldWhile, Zip};
 
 /// Creates a candidate from the search space and registers the tile sizes in it.
-fn build_candidate<'a>(
-    space: search_space::SearchSpace<'a>,
+fn build_candidate(
+    space: search_space::SearchSpace,
     ctx: &dyn device::Context,
-) -> explorer::Candidate<'a> {
+) -> explorer::Candidate {
     let bound = model::bound(&space, ctx);
     explorer::Candidate::new(space, bound)
 }

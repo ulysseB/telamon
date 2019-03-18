@@ -40,7 +40,7 @@ fn main() {
     };
 
     // Step 2. Define the kernel body
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     // Define te tiling factors for dimensions `m`, `n` and `k`.
     let m_tiling = helper::TilingPattern::new_fixed(&[32, 4]);
     let n_tiling = helper::TilingPattern::new_fixed(&[32, 4]);

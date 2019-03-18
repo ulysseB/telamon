@@ -72,7 +72,7 @@ impl<'a> Dimension<'a> {
     }
 
     /// Creates a new dimension from an `ir::Dimension`.
-    fn new(dim: &'a ir::Dimension<'a>, space: &SearchSpace) -> Self {
+    fn new(dim: &'a ir::Dimension, space: &SearchSpace) -> Self {
         let kind = space.domain().get_dim_kind(dim.id());
         assert!(kind.is_constrained());
         Dimension {
@@ -108,7 +108,7 @@ impl<'a> Dimension<'a> {
 }
 
 /// Creates the final list of dimensions by grouping fused `ir::Dimension`.
-pub fn group_merged_dimensions<'a>(space: &'a SearchSpace<'a>) -> Vec<Dimension<'a>> {
+pub fn group_merged_dimensions<'a>(space: &'a SearchSpace) -> Vec<Dimension<'a>> {
     let mut groups: Vec<Dimension> = Vec::new();
     'dim: for dim in space.ir_instance().dims() {
         for group in &mut groups {
@@ -170,7 +170,7 @@ impl<'a> InductionVar<'a> {
 pub struct InductionVarValue<'a> {
     ind_var: ir::IndVarId,
     outer_level: Option<ir::DimId>,
-    operand: Option<&'a ir::Operand<'a>>,
+    operand: Option<&'a ir::Operand>,
     t: ir::Type,
 }
 
@@ -190,11 +190,7 @@ impl<'a> InductionVarValue<'a> {
     }
 
     /// Returns and induction var value that just contains an operand.
-    fn new(
-        ind_var: ir::IndVarId,
-        operand: &'a ir::Operand<'a>,
-        space: &SearchSpace,
-    ) -> Self {
+    fn new(ind_var: ir::IndVarId, operand: &'a ir::Operand, space: &SearchSpace) -> Self {
         let t = unwrap!(space.ir_instance().device().lower_type(operand.t(), space));
         InductionVarValue {
             ind_var,
@@ -243,7 +239,7 @@ impl<'a> InductionVarValue<'a> {
 /// kernel.
 pub fn register_induction_vars<'a>(
     dims: &mut Vec<Dimension<'a>>,
-    space: &'a SearchSpace<'a>,
+    space: &'a SearchSpace,
 ) -> (Vec<InductionVar<'a>>, Vec<InductionLevel<'a>>) {
     let mut ind_levels_map = FnvMultiHashMap::default();
     let mut ind_vars = Vec::new();
@@ -305,7 +301,7 @@ type IndVarIncrement<'a> = (ir::DimId, codegen::Size<'a>);
 /// thread and the induction levels that are updated during loops. Both lists are sorted
 /// in the order in which levels should be computed.
 fn get_ind_var_levels<'a>(
-    ind_var: &'a ir::InductionVar<'a>,
+    ind_var: &'a ir::InductionVar,
     space: &SearchSpace,
 ) -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>) {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
