@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
+bincode = "1.0"
 env_logger = "0.5.9"
 itertools = "0.7.8"
 libc = "0.2.40"
@@ -14,21 +15,25 @@ num = "0.2.0"
 num_cpus = "1.8.0"
 rayon = "1.0.1"
 rand = "0.5.5"
+rpds = { version = "0.5.0", features = ["serde"] }
 cuda-sys = { optional = true, version = "0.1.0" }
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional=true }
+telamon-x86 = { path = "../backend/x86" }
 utils = { package = "telamon-utils", path = "../telamon-utils" }
 
 [dev-dependencies]
 futures = "0.1.23"
-telamon-x86 = { path = "../backend/x86" }
 
 [features]
 cuda = [
     "telamon-cuda",
     "cuda-sys",
 ]
+
+[[bin]]
+name = "kernel_dump"
 
 [[bench]]
 name = "cuda-search"
