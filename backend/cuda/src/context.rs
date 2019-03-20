@@ -91,7 +91,7 @@ impl<'a> Context<'a> {
             info!("candidate skipped because of its bound");
             return Ok(std::f64::INFINITY);
         }
-        let t0 = self.ticks_to_ns(unwrap!(thunk.execute()));
+        let t0 = self.ticks_to_ns(thunk.execute()?);
         if mode.skip_bad_candidates() && t0 * SKIP_THRESHOLD >= bound {
             info!("candidate skipped after its first evaluation");
             return Ok(t0);
