@@ -1349,20 +1349,22 @@ impl NewNodeOrder {
             NewNodeOrder::WeightedRandom => {
                 if cut.is_infinite() {
                     let epsilon = 1e-6;
-                    Selector::random(
+                    Selector::try_random(
                         bounds
                             .map(|(idx, b)| (idx, (b + epsilon).recip()))
                             .collect(),
                     )
                 } else {
-                    Selector::random(bounds.map(|(idx, b)| (idx, 1. - b / cut)).collect())
+                    Selector::try_random(
+                        bounds.map(|(idx, b)| (idx, 1. - b / cut)).collect(),
+                    )
                 }
             }
             NewNodeOrder::Bound => {
-                Selector::maximum(bounds.map(|(idx, b)| (idx, -b)).collect())
+                Selector::try_maximum(bounds.map(|(idx, b)| (idx, -b)).collect())
             }
             NewNodeOrder::Random => {
-                Selector::random(bounds.map(|(idx, _)| (idx, 1.)).collect())
+                Selector::try_random(bounds.map(|(idx, _)| (idx, 1.)).collect())
             }
         }
     }
@@ -1453,7 +1455,7 @@ impl UCTPolicy {
     fn value(&self, stats: &UCTStats) -> (f64, usize) {
         use self::config::ValueReduction;
 
-        let num_visits = stats.num_visits();
+        let num_visits = stats.common.num_visits();
 
         let value = match self.value_reduction {
             ValueReduction::Best => stats.best_evaluation(),
@@ -1548,7 +1550,7 @@ pub enum Selector<T> {
 }
 
 impl<T> Selector<T> {
-    pub fn random(weights: Vec<(T, f64)>) -> Option<Self> {
+    pub fn try_random(weights: Vec<(T, f64)>) -> Option<Self> {
         if weights.is_empty() {
             None
         } else {
@@ -1556,7 +1558,7 @@ impl<T> Selector<T> {
         }
     }
 
-    pub fn maximum(scores: Vec<(T, f64)>) -> Option<Self> {
+    pub fn try_maximum(scores: Vec<(T, f64)>) -> Option<Self> {
         if scores.is_empty() {
             None
         } else {
@@ -1654,7 +1656,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, UCTStats> for UCTPolicy {
 
                 let num_children = stats.len();
 
-                Selector::maximum(
+                Selector::try_maximum(
                     stats
                         .into_iter()
                         .map(|(idx, (_bound, (value, visits)))| {
@@ -1692,12 +1694,39 @@ impl<'c, N: 'c> TreePolicy<'c, N, UCTStats> for UCTPolicy {
 }
 
 #[derive(Debug)]
+pub struct CommonStats {
+    /// Number of visits across this edge.  Note that this is the number of descents; there may
+    /// have been less backpropagations due to dead-ends.
+    num_visits: AtomicUsize,
+}
+
+impl Default for CommonStats {
+    fn default() -> Self {
+        CommonStats {
+            num_visits: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl CommonStats {
+    /// Call when the edge is selected during a descent
+    fn down(&self) {
+        self.num_visits.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// The number of visits through this edge.
+    fn num_visits(&self) -> usize {
+        self.num_visits.load(Ordering::Relaxed)
+    }
+}
+
+#[derive(Debug)]
 pub struct UCTStats {
     best_evaluation: RwLock<f64>,
 
     sum_evaluations: RwLock<f64>,
 
-    num_visits: AtomicUsize,
+    common: CommonStats,
 }
 
 impl Default for UCTStats {
@@ -1705,14 +1734,14 @@ impl Default for UCTStats {
         UCTStats {
             best_evaluation: RwLock::new(std::f64::NEG_INFINITY),
             sum_evaluations: RwLock::new(0f64),
-            num_visits: AtomicUsize::new(0),
+            common: CommonStats::default(),
         }
     }
 }
 
 impl UCTStats {
     fn down(&self) {
-        self.num_visits.fetch_add(1, Ordering::Relaxed);
+        self.common.down()
     }
 
     fn up(&self, eval: f64) {
@@ -1744,10 +1773,6 @@ impl UCTStats {
             .sum_evaluations
             .read()
             .expect("sum_evaluations: poisoned")
-    }
-
-    fn num_visits(&self) -> usize {
-        self.num_visits.load(Ordering::Relaxed)
     }
 }
 
@@ -1802,7 +1827,9 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
         // doesn't get changed by concurrent accesses.
         let edges = children
             .iter()
-            .map(|(index, edge, node)| (index, (edge, node, edge.data().num_visits())))
+            .map(|(index, edge, node)| {
+                (index, (edge, node, edge.data().common.num_visits()))
+            })
             .filter(|(_idx, (_edge, node, _num_visits))| {
                 node.bound().unwrap().value() < cut
             })
@@ -1865,7 +1892,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
                 // Total number of children, excluding ones which were cut
                 let num_children = stats.len();
 
-                Selector::maximum(
+                Selector::try_maximum(
                     stats
                         .into_iter()
                         .map(|(ix, child_successes, child_visits)| {
@@ -1904,17 +1931,14 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
 pub struct TAGStats {
     /// All evaluations seen for the pointed-to node.
     evaluations: RwLock<Evaluations>,
-
-    /// Number of visits across this edge.  Note that this is the number of descents; there may
-    /// have been less backpropagations due to dead-ends.
-    num_visits: AtomicUsize,
+    common: CommonStats,
 }
 
 impl Default for TAGStats {
     fn default() -> Self {
         TAGStats {
             evaluations: RwLock::new(Evaluations::new()),
-            num_visits: AtomicUsize::new(0),
+            common: CommonStats::default(),
         }
     }
 }
@@ -1922,7 +1946,7 @@ impl Default for TAGStats {
 impl TAGStats {
     /// Called when the edge is selected during a descent
     fn down(&self) {
-        self.num_visits.fetch_add(1, Ordering::Relaxed);
+        self.common.down()
     }
 
     /// Called when backpropagating across this edge after an evaluation
@@ -1931,11 +1955,6 @@ impl TAGStats {
             .write()
             .expect("evaluations: poisoned")
             .record(eval, topk);
-    }
-
-    /// The number of visits through this edge.
-    fn num_visits(&self) -> usize {
-        self.num_visits.load(Ordering::Relaxed)
     }
 }
 
@@ -1999,5 +2018,34 @@ impl<'a> IntoIterator for &'a Evaluations {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
+    }
+}
+
+pub struct RoundRobinPolicy;
+
+impl<'c, N: 'c> TreePolicy<'c, N, CommonStats> for RoundRobinPolicy {
+    fn pick_child(
+        &'_ self,
+        _cut: f64,
+        view: &NodeView<'_, 'c, N, CommonStats>,
+    ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
+        Selector::try_maximum(
+            view.iter()
+                .map(|(index, edge, _node)| (index, -(edge.data().num_visits() as f64)))
+                .collect(),
+        )
+        .map(|selector| {
+            let (index, selector) = view.select_with(selector);
+            view[index].0.data().down();
+            (index, selector)
+        })
+    }
+
+    fn backpropagate(
+        &self,
+        _parent: &Node<'c, N, CommonStats>,
+        _index: EdgeIndex,
+        _eval: Option<f64>,
+    ) {
     }
 }

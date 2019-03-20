@@ -231,6 +231,9 @@ pub enum TreePolicy {
     /// an uncertainty term to boost rarely explored branches.
     #[serde(rename = "uct")]
     UCT(UCTConfig),
+
+    /// Always select the least visited child.
+    RoundRobin,
 }
 
 impl Default for TreePolicy {
