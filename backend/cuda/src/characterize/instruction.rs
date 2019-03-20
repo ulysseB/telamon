@@ -175,18 +175,7 @@ fn load(gpu: &Gpu, executor: &Executor, stride: u32, num_load: u32) -> f64 {
     gen::bind_array::<i64>("array", array_size as usize, &mut context);
     unwrap!(init_dev_kernel.evaluate(&context));
 
-    let perf_counters = [
-        PerfCounter::InstExecuted,
-        PerfCounter::ElapsedCyclesSM,
-        PerfCounter::L2Subp0ReadL1SectorQueries,
-        PerfCounter::L2Subp1ReadL1SectorQueries,
-        PerfCounter::L2Subp2ReadL1SectorQueries,
-        PerfCounter::L2Subp3ReadL1SectorQueries,
-        PerfCounter::L2Subp0ReadL1HitSectors,
-        PerfCounter::L2Subp1ReadL1HitSectors,
-        PerfCounter::L2Subp2ReadL1HitSectors,
-        PerfCounter::L2Subp3ReadL1HitSectors,
-    ];
+    let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);
     let mut table = create_table(&["chain"], &perf_counters);
 
@@ -202,27 +191,12 @@ fn load(gpu: &Gpu, executor: &Executor, stride: u32, num_load: u32) -> f64 {
 
     let nf = f64::from(n);
     let range_f64 = n_chained_range.iter().map(|&x| f64::from(x)).collect_vec();
-    let insts = table.column(1).map(|&x| x as f64 / nf).collect_vec();
     let cycles = table
         .column(2)
         .map(|&x| x as f64 / (nf * f64::from(gpu.num_smx)))
         .collect_vec();
-    let queries = table
-        .rows()
-        .map(|x| x[3..7].iter().sum::<u64>() as f64 / nf);
-    let hit = table
-        .rows()
-        .map(|x| x[7..11].iter().sum::<u64>() as f64 / nf)
-        .collect_vec();
-    let miss = queries.zip(hit.iter()).map(|(x, y)| x - y).collect_vec();
-    let inst_pred = math::LinearRegression::train(&range_f64, &insts);
     let cycle_pred = math::LinearRegression::train(&range_f64, &cycles);
-    let hit_pred = math::LinearRegression::train(&range_f64, &hit);
-    let miss_pred = math::LinearRegression::train(&range_f64, &miss);
-    info!("Number of instructions: {}", inst_pred);
     info!("Number of cycles: {}", cycle_pred);
-    info!("Number of L2 hits: {}", hit_pred);
-    info!("Number of L2 misses: {}", miss_pred);
     cycle_pred.slope.round()
 }
 
@@ -371,11 +345,7 @@ pub fn smx_bandwidth(
     const MAX_WRAPS: u32 = 32;
     let array_size = gpu.l1_cache_line / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
     // Setup the results table.
-    let perf_counters = [
-        PerfCounter::InstExecuted,
-        PerfCounter::ElapsedCyclesSM,
-        PerfCounter::GlobalLoadReplay,
-    ];
+    let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);
     let mut table = create_table(&["wraps", "stride", "blocks", "n"], &perf_counters);
     // Setup the context
@@ -425,11 +395,7 @@ pub fn smx_store_bandwidth(
     const MAX_WRAPS: u32 = 32;
     let array_size = gpu.l1_cache_line / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
     // Setup the results table.
-    let perf_counters = [
-        PerfCounter::InstExecuted,
-        PerfCounter::ElapsedCyclesSM,
-        PerfCounter::GlobalStoreReplay,
-    ];
+    let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);
     let mut table = create_table(&["wraps", "stride", "blocks", "n"], &perf_counters);
     // Setup the context
