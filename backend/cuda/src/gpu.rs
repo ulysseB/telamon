@@ -476,12 +476,14 @@ impl device::Device for Gpu {
             | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
             _ => panic!("invalid memory access operator"),
         };
-        // Remove the `CACHE_READ_ONLY` option if the gpu does not support `ld.nc`.
+        // TODO(model): CACHE_READ_ONLY and CACHE_SHARED are currently not supported by the
+        // performance model.  Disable them, even if the hardware supports them.
+        flags.restrict(!InstFlag::CACHE_READ_ONLY);
+        flags.restrict(!InstFlag::CACHE_SHARED);
+
         if !self.allow_nc_load {
             flags.restrict(!InstFlag::CACHE_READ_ONLY);
         }
-        // Remove the `CACHE_SHARED` option if the GPU does not allow using L1 cache for
-        // global accesses.
         if !self.allow_l1_for_global_mem {
             flags.restrict(!InstFlag::CACHE_SHARED);
         }

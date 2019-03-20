@@ -103,7 +103,7 @@ require forall $outer_dim in Dimensions:
     dim_kind($dim) is not BLOCK
     || order($outer_dim, $dim) is not OUTER
     || tiling_factor($logical) >=
-      "$logical.total_size().max()/$fun.device().max_inner_block_size()"
+      "($logical.total_size().max() + $fun.device().max_inner_block_size() - 1)/$fun.device().max_inner_block_size()"
 require forall $outer_dim in Dimensions:
   forall $dim in StaticDims:
     dim_kind($dim) is not BLOCK

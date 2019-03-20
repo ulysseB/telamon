@@ -1,4 +1,30 @@
 //! Builds the description of a GPU.
+//! Unless otherwise specified, most of the information comes from the "CUDA C Programming Guide",
+//! available online at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
+//! For the sake of brevity, I will refer to this document as "the CPG".
+//!
+//! Some additional information comes from nvidia whitepapers and architecture tuning guides.
+//!
+//!  - For Kepler (Compute Capability 3.x):
+//!    https://la.nvidia.com/content/PDF/product-specifications/GeForce_GTX_680_Whitepaper_FINAL.pdf
+//!    https://docs.nvidia.com/cuda/kepler-tuning-guide/index.html
+//!
+//!  - For Maxwell (Compute Capability 5.x):
+//!    https://international.download.nvidia.com/geforce-com/international/pdfs/GeForce-GTX-750-Ti-Whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/maxwell-tuning-guide/index.html
+//!
+//!  - For Pascal (Compute Capability 6.x):
+//!    https://images.nvidia.com/content/pdf/tesla/whitepaper/pascal-architecture-whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/pascal-tuning-guide/index.html
+//!
+//!  - For Volta (Compute Capability 7.0):
+//!    https://images.nvidia.com/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/volta-tuning-guide/index.html
+//!
+//!  - For Turing (Compute Capability 7.5):
+//!    https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/turing-tuning-guide/index.html
+
 use crate::characterize::instruction;
 use crate::DeviceAttribute::*;
 use crate::{Executor, Gpu, InstDesc};
@@ -73,56 +99,86 @@ pub fn functional_desc(executor: &Executor) -> Gpu {
 }
 
 /// Returns true if the GPU allows non-coherent loads.
+/// This corresponds to the availability of the read-only cache, which also backs up the texture
+/// cache.  Practically, this enables the `.nc` flag on memory accesses.  Note that it is not clear
+/// whether this is different from `.ca` (see `allow_l1_for_global_mem`) on architectures with an
+/// unified L1/texture cache (starting with compute capabilities 5.0) and may not be useful to be
+/// handled separately.
 fn allow_nc_load(sm_major: i32, sm_minor: i32) -> bool {
     match (sm_major, sm_minor) {
         (2, _) | (3, 0) | (3, 2) => false,
-        (3, 5) | (3, 7) | (5, _) => true,
+        (3, 5) | (5, _) | (6, _) | (7, _) => true,
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
 /// Returns true if the GPU allows L1 caching of global memory accesses.
+/// Practically, this enables the `.ca` flag on memory accesses.
 fn allow_l1_for_global_mem(sm_major: i32, sm_minor: i32) -> bool {
     match (sm_major, sm_minor) {
-        (2, _) | (3, 7) | (5, 2) => true,
-        (3, 0) | (3, 2) | (3, 5) | (5, 0) => false,
+        (2, _) => true,
+        (3, 0) | (3, 2) | (3, 5) => false,
+        // Some 3.5 devices allow L1 as well.  Ignore them.
+        (3, 7) => true,
+        (5, 0) => false,
+        (5, 2) | (5, 3) => true,
+        (6, _) | (7, _) => true,
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
 /// Returns the maximum number of resident blocks on an SMX.
+/// From line "Maximum number of resident blocks per multiprocessor" on Table 14.
 fn block_per_smx(sm_major: i32, sm_minor: i32) -> u32 {
-    match sm_major {
-        2 => 8,
-        3 => 16,
-        5 => 32,
+    match (sm_major, sm_minor) {
+        (2, _) => 8,
+        (3, _) => 16,
+        (5, _) => 32,
+        (6, _) => 32,
+        (7, 0) => 32,
+        (7, 5) => 16,
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
 /// Returns the size of the L1 cache.
+/// From the "Architecture" subsection of each compute capability.
 fn l1_cache_size(sm_major: i32, sm_minor: i32) -> u32 {
-    match sm_major {
-        2 | 3 => 16 * 1024,
-        5 => 24 * 1024,
+    match (sm_major, sm_minor) {
+        // FIXME: For CC 3.x the same on-chip memory is used for L1 and shared memory, and we can
+        // select 48KB+16KB, 32KB+32KB or 16KB+48KB.  Default is 48KB shared memory and 16KB L1
+        // cache, which is reflected here.
+        (2, _) | (3, _) => 16 * 1024,
+        (5, _) => 24 * 1024,
+        // Yes, 6.1 has a larger L1 cache than both 6.0 and 6.2.  Go figure.
+        (6, 0) | (6, 2) => 24 * 1024,
+        (6, 1) => 48 * 1024,
+        // FIXME: As for CC 3.x, CC 7.x uses the same on-chip memory for L1 cache and shared memory,
+        // but can't be configured exactly -- the driver makes that choice for us.  We'll figure
+        // out the proper behavior when we have the corresponding hardware.
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
-/// Returns the stride between shared memory banks.
+/// Returns the stride (in bytes) between shared memory banks.
+/// From the "Shared memory" subsection of each compute capability, where it is expressed in bits
+/// (e.g. "Successive 32-bit words map to successive banks").
 fn shared_bank_stride(sm_major: i32, sm_minor: i32) -> u32 {
     match sm_major {
-        2 => 4,
-        3 | 5 => 8,
+        2 | 5 | 6 | 7 => 4,
+        // Kepler used 64-bit addressing mode
+        3 => 8,
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
 /// Returns the maximum number of resident thread per SMX.
+/// From line "Maximum number of resident threads per multiprocessor" on Table 14.
 fn thread_per_smx(sm_major: i32, sm_minor: i32) -> u32 {
-    match sm_major {
-        2 => 1536,
-        3 | 5 => 2048,
+    match (sm_major, sm_minor) {
+        (2, _) => 1536,
+        (3, _) | (5, _) | (6, _) | (7, 0) => 2048,
+        (7, 5) => 1024,
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
@@ -131,11 +187,27 @@ fn thread_per_smx(sm_major: i32, sm_minor: i32) -> u32 {
 fn smx_rates(gpu: &Gpu, executor: &Executor) -> InstDesc {
     let (wrap_scheds, issues_per_wrap) = wrap_scheds_per_smx(gpu.sm_major, gpu.sm_minor);
     let issue = wrap_scheds * issues_per_wrap * gpu.wrap_size;
+    // alu comes from line "32-bit floating-point add, multiply, multiply-add" on Table 2
+    // "Throughput of Native Arithmetic Instruction"
+    //
+    // mem comes from the various whitepapers, looking at the SM diagrams
+    //
+    // sync comes from section 5.4.3 "Synchronize instructions"
     let (alu, mem, sync) = match (gpu.sm_major, gpu.sm_minor) {
-        (2, 0) => (32, 16, 32), // Sync unknown for 2.0
-        (2, 1) => (48, 32, 32), // Sync unknown for 2.0
+        (2, 0) => (32, 16, 32), // Sync unknown for 2.x
+        (2, 1) => (48, 32, 32), // Sync unknown for 2.x
+        // Kepler
         (3, _) => (192, 32, 128),
+        // Maxwell
         (5, _) => (128, 32, 64),
+        // Pascal
+        (6, 0) => (64, 16, 32),
+        (6, 1) => (128, 16, 64),
+        (6, 2) => (128, 16, 64),
+        // Volta
+        (7, 0) => (64, 32, 16),
+        // Turing
+        (7, 5) => (64, 16, 16),
         (major, minor) => panic!("Unkown compute capability: {}.{}", major, minor),
     };
     let l1_lines_bw = instruction::smx_bandwidth_l1_lines(gpu, executor);
@@ -189,12 +261,22 @@ fn gpu_rates(gpu: &Gpu, smx_rates: &InstDesc) -> InstDesc {
 
 /// Returns the number of wrap scheduler in a single SMX and the number of independent
 /// instruction issued per wrap scheduler.
+/// This comes from the "Architecture" subsection for each compute capability on the CPG.
 fn wrap_scheds_per_smx(sm_major: u8, sm_minor: u8) -> (u32, u32) {
     match (sm_major, sm_minor) {
+        // Fermi
         (2, 0) => (2, 1),
         (2, 1) => (2, 2),
+        // Kepler
         (3, _) => (4, 2),
+        // Maxwell
         (5, _) => (4, 1),
+        // Pascal
+        (6, 0) => (2, 1),
+        (6, 1) => (4, 1),
+        (6, 2) => (4, 1),
+        // Volta, Turing
+        (7, _) => (4, 1),
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
