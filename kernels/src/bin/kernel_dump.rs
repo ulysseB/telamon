@@ -13,9 +13,5 @@ fn main() {
     kernel_dump!(linalg::Axpy<f32>, 100, (1 << 16, true));
     kernel_dump!(linalg::MatVec<f32>, 100, (1 << 4, 1 << 2, true));
     kernel_dump!(linalg::Gesummv<f32>, 100, (1 << 4, 1 << 4, true));
-    kernel_dump!(
-        linalg::MatMul<f32>,
-        100,
-        linalg::MatMulP::new(16, 16, 16)
-    );
+    kernel_dump!(linalg::MatMul<f32>, 100, linalg::MatMulP::new(16, 16, 16));
 }
