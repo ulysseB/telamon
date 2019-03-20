@@ -499,6 +499,9 @@
 <span id="499">499</span>
 <span id="500">500</span>
 <span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -733,6 +736,9 @@
     <span class="doccomment">/// an uncertainty term to boost rarely explored branches.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;uct&quot;</span>)]</span>
     <span class="ident">UCT</span>(<span class="ident">UCTConfig</span>),
+
+    <span class="doccomment">/// Always select the least visited child.</span>
+    <span class="ident">RoundRobin</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">TreePolicy</span> {

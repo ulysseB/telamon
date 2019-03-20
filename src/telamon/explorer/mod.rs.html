@@ -318,6 +318,14 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">candidate</span>;
@@ -504,6 +512,9 @@
                 <span class="self">self</span>::<span class="ident">config</span>::<span class="ident">TreePolicy</span>::<span class="ident">WeightedRandom</span> <span class="op">=&gt;</span> {
                     <span class="ident">builder</span>.<span class="ident">build</span>(<span class="self">self</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>)
                 }
+                <span class="self">self</span>::<span class="ident">config</span>::<span class="ident">TreePolicy</span>::<span class="ident">RoundRobin</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(
+                    <span class="string">&quot;Round-robin policy not supported with legacy &#39;bandit&#39; implementation.  Use `&#39;mcts&#39;` instead.&quot;</span>
+                ),
             }
         }
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">Mcts</span>(<span class="kw-2">ref</span> <span class="ident">bandit_config</span>) <span class="op">=&gt;</span> {
@@ -537,6 +548,11 @@
                     <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>),
                     <span class="ident">default_policy</span>,
                 ),
+                <span class="ident">config</span>::<span class="ident">TreePolicy</span>::<span class="ident">RoundRobin</span> <span class="op">=&gt;</span> <span class="ident">builder</span>
+                    .<span class="ident">search</span>::<span class="op">&lt;</span>(), <span class="ident">mcts</span>::<span class="ident">CommonStats</span><span class="op">&gt;</span>(
+                        <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">mcts</span>::<span class="ident">RoundRobinPolicy</span>),
+                        <span class="ident">default_policy</span>,
+                    ),
             }
         }
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">BoundOrder</span> <span class="op">=&gt;</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
