@@ -1349,20 +1349,22 @@ impl NewNodeOrder {
             NewNodeOrder::WeightedRandom => {
                 if cut.is_infinite() {
                     let epsilon = 1e-6;
-                    Selector::random(
+                    Selector::try_random(
                         bounds
                             .map(|(idx, b)| (idx, (b + epsilon).recip()))
                             .collect(),
                     )
                 } else {
-                    Selector::random(bounds.map(|(idx, b)| (idx, 1. - b / cut)).collect())
+                    Selector::try_random(
+                        bounds.map(|(idx, b)| (idx, 1. - b / cut)).collect(),
+                    )
                 }
             }
             NewNodeOrder::Bound => {
-                Selector::maximum(bounds.map(|(idx, b)| (idx, -b)).collect())
+                Selector::try_maximum(bounds.map(|(idx, b)| (idx, -b)).collect())
             }
             NewNodeOrder::Random => {
-                Selector::random(bounds.map(|(idx, _)| (idx, 1.)).collect())
+                Selector::try_random(bounds.map(|(idx, _)| (idx, 1.)).collect())
             }
         }
     }
@@ -1548,7 +1550,7 @@ pub enum Selector<T> {
 }
 
 impl<T> Selector<T> {
-    pub fn random(weights: Vec<(T, f64)>) -> Option<Self> {
+    pub fn try_random(weights: Vec<(T, f64)>) -> Option<Self> {
         if weights.is_empty() {
             None
         } else {
@@ -1556,7 +1558,7 @@ impl<T> Selector<T> {
         }
     }
 
-    pub fn maximum(scores: Vec<(T, f64)>) -> Option<Self> {
+    pub fn try_maximum(scores: Vec<(T, f64)>) -> Option<Self> {
         if scores.is_empty() {
             None
         } else {
@@ -1654,7 +1656,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, UCTStats> for UCTPolicy {
 
                 let num_children = stats.len();
 
-                Selector::maximum(
+                Selector::try_maximum(
                     stats
                         .into_iter()
                         .map(|(idx, (_bound, (value, visits)))| {
@@ -1890,7 +1892,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
                 // Total number of children, excluding ones which were cut
                 let num_children = stats.len();
 
-                Selector::maximum(
+                Selector::try_maximum(
                     stats
                         .into_iter()
                         .map(|(ix, child_successes, child_visits)| {
@@ -2027,7 +2029,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, CommonStats> for RoundRobinPolicy {
         _cut: f64,
         view: &NodeView<'_, 'c, N, CommonStats>,
     ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
-        Selector::maximum(
+        Selector::try_maximum(
             view.iter()
                 .map(|(index, edge, _node)| (index, -(edge.data().num_visits() as f64)))
                 .collect(),
