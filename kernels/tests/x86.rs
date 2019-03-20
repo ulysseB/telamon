@@ -18,7 +18,7 @@ macro_rules! test_dump {
         fn $name() {
             let _ = env_logger::try_init();
             let mut context = x86::Context::default();
-            let path = format!("log_to_test/{}.log", stringify!($name));
+            let path = format!("log_to_test/x86/{}.dump", stringify!($name));
             <$kernel>::execute_log($params, &mut context, &path);
         }
     };
@@ -33,7 +33,7 @@ test_output!(
     (1 << 4, 1 << 4, true)
 );
 test_output!(
-    test_matmul,
+    correct_matmul,
     linalg::MatMul<f32>,
     100,
     linalg::MatMulP::new(16, 16, 16)

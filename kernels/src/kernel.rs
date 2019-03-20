@@ -85,13 +85,20 @@ pub trait Kernel<'a>: Sized {
             }
         }
         let dump = bincode::serialize(&candidate.actions).unwrap();
+        // Create dir kernel_dump if it does not exists
+        std::fs::create_dir_all("kernel_dump").unwrap();
         let mut path =
             format!("kernel_dump/{}_{}.log", Self::name(), ctx.device().name());
         let mut increment = 0;
         loop {
             if std::path::Path::new(&path).exists() {
                 increment += 1;
-                path = format!("kernel_dump/{}_{}.log", Self::name(), increment);
+                path = format!(
+                    "kernel_dump/{}_{}_{}.log",
+                    Self::name(),
+                    ctx.device().name(),
+                    increment
+                );
             } else {
                 let mut file = File::create(path).unwrap();
                 file.write_all(&dump).unwrap();
@@ -102,7 +109,7 @@ pub trait Kernel<'a>: Sized {
 
     /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
     /// corresponds to the kernel and context being executed
-    fn execute_log<AM, P: AsRef<Path> + std::fmt::Display>(
+    fn execute_log<AM, P: AsRef<Path>>(
         params: Self::Parameters,
         ctx: &mut AM,
         dump_path: P,
@@ -116,6 +123,7 @@ pub trait Kernel<'a>: Sized {
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
+        let expected_output = kernel.get_expected_output(ctx);
         let candidate = kernel.build_body(&signature, ctx).remove(0);
         let cand_bytes = std::fs::read(dump_path).unwrap();
         // Retrieve decisions from dump
@@ -127,6 +135,14 @@ pub trait Kernel<'a>: Sized {
         let device_fn = codegen::Function::build(&implem.space);
         ctx.evaluate(&device_fn, device::EvalMode::FindBest)
             .unwrap();
+        if let Err(err) = kernel.check_result(&expected_output, ctx) {
+            panic!(
+                "incorrect output for kernel {}, with actions {:?}: {}",
+                Self::name(),
+                implem.actions,
+                err
+            )
+        }
     }
 
     /// Generates, executes and tests the output of candidates for the kernel.
