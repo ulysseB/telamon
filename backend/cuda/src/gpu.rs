@@ -478,10 +478,13 @@ impl device::Device for Gpu {
         };
         // TODO(model): CACHE_READ_ONLY and CACHE_SHARED are currently not supported by the
         // performance model.  Disable them, even if the hardware supports them.
-        if !self.allow_nc_load || true {
+        flags.restrict(!InstFlag::CACHE_READ_ONLY);
+        flags.restrict(!InstFlag::CACHE_SHARED);
+
+        if !self.allow_nc_load {
             flags.restrict(!InstFlag::CACHE_READ_ONLY);
         }
-        if !self.allow_l1_for_global_mem || true {
+        if !self.allow_l1_for_global_mem {
             flags.restrict(!InstFlag::CACHE_SHARED);
         }
         flags
