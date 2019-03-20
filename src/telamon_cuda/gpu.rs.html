@@ -610,6 +610,8 @@
 <span id="610">610</span>
 <span id="611">611</span>
 <span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;real_gpu&quot;</span>)]</span>
@@ -1089,12 +1091,14 @@
             <span class="op">|</span> <span class="ident">ir</span>::<span class="ident">Operator</span>::<span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> <span class="ident">InstFlag</span>::<span class="ident">COHERENT</span>,
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;invalid memory access operator&quot;</span>),
         };
-        <span class="comment">// Remove the `CACHE_READ_ONLY` option if the gpu does not support `ld.nc`.</span>
+        <span class="comment">// TODO(model): CACHE_READ_ONLY and CACHE_SHARED are currently not supported by the</span>
+        <span class="comment">// performance model.  Disable them, even if the hardware supports them.</span>
+        <span class="ident">flags</span>.<span class="ident">restrict</span>(<span class="op">!</span><span class="ident">InstFlag</span>::<span class="ident">CACHE_READ_ONLY</span>);
+        <span class="ident">flags</span>.<span class="ident">restrict</span>(<span class="op">!</span><span class="ident">InstFlag</span>::<span class="ident">CACHE_SHARED</span>);
+
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">allow_nc_load</span> {
             <span class="ident">flags</span>.<span class="ident">restrict</span>(<span class="op">!</span><span class="ident">InstFlag</span>::<span class="ident">CACHE_READ_ONLY</span>);
         }
-        <span class="comment">// Remove the `CACHE_SHARED` option if the GPU does not allow using L1 cache for</span>
-        <span class="comment">// global accesses.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">allow_l1_for_global_mem</span> {
             <span class="ident">flags</span>.<span class="ident">restrict</span>(<span class="op">!</span><span class="ident">InstFlag</span>::<span class="ident">CACHE_SHARED</span>);
         }

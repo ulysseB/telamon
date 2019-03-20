@@ -365,7 +365,7 @@
             <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped because of its bound&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>);
         }
-        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">thunk</span>.<span class="ident">execute</span>()));
+        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">thunk</span>.<span class="ident">execute</span>()<span class="question-mark">?</span>);
         <span class="kw">if</span> <span class="ident">mode</span>.<span class="ident">skip_bad_candidates</span>() <span class="op">&amp;&amp;</span> <span class="ident">t0</span> <span class="op">*</span> <span class="ident">SKIP_THRESHOLD</span> <span class="op">&gt;=</span> <span class="ident">bound</span> {
             <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped after its first evaluation&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">t0</span>);

@@ -258,8 +258,116 @@
 <span id="258">258</span>
 <span id="259">259</span>
 <span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Builds the description of a GPU.</span>
+<span class="doccomment">//! Unless otherwise specified, most of the information comes from the &quot;CUDA C Programming Guide&quot;,</span>
+<span class="doccomment">//! available online at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html</span>
+<span class="doccomment">//! For the sake of brevity, I will refer to this document as &quot;the CPG&quot;.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Some additional information comes from nvidia whitepapers and architecture tuning guides.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!  - For Kepler (Compute Capability 3.x):</span>
+<span class="doccomment">//!    https://la.nvidia.com/content/PDF/product-specifications/GeForce_GTX_680_Whitepaper_FINAL.pdf</span>
+<span class="doccomment">//!    https://docs.nvidia.com/cuda/kepler-tuning-guide/index.html</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!  - For Maxwell (Compute Capability 5.x):</span>
+<span class="doccomment">//!    https://international.download.nvidia.com/geforce-com/international/pdfs/GeForce-GTX-750-Ti-Whitepaper.pdf</span>
+<span class="doccomment">//!    https://docs.nvidia.com/cuda/maxwell-tuning-guide/index.html</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!  - For Pascal (Compute Capability 6.x):</span>
+<span class="doccomment">//!    https://images.nvidia.com/content/pdf/tesla/whitepaper/pascal-architecture-whitepaper.pdf</span>
+<span class="doccomment">//!    https://docs.nvidia.com/cuda/pascal-tuning-guide/index.html</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!  - For Volta (Compute Capability 7.0):</span>
+<span class="doccomment">//!    https://images.nvidia.com/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf</span>
+<span class="doccomment">//!    https://docs.nvidia.com/cuda/volta-tuning-guide/index.html</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!  - For Turing (Compute Capability 7.5):</span>
+<span class="doccomment">//!    https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf</span>
+<span class="doccomment">//!    https://docs.nvidia.com/cuda/turing-tuning-guide/index.html</span>
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">characterize</span>::<span class="ident">instruction</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">DeviceAttribute</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Executor</span>, <span class="ident">Gpu</span>, <span class="ident">InstDesc</span>};
@@ -334,56 +442,86 @@
 }
 
 <span class="doccomment">/// Returns true if the GPU allows non-coherent loads.</span>
+<span class="doccomment">/// This corresponds to the availability of the read-only cache, which also backs up the texture</span>
+<span class="doccomment">/// cache.  Practically, this enables the `.nc` flag on memory accesses.  Note that it is not clear</span>
+<span class="doccomment">/// whether this is different from `.ca` (see `allow_l1_for_global_mem`) on architectures with an</span>
+<span class="doccomment">/// unified L1/texture cache (starting with compute capabilities 5.0) and may not be useful to be</span>
+<span class="doccomment">/// handled separately.</span>
 <span class="kw">fn</span> <span class="ident">allow_nc_load</span>(<span class="ident">sm_major</span>: <span class="ident">i32</span>, <span class="ident">sm_minor</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
     <span class="kw">match</span> (<span class="ident">sm_major</span>, <span class="ident">sm_minor</span>) {
         (<span class="number">2</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">0</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">2</span>) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
-        (<span class="number">3</span>, <span class="number">5</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">7</span>) <span class="op">|</span> (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+        (<span class="number">3</span>, <span class="number">5</span>) <span class="op">|</span> (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">6</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">7</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
 
 <span class="doccomment">/// Returns true if the GPU allows L1 caching of global memory accesses.</span>
+<span class="doccomment">/// Practically, this enables the `.ca` flag on memory accesses.</span>
 <span class="kw">fn</span> <span class="ident">allow_l1_for_global_mem</span>(<span class="ident">sm_major</span>: <span class="ident">i32</span>, <span class="ident">sm_minor</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
     <span class="kw">match</span> (<span class="ident">sm_major</span>, <span class="ident">sm_minor</span>) {
-        (<span class="number">2</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">7</span>) <span class="op">|</span> (<span class="number">5</span>, <span class="number">2</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
-        (<span class="number">3</span>, <span class="number">0</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">2</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">5</span>) <span class="op">|</span> (<span class="number">5</span>, <span class="number">0</span>) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+        (<span class="number">2</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+        (<span class="number">3</span>, <span class="number">0</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">2</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="number">5</span>) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+        <span class="comment">// Some 3.5 devices allow L1 as well.  Ignore them.</span>
+        (<span class="number">3</span>, <span class="number">7</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+        (<span class="number">5</span>, <span class="number">0</span>) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+        (<span class="number">5</span>, <span class="number">2</span>) <span class="op">|</span> (<span class="number">5</span>, <span class="number">3</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+        (<span class="number">6</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">7</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
 
 <span class="doccomment">/// Returns the maximum number of resident blocks on an SMX.</span>
+<span class="doccomment">/// From line &quot;Maximum number of resident blocks per multiprocessor&quot; on Table 14.</span>
 <span class="kw">fn</span> <span class="ident">block_per_smx</span>(<span class="ident">sm_major</span>: <span class="ident">i32</span>, <span class="ident">sm_minor</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
-    <span class="kw">match</span> <span class="ident">sm_major</span> {
-        <span class="number">2</span> <span class="op">=&gt;</span> <span class="number">8</span>,
-        <span class="number">3</span> <span class="op">=&gt;</span> <span class="number">16</span>,
-        <span class="number">5</span> <span class="op">=&gt;</span> <span class="number">32</span>,
+    <span class="kw">match</span> (<span class="ident">sm_major</span>, <span class="ident">sm_minor</span>) {
+        (<span class="number">2</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">8</span>,
+        (<span class="number">3</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">16</span>,
+        (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">32</span>,
+        (<span class="number">6</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">32</span>,
+        (<span class="number">7</span>, <span class="number">0</span>) <span class="op">=&gt;</span> <span class="number">32</span>,
+        (<span class="number">7</span>, <span class="number">5</span>) <span class="op">=&gt;</span> <span class="number">16</span>,
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
 
 <span class="doccomment">/// Returns the size of the L1 cache.</span>
+<span class="doccomment">/// From the &quot;Architecture&quot; subsection of each compute capability.</span>
 <span class="kw">fn</span> <span class="ident">l1_cache_size</span>(<span class="ident">sm_major</span>: <span class="ident">i32</span>, <span class="ident">sm_minor</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
-    <span class="kw">match</span> <span class="ident">sm_major</span> {
-        <span class="number">2</span> <span class="op">|</span> <span class="number">3</span> <span class="op">=&gt;</span> <span class="number">16</span> <span class="op">*</span> <span class="number">1024</span>,
-        <span class="number">5</span> <span class="op">=&gt;</span> <span class="number">24</span> <span class="op">*</span> <span class="number">1024</span>,
+    <span class="kw">match</span> (<span class="ident">sm_major</span>, <span class="ident">sm_minor</span>) {
+        <span class="comment">// FIXME: For CC 3.x the same on-chip memory is used for L1 and shared memory, and we can</span>
+        <span class="comment">// select 48KB+16KB, 32KB+32KB or 16KB+48KB.  Default is 48KB shared memory and 16KB L1</span>
+        <span class="comment">// cache, which is reflected here.</span>
+        (<span class="number">2</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">3</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">16</span> <span class="op">*</span> <span class="number">1024</span>,
+        (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">24</span> <span class="op">*</span> <span class="number">1024</span>,
+        <span class="comment">// Yes, 6.1 has a larger L1 cache than both 6.0 and 6.2.  Go figure.</span>
+        (<span class="number">6</span>, <span class="number">0</span>) <span class="op">|</span> (<span class="number">6</span>, <span class="number">2</span>) <span class="op">=&gt;</span> <span class="number">24</span> <span class="op">*</span> <span class="number">1024</span>,
+        (<span class="number">6</span>, <span class="number">1</span>) <span class="op">=&gt;</span> <span class="number">48</span> <span class="op">*</span> <span class="number">1024</span>,
+        <span class="comment">// FIXME: As for CC 3.x, CC 7.x uses the same on-chip memory for L1 cache and shared memory,</span>
+        <span class="comment">// but can&#39;t be configured exactly -- the driver makes that choice for us.  We&#39;ll figure</span>
+        <span class="comment">// out the proper behavior when we have the corresponding hardware.</span>
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
 
-<span class="doccomment">/// Returns the stride between shared memory banks.</span>
+<span class="doccomment">/// Returns the stride (in bytes) between shared memory banks.</span>
+<span class="doccomment">/// From the &quot;Shared memory&quot; subsection of each compute capability, where it is expressed in bits</span>
+<span class="doccomment">/// (e.g. &quot;Successive 32-bit words map to successive banks&quot;).</span>
 <span class="kw">fn</span> <span class="ident">shared_bank_stride</span>(<span class="ident">sm_major</span>: <span class="ident">i32</span>, <span class="ident">sm_minor</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
     <span class="kw">match</span> <span class="ident">sm_major</span> {
-        <span class="number">2</span> <span class="op">=&gt;</span> <span class="number">4</span>,
-        <span class="number">3</span> <span class="op">|</span> <span class="number">5</span> <span class="op">=&gt;</span> <span class="number">8</span>,
+        <span class="number">2</span> <span class="op">|</span> <span class="number">5</span> <span class="op">|</span> <span class="number">6</span> <span class="op">|</span> <span class="number">7</span> <span class="op">=&gt;</span> <span class="number">4</span>,
+        <span class="comment">// Kepler used 64-bit addressing mode</span>
+        <span class="number">3</span> <span class="op">=&gt;</span> <span class="number">8</span>,
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
 
 <span class="doccomment">/// Returns the maximum number of resident thread per SMX.</span>
+<span class="doccomment">/// From line &quot;Maximum number of resident threads per multiprocessor&quot; on Table 14.</span>
 <span class="kw">fn</span> <span class="ident">thread_per_smx</span>(<span class="ident">sm_major</span>: <span class="ident">i32</span>, <span class="ident">sm_minor</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
-    <span class="kw">match</span> <span class="ident">sm_major</span> {
-        <span class="number">2</span> <span class="op">=&gt;</span> <span class="number">1536</span>,
-        <span class="number">3</span> <span class="op">|</span> <span class="number">5</span> <span class="op">=&gt;</span> <span class="number">2048</span>,
+    <span class="kw">match</span> (<span class="ident">sm_major</span>, <span class="ident">sm_minor</span>) {
+        (<span class="number">2</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="number">1536</span>,
+        (<span class="number">3</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">6</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="number">7</span>, <span class="number">0</span>) <span class="op">=&gt;</span> <span class="number">2048</span>,
+        (<span class="number">7</span>, <span class="number">5</span>) <span class="op">=&gt;</span> <span class="number">1024</span>,
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
@@ -392,11 +530,27 @@
 <span class="kw">fn</span> <span class="ident">smx_rates</span>(<span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="ident">Gpu</span>, <span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="ident">Executor</span>) <span class="op">-&gt;</span> <span class="ident">InstDesc</span> {
     <span class="kw">let</span> (<span class="ident">wrap_scheds</span>, <span class="ident">issues_per_wrap</span>) <span class="op">=</span> <span class="ident">wrap_scheds_per_smx</span>(<span class="ident">gpu</span>.<span class="ident">sm_major</span>, <span class="ident">gpu</span>.<span class="ident">sm_minor</span>);
     <span class="kw">let</span> <span class="ident">issue</span> <span class="op">=</span> <span class="ident">wrap_scheds</span> <span class="op">*</span> <span class="ident">issues_per_wrap</span> <span class="op">*</span> <span class="ident">gpu</span>.<span class="ident">wrap_size</span>;
+    <span class="comment">// alu comes from line &quot;32-bit floating-point add, multiply, multiply-add&quot; on Table 2</span>
+    <span class="comment">// &quot;Throughput of Native Arithmetic Instruction&quot;</span>
+    <span class="comment">//</span>
+    <span class="comment">// mem comes from the various whitepapers, looking at the SM diagrams</span>
+    <span class="comment">//</span>
+    <span class="comment">// sync comes from section 5.4.3 &quot;Synchronize instructions&quot;</span>
     <span class="kw">let</span> (<span class="ident">alu</span>, <span class="ident">mem</span>, <span class="ident">sync</span>) <span class="op">=</span> <span class="kw">match</span> (<span class="ident">gpu</span>.<span class="ident">sm_major</span>, <span class="ident">gpu</span>.<span class="ident">sm_minor</span>) {
-        (<span class="number">2</span>, <span class="number">0</span>) <span class="op">=&gt;</span> (<span class="number">32</span>, <span class="number">16</span>, <span class="number">32</span>), <span class="comment">// Sync unknown for 2.0</span>
-        (<span class="number">2</span>, <span class="number">1</span>) <span class="op">=&gt;</span> (<span class="number">48</span>, <span class="number">32</span>, <span class="number">32</span>), <span class="comment">// Sync unknown for 2.0</span>
+        (<span class="number">2</span>, <span class="number">0</span>) <span class="op">=&gt;</span> (<span class="number">32</span>, <span class="number">16</span>, <span class="number">32</span>), <span class="comment">// Sync unknown for 2.x</span>
+        (<span class="number">2</span>, <span class="number">1</span>) <span class="op">=&gt;</span> (<span class="number">48</span>, <span class="number">32</span>, <span class="number">32</span>), <span class="comment">// Sync unknown for 2.x</span>
+        <span class="comment">// Kepler</span>
         (<span class="number">3</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> (<span class="number">192</span>, <span class="number">32</span>, <span class="number">128</span>),
+        <span class="comment">// Maxwell</span>
         (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> (<span class="number">128</span>, <span class="number">32</span>, <span class="number">64</span>),
+        <span class="comment">// Pascal</span>
+        (<span class="number">6</span>, <span class="number">0</span>) <span class="op">=&gt;</span> (<span class="number">64</span>, <span class="number">16</span>, <span class="number">32</span>),
+        (<span class="number">6</span>, <span class="number">1</span>) <span class="op">=&gt;</span> (<span class="number">128</span>, <span class="number">16</span>, <span class="number">64</span>),
+        (<span class="number">6</span>, <span class="number">2</span>) <span class="op">=&gt;</span> (<span class="number">128</span>, <span class="number">16</span>, <span class="number">64</span>),
+        <span class="comment">// Volta</span>
+        (<span class="number">7</span>, <span class="number">0</span>) <span class="op">=&gt;</span> (<span class="number">64</span>, <span class="number">32</span>, <span class="number">16</span>),
+        <span class="comment">// Turing</span>
+        (<span class="number">7</span>, <span class="number">5</span>) <span class="op">=&gt;</span> (<span class="number">64</span>, <span class="number">16</span>, <span class="number">16</span>),
         (<span class="ident">major</span>, <span class="ident">minor</span>) <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">major</span>, <span class="ident">minor</span>),
     };
     <span class="kw">let</span> <span class="ident">l1_lines_bw</span> <span class="op">=</span> <span class="ident">instruction</span>::<span class="ident">smx_bandwidth_l1_lines</span>(<span class="ident">gpu</span>, <span class="ident">executor</span>);
@@ -450,12 +604,22 @@
 
 <span class="doccomment">/// Returns the number of wrap scheduler in a single SMX and the number of independent</span>
 <span class="doccomment">/// instruction issued per wrap scheduler.</span>
+<span class="doccomment">/// This comes from the &quot;Architecture&quot; subsection for each compute capability on the CPG.</span>
 <span class="kw">fn</span> <span class="ident">wrap_scheds_per_smx</span>(<span class="ident">sm_major</span>: <span class="ident">u8</span>, <span class="ident">sm_minor</span>: <span class="ident">u8</span>) <span class="op">-&gt;</span> (<span class="ident">u32</span>, <span class="ident">u32</span>) {
     <span class="kw">match</span> (<span class="ident">sm_major</span>, <span class="ident">sm_minor</span>) {
+        <span class="comment">// Fermi</span>
         (<span class="number">2</span>, <span class="number">0</span>) <span class="op">=&gt;</span> (<span class="number">2</span>, <span class="number">1</span>),
         (<span class="number">2</span>, <span class="number">1</span>) <span class="op">=&gt;</span> (<span class="number">2</span>, <span class="number">2</span>),
+        <span class="comment">// Kepler</span>
         (<span class="number">3</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> (<span class="number">4</span>, <span class="number">2</span>),
+        <span class="comment">// Maxwell</span>
         (<span class="number">5</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> (<span class="number">4</span>, <span class="number">1</span>),
+        <span class="comment">// Pascal</span>
+        (<span class="number">6</span>, <span class="number">0</span>) <span class="op">=&gt;</span> (<span class="number">2</span>, <span class="number">1</span>),
+        (<span class="number">6</span>, <span class="number">1</span>) <span class="op">=&gt;</span> (<span class="number">4</span>, <span class="number">1</span>),
+        (<span class="number">6</span>, <span class="number">2</span>) <span class="op">=&gt;</span> (<span class="number">4</span>, <span class="number">1</span>),
+        <span class="comment">// Volta, Turing</span>
+        (<span class="number">7</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> (<span class="number">4</span>, <span class="number">1</span>),
         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unkown compute capability: {}.{}&quot;</span>, <span class="ident">sm_major</span>, <span class="ident">sm_minor</span>),
     }
 }
