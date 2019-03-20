@@ -3,25 +3,27 @@
 //! available online at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
 //! For the sake of brevity, I will refer to this document as "the CPG".
 //!
-//! Some additional information comes from various nvidia whitepapers:
+//! Some additional information comes from nvidia whitepapers and architecture tuning guides.
 //!
-//!  - For Kepler:
+//!  - For Kepler (Compute Capability 3.x):
 //!    https://la.nvidia.com/content/PDF/product-specifications/GeForce_GTX_680_Whitepaper_FINAL.pdf
+//!    https://docs.nvidia.com/cuda/kepler-tuning-guide/index.html
 //!
-//!  - For Maxwell:
+//!  - For Maxwell (Compute Capability 5.x):
 //!    https://international.download.nvidia.com/geforce-com/international/pdfs/GeForce-GTX-750-Ti-Whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/maxwell-tuning-guide/index.html
 //!
-//!  - For Pascal:
+//!  - For Pascal (Compute Capability 6.x):
 //!    https://images.nvidia.com/content/pdf/tesla/whitepaper/pascal-architecture-whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/pascal-tuning-guide/index.html
 //!
-//!  - For Volta:
+//!  - For Volta (Compute Capability 7.0):
 //!    https://images.nvidia.com/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf
+//!    https://docs.nvidia.com/cuda/volta-tuning-guide/index.html
 //!
-//!  - For Turing:
+//!  - For Turing (Compute Capability 7.5):
 //!    https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/technologies/turing-architecture/NVIDIA-Turing-Architecture-Whitepaper.pdf
-//!
-//! Note: Sometimes compute capabilities are used, and sometimes architecture names are used.  The
-//! mapping between those is described in section 2.5 "Compute Capability" of the CPG.
+//!    https://docs.nvidia.com/cuda/turing-tuning-guide/index.html
 
 use crate::characterize::instruction;
 use crate::DeviceAttribute::*;
@@ -97,8 +99,11 @@ pub fn functional_desc(executor: &Executor) -> Gpu {
 }
 
 /// Returns true if the GPU allows non-coherent loads.
-/// Not 100% sure what this referred to innitially, but we don't use it anyways.  I take this to
-/// correspond to the availability of the read-only cache which also backs up the texture cache.
+/// This corresponds to the availability of the read-only cache, which also backs up the texture
+/// cache.  Practically, this enables the `.nc` flag on memory accesses.  Note that it is not clear
+/// whether this is different from `.ca` (see `allow_l1_for_global_mem`) on architectures with an
+/// unified L1/texture cache (starting with compute capabilities 5.0) and may not be useful to be
+/// handled separately.
 fn allow_nc_load(sm_major: i32, sm_minor: i32) -> bool {
     match (sm_major, sm_minor) {
         (2, _) | (3, 0) | (3, 2) => false,
@@ -108,6 +113,7 @@ fn allow_nc_load(sm_major: i32, sm_minor: i32) -> bool {
 }
 
 /// Returns true if the GPU allows L1 caching of global memory accesses.
+/// Practically, this enables the `.ca` flag on memory accesses.
 fn allow_l1_for_global_mem(sm_major: i32, sm_minor: i32) -> bool {
     match (sm_major, sm_minor) {
         (2, _) => true,
@@ -116,11 +122,6 @@ fn allow_l1_for_global_mem(sm_major: i32, sm_minor: i32) -> bool {
         (3, 7) => true,
         (5, 0) => false,
         (5, 2) | (5, 3) => true,
-        // FIXME: nvidia docs are not clear on this for compute capabilities 6.x and 7.x, saying
-        // "Global memory behaves the same way as devices of compute capability 5.x".  But CC 5.0
-        // behaves differently from CC 5.2+ and does not allow using L1 for global memory -- I will
-        // assume this means to use the CC 5.2+ behavior and allow L1 cache, but we should check
-        // this.
         (6, _) | (7, _) => true,
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
