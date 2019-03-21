@@ -32,9 +32,6 @@ cuda = [
     "cuda-sys",
 ]
 
-[[bin]]
-name = "kernel_dump"
-
 [[bench]]
 name = "cuda-search"
 path = "benches/cuda_search.rs"

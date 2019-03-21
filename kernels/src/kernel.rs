@@ -7,7 +7,10 @@ use num_cpus;
 use rayon::prelude::*;
 use rpds::list::List;
 use std::sync::{atomic, Mutex};
-use std::{fs::File, io::Write, path::Path};
+use std::{
+    fs::File,
+    io::{Read, Write},
+};
 use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
@@ -103,6 +106,7 @@ pub trait Kernel<'a>: Sized {
             } else {
                 let mut file = File::create(path).unwrap();
                 file.write_all(&dump).unwrap();
+                file.flush().unwrap();
                 break;
             }
         }
@@ -110,13 +114,15 @@ pub trait Kernel<'a>: Sized {
 
     /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
     /// corresponds to the kernel and context being executed
-    fn execute_log<AM, P: AsRef<Path>>(
-        params: Self::Parameters,
-        ctx: &mut AM,
-        dump_path: P,
-    ) where
+    fn execute_log<AM, F: Read>(params: Self::Parameters, ctx: &mut AM, dump: &mut F)
+    where
         AM: device::Context + device::ArgMap<'a>,
     {
+        // Retrieve decisions from dump
+        let mut cand_bytes = Vec::new();
+        dump.read_to_end(&mut cand_bytes).unwrap();
+        let action_list: List<ActionEx> = bincode::deserialize(&cand_bytes).unwrap();
+
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), ctx);
@@ -126,13 +132,12 @@ pub trait Kernel<'a>: Sized {
         };
         let expected_output = kernel.get_expected_output(ctx);
         let candidate = kernel.build_body(&signature, ctx).remove(0);
-        let cand_bytes = std::fs::read(dump_path).unwrap();
-        // Retrieve decisions from dump
-        let action_list: List<ActionEx> = bincode::deserialize(&cand_bytes).unwrap();
+
         let implem = action_list.iter().fold(candidate, |cand, action| {
             cand.apply_decision(ctx, action.clone())
                 .expect("Could not apply some action")
         });
+
         let device_fn = codegen::Function::build(&implem.space);
         ctx.evaluate(&device_fn, device::EvalMode::FindBest)
             .unwrap();

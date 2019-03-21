@@ -19,7 +19,8 @@ macro_rules! test_dump {
             let _ = env_logger::try_init();
             let mut context = x86::Context::default();
             let path = format!("log_to_test/x86/{}.dump", stringify!($name));
-            <$kernel>::execute_log($params, &mut context, &path);
+            let mut file = std::fs::File::open(&path).unwrap();
+            <$kernel>::execute_log($params, &mut context, &mut file);
         }
     };
 }
