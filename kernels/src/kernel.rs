@@ -58,7 +58,8 @@ pub trait Kernel<'a>: Sized {
     ) -> Result<(), String>;
 
     /// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on
-    /// the same candidate multiple times
+    /// the same candidate multiple times. More specifically, we dump the list of actions taken on
+    /// the candidate rather than the candidate itself
     fn generate_dump<'b, AM>(params: Self::Parameters, ctx: &'b mut AM)
     where
         AM: device::Context + device::ArgMap<'a>,
