@@ -105,8 +105,8 @@ impl CudaPrinter {
         let name = namer.name_addr(block.id());
         unwrap!(writeln!(
             self.buffer,
-            ".shared.align 16 .u8 {vec_name}[{size}];\
-             \n  mov.{t} {name}, {vec_name};\n",
+            "  .shared.align 16 .u8 {vec_name}[{size}];\
+             \n  mov.{t} {name}, {vec_name};",
             vec_name = &name[1..],
             name = name,
             t = ptr_type_name,
@@ -204,13 +204,14 @@ impl CudaPrinter {
             for val in function.device_code_args() {
                 unwrap!(writeln!(
                     self.buffer,
-                    "ld.param.{t} {var_name}, [{name}];",
+                    "  ld.param.{t} {var_name}, [{name}];",
                     t = Self::get_type(val.t()),
                     var_name = name_map.name_param_val(val.key()),
                     name = name_map.name_param(val.key())
                 ));
             }
             // INDEX LOAD
+            self.buffer.push_str(&"  ");
             let idx_loads = Self::decl_par_indexes(function, name_map);
             self.buffer.push_str(&idx_loads);
             self.buffer.push_str(&"\n");
@@ -259,7 +260,7 @@ impl CudaPrinter {
         let var_decls = self.var_decls(&namer);
         let mut body = String::new();
         body.push_str(&var_decls);
-        self.buffer.push_str(&"\n");
+        body.push_str(&"\n");
         body.push_str(&self.buffer);
         format!(
             include_str!("template/device.ptx"),
@@ -374,7 +375,7 @@ impl Printer for CudaPrinter {
         let operands_type = Self::get_type(operands_type);
         unwrap!(writeln!(
             self.buffer,
-            "{}{}.{} {}, {}, {};",
+            "  {}{}.{} {}, {}, {};",
             op, rounding, operands_type, result, lhs, rhs
         ));
     }
@@ -408,7 +409,7 @@ impl Printer for CudaPrinter {
         let t = Self::get_type(operand_type);
         unwrap!(writeln!(
             self.buffer,
-            "{}.{} {}, {};",
+            "  {}.{} {}, {};",
             operator, t, result, operand
         ));
     }
@@ -433,7 +434,7 @@ impl Printer for CudaPrinter {
         let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
         unwrap!(writeln!(
             self.buffer,
-            "{}.{} {}, {}, {};",
+            "  {}.{} {}, {}, {};",
             operator, t, result, lhs, rhs
         ));
     }
@@ -459,7 +460,7 @@ impl Printer for CudaPrinter {
         let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
         unwrap!(writeln!(
             self.buffer,
-            "{}.{} {}, {}, {}, {};",
+            "  {}.{} {}, {}, {}, {};",
             operator, t, result, mlhs, mrhs, arhs
         ));
     }
@@ -483,7 +484,7 @@ impl Printer for CudaPrinter {
         };
         unwrap!(writeln!(
             self.buffer,
-            "{}{}.{} {}, [{}];",
+            "  {}{}.{} {}, [{}];",
             operator,
             vector,
             Self::get_type(return_type),
@@ -515,7 +516,7 @@ impl Printer for CudaPrinter {
         let operator = Self::st_operator(mem_space, mem_flag);
         unwrap!(writeln!(
             self.buffer,
-            "{}{}.{} [{}], {};",
+            "  {}{}.{} [{}], {};",
             operator,
             vector,
             Self::get_type(val_type),
@@ -533,14 +534,14 @@ impl Printer for CudaPrinter {
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
         unwrap!(writeln!(
             self.buffer,
-            "@{} bra.uni LOOP_{};",
+            "  @{} bra.uni LOOP_{};",
             cond, label_id
         ));
     }
 
     /// Print wait on all threads
     fn print_sync(&mut self) {
-        unwrap!(writeln!(self.buffer, "bar.sync 0;"));
+        unwrap!(writeln!(self.buffer, "  bar.sync 0;"));
     }
 
     fn name_operand<'a>(

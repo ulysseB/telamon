@@ -205,7 +205,7 @@ impl<'a> device::Context for Context<'a> {
                         self.eval_runtime(&thunk, bound, best_eval, mode),
                         "evaluation failed for actions {:?}, with kernel {:?}",
                         candidate.actions,
-                        thunk
+                        &thunk
                     );
                     if eval < best_eval {
                         best_eval = eval;
