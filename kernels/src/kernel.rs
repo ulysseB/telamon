@@ -10,11 +10,8 @@ use log::*;
 use num_cpus;
 use rayon::prelude::*;
 use rpds::list::List;
+use std::io::{Read, Write};
 use std::sync::{atomic, Mutex};
-use std::{
-    fs::File,
-    io::{Read, Write},
-};
 use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
@@ -102,7 +99,7 @@ pub trait Kernel<'a>: Sized {
 
     /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
     /// corresponds to the kernel and context being executed
-    fn execute_log<AM, F: Read>(params: Self::Parameters, ctx: &mut AM, dump: &mut F)
+    fn execute_dump<AM, F: Read>(params: Self::Parameters, ctx: &mut AM, dump: &mut F)
     where
         AM: device::Context + device::ArgMap<'a>,
     {
