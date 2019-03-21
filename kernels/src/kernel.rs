@@ -1,4 +1,8 @@
 //! Abstracts kernels so we can build generic methods to test them.
+//! Kernel also defines a function generate_dump that is used to dump the list of actions taken for
+//! a specific implementation of a kernel, which in turn allows to run tests on this specific
+//! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in
+//! tests
 use crate::statistics;
 use bincode;
 use itertools::Itertools;
@@ -63,8 +67,11 @@ pub trait Kernel<'a>: Sized {
     /// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on
     /// the same candidate multiple times. More specifically, we dump the list of actions taken on
     /// the candidate rather than the candidate itself
-    fn generate_dump<'b, AM>(params: Self::Parameters, ctx: &'b mut AM)
-    where
+    fn generate_dump<'b, AM, F: Write>(
+        params: Self::Parameters,
+        ctx: &'b mut AM,
+        sink: &mut F,
+    ) where
         AM: device::Context + device::ArgMap<'a>,
     {
         let kernel;
@@ -89,27 +96,8 @@ pub trait Kernel<'a>: Sized {
             }
         }
         let dump = bincode::serialize(&candidate.actions).unwrap();
-        // Create dir kernel_dump if it does not exists
-        std::fs::create_dir_all("kernel_dump").unwrap();
-        let mut path =
-            format!("kernel_dump/{}_{}.log", Self::name(), ctx.device().name());
-        let mut increment = 0;
-        loop {
-            if std::path::Path::new(&path).exists() {
-                increment += 1;
-                path = format!(
-                    "kernel_dump/{}_{}_{}.log",
-                    Self::name(),
-                    ctx.device().name(),
-                    increment
-                );
-            } else {
-                let mut file = File::create(path).unwrap();
-                file.write_all(&dump).unwrap();
-                file.flush().unwrap();
-                break;
-            }
-        }
+        sink.write_all(&dump).unwrap();
+        sink.flush().unwrap();
     }
 
     /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
