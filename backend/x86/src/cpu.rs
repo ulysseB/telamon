@@ -5,7 +5,6 @@ use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
 
-use num_cpus;
 use std::io::Write;
 use utils::*;
 
@@ -47,7 +46,7 @@ impl device::Device for Cpu {
     }
 
     fn max_threads(&self) -> u32 {
-        (num_cpus::get()) as u32
+        8
     }
 
     fn max_unrolling(&self) -> u32 {
