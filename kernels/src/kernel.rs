@@ -1,14 +1,21 @@
 //! Abstracts kernels so we can build generic methods to test them.
+//! Kernel also defines a function generate_dump that is used to dump the list of actions taken for
+//! a specific implementation of a kernel, which in turn allows to run tests on this specific
+//! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in
+//! tests
 use crate::statistics;
+use bincode;
 use itertools::Itertools;
 use log::*;
 use num_cpus;
 use rayon::prelude::*;
+use rpds::list::List;
+use std::io::{Read, Write};
 use std::sync::{atomic, Mutex};
-use telamon::explorer::{local_selection, Candidate};
+use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
-use telamon::{codegen, device, explorer, ir};
+use telamon::{codegen, device, ir};
 use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
@@ -30,7 +37,6 @@ pub trait Kernel<'a>: Sized {
 
     /// Builds the signature of the kernel in the builder and returns an object that
     /// stores enough information to later build the kernel body and check its result.
-    /// The `is_generic` flag indicates if th sizes should be instantiated.
     fn build_signature<AM>(
         parameters: Self::Parameters,
         builder: &mut SignatureBuilder<AM>,
@@ -45,7 +51,6 @@ pub trait Kernel<'a>: Sized {
         signature: &'b ir::Signature,
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>>;
-
     /// Computes the expected output.
     fn get_expected_output(&self, _: &device::Context) -> Self::ExpectedOutput;
 
@@ -55,6 +60,84 @@ pub trait Kernel<'a>: Sized {
         expected: &Self::ExpectedOutput,
         context: &device::Context,
     ) -> Result<(), String>;
+
+    /// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on
+    /// the same candidate multiple times. More specifically, we dump the list of actions taken on
+    /// the candidate rather than the candidate itself
+    fn generate_dump<'b, AM, F: Write>(
+        params: Self::Parameters,
+        ctx: &'b mut AM,
+        sink: &mut F,
+    ) where
+        AM: device::Context + device::ArgMap<'a>,
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), ctx);
+            builder.set_random_fill(true);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        let mut candidate = kernel.build_body(&signature, ctx).remove(0);
+        let order = explorer::config::NewNodeOrder::WeightedRandom;
+        let ordering = explorer::config::ChoiceOrdering::default();
+        loop {
+            let cand_clone = candidate.clone();
+            let leaf = local_selection::descend(&ordering, order, ctx, cand_clone, CUT);
+            if let Some(leaf) = leaf {
+                let device_fn = codegen::Function::build(&leaf.space);
+                ctx.evaluate(&device_fn, device::EvalMode::FindBest)
+                    .unwrap();
+                candidate = leaf;
+                break;
+            }
+        }
+        let dump = bincode::serialize(&candidate.actions).unwrap();
+        sink.write_all(&dump).unwrap();
+        sink.flush().unwrap();
+    }
+
+    /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
+    /// corresponds to the kernel and context being executed
+    fn execute_dump<AM, F: Read>(params: Self::Parameters, ctx: &mut AM, dump: &mut F)
+    where
+        AM: device::Context + device::ArgMap<'a>,
+    {
+        // Retrieve decisions from dump
+        let mut cand_bytes = Vec::new();
+        dump.read_to_end(&mut cand_bytes).unwrap();
+        let action_list: List<ActionEx> = bincode::deserialize(&cand_bytes).unwrap();
+
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), ctx);
+            builder.set_random_fill(true);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        let expected_output = kernel.get_expected_output(ctx);
+        let candidate = kernel.build_body(&signature, ctx).remove(0);
+
+        let implem = action_list.iter().fold(candidate, |cand, action| {
+            cand.apply_decision(ctx, action.clone()).expect(&format!(
+                "In kernel {}, Could not apply action {:?}",
+                Self::name(),
+                action
+            ))
+        });
+
+        let device_fn = codegen::Function::build(&implem.space);
+        ctx.evaluate(&device_fn, device::EvalMode::FindBest)
+            .unwrap();
+        if let Err(err) = kernel.check_result(&expected_output, ctx) {
+            panic!(
+                "incorrect output for kernel {}, with actions {:?}: {}",
+                Self::name(),
+                implem.actions,
+                err
+            )
+        }
+    }
 
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
