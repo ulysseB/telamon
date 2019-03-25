@@ -321,18 +321,108 @@
 <span id="321">321</span>
 <span id="322">322</span>
 <span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
+<span class="doccomment">//! Kernel also defines a function generate_dump that is used to dump the list of actions taken for</span>
+<span class="doccomment">//! a specific implementation of a kernel, which in turn allows to run tests on this specific</span>
+<span class="doccomment">//! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in</span>
+<span class="doccomment">//! tests</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">statistics</span>;
+<span class="kw">use</span> <span class="ident">bincode</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">num_cpus</span>;
 <span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">rpds</span>::<span class="ident">list</span>::<span class="ident">List</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">atomic</span>, <span class="ident">Mutex</span>};
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">local_selection</span>, <span class="ident">Candidate</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="self">self</span>, <span class="ident">choice</span>::<span class="ident">ActionEx</span>, <span class="ident">local_selection</span>, <span class="ident">Candidate</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">SignatureBuilder</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">model</span>::<span class="ident">Bound</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">codegen</span>, <span class="ident">device</span>, <span class="ident">explorer</span>, <span class="ident">ir</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">codegen</span>, <span class="ident">device</span>, <span class="ident">ir</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Ignore candidates with a too big bound in tests.</span>
@@ -354,7 +444,6 @@
 
     <span class="doccomment">/// Builds the signature of the kernel in the builder and returns an object that</span>
     <span class="doccomment">/// stores enough information to later build the kernel body and check its result.</span>
-    <span class="doccomment">/// The `is_generic` flag indicates if th sizes should be instantiated.</span>
     <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(
         <span class="ident">parameters</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>,
         <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>,
@@ -369,7 +458,6 @@
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>;
-
     <span class="doccomment">/// Computes the expected output.</span>
     <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">ExpectedOutput</span>;
 
@@ -379,6 +467,84 @@
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on</span>
+    <span class="doccomment">/// the same candidate multiple times. More specifically, we dump the list of actions taken on</span>
+    <span class="doccomment">/// the candidate rather than the candidate itself</span>
+    <span class="kw">fn</span> <span class="ident">generate_dump</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="ident">AM</span>, <span class="ident">F</span>: <span class="ident">Write</span><span class="op">&gt;</span>(
+        <span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">AM</span>,
+        <span class="ident">sink</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">F</span>,
+    ) <span class="kw">where</span>
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">let</span> <span class="ident">kernel</span>;
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">SignatureBuilder</span>::<span class="ident">new</span>(<span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">ctx</span>);
+            <span class="ident">builder</span>.<span class="ident">set_random_fill</span>(<span class="bool-val">true</span>);
+            <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="ident">builder</span>.<span class="ident">get</span>()
+        };
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">ctx</span>).<span class="ident">remove</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
+        <span class="kw">let</span> <span class="ident">ordering</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>();
+        <span class="kw">loop</span> {
+            <span class="kw">let</span> <span class="ident">cand_clone</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">clone</span>();
+            <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="ident">ordering</span>, <span class="ident">order</span>, <span class="ident">ctx</span>, <span class="ident">cand_clone</span>, <span class="ident">CUT</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf</span>) <span class="op">=</span> <span class="ident">leaf</span> {
+                <span class="kw">let</span> <span class="ident">device_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">space</span>);
+                <span class="ident">ctx</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">device_fn</span>, <span class="ident">device</span>::<span class="ident">EvalMode</span>::<span class="ident">FindBest</span>)
+                    .<span class="ident">unwrap</span>();
+                <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">leaf</span>;
+                <span class="kw">break</span>;
+            }
+        }
+        <span class="kw">let</span> <span class="ident">dump</span> <span class="op">=</span> <span class="ident">bincode</span>::<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">actions</span>).<span class="ident">unwrap</span>();
+        <span class="ident">sink</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">dump</span>).<span class="ident">unwrap</span>();
+        <span class="ident">sink</span>.<span class="ident">flush</span>().<span class="ident">unwrap</span>();
+    }
+
+    <span class="doccomment">/// Takes a path to a log and execute it. Caller is responsible for making sure that the log</span>
+    <span class="doccomment">/// corresponds to the kernel and context being executed</span>
+    <span class="kw">fn</span> <span class="ident">execute_dump</span><span class="op">&lt;</span><span class="ident">AM</span>, <span class="ident">F</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>, <span class="ident">dump</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">F</span>)
+    <span class="kw">where</span>
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    {
+        <span class="comment">// Retrieve decisions from dump</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cand_bytes</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+        <span class="ident">dump</span>.<span class="ident">read_to_end</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cand_bytes</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">action_list</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">bincode</span>::<span class="ident">deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">cand_bytes</span>).<span class="ident">unwrap</span>();
+
+        <span class="kw">let</span> <span class="ident">kernel</span>;
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">SignatureBuilder</span>::<span class="ident">new</span>(<span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">ctx</span>);
+            <span class="ident">builder</span>.<span class="ident">set_random_fill</span>(<span class="bool-val">true</span>);
+            <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="ident">builder</span>.<span class="ident">get</span>()
+        };
+        <span class="kw">let</span> <span class="ident">expected_output</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">get_expected_output</span>(<span class="ident">ctx</span>);
+        <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">ctx</span>).<span class="ident">remove</span>(<span class="number">0</span>);
+
+        <span class="kw">let</span> <span class="ident">implem</span> <span class="op">=</span> <span class="ident">action_list</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">candidate</span>, <span class="op">|</span><span class="ident">cand</span>, <span class="ident">action</span><span class="op">|</span> {
+            <span class="ident">cand</span>.<span class="ident">apply_decision</span>(<span class="ident">ctx</span>, <span class="ident">action</span>.<span class="ident">clone</span>()).<span class="ident">expect</span>(<span class="kw-2">&amp;</span><span class="macro">format</span><span class="macro">!</span>(
+                <span class="string">&quot;In kernel {}, Could not apply action {:?}&quot;</span>,
+                <span class="self">Self</span>::<span class="ident">name</span>(),
+                <span class="ident">action</span>
+            ))
+        });
+
+        <span class="kw">let</span> <span class="ident">device_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">implem</span>.<span class="ident">space</span>);
+        <span class="ident">ctx</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">device_fn</span>, <span class="ident">device</span>::<span class="ident">EvalMode</span>::<span class="ident">FindBest</span>)
+            .<span class="ident">unwrap</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">check_result</span>(<span class="kw-2">&amp;</span><span class="ident">expected_output</span>, <span class="ident">ctx</span>) {
+            <span class="macro">panic</span><span class="macro">!</span>(
+                <span class="string">&quot;incorrect output for kernel {}, with actions {:?}: {}&quot;</span>,
+                <span class="self">Self</span>::<span class="ident">name</span>(),
+                <span class="ident">implem</span>.<span class="ident">actions</span>,
+                <span class="ident">err</span>
+            )
+        }
+    }
 
     <span class="doccomment">/// Generates, executes and tests the output of candidates for the kernel.</span>
     <span class="kw">fn</span> <span class="ident">test_correctness</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>, <span class="ident">num_tests</span>: <span class="ident">usize</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>)

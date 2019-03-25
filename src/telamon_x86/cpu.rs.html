@@ -151,7 +151,6 @@
 <span id="151">151</span>
 <span id="152">152</span>
 <span id="153">153</span>
-<span id="154">154</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">codegen</span>::<span class="ident">Function</span>;
@@ -160,7 +159,6 @@
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">model</span>::{<span class="self">self</span>, <span class="ident">HwPressure</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">num_cpus</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -202,7 +200,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">max_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
-        (<span class="ident">num_cpus</span>::<span class="ident">get</span>()) <span class="kw">as</span> <span class="ident">u32</span>
+        <span class="number">8</span>
     }
 
     <span class="kw">fn</span> <span class="ident">max_unrolling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {

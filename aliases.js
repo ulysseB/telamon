@@ -1,6 +1,7 @@
 var ALIASES = {};
 ALIASES["characterize"] = {};
 ALIASES["expandconfig"] = {};
+ALIASES["kernel_dump"] = {};
 ALIASES["parse_event_log"] = {};
 ALIASES["telamon"] = {};
 ALIASES["telamon_capi"] = {};
