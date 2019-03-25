@@ -1,0 +1,3 @@
+d{ind}++; 
+if (d{ind} < {size}) 
+    goto {loop_type}_LOOP_BEGIN_{ind};

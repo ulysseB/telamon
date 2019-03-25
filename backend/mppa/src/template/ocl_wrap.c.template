@@ -1,0 +1,5 @@
+void entry_point({cl_arg_defs}, __global void* __timer_ptr);
+
+__kernel void wrapper_{fun_id}({cl_arg_defs}, __global void* __timer_ptr) {{
+  entry_point({arg_names}, __timer_ptr);
+}}

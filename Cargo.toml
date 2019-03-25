@@ -88,6 +88,7 @@ criterion = "0.2.4"
 jemalloc-ctl = "0.1"
 telamon-cuda = { path = "backend/cuda", default-features = false }
 telamon-x86 = { path = "backend/x86" }
+telamon-mppa = { path = "backend/mppa", default-features = false }
 
 [features]
 default = []
