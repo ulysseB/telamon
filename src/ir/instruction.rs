@@ -246,3 +246,9 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
         self.defined_vars.insert(var);
     }
 }
+
+impl<'a, L> fmt::Display for Instruction<'a, L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}[ {} ]", self.id, self.operator)
+    }
+}

@@ -1,4 +1,6 @@
 //! Describes a `Function` that is ready to execute on a device.
+use std::{self, fmt};
+
 use crate::codegen::{
     self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar,
 };
@@ -10,7 +12,6 @@ use utils::*;
 use itertools::Itertools;
 use log::{debug, trace};
 use matches::matches;
-use std;
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
@@ -451,5 +452,11 @@ impl<'a> Instruction<'a> {
     /// Indicates where to store the result of the instruction.
     pub fn result_variable(&self) -> Option<ir::VarId> {
         self.instruction.result_variable()
+    }
+}
+
+impl<'a> fmt::Display for Instruction<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.instruction, fmt)
     }
 }

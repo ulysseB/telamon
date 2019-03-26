@@ -205,7 +205,7 @@ impl<'a> fmt::Debug for Cfg<'a> {
                 .field(&format_args!("[{:?}]", &dim.dim_ids().format(",")))
                 .field(inners)
                 .finish(),
-            Cfg::Instruction(dims, inst) => write!(f, "inst{:?} {:?}", dims, inst.id()),
+            Cfg::Instruction(dims, inst) => write!(f, "inst{:?} {}", dims, inst),
             Cfg::Threads(dims, _, inners) => {
                 f.debug_tuple("Threads").field(dims).field(inners).finish()
             }
