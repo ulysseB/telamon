@@ -33,9 +33,9 @@ pub trait Namer {
 
 /// Maps variables to names.
 // TODO(cc_perf): use an arena rather that ref-counted strings
-pub struct NameMap<'a, 'b> {
+pub struct NameMap<'a, 'b, N: Namer> {
     /// Provides fresh names.
-    namer: std::cell::RefCell<&'b mut Namer>,
+    namer: &'b mut N,
     /// Keeps track of the names of the variables used in the kernel
     variables: FnvHashMap<ir::VarId, VariableNames>,
     /// Keeps track of the name of the values produced by instructions.
@@ -62,9 +62,9 @@ pub struct NameMap<'a, 'b> {
     side_effect_guard: Option<RcStr>,
 }
 
-impl<'a, 'b> NameMap<'a, 'b> {
+impl<'a, 'b, N: Namer> NameMap<'a, 'b, N> {
     /// Creates a new `NameMap`.
-    pub fn new(function: &'a Function<'a>, namer: &'b mut Namer) -> Self {
+    pub fn new(function: &'a Function<'a>, namer: &'b mut N) -> Self {
         let mut mem_blocks = FnvHashMap::default();
         // Setup parameters names.
         let params = function
@@ -106,7 +106,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         }
         let variables = VariableNames::create(function, namer);
         let mut name_map = NameMap {
-            namer: std::cell::RefCell::new(namer),
+            namer,
             insts: FnvHashMap::default(),
             variables,
             num_loop: 0,
@@ -152,6 +152,14 @@ impl<'a, 'b> NameMap<'a, 'b> {
         name_map
     }
 
+    pub fn namer(&self) -> &N {
+        self.namer
+    }
+
+    pub fn namer_mut(&mut self) -> &mut N {
+        self.namer
+    }
+
     /// Returns the total number of threads.
     #[cfg(feature = "mppa")]
     pub fn total_num_threads(&self) -> u32 {
@@ -159,8 +167,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Generates a variable of the given `Type`.
-    pub fn gen_name(&self, t: Type) -> String {
-        self.namer.borrow_mut().name(t)
+    pub fn gen_name(&mut self, t: Type) -> String {
+        self.namer.name(t)
     }
 
     /// Generates an ID for a loop.
@@ -191,11 +199,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
         indexes: Cow<FnvHashMap<ir::DimId, usize>>,
     ) -> Cow<str> {
         match *operand {
-            ir::Operand::Int(ref val, len) => {
-                Cow::Owned(self.namer.borrow().name_int(val, len))
-            }
+            ir::Operand::Int(ref val, len) => Cow::Owned(self.namer.name_int(val, len)),
             ir::Operand::Float(ref val, len) => {
-                Cow::Owned(self.namer.borrow().name_float(val, len))
+                Cow::Owned(self.namer.name_float(val, len))
             }
             ir::Operand::Inst(id, _, ref dim_map, _)
             | ir::Operand::Reduce(id, _, ref dim_map, _) => {
@@ -264,9 +270,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             .instantiation_dims()
             .iter()
             .map(|&(dim, size)| (dim, size as usize));
-        use std::ops::DerefMut;
-        let mut namer = self.namer.borrow_mut();
-        let names = VariableNames::new(t, dims, *namer.deref_mut());
+        let names = VariableNames::new(t, dims, self.namer);
         assert!(self.insts.insert(inst.id(), names).is_none());
     }
 
@@ -358,7 +362,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
             hash_map::Entry::Vacant(entry) => {
-                Some(entry.insert(self.namer.borrow_mut().name(t)).to_string())
+                Some(entry.insert(self.namer.name(t)).to_string())
             }
         }
     }

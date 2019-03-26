@@ -67,7 +67,8 @@ impl CudaPrinter {
     }
 
     /// Prints the variables declared by the `Namer`.
-    fn var_decls(&mut self, namer: &Namer) -> String {
+    fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
+        let namer = name_map.namer();
         let print_decl = |(&t, n)| {
             let prefix = Namer::gen_prefix(t);
             format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)
@@ -81,7 +82,7 @@ impl CudaPrinter {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
+    fn decl_par_indexes(function: &Function, namer: &mut NameMap<Namer>) -> String {
         let mut decls = vec![];
         // Load block indexes.
         for (dim, dir) in function.block_dims().iter().zip(&["x", "y", "z"]) {
@@ -100,7 +101,7 @@ impl CudaPrinter {
     }
 
     /// Declares a shared memory block.
-    fn shared_mem_decl(&mut self, block: &MemoryRegion, namer: &mut NameMap) {
+    fn shared_mem_decl(&mut self, block: &MemoryRegion, namer: &mut NameMap<Namer>) {
         let ptr_type_name = Self::get_type(Type::I(32));
         let name = namer.name_addr(block.id());
         unwrap!(writeln!(
@@ -166,7 +167,7 @@ impl CudaPrinter {
     }
 
     /// Prints a parameter decalartion.
-    fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
+    fn param_decl(&mut self, param: &ParamVal, namer: &NameMap<Namer>) -> String {
         format!(
             ".param .{t}{attr} {name}",
             t = Self::get_type(param.t()),
@@ -192,72 +193,69 @@ impl CudaPrinter {
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function, gpu: &Gpu) -> String {
         let mut namer = Namer::default();
-        let param_decls;
-        {
-            let name_map = &mut NameMap::new(function, &mut namer);
-            param_decls = function
-                .device_code_args()
-                .map(|v| self.param_decl(v, name_map))
-                .collect_vec()
-                .join(",\n  ");
-            // LOAD PARAMETERS
-            for val in function.device_code_args() {
-                unwrap!(writeln!(
-                    self.buffer,
-                    "  ld.param.{t} {var_name}, [{name}];",
-                    t = Self::get_type(val.t()),
-                    var_name = name_map.name_param_val(val.key()),
-                    name = name_map.name_param(val.key())
-                ));
-            }
-            // INDEX LOAD
-            self.buffer.push_str(&"  ");
-            let idx_loads = Self::decl_par_indexes(function, name_map);
-            self.buffer.push_str(&idx_loads);
-            self.buffer.push_str(&"\n");
-            //MEM DECL
-            for block in function.mem_blocks() {
-                match block.alloc_scheme() {
-                    AllocationScheme::Shared => self.shared_mem_decl(block, name_map),
-                    AllocationScheme::PrivatisedGlobal => {
-                        self.privatise_global_block(block, name_map, function)
-                    }
-                    AllocationScheme::Global => (),
-                }
-            }
-            // Compute size casts
-            for dim in function.dimensions() {
-                if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) {
-                    continue;
-                }
-                for level in dim.induction_levels() {
-                    if let Some((_, ref incr)) = level.increment {
-                        let name = name_map.declare_size_cast(incr, level.t());
-                        if let Some(name) = name {
-                            let old_name = name_map.name_size(incr, Type::I(32));
-                            self.print_unary_op(
-                                [1, 1],
-                                ir::UnaryOp::Cast(level.t()),
-                                Type::I(32),
-                                &name,
-                                &old_name,
-                            );
-                        }
-                    }
-                }
-            }
-            let ind_levels = function.init_induction_levels().iter().chain(
-                function
-                    .block_dims()
-                    .iter()
-                    .flat_map(|d| d.induction_levels()),
-            );
-            for level in ind_levels {
-                self.parallel_induction_level(level, name_map);
-            }
-            self.cfg(function, function.cfg(), name_map);
+        let name_map = &mut NameMap::new(function, &mut namer);
+        let param_decls = function
+            .device_code_args()
+            .map(|v| self.param_decl(v, name_map))
+            .collect_vec()
+            .join(",\n  ");
+        // LOAD PARAMETERS
+        for val in function.device_code_args() {
+            unwrap!(writeln!(
+                self.buffer,
+                "  ld.param.{t} {var_name}, [{name}];",
+                t = Self::get_type(val.t()),
+                var_name = name_map.name_param_val(val.key()),
+                name = name_map.name_param(val.key())
+            ));
         }
-        let var_decls = self.var_decls(&namer);
+        // INDEX LOAD
+        self.buffer.push_str(&"  ");
+        let idx_loads = Self::decl_par_indexes(function, name_map);
+        self.buffer.push_str(&idx_loads);
+        self.buffer.push_str(&"\n");
+        //MEM DECL
+        for block in function.mem_blocks() {
+            match block.alloc_scheme() {
+                AllocationScheme::Shared => self.shared_mem_decl(block, name_map),
+                AllocationScheme::PrivatisedGlobal => {
+                    self.privatise_global_block(block, name_map, function)
+                }
+                AllocationScheme::Global => (),
+            }
+        }
+        // Compute size casts
+        for dim in function.dimensions() {
+            if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) {
+                continue;
+            }
+            for level in dim.induction_levels() {
+                if let Some((_, ref incr)) = level.increment {
+                    let name = name_map.declare_size_cast(incr, level.t());
+                    if let Some(name) = name {
+                        let old_name = name_map.name_size(incr, Type::I(32));
+                        self.print_unary_op(
+                            [1, 1],
+                            ir::UnaryOp::Cast(level.t()),
+                            Type::I(32),
+                            &name,
+                            &old_name,
+                        );
+                    }
+                }
+            }
+        }
+        let ind_levels = function.init_induction_levels().iter().chain(
+            function
+                .block_dims()
+                .iter()
+                .flat_map(|d| d.induction_levels()),
+        );
+        for level in ind_levels {
+            self.parallel_induction_level(level, name_map);
+        }
+        self.cfg(function, function.cfg(), name_map);
+        let var_decls = self.var_decls(&name_map);
         let mut body = String::new();
         body.push_str(&var_decls);
         body.push_str(&"\n");
@@ -352,7 +350,7 @@ impl CudaPrinter {
     }
 }
 
-impl Printer for CudaPrinter {
+impl Printer<Namer> for CudaPrinter {
     /// Get a proper string representation of an integer in target language
     fn get_int(n: u32) -> String {
         format!("{}", n)
@@ -547,7 +545,7 @@ impl Printer for CudaPrinter {
     fn name_operand<'a>(
         vector_levels: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        namer: &'a NameMap,
+        namer: &'a NameMap<Namer>,
     ) -> Cow<'a, str> {
         assert!(vector_levels[0].is_empty());
         if vector_levels[1].is_empty() {
@@ -574,7 +572,7 @@ impl Printer for CudaPrinter {
     fn name_inst<'a>(
         vector_levels: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        namer: &'a NameMap,
+        namer: &'a NameMap<Namer>,
     ) -> Cow<'a, str> {
         assert!(vector_levels[0].is_empty());
         if vector_levels[1].is_empty() {

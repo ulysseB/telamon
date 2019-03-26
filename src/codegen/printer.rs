@@ -26,7 +26,7 @@ impl MulMode {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub trait Printer {
+pub trait Printer<N: Namer> {
     /// Get the representation of an integer in the target language.
     fn get_int(n: u32) -> String;
 
@@ -116,14 +116,14 @@ pub trait Printer {
     fn name_operand<'a>(
         vector_levels: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        namer: &'a NameMap,
+        namer: &'a NameMap<N>,
     ) -> Cow<'a, str>;
 
     /// Names an instruction, vectorized on the given dimensions.
     fn name_inst<'a>(
         vector_levels: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        namer: &'a NameMap,
+        namer: &'a NameMap<N>,
     ) -> Cow<'a, str>;
 
     /// Prints a scalar less-than on integers.
@@ -155,14 +155,14 @@ pub trait Printer {
         self.print_unary_op([1, 1], ir::UnaryOp::Mov, t, result, operand);
     }
 
-    fn cfg_vec(&mut self, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
+    fn cfg_vec(&mut self, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap<N>) {
         for c in cfgs.iter() {
             self.cfg(fun, c, namer);
         }
     }
 
     /// Prints a cfg.
-    fn cfg<'a>(&mut self, fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) {
+    fn cfg<'a>(&mut self, fun: &Function, c: &Cfg<'a>, namer: &mut NameMap<N>) {
         match c {
             Cfg::Root(cfgs) => self.cfg_vec(fun, cfgs, namer),
             Cfg::Loop(dim, cfgs) => self.gen_loop(fun, dim, cfgs, namer),
@@ -179,7 +179,7 @@ pub trait Printer {
     }
 
     /// Prints a multiplicative induction var level.
-    fn parallel_induction_level(&mut self, level: &InductionLevel, namer: &NameMap) {
+    fn parallel_induction_level(&mut self, level: &InductionLevel, namer: &NameMap<N>) {
         let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
         let ind_var = namer.name_induction_var(level.ind_var, dim_id);
         let base_components =
@@ -224,7 +224,12 @@ pub trait Printer {
     }
 
     /// Change the side-effect guards so that only the specified threads are enabled.
-    fn enable_threads(&mut self, fun: &Function, threads: &[bool], namer: &mut NameMap) {
+    fn enable_threads(
+        &mut self,
+        fun: &Function,
+        threads: &[bool],
+        namer: &mut NameMap<N>,
+    ) {
         let mut guard: Option<String> = None;
         for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
             if is_active {
@@ -248,7 +253,7 @@ pub trait Printer {
         fun: &Function,
         dim: &Dimension,
         cfgs: &[Cfg],
-        namer: &mut NameMap,
+        namer: &mut NameMap<N>,
     ) {
         match dim.kind() {
             DimKind::LOOP => self.standard_loop(fun, dim, cfgs, namer),
@@ -264,7 +269,7 @@ pub trait Printer {
         fun: &Function,
         dim: &Dimension,
         cfgs: &[Cfg],
-        namer: &mut NameMap,
+        namer: &mut NameMap<N>,
     ) {
         let idx = namer.name_index(dim.id()).to_string();
         let zero = Self::get_int(0);
@@ -305,15 +310,19 @@ pub trait Printer {
         fun: &Function,
         dim: &Dimension,
         cfgs: &[Cfg],
-        namer: &mut NameMap,
+        namer: &mut NameMap<N>,
     ) {
         let mut incr_levels = Vec::new();
         for level in dim.induction_levels() {
             let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
             let ind_var = namer.name_induction_var(level.ind_var, dim_id).to_string();
-            let base_components = level.base.components().map(|v| namer.name(v));
-            let base = match base_components.collect_vec()[..] {
-                [ref base] => base.to_string(),
+            let base_components = level
+                .base
+                .components()
+                .map(|v| namer.name(v).into_owned())
+                .collect_vec();
+            let base = match base_components[..] {
+                [ref base] => base.clone(),
                 [ref lhs, ref rhs] => {
                     let tmp = namer.gen_name(level.t());
                     self.print_add_int(level.t(), &tmp, lhs, rhs);
@@ -347,20 +356,22 @@ pub trait Printer {
     fn privatise_global_block(
         &mut self,
         block: &MemoryRegion,
-        namer: &mut NameMap,
+        namer: &mut NameMap<N>,
         fun: &Function,
     ) {
         if fun.block_dims().is_empty() {
             return;
         }
-        let addr = namer.name_addr(block.id());
+        let addr = namer.name_addr(block.id()).into_owned();
         let addr_type = Self::lower_type(Type::PtrTo(block.id()), fun);
-        let size = namer.name_size(block.local_size(), Type::I(32));
+        let size = namer
+            .name_size(block.local_size(), Type::I(32))
+            .into_owned();
         let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
         let var = fun.block_dims()[1..].iter().fold(d0, |old_var, dim| {
             let var = namer.gen_name(Type::I(32));
             let size = namer.name_size(dim.size(), Type::I(32));
-            let idx = namer.name_index(dim.id());
+            let idx = namer.name_index(dim.id()).to_string();
             self.print_mad(
                 [1, 1],
                 Type::I(32),
@@ -391,7 +402,7 @@ pub trait Printer {
         &mut self,
         vector_levels: &[Vec<Dimension>; 2],
         inst: &Instruction,
-        namer: &mut NameMap,
+        namer: &mut NameMap<N>,
         fun: &Function,
     ) {
         // Multiple dimension can be mapped to the same vectorization level so we combine

@@ -15,7 +15,7 @@ pub struct X86printer {
 
 impl X86printer {
     /// Declares all parameters of the function with the appropriate type
-    fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
+    fn param_decl(&mut self, param: &ParamVal, namer: &NameMap<Namer>) -> String {
         let name = namer.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
@@ -29,7 +29,8 @@ impl X86printer {
     }
 
     /// Declared all variables that have been required from the namer
-    fn var_decls(&mut self, namer: &Namer) -> String {
+    fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
+        let namer = name_map.namer();
         let print_decl = |(&t, &n)| match t {
             Type::PtrTo(..) => String::new(),
             _ => {
@@ -66,7 +67,11 @@ impl X86printer {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(&mut self, function: &Function, namer: &mut NameMap) -> String {
+    fn decl_par_indexes(
+        &mut self,
+        function: &Function,
+        namer: &mut NameMap<Namer>,
+    ) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
         // Compute thread indexes.
@@ -79,84 +84,81 @@ impl X86printer {
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function) -> String {
         let mut namer = Namer::default();
-        let mut return_string;
-        {
-            let name_map = &mut NameMap::new(function, &mut namer);
-            let param_decls = function
-                .device_code_args()
-                .map(|v| self.param_decl(v, name_map))
-                .collect_vec()
-                .join(",\n  ");
-            // SIGNATURE AND OPEN BRACKET
-            return_string = if function.device_code_args().count() == 0 {
-                format!(
-                    include_str!("template/signature_no_arg.c.template"),
-                    name = function.name,
-                )
-            } else {
-                format!(
-                    include_str!("template/signature.c.template"),
-                    name = function.name,
-                    params = param_decls
-                )
-            };
-            // INDEX LOADS
-            let idx_loads = self.decl_par_indexes(function, name_map);
-            unwrap!(writeln!(self.buffer, "{}", idx_loads));
-            // LOAD PARAM
-            for val in function.device_code_args() {
-                unwrap!(writeln!(
-                    self.buffer,
-                    "{var_name} = {name};// LD_PARAM",
-                    var_name = name_map.name_param_val(val.key()),
-                    name = name_map.name_param(val.key())
-                ));
-            }
-            // MEM DECL
-            for block in function.mem_blocks() {
-                match block.alloc_scheme() {
-                    AllocationScheme::Shared => panic!("No shared mem in cpu!!"),
-                    AllocationScheme::PrivatisedGlobal => {
-                        self.privatise_global_block(block, name_map, function)
-                    }
-                    AllocationScheme::Global => (),
-                }
-            }
-            // Compute size casts
-            for dim in function.dimensions() {
-                if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) {
-                    continue;
-                }
-                for level in dim.induction_levels() {
-                    if let Some((_, ref incr)) = level.increment {
-                        let name = name_map.declare_size_cast(incr, level.t());
-                        if let Some(name) = name {
-                            let old_name = name_map.name_size(incr, Type::I(32));
-                            self.print_unary_op(
-                                [1, 1],
-                                ir::UnaryOp::Cast(level.t()),
-                                Type::I(32),
-                                &name,
-                                &old_name,
-                            );
-                        }
-                    }
-                }
-            }
-            // INIT
-            let ind_levels = function.init_induction_levels().iter().chain(
-                function
-                    .block_dims()
-                    .iter()
-                    .flat_map(|d| d.induction_levels()),
-            );
-            for level in ind_levels {
-                self.parallel_induction_level(level, name_map);
-            }
-            // BODY
-            self.cfg(function, function.cfg(), name_map);
+        let name_map = &mut NameMap::new(function, &mut namer);
+        let param_decls = function
+            .device_code_args()
+            .map(|v| self.param_decl(v, name_map))
+            .collect_vec()
+            .join(",\n  ");
+        // SIGNATURE AND OPEN BRACKET
+        let mut return_string = if function.device_code_args().count() == 0 {
+            format!(
+                include_str!("template/signature_no_arg.c.template"),
+                name = function.name,
+            )
+        } else {
+            format!(
+                include_str!("template/signature.c.template"),
+                name = function.name,
+                params = param_decls
+            )
+        };
+        // INDEX LOADS
+        let idx_loads = self.decl_par_indexes(function, name_map);
+        unwrap!(writeln!(self.buffer, "{}", idx_loads));
+        // LOAD PARAM
+        for val in function.device_code_args() {
+            unwrap!(writeln!(
+                self.buffer,
+                "{var_name} = {name};// LD_PARAM",
+                var_name = name_map.name_param_val(val.key()),
+                name = name_map.name_param(val.key())
+            ));
         }
-        let var_decls = self.var_decls(&namer);
+        // MEM DECL
+        for block in function.mem_blocks() {
+            match block.alloc_scheme() {
+                AllocationScheme::Shared => panic!("No shared mem in cpu!!"),
+                AllocationScheme::PrivatisedGlobal => {
+                    self.privatise_global_block(block, name_map, function)
+                }
+                AllocationScheme::Global => (),
+            }
+        }
+        // Compute size casts
+        for dim in function.dimensions() {
+            if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) {
+                continue;
+            }
+            for level in dim.induction_levels() {
+                if let Some((_, ref incr)) = level.increment {
+                    let name = name_map.declare_size_cast(incr, level.t());
+                    if let Some(name) = name {
+                        let old_name = name_map.name_size(incr, Type::I(32));
+                        self.print_unary_op(
+                            [1, 1],
+                            ir::UnaryOp::Cast(level.t()),
+                            Type::I(32),
+                            &name,
+                            &old_name,
+                        );
+                    }
+                }
+            }
+        }
+        // INIT
+        let ind_levels = function.init_induction_levels().iter().chain(
+            function
+                .block_dims()
+                .iter()
+                .flat_map(|d| d.induction_levels()),
+        );
+        for level in ind_levels {
+            self.parallel_induction_level(level, name_map);
+        }
+        // BODY
+        self.cfg(function, function.cfg(), name_map);
+        let var_decls = self.var_decls(&name_map);
         return_string.push_str(&var_decls);
         return_string.push_str(&self.buffer);
         // Close function bracket
@@ -346,7 +348,6 @@ impl X86printer {
 
     fn get_type(t: Type) -> String {
         match t {
-            //Type::PtrTo(..) => " uint8_t *",
             Type::PtrTo(..) => String::from("intptr_t"),
             Type::F(32) => String::from("float"),
             Type::F(64) => String::from("double"),
@@ -360,7 +361,7 @@ impl X86printer {
     }
 }
 
-impl Printer for X86printer {
+impl Printer<Namer> for X86printer {
     fn get_int(n: u32) -> String {
         format!("{}", n)
     }
@@ -508,7 +509,7 @@ impl Printer for X86printer {
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        namer: &'a NameMap,
+        namer: &'a NameMap<Namer>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
@@ -518,7 +519,7 @@ impl Printer for X86printer {
     fn name_inst<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        namer: &'a NameMap,
+        namer: &'a NameMap<Namer>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
