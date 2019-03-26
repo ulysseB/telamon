@@ -185,7 +185,7 @@ fn benchmark<'a, K, REF>(
         .collect();
     let mut f =
         std::fs::File::create(config.output_path("benchmark.txt").unwrap()).unwrap();
-    writeln!(f, "runtimes: {:?}", runtime);
+    writeln!(f, "runtimes: {:?}", runtime).unwrap();
     let mean = estimate_mean(runtime, 0.95, "ns");
     let ref_mean = estimate_mean(ref_runtime, 0.95, "ns");
     writeln!(
@@ -196,6 +196,7 @@ fn benchmark<'a, K, REF>(
         ref_mean,
         ref_mean.value / mean.value
     )
+    .unwrap();
 }
 
 /// Checks the cublas status and panics if an error occured.
