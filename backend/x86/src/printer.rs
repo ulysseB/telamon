@@ -30,7 +30,7 @@ impl X86printer {
 
     /// Declared all variables that have been required from the namer
     fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
-        let namer = name_map.get_namer();
+        let namer = name_map.namer();
         let print_decl = |(&t, &n)| match t {
             Type::PtrTo(..) => String::new(),
             _ => {

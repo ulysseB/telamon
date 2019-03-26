@@ -68,7 +68,7 @@ impl CudaPrinter {
 
     /// Prints the variables declared by the `Namer`.
     fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
-        let namer = name_map.get_namer();
+        let namer = name_map.namer();
         let print_decl = |(&t, n)| {
             let prefix = Namer::gen_prefix(t);
             format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)

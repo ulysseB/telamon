@@ -152,11 +152,11 @@ impl<'a, 'b, N: Namer> NameMap<'a, 'b, N> {
         name_map
     }
 
-    pub fn get_namer(&self) -> &N {
+    pub fn namer(&self) -> &N {
         &*self.namer
     }
 
-    pub fn get_mut_namer(&mut self) -> &mut N {
+    pub fn namer_mut(&mut self) -> &mut N {
         self.namer
     }
 
