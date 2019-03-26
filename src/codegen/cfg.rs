@@ -199,13 +199,15 @@ impl<'a> Cfg<'a> {
 impl<'a> fmt::Debug for Cfg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Cfg::Root(inners) => write!(f, "{:?}", inners),
-            Cfg::Loop(dim, inners) => {
-                write!(f, "Loop([{:?}], {:?})", dim.dim_ids().format(","), inners)
-            }
+            Cfg::Root(inners) => f.debug_list().entries(inners).finish(),
+            Cfg::Loop(dim, inners) => f
+                .debug_tuple("Loop")
+                .field(&format_args!("[{:?}]", &dim.dim_ids().format(",")))
+                .field(inners)
+                .finish(),
             Cfg::Instruction(dims, inst) => write!(f, "inst{:?} {:?}", dims, inst.id()),
             Cfg::Threads(dims, _, inners) => {
-                write!(f, "threads({:?}, {:?})", dims, inners)
+                f.debug_tuple("Threads").field(dims).field(inners).finish()
             }
         }
     }
