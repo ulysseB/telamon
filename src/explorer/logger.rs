@@ -4,13 +4,10 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use crate::explorer::config::Config;
-use crate::explorer::eventlog::EventLog;
 use crate::explorer::monitor;
 use bincode;
 use failure::Fail;
 use serde::{Deserialize, Serialize};
-
-use utils::tfrecord;
 
 #[derive(Serialize, Deserialize)]
 pub enum LogMessage<E> {
@@ -55,8 +52,8 @@ pub fn log<E: Send + Serialize>(
     config: &Config,
     recv: mpsc::Receiver<LogMessage<E>>,
 ) -> Result<(), LogError> {
-    let mut record_writer = init_eventlog(config)?;
-    let mut write_buffer = init_log(config)?;
+    let mut record_writer = config.create_eventlog()?;
+    let mut write_buffer = config.create_log()?;
     while let Ok(message) = recv.recv() {
         match message {
             LogMessage::Event(event) => {
@@ -81,16 +78,6 @@ pub fn log<E: Send + Serialize>(
         .finish()?
         .flush()?;
     Ok(())
-}
-
-fn init_eventlog(config: &Config) -> io::Result<tfrecord::Writer<EventLog>> {
-    Ok(EventLog::create(&config.event_log)?)
-}
-
-fn init_log(config: &Config) -> io::Result<BufWriter<File>> {
-    let mut output_file = File::create(&config.log_file)?;
-    writeln!(output_file, "LOGGER\n{}", config)?;
-    Ok(BufWriter::new(output_file))
 }
 
 fn log_monitor(

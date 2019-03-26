@@ -4,19 +4,28 @@
 
 extern crate toml;
 
+use std::{self, error, fmt, str::FromStr};
+use std::path::{Path, PathBuf};
+use std::io::{self, BufWriter, Write};
+use std::fs::File;
+
 use config;
 use getopts;
 use itertools::Itertools;
 use num_cpus;
 use serde::{Deserialize, Serialize};
-use std::{self, error, fmt, str::FromStr};
-use utils::unwrap;
+use utils::{unwrap, tfrecord};
+
+use crate::explorer::eventlog::EventLog;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    /// Path to the output directory to use.  All other paths (e.g. `log_file`) are relative to
+    /// this directory.  Defaults to the current working directory.
+    pub output_dir: String,
     /// Name of the file in wich to store the logs.
     pub log_file: String,
     /// Name of the file in which to store the binary event log.
@@ -117,6 +126,23 @@ impl Config {
         }
         SearchAlgorithm::parse_arguments(arguments, config);
     }
+
+    pub fn output_path<P: AsRef<Path>>(&self, path: P) -> io::Result<PathBuf> {
+        let output_dir = Path::new(&self.output_dir);
+        // Ensure the output directory exists
+        std::fs::create_dir_all(output_dir)?;
+        Ok(output_dir.join(path))
+    }
+
+    pub fn create_log(&self) -> io::Result<BufWriter<File>> {
+        let mut f = File::create(self.output_path(&self.log_file)?)?;
+        writeln!(f, "LOGGER\n{}", self)?;
+        Ok(BufWriter::new(f))
+    }
+
+    pub fn create_eventlog(&self) -> io::Result<tfrecord::Writer<EventLog>> {
+        EventLog::create(self.output_path(&self.event_log)?)
+    }
 }
 
 impl fmt::Display for Config {
@@ -128,8 +154,9 @@ impl fmt::Display for Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            log_file: String::from("watch.log"),
-            event_log: String::from("eventlog.tfrecord.gz"),
+            output_dir: ".".to_string(),
+            log_file: "watch.log".to_string(),
+            event_log: "eventlog.tfrecord.gz".to_string(),
             num_workers: num_cpus::get(),
             algorithm: SearchAlgorithm::default(),
             stop_bound: None,
