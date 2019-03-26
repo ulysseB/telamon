@@ -1,4 +1,6 @@
 //! Benchmarks the exploration on CUDA gpus.
+use std::io::Write;
+
 use cuda_sys::cublas::*;
 use cuda_sys::cuda::*;
 use telamon::explorer::config::Config;
