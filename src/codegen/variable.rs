@@ -195,8 +195,6 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helper;
-    use crate::ir;
     use std;
 
     fn mk_map<K, V>(content: &[(K, V)]) -> FnvHashMap<K, V>
