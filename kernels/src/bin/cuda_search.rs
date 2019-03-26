@@ -181,10 +181,13 @@ fn benchmark<'a, K, REF>(
     let ref_runtime = (0..NUM_CODE_RUNS)
         .map(|_| reference(&params, &context))
         .collect();
-    println!("runtimes: {:?}", runtime);
+    let mut f =
+        std::fs::File::create(config.output_path("benchmark.txt").unwrap()).unwrap();
+    writeln!(f, "runtimes: {:?}", runtime);
     let mean = estimate_mean(runtime, 0.95, "ns");
     let ref_mean = estimate_mean(ref_runtime, 0.95, "ns");
-    println!(
+    writeln!(
+        f,
         "{}: {}, reference: {}, speedup: {:.2}",
         K::name(),
         mean,
