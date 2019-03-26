@@ -19,11 +19,11 @@ impl MppaPrinter {
         let name = name_map.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
-                format!("{} {}", Self::get_type(par_type.into()), name)
+                format!("{} {}", Self::get_type(*par_type), name)
             }
             ParamVal::Size(_) => format!("uint32_t {}", name),
             ParamVal::GlobalMem(_, _, par_type) => {
-                format!("{} {}", Self::get_type(par_type.into()), name)
+                format!("{} {}", Self::get_type(*par_type), name)
             }
         }
     }
@@ -160,7 +160,7 @@ impl MppaPrinter {
                     ),
                     ParamVal::External(_, par_type) => format!(
                         "{t} p{i} = *({t}*)*(args + {i})",
-                        t = Self::get_type(par_type.into()),
+                        t = Self::get_type(*par_type),
                         i = i
                     ),
                     ParamVal::Size(_) => format!(
@@ -171,7 +171,7 @@ impl MppaPrinter {
                     // Are we sure we know the size at compile time ? I think we do
                     ParamVal::GlobalMem(_, _, par_type) => format!(
                         "{t} p{i} = ({t})*(args + {i})",
-                        t = Self::get_type(par_type.into()),
+                        t = Self::get_type(*par_type),
                         i = i
                     ),
                 }
@@ -345,7 +345,7 @@ impl MppaPrinter {
             .join(",  ");
         format!(
             include_str!("template/host.c.template"),
-            id = func.id(),
+            id = 0,
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
             build_ptr_struct = self.build_ptr_struct(func),
@@ -410,23 +410,22 @@ impl MppaPrinter {
             .to_string();
         format!(
             include_str!("template/ocl_wrap.c.template"),
-            fun_id = fun.id(),
+            fun_id = 0,
             arg_names = arg_names,
             cl_arg_defs = cl_arg_defs,
         )
     }
 
-
-    fn get_type(t: DeclType) -> String {
+    fn get_type(t: ir::Type) -> String {
         match t {
-            DeclType::Ptr => String::from("intptr_t"),
-            DeclType::F(32) => String::from("float"),
-            DeclType::F(64) => String::from("double"),
-            DeclType::I(1) => String::from("int8_t"),
-            DeclType::I(8) => String::from("int8_t"),
-            DeclType::I(16) => String::from("int16_t"),
-            DeclType::I(32) => String::from("int32_t"),
-            DeclType::I(64) => String::from("int64_t"),
+            ir::Type::PtrTo(..) => String::from("intptr_t"),
+            ir::Type::F(32) => String::from("float"),
+            ir::Type::F(64) => String::from("double"),
+            ir::Type::I(1) => String::from("int8_t"),
+            ir::Type::I(8) => String::from("int8_t"),
+            ir::Type::I(16) => String::from("int16_t"),
+            ir::Type::I(32) => String::from("int32_t"),
+            ir::Type::I(64) => String::from("int64_t"),
             ref t => panic!("invalid type for the host: {}", t),
         }
     }
