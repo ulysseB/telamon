@@ -1,10 +1,10 @@
 use crate::Namer;
 use itertools::Itertools;
+use std::borrow::Cow;
+use std::fmt::Write as WriteFmt;
 use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
-use std::borrow::Cow;
-use std::fmt::Write as WriteFmt;
 use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -64,7 +64,11 @@ impl MppaPrinter {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(&mut self, function: &Function, name_map: &NameMap<Namer>) -> String {
+    fn decl_par_indexes(
+        &mut self,
+        function: &Function,
+        name_map: &NameMap<Namer>,
+    ) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
         // Compute thread indexes.
@@ -132,7 +136,7 @@ impl MppaPrinter {
                             Type::I(32),
                             &name,
                             &old_name,
-                            );
+                        );
                     }
                 }
             }
@@ -402,8 +406,7 @@ impl MppaPrinter {
         fun: &Function,
         name_map: &mut NameMap<Namer>,
         id: usize,
-    ) -> String
-    {
+    ) -> String {
         let arg_names = fun
             .device_code_args()
             .format_with(", ", |p, f| {
@@ -444,7 +447,9 @@ impl MppaPrinter {
 }
 
 impl Printer<Namer> for MppaPrinter {
-    fn get_int(n: u32) -> String { format!("{}", n) }
+    fn get_int(n: u32) -> String {
+        format!("{}", n)
+    }
 
     fn print_binop(
         &mut self,
@@ -492,7 +497,6 @@ impl Printer<Namer> for MppaPrinter {
         };
         unwrap!(writeln!(self.buffer, "{};", operand));
     }
-
 
     fn print_mul(
         &mut self,

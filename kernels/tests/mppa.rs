@@ -1,6 +1,6 @@
 #![cfg(feature = "mppa")]
-use telamon_mppa as mppa;
 use telamon_kernels::{linalg, Kernel};
+use telamon_mppa as mppa;
 
 macro_rules! test_output {
     ($name:ident, $kernel:ty, $num_tests:expr, $params:expr) => {

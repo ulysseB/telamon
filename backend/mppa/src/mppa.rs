@@ -1,10 +1,10 @@
+use std;
+use std::io::Write;
 use telamon::codegen::Function;
 use telamon::device;
 use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
-use std;
-use std::io::Write;
 use utils::unwrap;
 use utils::*;
 
@@ -21,28 +21,42 @@ impl device::Device for Mppa {
         match t {
             Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
             Type::PtrTo(_) => Ok(()),
-            t => Err(ir::TypeError::InvalidType {t}),
+            t => Err(ir::TypeError::InvalidType { t }),
         }
     }
 
     // block dimensions do not make sense on cpu
-    fn max_block_dims(&self) -> u32 { 0 }
-
-    fn max_inner_block_size(&self) -> u32 {1}
-
-    fn max_threads(&self) -> u32 { 8 }
-
-    fn max_unrolling(&self) -> u32 { 512 }
-
-    fn has_vector_registers(&self) -> bool { false }
-
-    fn can_vectorize(&self, _dim: &ir::Dimension, _op: &ir::Operator) -> bool { false }
-
-    fn max_vectorization(&self, _op: &ir::Operator) -> [u32; 2] {
-        [1, 1] 
+    fn max_block_dims(&self) -> u32 {
+        0
     }
 
-    fn shared_mem(&self) -> u32 { 0 }
+    fn max_inner_block_size(&self) -> u32 {
+        1
+    }
+
+    fn max_threads(&self) -> u32 {
+        8
+    }
+
+    fn max_unrolling(&self) -> u32 {
+        512
+    }
+
+    fn has_vector_registers(&self) -> bool {
+        false
+    }
+
+    fn can_vectorize(&self, _dim: &ir::Dimension, _op: &ir::Operator) -> bool {
+        false
+    }
+
+    fn max_vectorization(&self, _op: &ir::Operator) -> [u32; 2] {
+        [1, 1]
+    }
+
+    fn shared_mem(&self) -> u32 {
+        0
+    }
 
     fn pointer_type(&self, _: MemSpace) -> ir::Type {
         // Use 0 as a dummy memory ID.
@@ -95,10 +109,13 @@ impl device::Device for Mppa {
         HwPressure::new(1.0, vec![])
     }
 
+    fn bottlenecks(&self) -> &[&'static str] {
+        &[]
+    }
 
-    fn bottlenecks(&self) -> &[&'static str] { &[] }
-
-    fn block_parallelism(&self, _space: &SearchSpace) -> u32 { 1 }
+    fn block_parallelism(&self, _space: &SearchSpace) -> u32 {
+        1
+    }
 
     fn additive_indvar_pressure(&self, _t: &ir::Type) -> HwPressure {
         //TODO(model): implement minimal model
@@ -116,8 +133,7 @@ impl device::Device for Mppa {
         _: model::size::FactorRange,
         _: model::size::Range,
         _pressure: &mut HwPressure,
-    )
-    {
+    ) {
     }
 
     fn lower_type(&self, t: ir::Type, _space: &SearchSpace) -> Option<ir::Type> {

@@ -36,10 +36,10 @@ impl X86printer {
             let mut s = format!("{} ", Self::get_type(t));
             s.push_str(
                 &(0..n)
-                .map(|i| format!("{}{}", prefix, i))
-                .collect_vec()
-                .join(", "),
-                );
+                    .map(|i| format!("{}{}", prefix, i))
+                    .collect_vec()
+                    .join(", "),
+            );
             s.push_str(";\n  ");
             s
         };

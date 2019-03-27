@@ -225,16 +225,6 @@ impl Device {
         }
     }
 
-    /// Print func id then execute it
-    pub fn execute_kernel_id(
-        &self,
-        kernel: &mut Kernel,
-        kernel_id: usize,
-    ) -> Result<(), opencl::Error> {
-        println!("id = {}", kernel_id);
-        self.execute_kernel(kernel)
-    }
-
     /// Executes a `Kernel` and then wait for completion.
     pub fn execute_kernel(&self, kernel: &mut Kernel) -> Result<(), opencl::Error> {
         let mut event = Event::new();

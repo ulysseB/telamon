@@ -12,10 +12,10 @@ pub use crate::context::Context;
 pub use crate::mppa::Mppa;
 pub use crate::printer::MppaPrinter;
 
-use telamon::{ir, codegen};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
+use telamon::{codegen, ir};
 use utils::*;
 
 #[derive(Default)]
