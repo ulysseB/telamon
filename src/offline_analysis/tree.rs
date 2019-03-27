@@ -219,12 +219,33 @@ impl CandidateNode {
                     .upgrade()
                     .unwrap()
                     .borrow()
-                    .outgoing_edges
-                    .get(usize::from(incoming_edge.child_idx))
-                    .unwrap()
-                    .action
-                    .clone()
+                    .outgoing_edges[usize::from(incoming_edge.child_idx)]
+                .action
+                .clone()
             })
+    }
+
+    pub fn actions(&self) -> Vec<Action> {
+        let mut actions = Vec::new();
+
+        let mut current = Rc::clone(&self.inner);
+        loop {
+            let parent;
+            if let Some(edge) = current.borrow().incoming_edge.as_ref() {
+                parent = edge.parent.upgrade().expect("no parent");
+                actions.push(
+                    parent.borrow().outgoing_edges[usize::from(edge.child_idx)]
+                        .action
+                        .clone(),
+                );
+            } else {
+                break;
+            }
+            current = parent;
+        }
+
+        actions.reverse();
+        actions
     }
 
     /// Returns the action associated to the edge from the parent of
