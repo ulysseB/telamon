@@ -37,16 +37,19 @@ fn main() -> io::Result<()> {
                 discovery_time,
             } => tree.extend(id, discovery_time, parent, bound, &mut children),
             mcts::Message::Trace { .. } => (),
-            mcts::Message::Evaluation { id, .. } => {
-                if nevals == opt.id {
-                    for action in tree.get_node(id).actions() {
-                        println!("{:?}", action);
+            mcts::Message::Evaluation { id, value, .. } => {
+                if let Some(value) = value {
+                    if nevals == opt.id {
+                        println!("Actions for candidate {} (score: {})", id, value);
+                        for action in tree.get_node(id).actions() {
+                            println!("{:?}", action);
+                        }
+
+                        break;
                     }
 
-                    break;
+                    nevals += 1;
                 }
-
-                nevals += 1;
             }
         }
     }
