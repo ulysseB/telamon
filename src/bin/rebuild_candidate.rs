@@ -41,9 +41,10 @@ fn main() -> io::Result<()> {
                 if let Some(value) = value {
                     if nevals == opt.id {
                         println!("Actions for candidate {} (score: {})", id, value);
-                        for action in tree.get_node(id).actions() {
-                            println!("{:?}", action);
-                        }
+                        println!(
+                            "{}",
+                            serde_json::to_string(&tree.get_node(id).actions()).unwrap()
+                        );
 
                         break;
                     }
