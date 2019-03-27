@@ -13,7 +13,7 @@ use std::sync::{
 };
 use std::time::Instant;
 use telajax;
-use telamon::codegen::{self, ParamVal};
+use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::Context as ContextTrait;
 use telamon::device::{self, ArrayArgument, AsyncCallback, EvalMode, ScalarArgument};
 use telamon::explorer;
@@ -78,7 +78,6 @@ pub struct Context {
     device: mppa::Mppa,
     executor: &'static telajax::Device,
     parameters: FnvHashMap<String, Arc<Argument>>,
-    //wrappers: Cache<ir::Signature, telajax::Wrapper>,
     writeback_slots: ArrayQueue<MppaArray>,
 }
 unsafe impl Sync for Context {}
@@ -113,7 +112,6 @@ impl Context {
             device: mppa::Mppa::default(),
             executor,
             parameters: FnvHashMap::default(),
-            //wrappers: Cache::new(25),
             writeback_slots,
         }
     }
@@ -123,43 +121,30 @@ impl Context {
     }
 
     /// Compiles and sets the arguments of a kernel.
-    fn setup_kernel(&self, fun: &codegen::Function) -> (telajax::Kernel, Vec<KernelArg>) {
+    fn setup_kernel(&self, fun: &Function) -> (telajax::Kernel, Vec<KernelArg>) {
         let id = ATOMIC_USIZE.fetch_add(1, Ordering::SeqCst);
+        let mut namer = Namer::default();
+        let mut name_map = NameMap::new(fun, &mut namer);
         let mut printer = MppaPrinter::default();
-        let kernel_code = printer.wrapper_function(fun, id);
-        std::fs::write("dump_kernel.c", &kernel_code).expect("Could not read file");
-        let wrapper = self.get_wrapper(fun, id);
+
+        let kernel_code = printer.wrapper_function(fun, &mut name_map, id);
+        let wrapper = self.get_wrapper(fun, &mut name_map, id);
+
+        // Compiler and linker flags
         let cflags = std::ffi::CString::new("-mhypervisor").unwrap();
         let lflags = std::ffi::CString::new("-mhypervisor -lutask -lvbsp").unwrap();
+
         let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
         let mut kernel = self
             .executor
             .build_kernel(&kernel_code, &cflags, &lflags, &*wrapper)
             .unwrap();
         kernel.set_num_clusters(1).unwrap();
-        let mut namer = Namer::default();
-        let name_map = codegen::NameMap::new(fun, &mut namer);
-        let (mut arg_sizes, mut kernel_args): (Vec<_>, Vec<_>) = fun
-            .device_code_args()
-            .map(|p| {
-                match p {
-                    ParamVal::External(..) => {
-                        let name = name_map.name_param(p.key());
-                        let arg = self.get_param(&name);
-                        (get_type_size(p.t()), KernelArg::External(arg.raw_ptr()))
-                    }
-                    ParamVal::GlobalMem(_, size, _) => {
-                        let size = self.eval_size(size);
-                        let mem = MppaArray::new(self.executor, size as usize);
-                        (telajax::Mem::get_mem_size(), KernelArg::GlobalMem(mem))
-                    }
-                    ParamVal::Size(size) => {
-                        let size = self.eval_size(size);
-                        (get_type_size(p.t()), KernelArg::Size(size))
-                    }
-                }
-            })
-            .unzip();
+
+        // Setting kernel arguments
+        let (mut arg_sizes, mut kernel_args) =
+            self.process_kernel_argument(fun, &mut name_map);
+        // This memory chunk is used to get the time taken by the kernel
         let out_mem = self.writeback_slots.pop().unwrap();
         kernel_args.push(KernelArg::GlobalMem(out_mem));
         arg_sizes.push(telajax::Mem::get_mem_size());
@@ -172,13 +157,14 @@ impl Context {
     }
 
     /// Returns the wrapper for the given signature.
-    fn get_wrapper(&self, fun: &codegen::Function, id: usize) -> Arc<telajax::Wrapper> {
-        // TODO: There was a memoization here that allowed to cache a result for an
-        // already generated signature wrapper. Maybe reimplement it
+    fn get_wrapper(
+        &self,
+        fun: &Function,
+        name_map: &mut NameMap<Namer>,
+        id: usize,
+    ) -> Arc<telajax::Wrapper> {
         let mut printer = MppaPrinter::default();
-        let mut namer = Namer::default();
-        let mut name_map = codegen::NameMap::new(fun, &mut namer);
-        let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map, id);
+        let ocl_code = printer.print_ocl_wrapper(fun, name_map, id);
         let name = std::ffi::CString::new(format!("wrapper_{}", id)).unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
         Arc::new(self.executor.build_wrapper(&name, &ocl_code).unwrap())
@@ -187,6 +173,33 @@ impl Context {
     /// Returns a parameter given its name.
     pub fn get_param(&self, name: &str) -> &Argument {
         self.parameters[name].as_ref()
+    }
+
+    /// Process parameters so they can be passed to telajax correctly
+    /// Returns a tuple of (Vec<argument size>, Vec<argument>)
+    fn process_kernel_argument(
+        &self,
+        fun: &Function,
+        name_map: &mut NameMap<Namer>,
+    ) -> (Vec<usize>, Vec<KernelArg>) {
+        fun.device_code_args()
+            .map(|p| match p {
+                ParamVal::External(..) => {
+                    let name = name_map.name_param(p.key());
+                    let arg = self.get_param(&name);
+                    (get_type_size(p.t()), KernelArg::External(arg.raw_ptr()))
+                }
+                ParamVal::GlobalMem(_, size, _) => {
+                    let size = self.eval_size(size);
+                    let mem = MppaArray::new(self.executor, size as usize);
+                    (telajax::Mem::get_mem_size(), KernelArg::GlobalMem(mem))
+                }
+                ParamVal::Size(size) => {
+                    let size = self.eval_size(size);
+                    (get_type_size(p.t()), KernelArg::Size(size))
+                }
+            })
+            .unzip()
     }
 }
 
@@ -202,23 +215,23 @@ impl device::Context for Context {
         &self.device
     }
 
-    fn benchmark(&self, _function: &codegen::Function, _num_samples: usize) -> Vec<f64> {
+    fn benchmark(&self, _function: &Function, _num_samples: usize) -> Vec<f64> {
         unimplemented!()
     }
 
-    fn evaluate(&self, fun: &codegen::Function, _mode: EvalMode) -> Result<f64, ()> {
+    fn evaluate(&self, fun: &Function, _mode: EvalMode) -> Result<f64, ()> {
         let (mut kernel, mut kernel_args) = self.setup_kernel(fun);
-        // TODO Use a proper id
         self.executor.execute_kernel(&mut kernel).unwrap();
         let out_mem = if let KernelArg::GlobalMem(mem) = kernel_args.pop().unwrap() {
             mem
         } else {
             panic!()
         };
+        // FIXME: We get obviously wrong timings, fix that
         let ptr_i8 = out_mem.read_i8().as_ptr();
-        let res: f64 = unsafe { *std::mem::transmute::<*const i8, *const f64>(ptr_i8) };
+        let res: usize = unsafe { *std::mem::transmute::<*const i8, *const usize>(ptr_i8) };
         self.writeback_slots.push(out_mem).unwrap();
-        Ok(res)
+        Ok(res as f64)
     }
 
     fn async_eval<'c, 'd>(
@@ -310,7 +323,7 @@ where
         callback: device::AsyncCallback<'a, 'b>,
     ) {
         let (kernel, _) = {
-            let dev_fun = codegen::Function::build(&candidate.space);
+            let dev_fun = Function::build(&candidate.space);
             self.context.setup_kernel(&dev_fun)
         };
         unwrap!(self.sender.send((candidate, kernel, callback)));

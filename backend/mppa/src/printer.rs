@@ -83,23 +83,24 @@ impl MppaPrinter {
     }
 
     /// Prints a `Function`.
-    pub fn function<'a, 'b>(&mut self, function: &'a Function<'a>) -> String {
-        let mut namer = Namer::default();
-        let mut name_map = NameMap::new(function, &mut namer);
-        let mut return_string;
+    pub fn function<'a: 'b, 'b>(
+        &mut self,
+        function: &'b Function<'a>,
+        name_map: &mut NameMap<'b, '_, Namer>,
+    ) -> String {
         let param_decls = function
             .device_code_args()
-            .map(|v| self.param_decl(v, &mut name_map))
+            .map(|v| self.param_decl(v, name_map))
             .collect_vec()
             .join(",\n  ");
         // SIGNATURE AND OPEN BRACKET
-        return_string = format!(
+        let mut return_string = format!(
             include_str!("template/signature.c.template"),
             name = function.name,
             params = param_decls
         );
         // INDEX LOADS
-        let idx_loads = self.decl_par_indexes(function, &mut name_map);
+        let idx_loads = self.decl_par_indexes(function, name_map);
         unwrap!(writeln!(self.buffer, "{}", idx_loads));
         // LOAD PARAM
         for val in function.device_code_args() {
@@ -115,7 +116,7 @@ impl MppaPrinter {
             match block.alloc_scheme() {
                 AllocationScheme::Shared => panic!("No shared mem in cpu!!"),
                 AllocationScheme::PrivatisedGlobal => {
-                    self.privatise_global_block(block, &mut name_map, function)
+                    self.privatise_global_block(block, name_map, function)
                 }
                 AllocationScheme::Global => (),
             }
@@ -149,11 +150,11 @@ impl MppaPrinter {
                 .flat_map(|d| d.induction_levels()),
         );
         for level in ind_levels {
-            self.parallel_induction_level(level, &mut name_map);
+            self.parallel_induction_level(level, name_map);
         }
         // BODY
-        self.cfg(function, function.cfg(), &mut name_map);
-        let var_decls = self.var_decls(&mut name_map);
+        self.cfg(function, function.cfg(), name_map);
+        let var_decls = self.var_decls(name_map);
         return_string.push_str(&var_decls);
         return_string.push_str(&self.buffer);
         // Close function bracket
@@ -324,9 +325,7 @@ impl MppaPrinter {
 
     /// Turns the argument of wrapper into an array of void pointers
     /// Necessary to call pthread with it
-    fn build_ptr_struct(&self, func: &Function) -> String {
-        let mut namer = Namer::default();
-        let name_map = NameMap::new(func, &mut namer);
+    fn build_ptr_struct(&self, func: &Function, name_map: &NameMap<Namer>) -> String {
         func.device_code_args()
             .enumerate()
             .map(|(i, arg)| {
@@ -341,10 +340,13 @@ impl MppaPrinter {
     }
 
     /// wrap the kernel call into a function with a fixed interface
-    pub fn wrapper_function<'a>(&mut self, func: &Function<'a>, id: usize) -> String {
-        let mut namer = Namer::default();
-        let name_map = NameMap::new(func, &mut namer);
-        let fun_str = self.function(func);
+    pub fn wrapper_function<'a: 'b, 'b>(
+        &mut self,
+        func: &'b Function<'a>,
+        name_map: &mut NameMap<'b, '_, Namer>,
+        id: usize,
+    ) -> String {
+        let fun_str = self.function(func, name_map);
         let fun_params = self.params_call(func);
         let (lower_bound, upper_n_arg) = func.device_code_args().size_hint();
         let n_args = if let Some(upper_bound) = upper_n_arg {
@@ -355,7 +357,7 @@ impl MppaPrinter {
         };
         let cl_arg_def = func
             .device_code_args()
-            .map(|v| self.param_decl(v, &name_map))
+            .map(|v| self.param_decl(v, name_map))
             .collect_vec()
             .join(",  ");
         format!(
@@ -363,7 +365,7 @@ impl MppaPrinter {
             id = id,
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
-            build_ptr_struct = self.build_ptr_struct(func),
+            build_ptr_struct = self.build_ptr_struct(func, name_map),
             fun_name = func.name,
             fun_str = fun_str,
             fun_params_cast = self.fun_params_cast(func),
