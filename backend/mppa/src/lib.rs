@@ -13,7 +13,6 @@ pub use crate::mppa::Mppa;
 pub use crate::printer::MppaPrinter;
 
 use telamon::{ir, codegen};
-use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
@@ -23,6 +22,7 @@ use utils::*;
 pub struct Namer {
     num_var: FnvHashMap<ir::Type, usize>,
     num_sizes: usize,
+    num_glob_ptr: usize,
 }
 
 impl Namer {
@@ -59,10 +59,19 @@ impl Namer {
 impl codegen::Namer for Namer {
     fn name(&mut self, t: ir::Type) -> String {
         let prefix = Namer::gen_prefix(t);
-        let entry = self.num_var.entry(t).or_insert(0);
-        let name = format!("{}{}", prefix, *entry);
-        *entry += 1;
-        name
+        match t {
+            ir::Type::PtrTo(..) => {
+                let name = format!("{}{}", prefix, self.num_glob_ptr);
+                self.num_glob_ptr += 1;
+                name
+            }
+            _ => {
+                let entry = self.num_var.entry(t).or_insert(0);
+                let name = format!("{}{}", prefix, *entry);
+                *entry += 1;
+                name
+            }
+        }
     }
 
     fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
@@ -85,9 +94,5 @@ impl codegen::Namer for Namer {
                 format!("_size_{}", self.num_sizes - 1)
             }
         }
-    }
-
-    fn get_declared_variables(&self) -> Vec<(ir::Type, usize)> {
-        self.num_var.iter().map(|(&t, &n)| (t, n)).collect_vec()
     }
 }

@@ -229,8 +229,9 @@ impl Device {
     pub fn execute_kernel_id(
         &self,
         kernel: &mut Kernel,
-        kernel_id: u16,
+        kernel_id: usize,
     ) -> Result<(), opencl::Error> {
+        println!("id = {}", kernel_id);
         self.execute_kernel(kernel)
     }
 

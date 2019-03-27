@@ -9,14 +9,16 @@ use crate::{mppa, Namer};
 use crossbeam;
 use crossbeam::queue::ArrayQueue;
 use itertools::Itertools;
+use lazy_static::lazy_static;
 use libc;
 use std;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, atomic::{AtomicUsize, Ordering}};
 use std::time::Instant;
 use telajax;
 use utils::unwrap;
 use utils::*;
 
+lazy_static!{static ref ATOMIC_USIZE: AtomicUsize = AtomicUsize::new(0);}
 const EXECUTION_QUEUE_SIZE: usize = 32;
 
 pub trait Argument: Sync + Send {
@@ -49,7 +51,7 @@ impl device::ArrayArgument for MppaArray {
     }
 
     fn write_i8(&self, slice: &[i8]) {
-        self.0.write(slice);
+        self.0.write(slice).unwrap();
     }
 }
 
@@ -93,7 +95,7 @@ impl Context {
         let executor = telajax::Device::get();
         let writeback_slots = ArrayQueue::new(EXECUTION_QUEUE_SIZE);
         for _ in 0..EXECUTION_QUEUE_SIZE {
-            writeback_slots.push(MppaArray::new(executor, 8));
+            writeback_slots.push(MppaArray::new(executor, 8)).unwrap();
         }
         Context {
             device: mppa::Mppa::default(),
@@ -112,13 +114,14 @@ impl Context {
     fn setup_kernel(
         &self,
         fun: &codegen::Function,
+        id: usize,
     ) -> (telajax::Kernel, Vec<KernelArg>)
     {
         let mut printer = MppaPrinter::default();
-        let kernel_code = printer.wrapper_function(fun);
+        let kernel_code = printer.wrapper_function(fun, id);
         std::fs::write("dump_kernel.c", &kernel_code).expect("Could not read file");
         //println!("KERNEL CODE\n{}", kernel_code);
-        let wrapper = self.get_wrapper(fun);
+        let wrapper = self.get_wrapper(fun, id);
         let cflags = std::ffi::CString::new("-mhypervisor").unwrap();
         let lflags = std::ffi::CString::new("-mhypervisor -lutask -lvbsp").unwrap();
         let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
@@ -126,7 +129,7 @@ impl Context {
             self.executor
                 .build_kernel(&kernel_code, &cflags, &lflags, &*wrapper)
                 .unwrap();
-        kernel.set_num_clusters(1);
+        kernel.set_num_clusters(1).unwrap();
         let mut namer = Namer::default();
         let name_map = codegen::NameMap::new(fun, &mut namer);
         let (mut arg_sizes, mut kernel_args): (Vec<_>, Vec<_>) = fun
@@ -166,15 +169,15 @@ impl Context {
     }
 
     /// Returns the wrapper for the given signature.
-    fn get_wrapper(&self, fun: &codegen::Function) -> Arc<telajax::Wrapper> {
+    fn get_wrapper(&self, fun: &codegen::Function, id: usize) -> Arc<telajax::Wrapper> {
         // TODO: There was a memoization here that allowed to cache a result for an
         // already generated signature wrapper. Maybe reimplement it
         let mut printer = MppaPrinter::default();
         let mut namer = Namer::default();
         let mut name_map = codegen::NameMap::new(fun, &mut namer);
-        let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map);
+        let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map, id);
         //println!("{}", ocl_code);
-        let name = std::ffi::CString::new(format!("wrapper_{}", 0)).unwrap();
+        let name = std::ffi::CString::new(format!("wrapper_{}", id)).unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
         Arc::new(self.executor.build_wrapper(&name, &ocl_code).unwrap())
     }
@@ -198,9 +201,10 @@ impl device::Context for Context {
     }
 
     fn evaluate(&self, fun: &codegen::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let (mut kernel, mut kernel_args) = self.setup_kernel(fun);
+        let id = ATOMIC_USIZE.fetch_add(1, Ordering::SeqCst);
+        let (mut kernel, mut kernel_args) = self.setup_kernel(fun, id);
         // TODO Use a proper id
-        self.executor.execute_kernel_id(&mut kernel, 0);
+        self.executor.execute_kernel_id(&mut kernel, id).unwrap();
         let out_mem = if let KernelArg::GlobalMem(mem) = kernel_args.pop().unwrap() {
             mem
         } else {
@@ -208,7 +212,7 @@ impl device::Context for Context {
         };
         let ptr_i8 = out_mem.read_i8().as_ptr();
         let res: f64 = unsafe { *std::mem::transmute::<*const i8, *const f64>(ptr_i8) };
-        self.writeback_slots.push(out_mem);
+        self.writeback_slots.push(out_mem).unwrap();
         Ok(res)
     }
 
@@ -238,15 +242,15 @@ impl device::Context for Context {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move |_| {
-                while let Ok((candidate, mut kernel, callback)) = recv.recv() {
+                while let Ok((candidate, mut kernel, callback, id)) = recv.recv() {
                     // TODO: measure time directly on MPPA
                     let t0 = Instant::now();
-                    self.executor.execute_kernel(&mut kernel);
+                    self.executor.execute_kernel_id(&mut kernel, id).unwrap();
                     let t = Instant::now() - t0;
                     callback.call(candidate, t.subsec_nanos() as f64);
                 }
             }));
-        });
+        }).unwrap();
     }
 
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).as_size() }
@@ -276,6 +280,7 @@ type AsyncPayload<'a, 'b> = (
     explorer::Candidate<'a>,
     telajax::Kernel,
     AsyncCallback<'a, 'b>,
+    usize,
 );
 
 /// Asynchronous evaluator.
@@ -297,10 +302,11 @@ where
         callback: device::AsyncCallback<'a, 'b>,
     )
     {
+        let id = ATOMIC_USIZE.fetch_add(1, Ordering::SeqCst);
         let (kernel, _) = {
             let dev_fun = codegen::Function::build(&candidate.space);
-            self.context.setup_kernel(&dev_fun)
+            self.context.setup_kernel(&dev_fun, id)
         };
-        unwrap!(self.sender.send((candidate, kernel, callback)));
+        unwrap!(self.sender.send((candidate, kernel, callback, id)));
     }
 }

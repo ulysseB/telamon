@@ -31,20 +31,17 @@ impl X86printer {
     /// Declared all variables that have been required from the namer
     fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
         let namer = name_map.namer();
-        let print_decl = |(&t, &n)| match t {
-            Type::PtrTo(..) => String::new(),
-            _ => {
-                let prefix = Namer::gen_prefix(t);
-                let mut s = format!("{} ", Self::get_type(t));
-                s.push_str(
-                    &(0..n)
-                        .map(|i| format!("{}{}", prefix, i))
-                        .collect_vec()
-                        .join(", "),
+        let print_decl = |(&t, &n)| {
+            let prefix = Namer::gen_prefix(t);
+            let mut s = format!("{} ", Self::get_type(t));
+            s.push_str(
+                &(0..n)
+                .map(|i| format!("{}{}", prefix, i))
+                .collect_vec()
+                .join(", "),
                 );
-                s.push_str(";\n  ");
-                s
-            }
+            s.push_str(";\n  ");
+            s
         };
         let other_var_decl = namer
             .num_var

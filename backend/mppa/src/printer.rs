@@ -15,7 +15,7 @@ pub struct MppaPrinter {
 
 impl MppaPrinter {
     /// Declares all parameters of the function with the appropriate type
-    fn param_decl(&mut self, param: &ParamVal, name_map: &NameMap) -> String {
+    fn param_decl(&mut self, param: &ParamVal, name_map: &NameMap<Namer>) -> String {
         let name = name_map.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
@@ -29,8 +29,9 @@ impl MppaPrinter {
     }
 
     /// Declared all variables that have been required from the namer
-    fn var_decls(&mut self, name_map: &NameMap) -> String {
-        let print_decl = |&(t, n)| {
+    fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
+        let namer = name_map.namer();
+        let print_decl = |(&t, &n)| {
             let prefix = Namer::gen_prefix(t);
             let mut s = format!("{} ", Namer::get_string(t));
             s.push_str(
@@ -42,17 +43,28 @@ impl MppaPrinter {
             s.push_str(";\n  ");
             s
         };
-        let var_decl = name_map
-            .get_declared_variables()
+        let other_var_decl = namer
+            .num_var
             .iter()
             .map(print_decl)
             .collect_vec()
             .join("\n  ");
-        var_decl
+        if namer.num_glob_ptr == 0 {
+            other_var_decl
+        } else {
+            format!(
+                "intptr_t {};\n{}",
+                &(0..namer.num_glob_ptr)
+                    .map(|i| format!("ptr{}", i))
+                    .collect_vec()
+                    .join(", "),
+                other_var_decl,
+            )
+        }
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(&mut self, function: &Function, name_map: &NameMap) -> String {
+    fn decl_par_indexes(&mut self, function: &Function, name_map: &NameMap<Namer>) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
         // Compute thread indexes.
@@ -325,8 +337,7 @@ impl MppaPrinter {
     }
 
     /// wrap the kernel call into a function with a fixed interface
-    pub fn wrapper_function<'a>(&mut self, func: &Function<'a>) -> String {
-        //TODO: clean these NameMap
+    pub fn wrapper_function<'a>(&mut self, func: &Function<'a>, id: usize) -> String {
         let mut namer = Namer::default();
         let name_map = NameMap::new(func, &mut namer);
         let fun_str = self.function(func);
@@ -345,7 +356,7 @@ impl MppaPrinter {
             .join(",  ");
         format!(
             include_str!("template/host.c.template"),
-            id = 0,
+            id = id,
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
             build_ptr_struct = self.build_ptr_struct(func),
@@ -389,7 +400,8 @@ impl MppaPrinter {
     pub fn print_ocl_wrapper(
         &mut self,
         fun: &Function,
-        name_map: &mut NameMap,
+        name_map: &mut NameMap<Namer>,
+        id: usize,
     ) -> String
     {
         let arg_names = fun
@@ -410,7 +422,7 @@ impl MppaPrinter {
             .to_string();
         format!(
             include_str!("template/ocl_wrap.c.template"),
-            fun_id = 0,
+            fun_id = id,
             arg_names = arg_names,
             cl_arg_defs = cl_arg_defs,
         )
@@ -431,7 +443,7 @@ impl MppaPrinter {
     }
 }
 
-impl Printer for MppaPrinter {
+impl Printer<Namer> for MppaPrinter {
     fn get_int(n: u32) -> String { format!("{}", n) }
 
     fn print_binop(
@@ -581,7 +593,7 @@ impl Printer for MppaPrinter {
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        namer: &'a NameMap,
+        namer: &'a NameMap<Namer>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
@@ -591,7 +603,7 @@ impl Printer for MppaPrinter {
     fn name_inst<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        namer: &'a NameMap,
+        namer: &'a NameMap<Namer>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());

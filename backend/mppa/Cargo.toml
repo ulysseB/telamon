@@ -9,7 +9,7 @@ cc = "1.0"
 
 [dependencies]
 crossbeam = "0.7"
-lazy_static = { version = "1.0", optional = true }
+lazy_static = { version = "1.0" }
 errno = { version = "0.2", optional = true }
 env_logger = "0.5"
 failure = "0.1"
