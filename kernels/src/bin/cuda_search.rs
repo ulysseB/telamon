@@ -50,7 +50,7 @@ fn main() {
             params,
             &executor,
             |params, ctx| matmul_reference(&cublas_handle, params, ctx),
-            format!("Sgemm_1024_1024_1024/{}", idx),
+            format!("Sgemm_4096_4096_4096/{}", idx),
         );
 
         let params = linalg::BatchMMP::new(512, 32, 32, 64)
@@ -69,6 +69,14 @@ fn main() {
             &executor,
             |params, ctx| batchmm_reference(&cublas_handle, params, ctx),
             format!("BatchMMP_512_32_32_64_SS/{}", idx),
+        );
+
+        let params = linalg::BatchMMP::new(512, 32, 32, 64);
+        benchmark::<linalg::BatchMM<f32>, _>(
+            params,
+            &executor,
+            |params, ctx| batchmm_reference(&cublas_handle, params, ctx),
+            format!("BatchMMP_512_32_32_64/{}", idx),
         );
 
         benchmark::<linalg::MatVec<f32>, _>(
