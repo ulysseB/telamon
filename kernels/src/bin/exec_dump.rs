@@ -1,5 +1,5 @@
-use telamon_kernels::{linalg, Kernel};
 use std::env;
+use telamon_kernels::{linalg, Kernel};
 use telamon_x86 as x86;
 
 macro_rules! dispatch_kernel {
@@ -19,7 +19,6 @@ fn main() {
     assert!(args.len() == 3);
     let kernel_name = &args[1];
     let binary_path = &args[2];
-
 
     let _ = env_logger::try_init();
     let mut context = x86::Context::default();

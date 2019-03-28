@@ -108,7 +108,8 @@ pub trait Kernel<'a>: Sized {
         // Retrieve decisions from dump
         let mut cand_bytes = Vec::new();
         dump.read_to_end(&mut cand_bytes).unwrap();
-        let (params, action_list): (Self::Parameters, List<ActionEx>) = bincode::deserialize(&cand_bytes).unwrap();
+        let (params, action_list): (Self::Parameters, List<ActionEx>) =
+            bincode::deserialize(&cand_bytes).unwrap();
 
         let kernel;
         let signature = {
