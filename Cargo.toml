@@ -101,6 +101,7 @@ mppa = ["telajax"]
 members = [
     "backend/cuda",
     "backend/x86",
+    "backend/mppa",
     "kernels",
     "telamon-gen",
     "telajax",

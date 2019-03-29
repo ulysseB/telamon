@@ -229,7 +229,8 @@ impl device::Context for Context {
         };
         // FIXME: We get obviously wrong timings, fix that
         let ptr_i8 = out_mem.read_i8().as_ptr();
-        let res: usize = unsafe { *std::mem::transmute::<*const i8, *const usize>(ptr_i8) };
+        let res: usize =
+            unsafe { *std::mem::transmute::<*const i8, *const usize>(ptr_i8) };
         self.writeback_slots.push(out_mem).unwrap();
         Ok(res as f64)
     }
