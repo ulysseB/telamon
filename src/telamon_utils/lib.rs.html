@@ -328,7 +328,7 @@
 <span class="kw">use</span> <span class="ident">fnv</span>::<span class="ident">FnvBuildHasher</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">fnv</span>::{<span class="ident">FnvHashMap</span>, <span class="ident">FnvHashSet</span>};
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">Integer</span>;
-<span class="kw">use</span> <span class="ident">serde_derive</span>::<span class="ident">Serialize</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">Serialize</span>;
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">FnvMultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">multimap</span>::<span class="ident">MultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">FnvBuildHasher</span><span class="op">&gt;</span>;
 

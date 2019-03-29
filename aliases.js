@@ -1,5 +1,6 @@
 var ALIASES = {};
 ALIASES["characterize"] = {};
+ALIASES["exec_dump"] = {};
 ALIASES["expandconfig"] = {};
 ALIASES["kernel_dump"] = {};
 ALIASES["parse_event_log"] = {};

@@ -525,6 +525,7 @@
 <span id="525">525</span>
 <span id="526">526</span>
 <span id="527">527</span>
+<span id="528">528</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Namer</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -543,7 +544,7 @@
 
 <span class="kw">impl</span> <span class="ident">X86printer</span> {
     <span class="doccomment">/// Declares all parameters of the function with the appropriate type</span>
-    <span class="kw">fn</span> <span class="ident">param_decl</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ParamVal</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="ident">NameMap</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+    <span class="kw">fn</span> <span class="ident">param_decl</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ParamVal</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="ident">NameMap</span><span class="op">&lt;</span><span class="ident">Namer</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_param</span>(<span class="ident">param</span>.<span class="ident">key</span>());
         <span class="kw">match</span> <span class="ident">param</span> {
             <span class="ident">ParamVal</span>::<span class="ident">External</span>(<span class="kw">_</span>, <span class="ident">par_type</span>) <span class="op">=&gt;</span> {
@@ -557,7 +558,8 @@
     }
 
     <span class="doccomment">/// Declared all variables that have been required from the namer</span>
-    <span class="kw">fn</span> <span class="ident">var_decls</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="ident">Namer</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+    <span class="kw">fn</span> <span class="ident">var_decls</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name_map</span>: <span class="kw-2">&amp;</span><span class="ident">NameMap</span><span class="op">&lt;</span><span class="ident">Namer</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+        <span class="kw">let</span> <span class="ident">namer</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">namer</span>();
         <span class="kw">let</span> <span class="ident">print_decl</span> <span class="op">=</span> <span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>, <span class="kw-2">&amp;</span><span class="ident">n</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">t</span> {
             <span class="ident">Type</span>::<span class="ident">PtrTo</span>(..) <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">new</span>(),
             <span class="kw">_</span> <span class="op">=&gt;</span> {
@@ -594,7 +596,11 @@
     }
 
     <span class="doccomment">/// Declares block and thread indexes.</span>
-    <span class="kw">fn</span> <span class="ident">decl_par_indexes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+    <span class="kw">fn</span> <span class="ident">decl_par_indexes</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>,
+        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="ident">Namer</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">function</span>.<span class="ident">block_dims</span>().<span class="ident">is_empty</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decls</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
         <span class="comment">// Compute thread indexes.</span>
@@ -607,84 +613,81 @@
     <span class="doccomment">/// Prints a `Function`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">function</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">namer</span> <span class="op">=</span> <span class="ident">Namer</span>::<span class="ident">default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">return_string</span>;
-        {
-            <span class="kw">let</span> <span class="ident">name_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>::<span class="ident">new</span>(<span class="ident">function</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">namer</span>);
-            <span class="kw">let</span> <span class="ident">param_decls</span> <span class="op">=</span> <span class="ident">function</span>
-                .<span class="ident">device_code_args</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">param_decl</span>(<span class="ident">v</span>, <span class="ident">name_map</span>))
-                .<span class="ident">collect_vec</span>()
-                .<span class="ident">join</span>(<span class="string">&quot;,\n  &quot;</span>);
-            <span class="comment">// SIGNATURE AND OPEN BRACKET</span>
-            <span class="ident">return_string</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">function</span>.<span class="ident">device_code_args</span>().<span class="ident">count</span>() <span class="op">==</span> <span class="number">0</span> {
-                <span class="macro">format</span><span class="macro">!</span>(
-                    <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/signature_no_arg.c.template&quot;</span>),
-                    <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>,
-                )
-            } <span class="kw">else</span> {
-                <span class="macro">format</span><span class="macro">!</span>(
-                    <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/signature.c.template&quot;</span>),
-                    <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>,
-                    <span class="ident">params</span> <span class="op">=</span> <span class="ident">param_decls</span>
-                )
-            };
-            <span class="comment">// INDEX LOADS</span>
-            <span class="kw">let</span> <span class="ident">idx_loads</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">decl_par_indexes</span>(<span class="ident">function</span>, <span class="ident">name_map</span>);
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">idx_loads</span>));
-            <span class="comment">// LOAD PARAM</span>
-            <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">device_code_args</span>() {
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-                    <span class="self">self</span>.<span class="ident">buffer</span>,
-                    <span class="string">&quot;{var_name} = {name};// LD_PARAM&quot;</span>,
-                    <span class="ident">var_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_param_val</span>(<span class="ident">val</span>.<span class="ident">key</span>()),
-                    <span class="ident">name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_param</span>(<span class="ident">val</span>.<span class="ident">key</span>())
-                ));
-            }
-            <span class="comment">// MEM DECL</span>
-            <span class="kw">for</span> <span class="ident">block</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">mem_blocks</span>() {
-                <span class="kw">match</span> <span class="ident">block</span>.<span class="ident">alloc_scheme</span>() {
-                    <span class="ident">AllocationScheme</span>::<span class="ident">Shared</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;No shared mem in cpu!!&quot;</span>),
-                    <span class="ident">AllocationScheme</span>::<span class="ident">PrivatisedGlobal</span> <span class="op">=&gt;</span> {
-                        <span class="self">self</span>.<span class="ident">privatise_global_block</span>(<span class="ident">block</span>, <span class="ident">name_map</span>, <span class="ident">function</span>)
-                    }
-                    <span class="ident">AllocationScheme</span>::<span class="ident">Global</span> <span class="op">=&gt;</span> (),
-                }
-            }
-            <span class="comment">// Compute size casts</span>
-            <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">dimensions</span>() {
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">dim</span>.<span class="ident">kind</span>().<span class="ident">intersects</span>(<span class="ident">DimKind</span>::<span class="ident">UNROLL</span> <span class="op">|</span> <span class="ident">DimKind</span>::<span class="ident">LOOP</span>) {
-                    <span class="kw">continue</span>;
-                }
-                <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">dim</span>.<span class="ident">induction_levels</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">incr</span>)) <span class="op">=</span> <span class="ident">level</span>.<span class="ident">increment</span> {
-                        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">declare_size_cast</span>(<span class="ident">incr</span>, <span class="ident">level</span>.<span class="ident">t</span>());
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>) <span class="op">=</span> <span class="ident">name</span> {
-                            <span class="kw">let</span> <span class="ident">old_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_size</span>(<span class="ident">incr</span>, <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
-                            <span class="self">self</span>.<span class="ident">print_unary_op</span>(
-                                [<span class="number">1</span>, <span class="number">1</span>],
-                                <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">level</span>.<span class="ident">t</span>()),
-                                <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>),
-                                <span class="kw-2">&amp;</span><span class="ident">name</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">old_name</span>,
-                            );
-                        }
-                    }
-                }
-            }
-            <span class="comment">// INIT</span>
-            <span class="kw">let</span> <span class="ident">ind_levels</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">init_induction_levels</span>().<span class="ident">iter</span>().<span class="ident">chain</span>(
-                <span class="ident">function</span>
-                    .<span class="ident">block_dims</span>()
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">induction_levels</span>()),
-            );
-            <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">ind_levels</span> {
-                <span class="self">self</span>.<span class="ident">parallel_induction_level</span>(<span class="ident">level</span>, <span class="ident">name_map</span>);
-            }
-            <span class="comment">// BODY</span>
-            <span class="self">self</span>.<span class="ident">cfg</span>(<span class="ident">function</span>, <span class="ident">function</span>.<span class="ident">cfg</span>(), <span class="ident">name_map</span>);
+        <span class="kw">let</span> <span class="ident">name_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>::<span class="ident">new</span>(<span class="ident">function</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">namer</span>);
+        <span class="kw">let</span> <span class="ident">param_decls</span> <span class="op">=</span> <span class="ident">function</span>
+            .<span class="ident">device_code_args</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">param_decl</span>(<span class="ident">v</span>, <span class="ident">name_map</span>))
+            .<span class="ident">collect_vec</span>()
+            .<span class="ident">join</span>(<span class="string">&quot;,\n  &quot;</span>);
+        <span class="comment">// SIGNATURE AND OPEN BRACKET</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">return_string</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">function</span>.<span class="ident">device_code_args</span>().<span class="ident">count</span>() <span class="op">==</span> <span class="number">0</span> {
+            <span class="macro">format</span><span class="macro">!</span>(
+                <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/signature_no_arg.c.template&quot;</span>),
+                <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>,
+            )
+        } <span class="kw">else</span> {
+            <span class="macro">format</span><span class="macro">!</span>(
+                <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/signature.c.template&quot;</span>),
+                <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>,
+                <span class="ident">params</span> <span class="op">=</span> <span class="ident">param_decls</span>
+            )
+        };
+        <span class="comment">// INDEX LOADS</span>
+        <span class="kw">let</span> <span class="ident">idx_loads</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">decl_par_indexes</span>(<span class="ident">function</span>, <span class="ident">name_map</span>);
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">idx_loads</span>));
+        <span class="comment">// LOAD PARAM</span>
+        <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">device_code_args</span>() {
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+                <span class="self">self</span>.<span class="ident">buffer</span>,
+                <span class="string">&quot;{var_name} = {name};// LD_PARAM&quot;</span>,
+                <span class="ident">var_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_param_val</span>(<span class="ident">val</span>.<span class="ident">key</span>()),
+                <span class="ident">name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_param</span>(<span class="ident">val</span>.<span class="ident">key</span>())
+            ));
         }
-        <span class="kw">let</span> <span class="ident">var_decls</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var_decls</span>(<span class="kw-2">&amp;</span><span class="ident">namer</span>);
+        <span class="comment">// MEM DECL</span>
+        <span class="kw">for</span> <span class="ident">block</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">mem_blocks</span>() {
+            <span class="kw">match</span> <span class="ident">block</span>.<span class="ident">alloc_scheme</span>() {
+                <span class="ident">AllocationScheme</span>::<span class="ident">Shared</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;No shared mem in cpu!!&quot;</span>),
+                <span class="ident">AllocationScheme</span>::<span class="ident">PrivatisedGlobal</span> <span class="op">=&gt;</span> {
+                    <span class="self">self</span>.<span class="ident">privatise_global_block</span>(<span class="ident">block</span>, <span class="ident">name_map</span>, <span class="ident">function</span>)
+                }
+                <span class="ident">AllocationScheme</span>::<span class="ident">Global</span> <span class="op">=&gt;</span> (),
+            }
+        }
+        <span class="comment">// Compute size casts</span>
+        <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">dimensions</span>() {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">dim</span>.<span class="ident">kind</span>().<span class="ident">intersects</span>(<span class="ident">DimKind</span>::<span class="ident">UNROLL</span> <span class="op">|</span> <span class="ident">DimKind</span>::<span class="ident">LOOP</span>) {
+                <span class="kw">continue</span>;
+            }
+            <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">dim</span>.<span class="ident">induction_levels</span>() {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">incr</span>)) <span class="op">=</span> <span class="ident">level</span>.<span class="ident">increment</span> {
+                    <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">declare_size_cast</span>(<span class="ident">incr</span>, <span class="ident">level</span>.<span class="ident">t</span>());
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>) <span class="op">=</span> <span class="ident">name</span> {
+                        <span class="kw">let</span> <span class="ident">old_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_size</span>(<span class="ident">incr</span>, <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
+                        <span class="self">self</span>.<span class="ident">print_unary_op</span>(
+                            [<span class="number">1</span>, <span class="number">1</span>],
+                            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">level</span>.<span class="ident">t</span>()),
+                            <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>),
+                            <span class="kw-2">&amp;</span><span class="ident">name</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">old_name</span>,
+                        );
+                    }
+                }
+            }
+        }
+        <span class="comment">// INIT</span>
+        <span class="kw">let</span> <span class="ident">ind_levels</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">init_induction_levels</span>().<span class="ident">iter</span>().<span class="ident">chain</span>(
+            <span class="ident">function</span>
+                .<span class="ident">block_dims</span>()
+                .<span class="ident">iter</span>()
+                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">induction_levels</span>()),
+        );
+        <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">ind_levels</span> {
+            <span class="self">self</span>.<span class="ident">parallel_induction_level</span>(<span class="ident">level</span>, <span class="ident">name_map</span>);
+        }
+        <span class="comment">// BODY</span>
+        <span class="self">self</span>.<span class="ident">cfg</span>(<span class="ident">function</span>, <span class="ident">function</span>.<span class="ident">cfg</span>(), <span class="ident">name_map</span>);
+        <span class="kw">let</span> <span class="ident">var_decls</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var_decls</span>(<span class="kw-2">&amp;</span><span class="ident">name_map</span>);
         <span class="ident">return_string</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">var_decls</span>);
         <span class="ident">return_string</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">buffer</span>);
         <span class="comment">// Close function bracket</span>
@@ -874,7 +877,6 @@
 
     <span class="kw">fn</span> <span class="ident">get_type</span>(<span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="kw">match</span> <span class="ident">t</span> {
-            <span class="comment">//Type::PtrTo(..) =&gt; &quot; uint8_t *&quot;,</span>
             <span class="ident">Type</span>::<span class="ident">PtrTo</span>(..) <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;intptr_t&quot;</span>),
             <span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>) <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;float&quot;</span>),
             <span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>) <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;double&quot;</span>),
@@ -888,7 +890,7 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Printer</span> <span class="kw">for</span> <span class="ident">X86printer</span> {
+<span class="kw">impl</span> <span class="ident">Printer</span><span class="op">&lt;</span><span class="ident">Namer</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">X86printer</span> {
     <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="ident">n</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">n</span>)
     }
@@ -1036,7 +1038,7 @@
     <span class="kw">fn</span> <span class="ident">name_operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
         <span class="ident">vector_dims</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&gt;</span>; <span class="number">2</span>],
         <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operand</span>,
-        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NameMap</span>,
+        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="ident">Namer</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">str</span><span class="op">&gt;</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_dims</span>[<span class="number">0</span>].<span class="ident">is_empty</span>());
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_dims</span>[<span class="number">1</span>].<span class="ident">is_empty</span>());
@@ -1046,7 +1048,7 @@
     <span class="kw">fn</span> <span class="ident">name_inst</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
         <span class="ident">vector_dims</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&gt;</span>; <span class="number">2</span>],
         <span class="ident">inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
-        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NameMap</span>,
+        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="ident">Namer</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">str</span><span class="op">&gt;</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_dims</span>[<span class="number">0</span>].<span class="ident">is_empty</span>());
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_dims</span>[<span class="number">1</span>].<span class="ident">is_empty</span>());

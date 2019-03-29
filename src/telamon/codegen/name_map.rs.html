@@ -563,6 +563,10 @@
 <span id="563">563</span>
 <span id="564">564</span>
 <span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::{
     <span class="self">self</span>, <span class="ident">AllocationScheme</span>, <span class="ident">Dimension</span>, <span class="ident">Function</span>, <span class="ident">Instruction</span>, <span class="ident">ParamValKey</span>,
@@ -599,9 +603,9 @@
 
 <span class="doccomment">/// Maps variables to names.</span>
 <span class="comment">// TODO(cc_perf): use an arena rather that ref-counted strings</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">N</span>: <span class="ident">Namer</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Provides fresh names.</span>
-    <span class="ident">namer</span>: <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">Namer</span><span class="op">&gt;</span>,
+    <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">N</span>,
     <span class="doccomment">/// Keeps track of the names of the variables used in the kernel</span>
     <span class="ident">variables</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="ident">VariableNames</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of the name of the values produced by instructions.</span>
@@ -628,9 +632,9 @@
     <span class="ident">side_effect_guard</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">N</span>: <span class="ident">Namer</span><span class="op">&gt;</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">N</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new `NameMap`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">Namer</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">N</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem_blocks</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
         <span class="comment">// Setup parameters names.</span>
         <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">function</span>
@@ -672,7 +676,7 @@
         }
         <span class="kw">let</span> <span class="ident">variables</span> <span class="op">=</span> <span class="ident">VariableNames</span>::<span class="ident">create</span>(<span class="ident">function</span>, <span class="ident">namer</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">name_map</span> <span class="op">=</span> <span class="ident">NameMap</span> {
-            <span class="ident">namer</span>: <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">namer</span>),
+            <span class="ident">namer</span>,
             <span class="ident">insts</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
             <span class="ident">variables</span>,
             <span class="ident">num_loop</span>: <span class="number">0</span>,
@@ -718,6 +722,14 @@
         <span class="ident">name_map</span>
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">namer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">N</span> {
+        <span class="self">self</span>.<span class="ident">namer</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">namer_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">N</span> {
+        <span class="self">self</span>.<span class="ident">namer</span>
+    }
+
     <span class="doccomment">/// Returns the total number of threads.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;mppa&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">total_num_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
@@ -725,8 +737,8 @@
     }
 
     <span class="doccomment">/// Generates a variable of the given `Type`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">borrow_mut</span>().<span class="ident">name</span>(<span class="ident">t</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_name</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+        <span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">name</span>(<span class="ident">t</span>)
     }
 
     <span class="doccomment">/// Generates an ID for a loop.</span>
@@ -757,11 +769,9 @@
         <span class="ident">indexes</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">operand</span> {
-            <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Int</span>(<span class="kw-2">ref</span> <span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> {
-                <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">borrow</span>().<span class="ident">name_int</span>(<span class="ident">val</span>, <span class="ident">len</span>))
-            }
+            <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Int</span>(<span class="kw-2">ref</span> <span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">name_int</span>(<span class="ident">val</span>, <span class="ident">len</span>)),
             <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Float</span>(<span class="kw-2">ref</span> <span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> {
-                <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">borrow</span>().<span class="ident">name_float</span>(<span class="ident">val</span>, <span class="ident">len</span>))
+                <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">name_float</span>(<span class="ident">val</span>, <span class="ident">len</span>))
             }
             <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Inst</span>(<span class="ident">id</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">dim_map</span>, <span class="kw">_</span>)
             <span class="op">|</span> <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Reduce</span>(<span class="ident">id</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">dim_map</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
@@ -830,9 +840,7 @@
             .<span class="ident">instantiation_dims</span>()
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">dim</span>, <span class="ident">size</span>)<span class="op">|</span> (<span class="ident">dim</span>, <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>));
-        <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">DerefMut</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">namer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">borrow_mut</span>();
-        <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> <span class="ident">VariableNames</span>::<span class="ident">new</span>(<span class="ident">t</span>, <span class="ident">dims</span>, <span class="kw-2">*</span><span class="ident">namer</span>.<span class="ident">deref_mut</span>());
+        <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> <span class="ident">VariableNames</span>::<span class="ident">new</span>(<span class="ident">t</span>, <span class="ident">dims</span>, <span class="self">self</span>.<span class="ident">namer</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">insert</span>(<span class="ident">inst</span>.<span class="ident">id</span>(), <span class="ident">names</span>).<span class="ident">is_none</span>());
     }
 
@@ -924,7 +932,7 @@
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">size_casts</span>.<span class="ident">entry</span>((<span class="ident">size</span>, <span class="ident">t</span>)) {
             <span class="ident">hash_map</span>::<span class="ident">Entry</span>::<span class="ident">Occupied</span>(..) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
             <span class="ident">hash_map</span>::<span class="ident">Entry</span>::<span class="ident">Vacant</span>(<span class="ident">entry</span>) <span class="op">=&gt;</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">entry</span>.<span class="ident">insert</span>(<span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">borrow_mut</span>().<span class="ident">name</span>(<span class="ident">t</span>)).<span class="ident">to_string</span>())
+                <span class="prelude-val">Some</span>(<span class="ident">entry</span>.<span class="ident">insert</span>(<span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">name</span>(<span class="ident">t</span>)).<span class="ident">to_string</span>())
             }
         }
     }

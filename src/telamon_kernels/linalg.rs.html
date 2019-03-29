@@ -697,6 +697,7 @@
 <span id="697">697</span>
 <span id="698">698</span>
 <span id="699">699</span>
+<span id="700">700</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Linera algebra kernels.</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">many_single_char_names</span>)]</span>
@@ -707,6 +708,7 @@
 <span class="kw">use</span> ::<span class="ident">ndarray</span>::{<span class="ident">Array1</span>, <span class="ident">Array2</span>, <span class="ident">Array3</span>, <span class="ident">ArrayD</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">rand</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::<span class="ident">Candidate</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">tensor</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="self">self</span>, <span class="ident">Builder</span>, <span class="ident">SignatureBuilder</span>};
@@ -1024,7 +1026,7 @@
     <span class="ident">c</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MatMulP</span> {
     <span class="kw">pub</span> <span class="ident">m</span>: <span class="ident">i32</span>,
     <span class="kw">pub</span> <span class="ident">n</span>: <span class="ident">i32</span>,
@@ -1219,7 +1221,7 @@
     <span class="ident">c</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BatchMMP</span> {
     <span class="kw">pub</span> <span class="ident">m</span>: <span class="ident">i32</span>,
     <span class="kw">pub</span> <span class="ident">n</span>: <span class="ident">i32</span>,

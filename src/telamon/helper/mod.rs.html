@@ -141,6 +141,7 @@
 <span id="141">141</span>
 <span id="142">142</span>
 <span id="143">143</span>
+<span id="144">144</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helper functions to build an IR instance.</span>
 <span class="kw">mod</span> <span class="ident">builder</span>;
@@ -154,6 +155,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">signature</span>::<span class="ident">Builder</span> <span class="kw">as</span> <span class="ident">SignatureBuilder</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -235,7 +237,7 @@
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// Each tiling dimension can have size 32, but not both simultaneously because 1024 = 32x32 is not</span>
 <span class="doccomment">/// in the tiling factors.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TilingPattern</span> {
     <span class="ident">tiling_factors</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="ident">tile_sizes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>,
