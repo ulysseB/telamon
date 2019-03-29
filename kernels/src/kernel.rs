@@ -10,6 +10,7 @@ use log::*;
 use num_cpus;
 use rayon::prelude::*;
 use rpds::list::List;
+use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::{atomic, Mutex};
 use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
@@ -28,7 +29,7 @@ const MAX_DEADEND_RATIO: f32 = 0.95;
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
     /// The input parameters of the kernel.
-    type Parameters: Clone;
+    type Parameters: Clone + DeserializeOwned + Serialize;
     /// The values to expect as output.
     type ExpectedOutput;
 
@@ -75,7 +76,7 @@ pub trait Kernel<'a>: Sized {
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), ctx);
             builder.set_random_fill(true);
-            kernel = Self::build_signature(params, &mut builder);
+            kernel = Self::build_signature(params.clone(), &mut builder);
             builder.get()
         };
         let mut candidate = kernel.build_body(&signature, ctx).remove(0);
@@ -92,21 +93,23 @@ pub trait Kernel<'a>: Sized {
                 break;
             }
         }
-        let dump = bincode::serialize(&candidate.actions).unwrap();
+        let to_serialize = (params, candidate.actions);
+        let dump = bincode::serialize(&to_serialize).unwrap();
         sink.write_all(&dump).unwrap();
         sink.flush().unwrap();
     }
 
     /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
     /// corresponds to the kernel and context being executed
-    fn execute_dump<AM, F: Read>(params: Self::Parameters, ctx: &mut AM, dump: &mut F)
+    fn execute_dump<AM, F: Read>(ctx: &mut AM, dump: &mut F)
     where
         AM: device::Context + device::ArgMap<'a>,
     {
         // Retrieve decisions from dump
         let mut cand_bytes = Vec::new();
         dump.read_to_end(&mut cand_bytes).unwrap();
-        let action_list: List<ActionEx> = bincode::deserialize(&cand_bytes).unwrap();
+        let (params, action_list): (Self::Parameters, List<ActionEx>) =
+            bincode::deserialize(&cand_bytes).unwrap();
 
         let kernel;
         let signature = {

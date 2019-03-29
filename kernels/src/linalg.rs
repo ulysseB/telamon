@@ -7,6 +7,7 @@ use crate::{build_candidate, create_size, infer_tiling, Scalar};
 use ::ndarray::{Array1, Array2, Array3, ArrayD};
 use itertools::Itertools;
 use rand;
+use serde::{Deserialize, Serialize};
 use telamon::explorer::Candidate;
 use telamon::helper::tensor::*;
 use telamon::helper::{self, Builder, SignatureBuilder};
@@ -324,7 +325,7 @@ pub struct MatMul<'a, S: Scalar> {
     c: Tensor<'a, S>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct MatMulP {
     pub m: i32,
     pub n: i32,
@@ -519,7 +520,7 @@ where
     c: Tensor<'a, S>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct BatchMMP {
     pub m: i32,
     pub n: i32,

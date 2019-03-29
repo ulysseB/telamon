@@ -18,7 +18,7 @@ pub use self::vec_set::VecSet;
 use fnv::FnvBuildHasher;
 pub use fnv::{FnvHashMap, FnvHashSet};
 use num::Integer;
-use serde_derive::Serialize;
+use serde::Serialize;
 
 pub type FnvMultiHashMap<K, V> = self::multimap::MultiHashMap<K, V, FnvBuildHasher>;
 

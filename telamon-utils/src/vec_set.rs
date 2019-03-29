@@ -1,9 +1,10 @@
 //! Sets backed by ordered vectors.
+use serde::{Deserialize, Serialize};
 use std;
 use std::cmp::{Ordering, PartialOrd};
 
 /// A set backed by an ordered vector.
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct VecSet<T> {
     data: Vec<T>,
 }

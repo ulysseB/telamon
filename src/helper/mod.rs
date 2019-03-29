@@ -10,6 +10,7 @@ pub use self::operand::{AutoOperand, Reduce, TmpArray};
 pub use self::signature::Builder as SignatureBuilder;
 
 use crate::ir;
+use serde::{Deserialize, Serialize};
 use std;
 use utils::*;
 
@@ -91,7 +92,7 @@ impl MetaStatement for LogicalDim {
 /// ```
 /// Each tiling dimension can have size 32, but not both simultaneously because 1024 = 32x32 is not
 /// in the tiling factors.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TilingPattern {
     tiling_factors: VecSet<u32>,
     tile_sizes: Vec<VecSet<u32>>,
