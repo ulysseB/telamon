@@ -3246,7 +3246,7 @@
             <span class="ident">root</span>,
             <span class="ident">default_policy</span>,
             <span class="ident">tree_policy</span>,
-            <span class="ident">cut</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>),
+            <span class="ident">cut</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">initial_cut</span>.<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>)),
             <span class="ident">cut_epoch</span>: <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>),
             <span class="ident">stop</span>: <span class="ident">AtomicBool</span>::<span class="ident">new</span>(<span class="bool-val">false</span>),
             <span class="ident">id_counter</span>,
