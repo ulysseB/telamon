@@ -675,15 +675,23 @@
 <span id="675">675</span>
 <span id="676">676</span>
 <span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides a representation of functions.</span>
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">fmt</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Device</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Dimension</span>, <span class="ident">InstId</span>, <span class="ident">Instruction</span>, <span class="ident">Operator</span>, <span class="ident">Statement</span>, <span class="ident">StmtId</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="ident">mem</span>, <span class="ident">AccessPattern</span>, <span class="ident">Operand</span>, <span class="ident">SparseVec</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="ident">MemSpace</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
-<span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Represents an argument of a function.</span>
@@ -695,6 +703,12 @@
     <span class="kw">pub</span> <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
     <span class="doccomment">/// If the parameter point to an array, indicates the element type.</span>
     <span class="kw">pub</span> <span class="ident">elem_t</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Parameter</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>)
+    }
 }
 
 <span class="doccomment">/// Holds the signature of a function.</span>

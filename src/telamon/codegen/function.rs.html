@@ -453,8 +453,18 @@
 <span id="453">453</span>
 <span id="454">454</span>
 <span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes a `Function` that is ready to execute on a device.</span>
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">fmt</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::{
     <span class="self">self</span>, <span class="ident">cfg</span>, <span class="ident">dimension</span>, <span class="ident">Cfg</span>, <span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">InductionVar</span>,
 };
@@ -466,7 +476,6 @@
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">matches</span>::<span class="ident">matches</span>;
-<span class="kw">use</span> <span class="ident">std</span>;
 
 <span class="doccomment">/// A function ready to execute on a device, derived from a constrained IR instance.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -609,6 +618,7 @@
 }
 
 <span class="doccomment">/// Represents the value of a parameter passed to the kernel by the host.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// A parameter given by the caller.</span>
     <span class="ident">External</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>, <span class="ident">ir</span>::<span class="ident">Type</span>),
@@ -907,6 +917,12 @@
     <span class="doccomment">/// Indicates where to store the result of the instruction.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">result_variable</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">instruction</span>.<span class="ident">result_variable</span>()
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="ident">fmt</span>::<span class="ident">Display</span>::<span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">instruction</span>, <span class="ident">fmt</span>)
     }
 }
 </pre></div>

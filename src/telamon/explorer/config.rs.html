@@ -502,6 +502,33 @@
 <span id="502">502</span>
 <span id="503">503</span>
 <span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -509,19 +536,28 @@
 
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">toml</span>;
 
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">BufWriter</span>, <span class="ident">Write</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">error</span>, <span class="ident">fmt</span>, <span class="ident">str</span>::<span class="ident">FromStr</span>};
+
 <span class="kw">use</span> <span class="ident">config</span>;
 <span class="kw">use</span> <span class="ident">getopts</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">num_cpus</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">error</span>, <span class="ident">fmt</span>, <span class="ident">str</span>::<span class="ident">FromStr</span>};
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">tfrecord</span>, <span class="ident">unwrap</span>};
+
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">eventlog</span>::<span class="ident">EventLog</span>;
 
 <span class="doccomment">/// Stores the configuration of the exploration.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Config</span> {
+    <span class="doccomment">/// Path to the output directory to use.  All other paths (e.g. `log_file`) are relative to</span>
+    <span class="doccomment">/// this directory.  Defaults to the current working directory.</span>
+    <span class="kw">pub</span> <span class="ident">output_dir</span>: <span class="ident">String</span>,
     <span class="doccomment">/// Name of the file in wich to store the logs.</span>
     <span class="kw">pub</span> <span class="ident">log_file</span>: <span class="ident">String</span>,
     <span class="doccomment">/// Name of the file in which to store the binary event log.</span>
@@ -622,6 +658,23 @@
         }
         <span class="ident">SearchAlgorithm</span>::<span class="ident">parse_arguments</span>(<span class="ident">arguments</span>, <span class="ident">config</span>);
     }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output_path</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">path</span>: <span class="ident">P</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">output_dir</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">output_dir</span>);
+        <span class="comment">// Ensure the output directory exists</span>
+        <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">create_dir_all</span>(<span class="ident">output_dir</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">output_dir</span>.<span class="ident">join</span>(<span class="ident">path</span>))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_log</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BufWriter</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File</span>::<span class="ident">create</span>(<span class="self">self</span>.<span class="ident">output_path</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">log_file</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;LOGGER\n{}&quot;</span>, <span class="self">self</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">BufWriter</span>::<span class="ident">new</span>(<span class="ident">f</span>))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_eventlog</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">tfrecord</span>::<span class="ident">Writer</span><span class="op">&lt;</span><span class="ident">EventLog</span><span class="op">&gt;&gt;</span> {
+        <span class="ident">EventLog</span>::<span class="ident">create</span>(<span class="self">self</span>.<span class="ident">output_path</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">event_log</span>)<span class="question-mark">?</span>)
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Config</span> {
@@ -633,8 +686,9 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Config</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Config</span> {
-            <span class="ident">log_file</span>: <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;watch.log&quot;</span>),
-            <span class="ident">event_log</span>: <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;eventlog.tfrecord.gz&quot;</span>),
+            <span class="ident">output_dir</span>: <span class="string">&quot;.&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">log_file</span>: <span class="string">&quot;watch.log&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">event_log</span>: <span class="string">&quot;eventlog.tfrecord.gz&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">num_workers</span>: <span class="ident">num_cpus</span>::<span class="ident">get</span>(),
             <span class="ident">algorithm</span>: <span class="ident">SearchAlgorithm</span>::<span class="ident">default</span>(),
             <span class="ident">stop_bound</span>: <span class="prelude-val">None</span>,

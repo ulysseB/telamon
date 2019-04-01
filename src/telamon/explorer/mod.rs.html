@@ -326,6 +326,15 @@
 <span id="326">326</span>
 <span id="327">327</span>
 <span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">candidate</span>;
@@ -582,10 +591,19 @@
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="kw">let</span> (<span class="ident">monitor_sender</span>, <span class="ident">monitor_receiver</span>) <span class="op">=</span> <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">100</span>);
     <span class="kw">let</span> <span class="ident">maybe_candidate</span> <span class="op">=</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
-        <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span> <span class="ident">scope</span>
-            .<span class="ident">builder</span>()
-            .<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>())
-            .<span class="ident">spawn</span>(<span class="op">||</span> <span class="ident">monitor</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_receiver</span>, <span class="ident">log_sender</span>));
+        <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span>
+            <span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="op">||</span> {
+                    <span class="ident">monitor</span>(
+                        <span class="ident">config</span>,
+                        <span class="ident">context</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>,
+                        <span class="ident">monitor_receiver</span>,
+                        <span class="ident">log_sender</span>,
+                    )
+                });
         <span class="ident">explore_space</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_sender</span>, <span class="ident">context</span>);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">best_cand_opt</span>)
     })

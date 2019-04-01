@@ -383,6 +383,16 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::{<span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">Instruction</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
@@ -401,7 +411,11 @@
     <span class="doccomment">/// An instruction in the CFG, potentially vectorized on 2 levels.</span>
     <span class="ident">Instruction</span>([<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>; <span class="number">2</span>], <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Defines the set of active thread dimensions.</span>
-    <span class="ident">Threads</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Cfg</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>),
+    <span class="ident">Threads</span>(
+        <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Cfg</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    ),
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Cfg</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -503,7 +517,9 @@
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">event</span>) <span class="op">=</span> <span class="ident">events</span>.<span class="ident">next</span>() {
             <span class="kw">match</span> <span class="ident">event</span> {
                 <span class="ident">Exec</span>(<span class="ident">inst</span>) <span class="op">=&gt;</span> <span class="ident">body</span>.<span class="ident">push</span>(<span class="ident">Cfg</span>::<span class="ident">Instruction</span>(<span class="ident">Default</span>::<span class="ident">default</span>(), <span class="ident">inst</span>)),
-                <span class="ident">Enter</span>(<span class="kw">_</span>, <span class="ident">EntryEvent</span>::<span class="ident">SeqDim</span>(<span class="ident">dim</span>)) <span class="op">=&gt;</span> {
+                <span class="ident">Enter</span>(<span class="ident">dim_id</span>, <span class="ident">EntryEvent</span>::<span class="ident">SeqDim</span>(<span class="ident">dim</span>)) <span class="op">=&gt;</span> {
+                    <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dim_id</span>, <span class="ident">dim</span>.<span class="ident">id</span>());
+
                     <span class="kw">if</span> <span class="ident">dim</span>.<span class="ident">kind</span>().<span class="ident">is</span>(<span class="ident">DimKind</span>::<span class="ident">VECTOR</span>).<span class="ident">as_bool</span>().<span class="ident">unwrap</span>() {
                         <span class="ident">body</span>.<span class="ident">push</span>(<span class="ident">Cfg</span>::<span class="ident">vector_inst_from_events</span>(<span class="ident">dim</span>, <span class="ident">events</span>));
                     } <span class="kw">else</span> {
@@ -512,20 +528,22 @@
                     }
                 }
                 <span class="ident">Exit</span>(<span class="kw">_</span>, <span class="ident">ExitEvent</span>::<span class="ident">SeqDim</span>) <span class="op">=&gt;</span> <span class="kw">break</span>,
-                <span class="ident">Enter</span>(<span class="kw">_</span>, <span class="ident">EntryEvent</span>::<span class="ident">ThreadDim</span>(<span class="ident">pos</span>, <span class="kw-2">mut</span> <span class="ident">ind_levels</span>)) <span class="op">=&gt;</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dim_poses</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="bool-val">false</span>; <span class="ident">num_thread_dims</span>];
-                    <span class="ident">dim_poses</span>[<span class="ident">pos</span>] <span class="op">=</span> <span class="bool-val">true</span>;
+                <span class="ident">Enter</span>(<span class="ident">dim_id</span>, <span class="ident">EntryEvent</span>::<span class="ident">ThreadDim</span>(<span class="ident">pos</span>, <span class="kw-2">mut</span> <span class="ident">ind_levels</span>)) <span class="op">=&gt;</span> {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dim_ids</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="prelude-val">None</span>; <span class="ident">num_thread_dims</span>];
+                    <span class="ident">dim_ids</span>[<span class="ident">pos</span>] <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">dim_id</span>);
                     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">Enter</span>(<span class="kw">_</span>, <span class="ident">EntryEvent</span>::<span class="ident">ThreadDim</span>(..))) <span class="op">=</span> <span class="ident">events</span>.<span class="ident">peek</span>() {
                         <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">events</span>.<span class="ident">next</span>());
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Enter</span>(<span class="kw">_</span>, <span class="ident">EntryEvent</span>::<span class="ident">ThreadDim</span>(<span class="ident">pos</span>, <span class="ident">levels</span>)) <span class="op">=</span> <span class="ident">next</span> {
-                            <span class="ident">dim_poses</span>[<span class="ident">pos</span>] <span class="op">=</span> <span class="bool-val">true</span>;
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Enter</span>(<span class="ident">dim_id</span>, <span class="ident">EntryEvent</span>::<span class="ident">ThreadDim</span>(<span class="ident">pos</span>, <span class="ident">levels</span>)) <span class="op">=</span> <span class="ident">next</span> {
+                            <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dim_ids</span>[<span class="ident">pos</span>], <span class="prelude-val">None</span>);
+
+                            <span class="ident">dim_ids</span>[<span class="ident">pos</span>] <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">dim_id</span>);
                             <span class="ident">ind_levels</span>.<span class="ident">extend</span>(<span class="ident">levels</span>);
                         } <span class="kw">else</span> {
                             <span class="macro">unreachable</span><span class="macro">!</span>()
                         };
                     }
                     <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Cfg</span>::<span class="ident">body_from_events</span>(<span class="ident">events</span>, <span class="number">0</span>);
-                    <span class="ident">body</span>.<span class="ident">push</span>(<span class="ident">Cfg</span>::<span class="ident">Threads</span>(<span class="ident">dim_poses</span>, <span class="ident">ind_levels</span>, <span class="ident">inner</span>));
+                    <span class="ident">body</span>.<span class="ident">push</span>(<span class="ident">Cfg</span>::<span class="ident">Threads</span>(<span class="ident">dim_ids</span>, <span class="ident">ind_levels</span>, <span class="ident">inner</span>));
                 }
                 <span class="ident">Exit</span>(<span class="kw">_</span>, <span class="ident">ExitEvent</span>::<span class="ident">ThreadDim</span>) <span class="op">=&gt;</span> {
                     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">Exit</span>(<span class="kw">_</span>, <span class="ident">ExitEvent</span>::<span class="ident">ThreadDim</span>)) <span class="op">=</span> <span class="ident">events</span>.<span class="ident">peek</span>() {
@@ -563,7 +581,7 @@
                     <span class="ident">cfg</span> <span class="op">=&gt;</span> <span class="ident">cfg</span>,
                 }))
             } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">thread_dims</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="bool-val">false</span>; <span class="ident">num_thread_dims</span>];
+                <span class="kw">let</span> <span class="ident">thread_dims</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="prelude-val">None</span>; <span class="ident">num_thread_dims</span>];
                 <span class="ident">new_body</span>.<span class="ident">push</span>(<span class="ident">Cfg</span>::<span class="ident">Threads</span>(<span class="ident">thread_dims</span>, <span class="macro">vec</span><span class="macro">!</span>[], <span class="ident">cfgs</span>.<span class="ident">collect</span>()));
             }
         }
@@ -585,13 +603,15 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Cfg</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Cfg</span>::<span class="ident">Root</span>(<span class="ident">inners</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">inners</span>),
-            <span class="ident">Cfg</span>::<span class="ident">Loop</span>(<span class="ident">dim</span>, <span class="ident">inners</span>) <span class="op">=&gt;</span> {
-                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;Loop([{:?}], {:?})&quot;</span>, <span class="ident">dim</span>.<span class="ident">dim_ids</span>().<span class="ident">format</span>(<span class="string">&quot;,&quot;</span>), <span class="ident">inners</span>)
-            }
-            <span class="ident">Cfg</span>::<span class="ident">Instruction</span>(<span class="ident">dims</span>, <span class="ident">inst</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;inst{:?} {:?}&quot;</span>, <span class="ident">dims</span>, <span class="ident">inst</span>.<span class="ident">id</span>()),
+            <span class="ident">Cfg</span>::<span class="ident">Root</span>(<span class="ident">inners</span>) <span class="op">=&gt;</span> <span class="ident">f</span>.<span class="ident">debug_list</span>().<span class="ident">entries</span>(<span class="ident">inners</span>).<span class="ident">finish</span>(),
+            <span class="ident">Cfg</span>::<span class="ident">Loop</span>(<span class="ident">dim</span>, <span class="ident">inners</span>) <span class="op">=&gt;</span> <span class="ident">f</span>
+                .<span class="ident">debug_tuple</span>(<span class="kw-2">&amp;</span><span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">dim</span>.<span class="ident">kind</span>()))
+                .<span class="ident">field</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;[{:?}]&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">dim</span>.<span class="ident">dim_ids</span>().<span class="ident">format</span>(<span class="string">&quot;,&quot;</span>)))
+                .<span class="ident">field</span>(<span class="ident">inners</span>)
+                .<span class="ident">finish</span>(),
+            <span class="ident">Cfg</span>::<span class="ident">Instruction</span>(<span class="ident">dims</span>, <span class="ident">inst</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?} {}&quot;</span>, <span class="ident">dims</span>, <span class="ident">inst</span>),
             <span class="ident">Cfg</span>::<span class="ident">Threads</span>(<span class="ident">dims</span>, <span class="kw">_</span>, <span class="ident">inners</span>) <span class="op">=&gt;</span> {
-                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;threads({:?}, {:?})&quot;</span>, <span class="ident">dims</span>, <span class="ident">inners</span>)
+                <span class="ident">f</span>.<span class="ident">debug_tuple</span>(<span class="string">&quot;Threads&quot;</span>).<span class="ident">field</span>(<span class="ident">dims</span>).<span class="ident">field</span>(<span class="ident">inners</span>).<span class="ident">finish</span>()
             }
         }
     }

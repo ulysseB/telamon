@@ -252,10 +252,43 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This file exposes a single function, monitor, that is launched in a special</span>
 <span class="doccomment">//! thread and pulls the evaluations results, store them and then updates the</span>
 <span class="doccomment">//! Store accordingly.</span>
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">logger</span>::<span class="ident">LogMessage</span>;
@@ -320,6 +353,7 @@
 <span class="doccomment">/// update the store accordingly.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">monitor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
     <span class="ident">recv</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
     <span class="ident">log_sender</span>: <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;&gt;</span>,
@@ -331,9 +365,25 @@
     <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="ident">Instant</span>::<span class="ident">now</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">Status</span>::<span class="ident">default</span>();
     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">config</span>.<span class="ident">timeout</span>.<span class="ident">is_some</span>() {
-        <span class="ident">block_until_timeout</span>(<span class="ident">config</span>, <span class="ident">recv</span>, <span class="ident">t0</span>, <span class="ident">candidate_store</span>, <span class="kw-2">&amp;</span><span class="ident">log_sender</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">status</span>)
+        <span class="ident">block_until_timeout</span>(
+            <span class="ident">config</span>,
+            <span class="ident">context</span>,
+            <span class="ident">recv</span>,
+            <span class="ident">t0</span>,
+            <span class="ident">candidate_store</span>,
+            <span class="kw-2">&amp;</span><span class="ident">log_sender</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">status</span>,
+        )
     } <span class="kw">else</span> {
-        <span class="ident">block_unbounded</span>(<span class="ident">config</span>, <span class="ident">recv</span>, <span class="ident">t0</span>, <span class="ident">candidate_store</span>, <span class="kw-2">&amp;</span><span class="ident">log_sender</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">status</span>)
+        <span class="ident">block_unbounded</span>(
+            <span class="ident">config</span>,
+            <span class="ident">context</span>,
+            <span class="ident">recv</span>,
+            <span class="ident">t0</span>,
+            <span class="ident">candidate_store</span>,
+            <span class="kw-2">&amp;</span><span class="ident">log_sender</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">status</span>,
+        )
     };
     <span class="kw">let</span> <span class="ident">duration</span> <span class="op">=</span> <span class="ident">t0</span>.<span class="ident">elapsed</span>();
     <span class="kw">let</span> <span class="ident">duration_secs</span> <span class="op">=</span>
@@ -374,6 +424,7 @@
 <span class="doccomment">/// tree has been fully explored.</span>
 <span class="kw">fn</span> <span class="ident">block_unbounded</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">receiver</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
     <span class="ident">t0</span>: <span class="ident">Instant</span>,
     <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
@@ -389,6 +440,7 @@
             .<span class="ident">for_each</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">message</span><span class="op">|</span> {
                 <span class="ident">handle_message</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>(
                     <span class="ident">config</span>,
+                    <span class="ident">context</span>,
                     <span class="ident">message</span>,
                     <span class="ident">t0</span>,
                     <span class="ident">candidate_store</span>,
@@ -404,6 +456,7 @@
 <span class="doccomment">/// has been fully explored or the timeout has been reached</span>
 <span class="kw">fn</span> <span class="ident">block_until_timeout</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Config</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">receiver</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
     <span class="ident">t0</span>: <span class="ident">Instant</span>,
     <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">T</span>,
@@ -425,6 +478,7 @@
                 .<span class="ident">for_each</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">message</span><span class="op">|</span> {
                     <span class="ident">handle_message</span>::<span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>(
                         <span class="ident">config</span>,
+                        <span class="ident">context</span>,
                         <span class="ident">message</span>,
                         <span class="ident">t0</span>,
                         <span class="ident">candidate_store</span>,
@@ -442,6 +496,7 @@
 <span class="doccomment">/// the best cand if needed, logging, committing back to candidate_store</span>
 <span class="kw">fn</span> <span class="ident">handle_message</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">message</span>: <span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>,
     <span class="ident">start_time</span>: <span class="ident">Instant</span>,
     <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
@@ -476,6 +531,15 @@
             <span class="ident">timestamp</span>: <span class="ident">wall</span>,
         };
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">log_sender</span>.<span class="ident">send</span>(<span class="ident">log_message</span>));
+
+        <span class="kw">match</span> <span class="ident">config</span>.<span class="ident">output_path</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;best_{}&quot;</span>, <span class="ident">status</span>.<span class="ident">num_evaluations</span>)) {
+            <span class="prelude-val">Ok</span>(<span class="ident">output_path</span>) <span class="op">=&gt;</span> <span class="ident">cand</span>
+                .<span class="ident">space</span>
+                .<span class="ident">dump_code</span>(<span class="ident">context</span>, <span class="ident">output_path</span>)
+                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Error while dumping candidate: {}&quot;</span>, <span class="ident">err</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=&gt;</span> <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Error while dumping candidate: {}&quot;</span>, <span class="ident">err</span>),
+        }
+
         <span class="ident">status</span>.<span class="ident">best_candidate</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="ident">eval</span>));
     }
 
