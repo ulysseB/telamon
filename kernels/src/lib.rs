@@ -9,15 +9,15 @@ pub use crate::kernel::{analyze_bounds, Kernel};
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;
 use telamon::helper::{self, SignatureBuilder};
-use telamon::{explorer, model, search_space};
+use telamon::{model, search_space};
 
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate<'a>(
     space: search_space::SearchSpace<'a>,
     ctx: &device::Context,
-) -> explorer::Candidate<'a> {
+) -> search_space::Candidate<'a> {
     let bound = model::bound(&space, ctx);
-    explorer::Candidate::new(space, bound)
+    search_space::Candidate::new(space, bound)
 }
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,

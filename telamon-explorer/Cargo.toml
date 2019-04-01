@@ -1,0 +1,32 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>", "Nicolas Tollenaere <nicolas.tollenaere@inria.fr>", "Basile Clement <basile.clement@inria.fr>"]
+name = "telamon-explorer"
+version = "1.0.0"
+edition = "2018"
+
+[dependencies]
+bincode = "1.0"
+boxfnonce = "0.1.0"
+config = "0.8.0"
+crossbeam = "0.3.2"
+csv = "1"
+dot = "0.1"
+failure = "0.1.1"
+flate2 = "1.0.2"
+futures-preview = "0.2"
+getopts = "0.2.17"
+interval-heap = "0.0.5"
+itertools = "0.7.8"
+log = "0.4.1"
+num_cpus = "1.8.0"
+rand = "0.5.5"
+rpds = { version = "0.5.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+structopt = "0.2"
+telamon = {path = "../"}
+tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
+toml = "0.4"
+utils = {package = "telamon-utils", path = "../telamon-utils"}
+
+[dev-dependencies]

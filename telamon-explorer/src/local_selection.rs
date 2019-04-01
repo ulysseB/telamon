@@ -1,12 +1,15 @@
 //! Provides different methods to select a candidate in a list.
-use crate::device::Context;
-use crate::explorer::candidate::Candidate;
-use crate::explorer::choice;
-use crate::explorer::config::{ChoiceOrdering, NewNodeOrder};
+use std;
+
 use rand::distributions::{Weighted, WeightedChoice};
 use rand::prelude::*;
-use std;
+
+use telamon::device::Context;
+use telamon::search_space::Candidate;
 use utils::*;
+
+use crate::choice;
+use crate::config::{ChoiceOrdering, NewNodeOrder};
 
 /// A random rollout configuration
 pub struct Rollout<'a> {

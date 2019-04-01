@@ -13,10 +13,13 @@ use rpds::list::List;
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::{atomic, Mutex};
-use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
-use telamon::{codegen, device, ir};
+use telamon::{
+    codegen, device, ir,
+    search_space::{ActionEx, Candidate},
+};
+use telamon_explorer::{self as explorer, local_selection};
 use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
@@ -354,7 +357,7 @@ fn descend_check_bounds<'a>(
 
 /// A sample of the accuracy of bounds.
 pub struct BoundSample {
-    actions: Vec<explorer::choice::ActionEx>,
+    actions: Vec<ActionEx>,
     bound: Bound,
     runtime: f64,
 }

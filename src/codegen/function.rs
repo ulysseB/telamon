@@ -30,6 +30,11 @@ pub struct Function<'a> {
 impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace<'a>) -> Function<'a> {
+        assert!(
+            space.is_implementation(),
+            "impossible to generate code from partial implementations",
+        );
+
         let mut dims = dimension::group_merged_dimensions(space);
         let (induction_vars, init_induction_levels) =
             dimension::register_induction_vars(&mut dims, space);

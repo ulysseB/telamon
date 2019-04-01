@@ -17,9 +17,9 @@ impl fmt::Debug for DimId {
     }
 }
 
-impl Into<usize> for DimId {
-    fn into(self) -> usize {
-        self.0 as usize
+impl From<DimId> for usize {
+    fn from(id: DimId) -> Self {
+        id.0 as usize
     }
 }
 

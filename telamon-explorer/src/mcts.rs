@@ -24,18 +24,18 @@ use rand::distributions::{Weighted, WeightedChoice};
 use rand::prelude::*;
 use rpds::List;
 use serde::{Deserialize, Serialize};
+
+use telamon::device::Context;
+use telamon::model::{bound, Bound};
+use telamon::search_space::{ActionEx as Action, Candidate, SearchSpace};
 use utils::cmp_f64;
 
-use crate::device::Context;
-use crate::explorer::{
-    candidate::Candidate,
-    choice::{self, ActionEx as Action},
+use crate::{
+    choice,
     config::{self, BanditConfig, ChoiceOrdering, NewNodeOrder},
     logger::LogMessage,
     store::Store,
 };
-use crate::model::{bound, Bound};
-use crate::search_space::SearchSpace;
 
 /// Newtype wrapper to represent a node identifier.  Node identifiers should be unique inside a
 /// tree.  We use a fixed-size representation for consistency of the serialization format.
@@ -1254,7 +1254,7 @@ where
 
     fn commit_evaluation(
         &self,
-        _actions: &List<choice::ActionEx>,
+        _actions: &List<Action>,
         trace: Self::PayLoad,
         eval: f64,
     ) {

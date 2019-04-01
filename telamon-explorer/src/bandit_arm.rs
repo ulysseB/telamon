@@ -1,10 +1,4 @@
 ///! Exploration of the search space.
-use crate::device::Context;
-use crate::explorer::candidate::Candidate;
-use crate::explorer::config::{self, BanditConfig, NewNodeOrder};
-use crate::explorer::logger::LogMessage;
-use crate::explorer::store::Store;
-use crate::explorer::{choice, local_selection};
 use log::{debug, info, trace, warn};
 use rpds::List;
 use serde::{Deserialize, Serialize};
@@ -13,6 +7,13 @@ use std::f64;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock, Weak};
 use utils::*;
+
+use crate::config::{self, BanditConfig, NewNodeOrder};
+use crate::logger::LogMessage;
+use crate::store::Store;
+use crate::{choice, local_selection};
+use telamon::device::Context;
+use telamon::search_space::{ActionEx, Candidate};
 
 /// An environment in which candidates can be refined.
 pub struct Env<'a> {
@@ -25,10 +26,7 @@ impl<'a> Env<'a> {
     /// List the available actions for a given candidate.
     ///
     /// If `list_actions` return `None`, the candidate is a fully-specified implementation.
-    pub fn list_actions(
-        &self,
-        candidate: &Candidate<'_>,
-    ) -> Option<Vec<choice::ActionEx>> {
+    pub fn list_actions(&self, candidate: &Candidate<'_>) -> Option<Vec<ActionEx>> {
         choice::list(&self.config.choice_ordering, &candidate.space).next()
     }
 
@@ -41,7 +39,7 @@ impl<'a> Env<'a> {
     pub fn apply_choice<'c>(
         &self,
         candidate: &Candidate<'c>,
-        actions: Vec<choice::ActionEx>,
+        actions: Vec<ActionEx>,
     ) -> Vec<Candidate<'c>> {
         candidate
             .apply_choice(self.context, actions)
@@ -88,12 +86,12 @@ pub enum DeadEndSource {
     /// Dead-end encountered in the tree
     Tree {
         /// List of actions defining the dead-end candidate
-        actions: List<choice::ActionEx>,
+        actions: List<ActionEx>,
     },
     /// Dead-end encountered in the rollout phase
     Rollout {
         /// List of actions defining the dead-end candidate
-        actions: List<choice::ActionEx>,
+        actions: List<ActionEx>,
         /// Depth in the tree.  The remaining actions were selected during rollout.
         depth: usize,
         /// Performance model bound
@@ -109,14 +107,14 @@ pub enum DeadEndSource {
 #[derive(Serialize, Deserialize)]
 pub enum TreeEvent {
     Evaluation {
-        actions: List<choice::ActionEx>,
+        actions: List<ActionEx>,
         score: f64,
     },
 
     /// A fully-specified implementation was found and evaluated
     EvaluationV2 {
         /// List of actions defining the implementation
-        actions: List<choice::ActionEx>,
+        actions: List<ActionEx>,
         /// Depth in the tree.  The remaining actions were selected during rollout.
         depth: usize,
         /// Execution time
@@ -304,7 +302,7 @@ where
 
     fn commit_evaluation(
         &self,
-        actions: &List<choice::ActionEx>,
+        actions: &List<ActionEx>,
         mut info: Self::PayLoad,
         eval: f64,
     ) {
@@ -498,7 +496,7 @@ struct Edge<'a, E> {
     bound: RwLock<f64>,
 
     /// The action associated with this edge
-    action: Option<choice::ActionEx>,
+    action: Option<ActionEx>,
 }
 
 impl<'a, E: Default> Edge<'a, E> {
@@ -611,7 +609,7 @@ pub struct Node<'a, E> {
 impl<'a, E: Default> Node<'a, E> {
     /// Creates a new children containing the given candidates, if any.
     fn try_from_candidates(
-        candidates: Vec<(Option<choice::ActionEx>, Candidate<'a>)>,
+        candidates: Vec<(Option<ActionEx>, Candidate<'a>)>,
     ) -> Option<Arc<Self>> {
         if candidates.is_empty() {
             None

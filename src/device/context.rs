@@ -1,8 +1,8 @@
 //! Describes the context for which a function must be optimized.
 use crate::codegen::{self, Function};
 use crate::device::{ArrayArgument, Device, ScalarArgument};
-use crate::explorer::Candidate;
 use crate::ir;
+use crate::search_space::Candidate;
 use boxfnonce::SendBoxFnOnce;
 use num;
 use std::sync::Arc;
