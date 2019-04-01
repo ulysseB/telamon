@@ -45,6 +45,8 @@ impl<'a> Argument for Box<dyn ScalarArgument + 'a> {
     }
 }
 
+/// Wrapper around Buffer
+/// We need it to implement Argument for Buffer (orphan rule)
 struct MppaArray(telajax::Buffer<i8>);
 
 impl MppaArray {
@@ -74,14 +76,6 @@ impl Argument for MppaArray {
 }
 
 /// MPPA evaluation context.
-pub struct Context {
-    device: mppa::Mppa,
-    executor: &'static telajax::Device,
-    parameters: FnvHashMap<String, Arc<Argument>>,
-    writeback_slots: ArrayQueue<MppaArray>,
-}
-unsafe impl Sync for Context {}
-
 /// We need to keep the arguments allocated for the kernel somewhere
 enum KernelArg {
     GlobalMem(MppaArray),
@@ -96,6 +90,21 @@ impl KernelArg {
             KernelArg::Size(size) => size as *const _ as *const libc::c_void,
             KernelArg::External(ptr) => *ptr,
         }
+    }
+}
+
+pub struct Context {
+    device: mppa::Mppa,
+    executor: &'static telajax::Device,
+    parameters: FnvHashMap<String, Arc<Argument>>,
+    writeback_slots: ArrayQueue<MppaArray>,
+}
+
+unsafe impl Sync for Context {}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context::new()
     }
 }
 
