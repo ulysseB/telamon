@@ -35,6 +35,7 @@ impl std::fmt::Display for InstId {
 pub struct Instruction<'a, L = LoweringMap> {
     operator: Operator<'a, L>,
     id: InstId,
+    initial_iter_dims: FnvHashSet<ir::DimId>,
     iter_dims: FnvHashSet<ir::DimId>,
     variable: Option<ir::VarId>,
     defined_vars: VecSet<ir::VarId>,
@@ -73,6 +74,7 @@ impl<'a, L> Instruction<'a, L> {
         Ok(Instruction {
             operator,
             id,
+            initial_iter_dims: FnvHashSet::default(),
             iter_dims,
             variable: None,
             defined_vars: VecSet::default(),
@@ -197,6 +199,7 @@ impl<'a> Instruction<'a, ()> {
         Instruction {
             operator: self.operator.freeze(cnt),
             id: self.id,
+            initial_iter_dims: self.iter_dims.clone(),
             iter_dims: self.iter_dims,
             variable: self.variable,
             used_vars: self.used_vars,
@@ -222,6 +225,17 @@ impl<'a> Instruction<'a> {
             }
             _ => panic!(),
         }
+    }
+
+    /// The initial iteration dimensions as defined when creating the instruction
+    /// Additional instructions added during the search procedure (for instance by nesting the
+    /// instruction in nother loop to rematerialize the value instead of storing it in memory) are
+    /// not included.
+    ///
+    /// In other words -- only the initial dimensions should generate variables for each point in
+    /// the grid, e.g. when unrolling.
+    pub fn initial_iteration_dims(&self) -> &FnvHashSet<ir::DimId> {
+        &self.initial_iter_dims
     }
 }
 
