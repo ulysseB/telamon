@@ -2,8 +2,8 @@
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
 use itertools::Itertools;
-use std;
 use std::borrow::Cow;
+use std::{self, fmt};
 
 use utils::*;
 
@@ -69,6 +69,12 @@ pub enum BinOp {
     Equals,
 }
 
+impl fmt::Display for BinOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.name())
+    }
+}
+
 impl BinOp {
     /// Returns a string representing the operator.
     fn name(self) -> &'static str {
@@ -109,6 +115,15 @@ pub enum UnaryOp {
     Mov,
     /// Casts the input to another type.
     Cast(ir::Type),
+}
+
+impl fmt::Display for UnaryOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UnaryOp::Mov => fmt.write_str("mov"),
+            UnaryOp::Cast(t) => write!(fmt, "cast({})", t),
+        }
+    }
 }
 
 impl UnaryOp {
@@ -342,18 +357,19 @@ impl<'a> Operator<'a, ()> {
     }
 }
 
-impl<'a> std::fmt::Display for Operator<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let name = match *self {
-            BinOp(op, ..) => op.name(),
-            UnaryOp(op, ..) => op.name(),
-            Mul(..) => "mul",
-            Mad(..) => "mad",
-            Ld(..) => "ld",
-            St(..) => "st",
-            TmpLd(..) => "tmp_ld",
-            TmpSt(..) => "tmp_st",
-        };
-        write!(f, "{}", name)
+impl<'a, L> std::fmt::Display for Operator<'a, L> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            BinOp(op, lhs, rhs, rnd) => write!(fmt, "{}[{}]({}, {})", op, rnd, lhs, rhs),
+            UnaryOp(op, arg) => write!(fmt, "{}({})", op, arg),
+            Mul(lhs, rhs, rnd, t) => write!(fmt, "Mul<{}>[{}]({}, {})", t, rnd, lhs, rhs),
+            Mad(arg0, arg1, arg2, rnd) => {
+                write!(fmt, "Mad[{}]({}, {}, {})", rnd, arg0, arg1, arg2)
+            }
+            Ld(t, arg, ap) => write!(fmt, "Load({})", arg),
+            St(dst, src, side_effects, ap) => write!(fmt, "Store({}, {})", dst, src),
+            TmpLd(t, mem) => write!(fmt, "TempLoad({})", mem),
+            TmpSt(src, mem) => write!(fmt, "TempStore({}, {})", mem, src),
+        }
     }
 }

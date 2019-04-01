@@ -227,14 +227,15 @@ pub trait Printer<N: Namer> {
     fn enable_threads(
         &mut self,
         fun: &Function,
-        threads: &[bool],
+        threads: &[Option<ir::DimId>],
         namer: &mut NameMap<N>,
     ) {
         let mut guard: Option<String> = None;
-        for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
-            if is_active {
+        for (&active_dim_id, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
+            if active_dim_id.is_some() {
                 continue;
             }
+
             let new_guard = namer.gen_name(ir::Type::I(1));
             let index = namer.name_index(dim.id());
             self.print_equals(ir::Type::I(32), &new_guard, index, &Self::get_int(0));

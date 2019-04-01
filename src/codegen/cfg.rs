@@ -15,7 +15,11 @@ pub enum Cfg<'a> {
     /// An instruction in the CFG, potentially vectorized on 2 levels.
     Instruction([Vec<Dimension<'a>>; 2], Instruction<'a>),
     /// Defines the set of active thread dimensions.
-    Threads(Vec<bool>, Vec<InductionLevel<'a>>, Vec<Cfg<'a>>),
+    Threads(
+        Vec<Option<ir::DimId>>,
+        Vec<InductionLevel<'a>>,
+        Vec<Cfg<'a>>,
+    ),
 }
 
 impl<'a> Cfg<'a> {
@@ -117,7 +121,9 @@ impl<'a> Cfg<'a> {
         while let Some(event) = events.next() {
             match event {
                 Exec(inst) => body.push(Cfg::Instruction(Default::default(), inst)),
-                Enter(_, EntryEvent::SeqDim(dim)) => {
+                Enter(dim_id, EntryEvent::SeqDim(dim)) => {
+                    assert_eq!(dim_id, dim.id());
+
                     if dim.kind().is(DimKind::VECTOR).as_bool().unwrap() {
                         body.push(Cfg::vector_inst_from_events(dim, events));
                     } else {
@@ -126,20 +132,22 @@ impl<'a> Cfg<'a> {
                     }
                 }
                 Exit(_, ExitEvent::SeqDim) => break,
-                Enter(_, EntryEvent::ThreadDim(pos, mut ind_levels)) => {
-                    let mut dim_poses = vec![false; num_thread_dims];
-                    dim_poses[pos] = true;
+                Enter(dim_id, EntryEvent::ThreadDim(pos, mut ind_levels)) => {
+                    let mut dim_ids = vec![None; num_thread_dims];
+                    dim_ids[pos] = Some(dim_id);
                     while let Some(Enter(_, EntryEvent::ThreadDim(..))) = events.peek() {
                         let next = unwrap!(events.next());
-                        if let Enter(_, EntryEvent::ThreadDim(pos, levels)) = next {
-                            dim_poses[pos] = true;
+                        if let Enter(dim_id, EntryEvent::ThreadDim(pos, levels)) = next {
+                            assert_eq!(dim_ids[pos], None);
+
+                            dim_ids[pos] = Some(dim_id);
                             ind_levels.extend(levels);
                         } else {
                             unreachable!()
                         };
                     }
                     let inner = Cfg::body_from_events(events, 0);
-                    body.push(Cfg::Threads(dim_poses, ind_levels, inner));
+                    body.push(Cfg::Threads(dim_ids, ind_levels, inner));
                 }
                 Exit(_, ExitEvent::ThreadDim) => {
                     while let Some(Exit(_, ExitEvent::ThreadDim)) = events.peek() {
@@ -177,7 +185,7 @@ impl<'a> Cfg<'a> {
                     cfg => cfg,
                 }))
             } else {
-                let thread_dims = vec![false; num_thread_dims];
+                let thread_dims = vec![None; num_thread_dims];
                 new_body.push(Cfg::Threads(thread_dims, vec![], cfgs.collect()));
             }
         }
@@ -199,13 +207,15 @@ impl<'a> Cfg<'a> {
 impl<'a> fmt::Debug for Cfg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Cfg::Root(inners) => write!(f, "{:?}", inners),
-            Cfg::Loop(dim, inners) => {
-                write!(f, "Loop([{:?}], {:?})", dim.dim_ids().format(","), inners)
-            }
-            Cfg::Instruction(dims, inst) => write!(f, "inst{:?} {:?}", dims, inst.id()),
+            Cfg::Root(inners) => f.debug_list().entries(inners).finish(),
+            Cfg::Loop(dim, inners) => f
+                .debug_tuple(&format!("{:?}", dim.kind()))
+                .field(&format_args!("[{:?}]", &dim.dim_ids().format(",")))
+                .field(inners)
+                .finish(),
+            Cfg::Instruction(dims, inst) => write!(f, "{:?} {}", dims, inst),
             Cfg::Threads(dims, _, inners) => {
-                write!(f, "threads({:?}, {:?})", dims, inners)
+                f.debug_tuple("Threads").field(dims).field(inners).finish()
             }
         }
     }

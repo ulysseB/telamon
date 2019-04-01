@@ -1,11 +1,12 @@
 //! Provides a representation of functions.
+use std::{self, fmt};
+
 use crate::device::Device;
 use crate::ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
 use crate::search_space::MemSpace;
 use itertools::Itertools;
 use log::debug;
-use std;
 use utils::*;
 
 /// Represents an argument of a function.
@@ -17,6 +18,12 @@ pub struct Parameter {
     pub t: ir::Type,
     /// If the parameter point to an array, indicates the element type.
     pub elem_t: Option<ir::Type>,
+}
+
+impl fmt::Display for Parameter {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.name)
+    }
 }
 
 /// Holds the signature of a function.
