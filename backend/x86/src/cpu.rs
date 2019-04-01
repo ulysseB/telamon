@@ -5,8 +5,11 @@ use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
 
+use itertools::*;
 use std::io::Write;
 use utils::*;
+
+use crate::printer::X86printer;
 
 /// Represents CUDA GPUs.
 #[derive(Clone)]
@@ -24,8 +27,17 @@ impl Cpu {
 }
 
 impl device::Device for Cpu {
-    fn print(&self, _fun: &Function, out: &mut Write) {
-        unwrap!(write!(out, "Basic CPU"));
+    fn print(&self, fun: &Function, out: &mut Write) {
+        let mut printer = X86printer::default();
+        write!(out, "{}", printer.wrapper_function(fun)).unwrap();
+        write!(
+            out,
+            "{}",
+            fun.device_code_args()
+                .map(|x| format!("{:?}", x))
+                .format("\n")
+        )
+        .unwrap();
     }
 
     fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
