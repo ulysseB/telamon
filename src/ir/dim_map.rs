@@ -1,4 +1,7 @@
+use std::fmt;
+
 use crate::ir;
+use itertools::Itertools;
 use linked_list;
 use linked_list::LinkedList;
 use utils::*;
@@ -75,5 +78,18 @@ impl<'a> IntoIterator for &'a DimMap {
 
     fn into_iter(self) -> Self::IntoIter {
         self.map.iter()
+    }
+}
+
+impl fmt::Display for DimMap {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "[{}]",
+            self.map
+                .iter()
+                .map(|(lhs, rhs)| format!("{} = {}", lhs, rhs))
+                .format(", ")
+        )
     }
 }

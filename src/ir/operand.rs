@@ -1,4 +1,6 @@
 //! Describes the different kinds of operands an instruction can have.
+use std::fmt;
+
 use self::Operand::*;
 use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
@@ -234,6 +236,24 @@ impl<'a> Operand<'a, ()> {
             Addr(id) => Addr(id),
             Reduce(id, t, dim_map, dims) => Reduce(id, t, dim_map, dims),
             InductionVar(id, t) => InductionVar(id, t),
+        }
+    }
+}
+
+impl<'a, L> fmt::Display for Operand<'a, L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Int(val, len) => write!(fmt, "{}u{}", val, len),
+            Float(val, len) => write!(fmt, "{}f{}", val, len),
+            Inst(id, t, dim_map, scope) => write!(fmt, "{:?} [{}]", id, dim_map),
+            Index(id) => write!(fmt, "{}", id),
+            Param(param) => write!(fmt, "{}", param),
+            Addr(id) => write!(fmt, "({})", id),
+            Reduce(id, t, dim_map, dims) => {
+                write!(fmt, "reduce({:?}, {:?}) [{}]", id, dims, dim_map)
+            }
+            InductionVar(id, t) => write!(fmt, "ind"),
+            Variable(var, t) => write!(fmt, "({}){}", t, var),
         }
     }
 }

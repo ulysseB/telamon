@@ -1,6 +1,7 @@
 //! This file exposes a single function, monitor, that is launched in a special
 //! thread and pulls the evaluations results, store them and then updates the
 //! Store accordingly.
+use crate::device::Context;
 use crate::explorer::candidate::Candidate;
 use crate::explorer::config::Config;
 use crate::explorer::logger::LogMessage;
@@ -65,6 +66,7 @@ impl<'a> Default for Status<'a> {
 /// update the store accordingly.
 pub fn monitor<'a, T, E>(
     config: &Config,
+    context: &dyn Context,
     candidate_store: &T,
     recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
     log_sender: sync::mpsc::SyncSender<LogMessage<E>>,
@@ -76,9 +78,25 @@ where
     let t0 = Instant::now();
     let mut status = Status::default();
     let res = if config.timeout.is_some() {
-        block_until_timeout(config, recv, t0, candidate_store, &log_sender, &mut status)
+        block_until_timeout(
+            config,
+            context,
+            recv,
+            t0,
+            candidate_store,
+            &log_sender,
+            &mut status,
+        )
     } else {
-        block_unbounded(config, recv, t0, candidate_store, &log_sender, &mut status)
+        block_unbounded(
+            config,
+            context,
+            recv,
+            t0,
+            candidate_store,
+            &log_sender,
+            &mut status,
+        )
     };
     let duration = t0.elapsed();
     let duration_secs =
@@ -119,6 +137,7 @@ fn get_new_cut(config: &Config, eval: f64) -> f64 {
 /// tree has been fully explored.
 fn block_unbounded<'a, T, E>(
     config: &Config,
+    context: &dyn Context,
     receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
     t0: Instant,
     candidate_store: &T,
@@ -134,6 +153,7 @@ where
             .for_each(move |message| {
                 handle_message::<T, E>(
                     config,
+                    context,
                     message,
                     t0,
                     candidate_store,
@@ -149,6 +169,7 @@ where
 /// has been fully explored or the timeout has been reached
 fn block_until_timeout<'a, 'b, T, E>(
     config: &'b Config,
+    context: &dyn Context,
     receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
     t0: Instant,
     candidate_store: &'b T,
@@ -170,6 +191,7 @@ where
                 .for_each(move |message| {
                     handle_message::<T, E>(
                         config,
+                        context,
                         message,
                         t0,
                         candidate_store,
@@ -187,6 +209,7 @@ where
 /// the best cand if needed, logging, committing back to candidate_store
 fn handle_message<'a, T, E>(
     config: &Config,
+    context: &dyn Context,
     message: MonitorMessage<'a, T>,
     start_time: Instant,
     candidate_store: &T,
@@ -221,6 +244,15 @@ where
             timestamp: wall,
         };
         unwrap!(log_sender.send(log_message));
+
+        match config.output_path(format!("best_{}", status.num_evaluations)) {
+            Ok(output_path) => cand
+                .space
+                .dump_code(context, output_path)
+                .unwrap_or_else(|err| warn!("Error while dumping candidate: {}", err)),
+            Err(err) => warn!("Error while dumping candidate: {}", err),
+        }
+
         status.best_candidate = Some((cand, eval));
     }
 

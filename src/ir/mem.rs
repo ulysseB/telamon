@@ -1,4 +1,6 @@
 //! A module for handling accesses to the device memory.
+use std::fmt;
+
 use crate::ir::{self, dim, InstId, Type};
 
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,12 @@ pub struct MemId(pub u32);
 impl From<MemId> for usize {
     fn from(id: MemId) -> usize {
         id.0 as usize
+    }
+}
+
+impl fmt::Display for MemId {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt, "#{}", self.0)
     }
 }
 

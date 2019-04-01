@@ -1,4 +1,6 @@
 //! Encodes the data-flow information.
+use std::fmt;
+
 use crate::ir;
 
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,12 @@ pub struct VarId(pub u16);
 impl From<VarId> for usize {
     fn from(val_id: VarId) -> Self {
         val_id.0 as usize
+    }
+}
+
+impl fmt::Display for VarId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "${}", self.0)
     }
 }
 
