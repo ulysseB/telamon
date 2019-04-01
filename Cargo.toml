@@ -8,12 +8,6 @@ edition = "2018"
 readme = "README.md"
 repository = "https://github.com/ulysseB/telamon/"
 
-[[bin]]
-name = "expandconfig"
-
-[[bin]]
-name = "parse_event_log"
-
 [[bench]]
 name = "descent"
 harness = false
@@ -72,7 +66,6 @@ structopt = "0.2"
 bincode = "1.0"
 std-semaphore = "0.1.0"
 tempfile = "3.0.1"
-toml = "0.4"
 flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
@@ -106,4 +99,5 @@ members = [
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
+    "telamon-explorer",
 ]

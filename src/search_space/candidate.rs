@@ -1,16 +1,46 @@
 //! Exploration of the search space.
-use crate::device::Context;
-use crate::explorer::choice::ActionEx;
-use crate::model::{bound, Bound};
-use crate::search_space::SearchSpace;
-
-use log::{debug, info, trace};
-use rpds::List;
-use std;
 use std::cmp::{Ordering, PartialOrd};
+use std::{self, fmt};
 
 use itertools::Itertools;
+use log::{debug, info, trace};
+use rpds::List;
+use serde::{Deserialize, Serialize};
 use utils::unwrap;
+
+use crate::device::Context;
+use crate::ir;
+use crate::model::{bound, Bound};
+use crate::search_space::{choices::Action, SearchSpace};
+
+/// Either a regular action or a manually applied action.
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ActionEx {
+    Action(Action),
+    LowerLayout {
+        mem: ir::MemId,
+        st_dims: Vec<ir::DimId>,
+        ld_dims: Vec<ir::DimId>,
+    },
+}
+
+impl fmt::Debug for ActionEx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            // Actions are already explicitely self-describing enough
+            ActionEx::Action(action) => write!(f, "{:?}", action),
+            ActionEx::LowerLayout {
+                mem,
+                st_dims,
+                ld_dims,
+            } => write!(
+                f,
+                "LowerLayout {{ mem: {:?}, st_dims: {:?}, ld_dims: {:?} }}",
+                mem, st_dims, ld_dims
+            ),
+        }
+    }
+}
 
 /// A node of the search tree.
 #[derive(Clone)]

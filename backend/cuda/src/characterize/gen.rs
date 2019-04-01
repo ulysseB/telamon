@@ -4,9 +4,9 @@ use crate::{Context, Gpu, Kernel, PerfCounterSet};
 use itertools::Itertools;
 use log::*;
 use num::Zero;
+
 use telamon::codegen;
 use telamon::device::{ArgMapExt, Device, ScalarArgument};
-use telamon::explorer;
 use telamon::helper::tensor::DimSize;
 use telamon::helper::{AutoOperand, Builder, Reduce};
 use telamon::ir::{self, Signature};
@@ -498,9 +498,6 @@ pub fn run(
     result_prefix: &[u64],
     result: &mut Table<u64>,
 ) {
-    if let Some(choice) = explorer::choice::default_list(space).next() {
-        panic!("The benchmark is not completely scheduled: {:?}", choice);
-    }
     let dev_fun = codegen::Function::build(space);
     let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor(), 1);
     for &(arg, range) in args_range {

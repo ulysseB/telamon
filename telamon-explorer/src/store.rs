@@ -1,8 +1,8 @@
-use crate::device::Context;
-use crate::explorer::candidate::Candidate;
-use crate::explorer::choice::ActionEx;
 use rpds::List;
 use serde::Serialize;
+
+use telamon::device::Context;
+use telamon::search_space::{ActionEx, Candidate};
 
 /// A Trait defining a structure containing the candidates, meant to explore the
 /// search space

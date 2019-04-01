@@ -2,7 +2,7 @@ use std;
 use std::ffi::CStr;
 
 use libc::c_char;
-use telamon::explorer::{self, Config};
+use telamon_explorer::{self, Config};
 
 use super::error::TelamonStatus;
 use super::search_space::SearchSpace;

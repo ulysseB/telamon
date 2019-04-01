@@ -1,8 +1,8 @@
 //! Benchmarks the exploration on CUDA gpus.
 use cuda_sys::cublas::*;
 use cuda_sys::cuda::*;
-use telamon::explorer::config::Config;
 use telamon_cuda as cuda;
+use telamon_explorer::config::Config;
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel};
 

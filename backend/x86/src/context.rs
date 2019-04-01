@@ -7,8 +7,8 @@ use telamon::codegen::ParamVal;
 
 use telamon::codegen;
 use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
-use telamon::explorer;
 use telamon::ir;
+use telamon::search_space::Candidate;
 
 use crossbeam;
 use itertools::Itertools;
@@ -221,12 +221,7 @@ fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
     Ok(time)
 }
 
-type AsyncPayload<'a, 'b> = (
-    explorer::Candidate<'a>,
-    String,
-    Vec<ThunkArg>,
-    AsyncCallback<'a, 'b>,
-);
+type AsyncPayload<'a, 'b> = (Candidate<'a>, String, Vec<ThunkArg>, AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b>
 where
@@ -243,7 +238,7 @@ where
 {
     fn add_kernel(
         &mut self,
-        candidate: explorer::Candidate<'a>,
+        candidate: Candidate<'a>,
         callback: device::AsyncCallback<'a, 'c>,
     ) {
         let (fun_str, code_args);

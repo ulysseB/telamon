@@ -1,13 +1,15 @@
 ///! Data structures and function that allow for the recreation of a
 ///! candidate tree from a log file
-use crate::explorer::choice::ActionEx as Action;
-use crate::explorer::mcts::{EdgeIndex, NodeId};
-use crate::model::Bound;
 use core::ops::Deref;
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
+
+use telamon::model::Bound;
+use telamon::search_space::ActionEx as Action;
 use utils::FnvHashMap;
+
+use crate::mcts::{EdgeIndex, NodeId};
 
 /// Outgoing Edge to a child annotated with the action for the
 /// child. If `child` is None, the child node corresponding to the

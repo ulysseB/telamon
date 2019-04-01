@@ -58,7 +58,7 @@ impl Opt {
     }
 
     /// Parse the existing configuration
-    fn parse_config(&self) -> io::Result<telamon::explorer::config::Config> {
+    fn parse_config(&self) -> io::Result<telamon_explorer::config::Config> {
         let input_str = match self.open_input()? {
             Some(mut input) => {
                 let mut input_str = String::new();
@@ -77,7 +77,7 @@ impl Opt {
     }
 
     /// Dump a configuration in the requested format
-    fn dump_config(&self, config: &telamon::explorer::config::Config) -> io::Result<()> {
+    fn dump_config(&self, config: &telamon_explorer::config::Config) -> io::Result<()> {
         let output_str = match self.format {
             Format::Toml => toml::to_string(config).map_err(|err| {
                 io::Error::new(

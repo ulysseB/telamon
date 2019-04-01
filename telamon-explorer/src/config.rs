@@ -2,8 +2,6 @@
 //! is read from the `Setting.toml` file if it exists. Some parameters can be overridden
 //! from the command line.
 
-extern crate toml;
-
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -16,7 +14,7 @@ use num_cpus;
 use serde::{Deserialize, Serialize};
 use utils::{tfrecord, unwrap};
 
-use crate::explorer::eventlog::EventLog;
+use crate::eventlog::EventLog;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]

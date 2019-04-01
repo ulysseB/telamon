@@ -1,42 +1,12 @@
 //! Choices that can be applied to split the search space.
-use std::fmt;
-
-use crate::explorer::config;
-use crate::ir::{self, Statement};
-use crate::search_space::{Action, Domain, NumSet, Order, SearchSpace};
 use itertools::Itertools;
 use log::trace;
-use serde::{Deserialize, Serialize};
+
+use telamon::ir::{self, Statement};
+use telamon::search_space::{Action, ActionEx, Domain, NumSet, Order, SearchSpace};
 use utils::unwrap;
 
-/// Either a regular action or a manually applied action.
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ActionEx {
-    Action(Action),
-    LowerLayout {
-        mem: ir::MemId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
-    },
-}
-
-impl fmt::Debug for ActionEx {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // Actions are already explicitely self-describing enough
-            ActionEx::Action(action) => write!(f, "{:?}", action),
-            ActionEx::LowerLayout {
-                mem,
-                st_dims,
-                ld_dims,
-            } => write!(
-                f,
-                "LowerLayout {{ mem: {:?}, st_dims: {:?}, ld_dims: {:?} }}",
-                mem, st_dims, ld_dims
-            ),
-        }
-    }
-}
+use crate::config;
 
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
@@ -97,7 +67,7 @@ pub fn list<'a>(
     iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
     space: &'a SearchSpace<'a>,
 ) -> impl Iterator<Item = Choice> + 'a {
-    use crate::explorer::config::ChoiceGroup::*;
+    use crate::config::ChoiceGroup::*;
 
     NestedIterator::new(iter_choice.into_iter().map(
         move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {

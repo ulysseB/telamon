@@ -7,11 +7,13 @@ use crate::device::Context;
 use crate::ir;
 use log::debug;
 
+mod candidate;
 mod dim_map;
 mod operand;
 use utils::generated_file;
 generated_file!(choices);
 
+pub use self::candidate::{ActionEx, Candidate};
 pub use self::choices::{
     Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace, NumSet,
     Order, ThreadMapping,
@@ -110,6 +112,11 @@ impl<'a> SearchSpace<'a> {
         );
 
         Ok(())
+    }
+
+    /// Returns whether the candidate is a fully specified implementation.
+    pub fn is_implementation(&self) -> bool {
+        self.ir_instance.layouts_to_lower().is_empty() && self.domain.is_constrained()
     }
 }
 

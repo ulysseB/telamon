@@ -1,15 +1,17 @@
 //! Exploration of the search space.
-pub use crate::explorer::candidate::Candidate;
+use std;
+use std::f64;
 
-use crate::device::Context;
-use crate::explorer::choice;
-use crate::explorer::store::Store;
 use interval_heap::IntervalHeap;
 use log::{info, warn};
 use rpds::List;
-use std;
-use std::f64;
+use telamon::device::Context;
 use utils::unwrap;
+
+use crate::choice;
+use crate::store::Store;
+
+pub use telamon::search_space::{ActionEx, Candidate};
 
 impl<'a> Store<'a> for ParallelCandidateList<'a> {
     type PayLoad = ();
@@ -20,13 +22,7 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
         self.lock().0.update_cut(new_cut);
     }
 
-    fn commit_evaluation(
-        &self,
-        _actions: &List<choice::ActionEx>,
-        (): Self::PayLoad,
-        _: f64,
-    ) {
-    }
+    fn commit_evaluation(&self, _actions: &List<ActionEx>, (): Self::PayLoad, _: f64) {}
 
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {

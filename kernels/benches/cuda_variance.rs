@@ -6,9 +6,9 @@ use log::*;
 use std::sync::Mutex;
 use std::time::Duration;
 use telamon::device::Context;
-use telamon::explorer::local_selection;
-use telamon::{device, explorer, helper};
+use telamon::{device, helper, search_space::Candidate};
 use telamon_cuda as cuda;
+use telamon_explorer::{config, local_selection};
 use telamon_kernels::{linalg, Kernel};
 use utils::*;
 
@@ -49,7 +49,7 @@ where
     let candidates = kernel.build_body(&signature, &context);
     let candidates = std::iter::repeat(())
         .flat_map(|()| {
-            let order = explorer::config::NewNodeOrder::WeightedRandom;
+            let order = config::NewNodeOrder::WeightedRandom;
             let candidate_idx = order.pick_candidate(&candidates, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             local_selection::descend(&Default::default(), order, &context, candidate, CUT)
@@ -114,7 +114,7 @@ fn analyse_runtimes(mut runtimes: Vec<f64>, name: &str, bound: &str) -> (f64, f6
 
 /// Runs a series of evaluation, sleeping the given duration betwen each evaluation.
 fn run_evaluations(
-    candidates: &[explorer::Candidate],
+    candidates: &[Candidate],
     context: &Context,
     num_samples: usize,
     sleep: Option<Duration>,

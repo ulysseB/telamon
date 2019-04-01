@@ -8,7 +8,7 @@ use log::{debug, info};
 use std::f64;
 use std::sync::{atomic, mpsc, Arc};
 use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
-use telamon::{codegen, explorer, ir};
+use telamon::{codegen, ir, search_space::Candidate};
 use utils::*;
 
 /// Max number of candidates waiting to be evaluated.
@@ -225,7 +225,7 @@ impl<'a> device::Context for Context<'a> {
     }
 }
 
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>, Thunk<'b>, AsyncCallback<'a, 'b>);
+type AsyncPayload<'a, 'b> = (Candidate<'a>, Thunk<'b>, AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b>
 where
@@ -244,7 +244,7 @@ where
 {
     fn add_kernel(
         &mut self,
-        candidate: explorer::Candidate<'a>,
+        candidate: Candidate<'a>,
         callback: device::AsyncCallback<'a, 'c>,
     ) {
         let thunk = {

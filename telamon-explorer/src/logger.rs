@@ -3,11 +3,12 @@ use std::io::{self, BufWriter, Write};
 use std::sync::mpsc;
 use std::time::Duration;
 
-use crate::explorer::config::Config;
-use crate::explorer::monitor;
 use bincode;
 use failure::Fail;
 use serde::{Deserialize, Serialize};
+
+use crate::config::Config;
+use crate::monitor;
 
 #[derive(Serialize, Deserialize)]
 pub enum LogMessage<E> {

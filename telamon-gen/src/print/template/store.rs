@@ -39,6 +39,17 @@ impl DomainStore {
         {{/each~}}
     }
 
+    /// Returns `true` when the domain is fully constrained.
+    #[allow(unused_variables, unused_mut)]
+    pub fn is_constrained(&self) -> bool {
+        {{~#if choices~}}
+            {{#each choices~}}
+                {{~#unless @first}} && {{/unless~}}
+                self.{{name}}.iter().all(|(_, value)| value.is_constrained())
+            {{~/each}}
+        {{else}}true{{/if~}}
+    }
+
     {{#each choices}}{{>getter this}}{{/each}}
 }
 

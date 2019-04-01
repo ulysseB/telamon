@@ -1,21 +1,24 @@
 //! This file exposes a single function, monitor, that is launched in a special
 //! thread and pulls the evaluations results, store them and then updates the
 //! Store accordingly.
-use crate::device::Context;
-use crate::explorer::candidate::Candidate;
-use crate::explorer::config::Config;
-use crate::explorer::logger::LogMessage;
-use crate::explorer::store::Store;
+use std;
+use std::sync;
+use std::time::{Duration, Instant};
+
 use futures::channel;
 use futures::executor::block_on;
 use futures::prelude::*;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use std;
-use std::sync;
-use std::time::{Duration, Instant};
 use tokio_timer::*;
+
+use telamon::device::Context;
+use telamon::search_space::Candidate;
 use utils::unwrap;
+
+use crate::config::Config;
+use crate::logger::LogMessage;
+use crate::store::Store;
 
 pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, <T as Store<'a>>::PayLoad);
 

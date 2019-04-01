@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use crate::codegen;
-use crate::explorer::Candidate;
 use crate::ir;
+use crate::search_space::Candidate;
 
 use super::{
     ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, Context, Device, EvalMode,

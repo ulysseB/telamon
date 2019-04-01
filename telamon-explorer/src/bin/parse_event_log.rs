@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
-use telamon::explorer::{bandit_arm::TreeEvent, choice::ActionEx, eventlog::EventLog};
+use telamon::search_space::ActionEx;
+use telamon_explorer::{bandit_arm::TreeEvent, eventlog::EventLog};
 
 use structopt::StructOpt;
 

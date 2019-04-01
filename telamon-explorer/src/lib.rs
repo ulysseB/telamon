@@ -1,5 +1,4 @@
 //! exploration of the search space.
-mod candidate;
 mod logger;
 mod monitor;
 mod parallel_list;
@@ -11,8 +10,8 @@ pub mod config;
 pub mod eventlog;
 pub mod local_selection;
 pub mod mcts;
+pub mod offline_analysis;
 
-pub use self::candidate::Candidate;
 pub use self::config::{BanditConfig, Config, SearchAlgorithm};
 pub use self::logger::LogMessage;
 
@@ -21,9 +20,9 @@ use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
 use self::store::Store;
 
-use crate::device::{Context, EvalMode};
-use crate::model::bound;
-use crate::search_space::SearchSpace;
+use telamon::device::{Context, EvalMode};
+use telamon::model::bound;
+use telamon::search_space::{Candidate, SearchSpace};
 
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
