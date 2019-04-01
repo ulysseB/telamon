@@ -253,10 +253,19 @@ fn launch_search<'a, T: Store<'a>>(
 ) -> Option<Candidate<'a>> {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
     let maybe_candidate = crossbeam::scope(|scope| {
-        let best_cand_opt = scope
-            .builder()
-            .name("Telamon - Monitor".to_string())
-            .spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
+        let best_cand_opt =
+            scope
+                .builder()
+                .name("Telamon - Monitor".to_string())
+                .spawn(|| {
+                    monitor(
+                        config,
+                        context,
+                        &candidate_store,
+                        monitor_receiver,
+                        log_sender,
+                    )
+                });
         explore_space(config, &candidate_store, monitor_sender, context);
         unwrap!(best_cand_opt)
     })
