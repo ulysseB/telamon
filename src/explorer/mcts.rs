@@ -1194,7 +1194,7 @@ where
             root,
             default_policy,
             tree_policy,
-            cut: RwLock::new(std::f64::INFINITY),
+            cut: RwLock::new(config.initial_cut.unwrap_or(std::f64::INFINITY)),
             cut_epoch: AtomicUsize::new(0),
             stop: AtomicBool::new(false),
             id_counter,
