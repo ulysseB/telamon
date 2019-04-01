@@ -17,6 +17,7 @@ fn compile_link_cuda() {
     let mut builder = cc::Build::new();
 
     // If CUDA_HOME is defined, use the cuda headers and libraries from there.
+    println!("cargo:rerun-if-env-changed=CUDA_HOME");
     if let Some(cuda_home) = env::var_os("CUDA_HOME").map(PathBuf::from) {
         println!(
             "cargo:rustc-link-search=native={}",
