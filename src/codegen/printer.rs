@@ -167,7 +167,19 @@ pub trait Printer<N: Namer> {
             Cfg::Root(cfgs) => self.cfg_vec(fun, cfgs, namer),
             Cfg::Loop(dim, cfgs) => self.gen_loop(fun, dim, cfgs, namer),
             Cfg::Threads(dims, ind_levels, inner) => {
-                self.enable_threads(fun, dims, namer);
+                // Disable inactive threads
+                self.disable_threads(
+                    dims.iter().zip_eq(fun.thread_dims().iter()).filter_map(
+                        |(&active_dim_id, dim)| {
+                            if active_dim_id.is_none() {
+                                Some(dim)
+                            } else {
+                                None
+                            }
+                        },
+                    ),
+                    namer,
+                );
                 for level in ind_levels {
                     self.parallel_induction_level(level, namer);
                 }
@@ -223,19 +235,13 @@ pub trait Printer<N: Namer> {
         }
     }
 
-    /// Change the side-effect guards so that only the specified threads are enabled.
-    fn enable_threads(
-        &mut self,
-        fun: &Function,
-        threads: &[Option<ir::DimId>],
-        namer: &mut NameMap<N>,
-    ) {
+    /// Change the side-effect guards so that the specified threads are disabled.
+    fn disable_threads<'a, I>(&mut self, threads: I, namer: &mut NameMap<N>)
+    where
+        I: Iterator<Item = &'a Dimension<'a>>,
+    {
         let mut guard: Option<String> = None;
-        for (&active_dim_id, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
-            if active_dim_id.is_some() {
-                continue;
-            }
-
+        for dim in threads {
             let new_guard = namer.gen_name(ir::Type::I(1));
             let index = namer.name_index(dim.id());
             self.print_equals(ir::Type::I(32), &new_guard, index, &Self::get_int(0));
