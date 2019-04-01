@@ -245,11 +245,13 @@ impl<'a, L> fmt::Display for Operand<'a, L> {
         match self {
             Int(val, len) => write!(fmt, "{}u{}", val, len),
             Float(val, len) => write!(fmt, "{}f{}", val, len),
-            Inst(id, t, dim_map, scope) => write!(fmt, "{}", id),
+            Inst(id, t, dim_map, scope) => write!(fmt, "{:?} [{}]", id, dim_map),
             Index(id) => write!(fmt, "{}", id),
             Param(param) => write!(fmt, "{}", param),
             Addr(id) => write!(fmt, "({})", id),
-            Reduce(id, t, dim_map, dims) => write!(fmt, "red"),
+            Reduce(id, t, dim_map, dims) => {
+                write!(fmt, "reduce({:?}, {:?}) [{}]", id, dims, dim_map)
+            }
             InductionVar(id, t) => write!(fmt, "ind"),
             Variable(var, t) => write!(fmt, "({}){}", t, var),
         }

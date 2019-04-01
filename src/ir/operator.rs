@@ -360,16 +360,16 @@ impl<'a> Operator<'a, ()> {
 impl<'a, L> std::fmt::Display for Operator<'a, L> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            BinOp(op, lhs, rhs, rnd) => write!(fmt, "{}[{}] {} {}", op, rnd, lhs, rhs),
-            UnaryOp(op, arg) => write!(fmt, "{} {}", op, arg),
-            Mul(lhs, rhs, rnd, t) => write!(fmt, "mul({})[{}] {} {}", t, rnd, lhs, rhs),
+            BinOp(op, lhs, rhs, rnd) => write!(fmt, "{}[{}]({}, {})", op, rnd, lhs, rhs),
+            UnaryOp(op, arg) => write!(fmt, "{}({})", op, arg),
+            Mul(lhs, rhs, rnd, t) => write!(fmt, "Mul<{}>[{}]({}, {})", t, rnd, lhs, rhs),
             Mad(arg0, arg1, arg2, rnd) => {
-                write!(fmt, "mad[{}] {} {} {}", rnd, arg0, arg1, arg2)
+                write!(fmt, "Mad[{}]({}, {}, {})", rnd, arg0, arg1, arg2)
             }
-            Ld(t, arg, ap) => write!(fmt, "ld {}", arg),
-            St(dst, src, side_effects, ap) => write!(fmt, "st {} {}", dst, src),
-            TmpLd(t, mem) => write!(fmt, "tmp_ld {}", mem),
-            TmpSt(src, mem) => write!(fmt, "tmp_st {} {}", mem, src),
+            Ld(t, arg, ap) => write!(fmt, "Load({})", arg),
+            St(dst, src, side_effects, ap) => write!(fmt, "Store({}, {})", dst, src),
+            TmpLd(t, mem) => write!(fmt, "TempLoad({})", mem),
+            TmpSt(src, mem) => write!(fmt, "TempStore({}, {})", mem, src),
         }
     }
 }

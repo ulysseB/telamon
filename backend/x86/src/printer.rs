@@ -365,6 +365,18 @@ impl Printer for X86printer {
         format!("{}", n)
     }
 
+    fn comment(&mut self, c: &dyn std::fmt::Display) {
+        unwrap!(writeln!(self.buffer, "// {}", c));
+    }
+
+    fn open_block(&mut self) {
+        unwrap!(writeln!(self.buffer, "{{"));
+    }
+
+    fn close_block(&mut self) {
+        unwrap!(writeln!(self.buffer, "}}"));
+    }
+
     fn print_binop(
         &mut self,
         vector_factors: [u32; 2],

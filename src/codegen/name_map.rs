@@ -263,6 +263,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let dims = inst
             .instantiation_dims()
             .iter()
+            .filter(|&(dim, _)| inst.initial_iteration_dims().contains(dim))
             .map(|&(dim, size)| (dim, size as usize));
         use std::ops::DerefMut;
         let mut namer = self.namer.borrow_mut();
@@ -423,7 +424,10 @@ impl VariableNames {
             .iter()
             .zip_eq(&self.names.dims)
             .map(|(index, size)| match index {
-                VarNameIndex::FromDim(dim) => dim_indexes.get(dim).cloned().unwrap_or(0),
+                VarNameIndex::FromDim(dim) => dim_indexes
+                    .get(dim)
+                    .cloned()
+                    .expect("missing iteration dim"),
                 VarNameIndex::Last => size - 1,
             })
             .collect_vec();

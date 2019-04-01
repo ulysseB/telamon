@@ -154,6 +154,7 @@ impl<'a> std::ops::Deref for Function<'a> {
 }
 
 /// Represents the value of a parameter passed to the kernel by the host.
+#[derive(Debug)]
 pub enum ParamVal<'a> {
     /// A parameter given by the caller.
     External(&'a ir::Parameter, ir::Type),
@@ -430,6 +431,15 @@ impl<'a> Instruction<'a> {
     /// Returns the dimensions on which to instantiate the instruction.
     pub fn instantiation_dims(&self) -> &[(ir::DimId, u32)] {
         &self.instantiation_dims
+    }
+
+    pub fn initial_iteration_dims(&self) -> &FnvHashSet<ir::DimId> {
+        self.instruction.initial_iteration_dims()
+    }
+
+    /// The list of dimensions the instruction must be nested in.
+    pub fn iteration_dims(&self) -> &FnvHashSet<ir::DimId> {
+        self.instruction.iteration_dims()
     }
 
     /// Indicates if the instruction performs a reduction, in wich case it returns the

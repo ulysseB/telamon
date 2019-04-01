@@ -30,6 +30,12 @@ pub trait Printer {
     /// Get the representation of an integer in the target language.
     fn get_int(n: u32) -> String;
 
+    fn open_block(&mut self) {}
+
+    fn close_block(&mut self) {}
+
+    fn comment(&mut self, c: &dyn std::fmt::Display) {}
+
     // FIXME: give the input type rather than the return type ?
 
     /// Print return_id = lhs op rhs
@@ -224,20 +230,27 @@ pub trait Printer {
     }
 
     /// Change the side-effect guards so that only the specified threads are enabled.
-    fn enable_threads(&mut self, fun: &Function, threads: &[bool], namer: &mut NameMap) {
+    fn enable_threads(
+        &mut self,
+        fun: &Function,
+        threads: &[Option<ir::DimId>],
+        namer: &mut NameMap,
+    ) {
         let mut guard: Option<String> = None;
-        for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
-            if is_active {
-                continue;
+        for (&active_dim, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
+            if let Some(active_dim) = active_dim {
+                // TODO: not always, but they should always be mapped I think...
+                // assert_eq!(active_dim, dim.id());
+
+                let new_guard = namer.gen_name(ir::Type::I(1));
+                let index = namer.name_index(dim.id());
+                self.print_equals(ir::Type::I(32), &new_guard, index, &Self::get_int(0));
+                if let Some(ref guard) = guard {
+                    self.print_and(ir::Type::I(1), guard, guard, &new_guard);
+                } else {
+                    guard = Some(new_guard);
+                };
             }
-            let new_guard = namer.gen_name(ir::Type::I(1));
-            let index = namer.name_index(dim.id());
-            self.print_equals(ir::Type::I(32), &new_guard, index, &Self::get_int(0));
-            if let Some(ref guard) = guard {
-                self.print_and(ir::Type::I(1), guard, guard, &new_guard);
-            } else {
-                guard = Some(new_guard);
-            };
         }
         namer.set_side_effect_guard(guard.map(RcStr::new));
     }
@@ -307,6 +320,9 @@ pub trait Printer {
         cfgs: &[Cfg],
         namer: &mut NameMap,
     ) {
+        self.open_block();
+        self.comment(&format_args!("START UNROLL: {}", dim.id()));
+
         let mut incr_levels = Vec::new();
         for level in dim.induction_levels() {
             let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
@@ -342,6 +358,9 @@ pub trait Printer {
             self.cfg_vec(fun, cfgs, namer);
         }
         namer.unset_current_index(dim);
+
+        self.comment(&format_args!("END UNROLL: {}", dim.id()));
+        self.close_block();
     }
 
     fn privatise_global_block(
@@ -406,6 +425,7 @@ pub trait Printer {
                 .map(|d| unwrap!(d.size().as_int()))
                 .product(),
         ];
+        self.comment(&format_args!("{}", inst));
         match inst.operator() {
             op::BinOp(op, lhs, rhs, round) => {
                 let t = Self::lower_type(lhs.t(), fun);

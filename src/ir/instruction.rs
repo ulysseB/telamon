@@ -35,6 +35,7 @@ impl std::fmt::Display for InstId {
 pub struct Instruction<'a, L = LoweringMap> {
     operator: Operator<'a, L>,
     id: InstId,
+    initial_iter_dims: FnvHashSet<ir::DimId>,
     iter_dims: FnvHashSet<ir::DimId>,
     variable: Option<ir::VarId>,
     defined_vars: VecSet<ir::VarId>,
@@ -73,6 +74,7 @@ impl<'a, L> Instruction<'a, L> {
         Ok(Instruction {
             operator,
             id,
+            initial_iter_dims: FnvHashSet::default(),
             iter_dims,
             variable: None,
             defined_vars: VecSet::default(),
@@ -174,12 +176,6 @@ impl<'a, L> Instruction<'a, L> {
         &self.iter_dims
     }
 
-    /// Adds a new iteration dimension. Indicates if the dimension was not already an
-    /// iteration dimension.
-    pub fn add_iteration_dimension(&mut self, dim: ir::DimId) -> bool {
-        self.iter_dims.insert(dim)
-    }
-
     /// Returns the `Variable` holding the result of this instruction.
     pub fn result_variable(&self) -> Option<ir::VarId> {
         self.variable
@@ -190,6 +186,12 @@ impl<'a, L> Instruction<'a, L> {
         // An instruction variable cannot be set twice.
         assert_eq!(std::mem::replace(&mut self.variable, Some(variable)), None);
     }
+
+    /// Adds a new iteration dimension. Indicates if the dimension was not already an
+    /// iteration dimension.
+    pub fn add_iteration_dimension(&mut self, dim: ir::DimId) -> bool {
+        self.iter_dims.insert(dim)
+    }
 }
 
 impl<'a> Instruction<'a, ()> {
@@ -197,6 +199,7 @@ impl<'a> Instruction<'a, ()> {
         Instruction {
             operator: self.operator.freeze(cnt),
             id: self.id,
+            initial_iter_dims: self.iter_dims.clone(),
             iter_dims: self.iter_dims,
             variable: self.variable,
             used_vars: self.used_vars,
@@ -222,6 +225,10 @@ impl<'a> Instruction<'a> {
             }
             _ => panic!(),
         }
+    }
+
+    pub fn initial_iteration_dims(&self) -> &FnvHashSet<ir::DimId> {
+        &self.initial_iter_dims
     }
 }
 
@@ -249,6 +256,6 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
 
 impl<'a, L> fmt::Display for Instruction<'a, L> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}[ {} ]", self.id, self.operator)
+        write!(fmt, "{:?}:  {}", self.id, self.operator)
     }
 }
