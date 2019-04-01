@@ -269,6 +269,7 @@ impl<'a, 'b, N: Namer> NameMap<'a, 'b, N> {
         let dims = inst
             .instantiation_dims()
             .iter()
+            .filter(|&(dim, _)| inst.initial_iteration_dims().contains(dim))
             .map(|&(dim, size)| (dim, size as usize));
         let names = VariableNames::new(t, dims, self.namer);
         assert!(self.insts.insert(inst.id(), names).is_none());
@@ -427,7 +428,10 @@ impl VariableNames {
             .iter()
             .zip_eq(&self.names.dims)
             .map(|(index, size)| match index {
-                VarNameIndex::FromDim(dim) => dim_indexes.get(dim).cloned().unwrap_or(0),
+                VarNameIndex::FromDim(dim) => dim_indexes
+                    .get(dim)
+                    .cloned()
+                    .expect("missing iteration dim"),
                 VarNameIndex::Last => size - 1,
             })
             .collect_vec();

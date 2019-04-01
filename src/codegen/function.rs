@@ -433,6 +433,10 @@ impl<'a> Instruction<'a> {
         &self.instantiation_dims
     }
 
+    pub fn initial_iteration_dims(&self) -> &FnvHashSet<ir::DimId> {
+        self.instruction.initial_iteration_dims()
+    }
+
     /// Indicates if the instruction performs a reduction, in wich case it returns the
     /// instruction that initializes the reduction, the `DimMap` to readh it and the
     /// reduction dimensions.
