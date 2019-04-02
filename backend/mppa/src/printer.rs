@@ -32,6 +32,10 @@ impl MppaPrinter {
     fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
         let namer = name_map.namer();
         let print_decl = |(&t, &n)| {
+            // Type is never supposed to be PtrTo here as we handle ptr types in a different way
+            if let ir::Type::PtrTo(..) = t {
+                panic!();
+            }
             let prefix = Namer::gen_prefix(t);
             let mut s = format!("{} ", Namer::get_string(t));
             s.push_str(

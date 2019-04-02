@@ -27,7 +27,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 use lazy_static::lazy_static;
 use libc;
 use log::debug;
-use parking_lot;
 use std::{
     ffi::CStr,
     result::Result,

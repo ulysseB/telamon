@@ -4,11 +4,10 @@ use crate::{mppa, Namer};
 use crossbeam;
 use crossbeam::queue::ArrayQueue;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use libc;
 use std;
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
+    atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
     mpsc, Arc,
 };
 use std::time::Instant;
@@ -21,9 +20,9 @@ use telamon::ir;
 use utils::unwrap;
 use utils::*;
 
-lazy_static! {
-    static ref ATOMIC_USIZE: AtomicUsize = AtomicUsize::new(0);
-}
+// This atomic id is needed as because of a bug in Kalray OpenCL, we have to give a unique name to
+// every kernel, otherwise we get strange effects (as a kernel run multiple times)
+static ATOMIC_KERNEL_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 const EXECUTION_QUEUE_SIZE: usize = 32;
 
 pub trait Argument: Sync + Send {
@@ -46,7 +45,7 @@ impl<'a> Argument for Box<dyn ScalarArgument + 'a> {
 }
 
 /// Wrapper around Buffer
-/// We need it to implement Argument for Buffer (orphan rule)
+/// We need it to implement ArrayArgument for Buffer (orphan rule)
 struct MppaArray(telajax::Buffer<i8>);
 
 impl MppaArray {
@@ -87,7 +86,7 @@ impl KernelArg {
     fn raw_ptr(&self) -> *const libc::c_void {
         match self {
             KernelArg::GlobalMem(mem) => mem.raw_ptr(),
-            KernelArg::Size(size) => size as *const _ as *const libc::c_void,
+            KernelArg::Size(size) => size as *const u32 as *const libc::c_void,
             KernelArg::External(ptr) => *ptr,
         }
     }
@@ -99,8 +98,6 @@ pub struct Context {
     parameters: FnvHashMap<String, Arc<Argument>>,
     writeback_slots: ArrayQueue<MppaArray>,
 }
-
-unsafe impl Sync for Context {}
 
 impl Default for Context {
     fn default() -> Self {
@@ -115,7 +112,7 @@ impl Context {
         let executor = telajax::Device::get();
         let writeback_slots = ArrayQueue::new(EXECUTION_QUEUE_SIZE);
         for _ in 0..EXECUTION_QUEUE_SIZE {
-            writeback_slots.push(MppaArray::new(executor, 8)).unwrap();
+            writeback_slots.push(MppaArray::new(executor, 4)).unwrap();
         }
         Context {
             device: mppa::Mppa::default(),
@@ -131,7 +128,7 @@ impl Context {
 
     /// Compiles and sets the arguments of a kernel.
     fn setup_kernel(&self, fun: &Function) -> (telajax::Kernel, Vec<KernelArg>) {
-        let id = ATOMIC_USIZE.fetch_add(1, Ordering::SeqCst);
+        let id = ATOMIC_KERNEL_ID.fetch_add(1, Ordering::SeqCst);
         let mut namer = Namer::default();
         let mut name_map = NameMap::new(fun, &mut namer);
         let mut printer = MppaPrinter::default();
@@ -236,10 +233,18 @@ impl device::Context for Context {
         } else {
             panic!()
         };
-        // FIXME: We get obviously wrong timings, fix that
-        let ptr_i8 = out_mem.read_i8().as_ptr();
-        let res: usize =
-            unsafe { *std::mem::transmute::<*const i8, *const usize>(ptr_i8) };
+        // FIXME:
+        // We better be careful here. Mppa manipulates u32 on clusters.
+        // This is a little endian architecture, so we ought to read in little endian way
+        // Anyway, we can see with printing that results make sense
+        // Actually this should be checked again. I'm not sure we are reading on the cluster and
+        // getting the right result could be a happy coincidence
+        let vec_i8 = out_mem.read_i8();
+        let mut buf: [u8; 4] = [0; 4];
+        for (byte, elem) in vec_i8.iter().zip_eq(buf.iter_mut()) {
+            *elem = i8::to_le_bytes(*byte)[0];
+        }
+        let res = u32::from_le_bytes(buf);
         self.writeback_slots.push(out_mem).unwrap();
         Ok(res as f64)
     }
@@ -271,7 +276,7 @@ impl device::Context for Context {
                     // TODO: measure time directly on MPPA
                     let t0 = Instant::now();
                     self.executor.execute_kernel(&mut kernel).unwrap();
-                    let t = Instant::now() - t0;
+                    let t = t0.elapsed();
                     callback.call(candidate, t.subsec_nanos() as f64);
                 }
             }));
@@ -330,7 +335,7 @@ where
     fn add_kernel(
         &mut self,
         candidate: explorer::Candidate<'a>,
-        callback: device::AsyncCallback<'a, 'b>,
+        callback: device::AsyncCallback<'a, 'c>,
     ) {
         let (kernel, _) = {
             let dev_fun = Function::build(&candidate.space);

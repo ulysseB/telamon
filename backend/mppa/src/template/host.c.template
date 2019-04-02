@@ -81,11 +81,9 @@ void entry_point({cl_arg_def}, void* __timer_ptr) {{
   void* args[{n_arg}];
   {build_ptr_struct};
   pthread_barrier_t barrier;
-  printf("KERNEL {id} START\n");
   timestamp = __k1_read_dsu_timestamp();
   {gen_threads}
   {thread_join}
   timestamp = __k1_read_dsu_timestamp() - timestamp;
   *(unsigned long *)__timer_ptr = timestamp;
-  printf("KERNEL END\n");
 }}
