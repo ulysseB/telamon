@@ -62,7 +62,7 @@ impl codegen::Namer for Namer {
     fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
         assert!(len <= 64);
         let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
-        format!("{:.5e}", f)
+        format!("{}", f.to_string())
     }
 
     fn name_int(&self, val: &BigInt, len: u16) -> String {

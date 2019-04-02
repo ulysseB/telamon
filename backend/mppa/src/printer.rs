@@ -34,7 +34,7 @@ impl MppaPrinter {
         let print_decl = |(&t, &n)| {
             // Type is never supposed to be PtrTo here as we handle ptr types in a different way
             if let ir::Type::PtrTo(..) = t {
-                panic!();
+                unreachable!("Type PtrTo are never inserted in this map");
             }
             let prefix = Namer::gen_prefix(t);
             let mut s = format!("{} ", Namer::get_string(t));
