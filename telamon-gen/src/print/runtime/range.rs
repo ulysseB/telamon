@@ -6,7 +6,7 @@ use quote::quote;
 pub fn get() -> TokenStream {
     quote! {
         /// Abstracts integer choices by a range.
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Ord, PartialOrd)]
         #[repr(C)]
         pub struct Range {
             pub min: u32,
@@ -93,40 +93,40 @@ pub fn get() -> TokenStream {
         impl NumSet for Range {
             type Universe = ();
 
-            fn min(&self, _: &()) -> u32 { self.min }
+            fn min_value(&self, _: &()) -> u32 { self.min }
 
-            fn max(&self, _: &()) -> u32 { self.max }
+            fn max_value(&self, _: &()) -> u32 { self.max }
         }
 
         impl NumDomain for Range {
             fn new_gt<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
-                let min = min.min(min_universe).saturating_add(1);
+                let min = min.min_value(min_universe).saturating_add(1);
                 Range { min, .. Range::ALL }
             }
 
             fn new_lt<D: NumSet>(_: &(), max: D, max_universe: &D::Universe) -> Self {
-                let max = max.max(max_universe).saturating_sub(1);
+                let max = max.max_value(max_universe).saturating_sub(1);
                 Range { max, .. Range::ALL }
             }
 
             fn new_geq<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
-                Range { min: min.min(min_universe), .. Range::ALL }
+                Range { min: min.min_value(min_universe), .. Range::ALL }
             }
 
             fn new_leq<D: NumSet>(_: &(), max: D, max_universe: &D::Universe) -> Self {
-                Range { max: max.max(max_universe), .. Range::ALL }
+                Range { max: max.max_value(max_universe), .. Range::ALL }
             }
 
             fn new_eq<D: NumSet>(_: &(), eq: D, eq_universe: &D::Universe) -> Self {
                 Range {
-                    max: eq.max(eq_universe),
-                    min: eq.min(eq_universe),
+                    max: eq.max_value(eq_universe),
+                    min: eq.min_value(eq_universe),
                 }
             }
         }
 
         /// Abstracts integer choices by a range, but only store `min`.
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Ord, PartialOrd)]
         #[repr(C)]
         pub struct HalfRange { pub min: u32 }
 
@@ -192,14 +192,14 @@ pub fn get() -> TokenStream {
         impl NumSet for HalfRange {
             type Universe = ();
 
-            fn min(&self, _: &()) -> u32 { self.min }
+            fn min_value(&self, _: &()) -> u32 { self.min }
 
-            fn max(&self, _: &()) -> u32 { std::u32::MAX }
+            fn max_value(&self, _: &()) -> u32 { std::u32::MAX }
         }
 
         impl NumDomain for HalfRange {
             fn new_gt<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
-                let min = min.min(min_universe).saturating_add(1);
+                let min = min.min_value(min_universe).saturating_add(1);
                 HalfRange { min }
             }
 
@@ -208,7 +208,7 @@ pub fn get() -> TokenStream {
             }
 
             fn new_geq<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
-                HalfRange { min: min.min(min_universe) }
+                HalfRange { min: min.min_value(min_universe) }
             }
 
             fn new_leq<D: NumSet>(_: &(), _: D, _: &D::Universe) -> Self {
@@ -216,7 +216,7 @@ pub fn get() -> TokenStream {
             }
 
             fn new_eq<D: NumSet>(_: &(), eq: D, eq_universe: &D::Universe) -> Self {
-                HalfRange { min: eq.min(eq_universe) }
+                HalfRange { min: eq.min_value(eq_universe) }
             }
         }
     }

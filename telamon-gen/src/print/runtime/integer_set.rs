@@ -7,7 +7,7 @@ use quote::quote;
 /// Defines the `NumericSet` type.
 pub fn get() -> TokenStream {
     quote! {
-        #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+        #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
         #[repr(C)]
         pub struct NumericSet {
             enabled_values: u16
@@ -89,7 +89,7 @@ pub fn get() -> TokenStream {
         impl NumSet for NumericSet {
             type Universe = [u32];
 
-            fn min(&self, universe: &[u32]) -> u32 {
+            fn min_value(&self, universe: &[u32]) -> u32 {
                 if self.is_failed() {
                     0
                 } else {
@@ -97,7 +97,7 @@ pub fn get() -> TokenStream {
                 }
             }
 
-            fn max(&self, universe: &[u32]) -> u32 {
+            fn max_value(&self, universe: &[u32]) -> u32 {
                 if self.is_failed() {
                     std::u32::MAX
                 } else {
@@ -124,10 +124,10 @@ pub fn get() -> TokenStream {
                 NumericSet { enabled_values }
             }
 
-            fn neq<D: NumSet>(&self, universe: &[u32],
+            fn is_neq<D: NumSet>(&self, universe: &[u32],
                               other: D, other_universe: &D::Universe) -> bool {
-                self.min(universe) > other.max(other_universe)
-                    || self.max(universe) < other.min(other_universe)
+                self.min_value(universe) > other.max_value(other_universe)
+                    || self.max_value(universe) < other.min_value(other_universe)
                     || other.into_num_set(other_universe, universe).is_failed()
             }
         }
@@ -135,7 +135,7 @@ pub fn get() -> TokenStream {
         impl NumDomain for NumericSet {
             fn new_gt<D: NumSet>(universe: &[u32],
                                  min: D, min_universe: &D::Universe) -> Self {
-                let start = universe.binary_search(&min.min(min_universe))
+                let start = universe.binary_search(&min.min_value(min_universe))
                     .map(|x| x+1).unwrap_or_else(|x| x);
                 let len = universe.len() - start;
                 let enabled_values = ((1 << len) - 1) << start;
@@ -144,7 +144,7 @@ pub fn get() -> TokenStream {
 
             fn new_lt<D: NumSet>(universe: &[u32],
                                  max: D, max_universe: &D::Universe) -> Self {
-                let len = universe.binary_search(&max.max(max_universe))
+                let len = universe.binary_search(&max.max_value(max_universe))
                     .unwrap_or_else(|x| x);
                 let enabled_values = (1 << len) - 1;
                 NumericSet { enabled_values }
@@ -152,7 +152,7 @@ pub fn get() -> TokenStream {
 
             fn new_geq<D: NumSet>(universe: &[u32],
                                   min: D, min_universe: &D::Universe) -> Self {
-                let start = universe.binary_search(&min.min(min_universe))
+                let start = universe.binary_search(&min.min_value(min_universe))
                     .unwrap_or_else(|x| x);
                 let len = universe.len() - start;
                 let enabled_values = ((1 << len) - 1) << start;
@@ -161,7 +161,7 @@ pub fn get() -> TokenStream {
 
             fn new_leq<D: NumSet>(universe: &[u32],
                                   max: D, max_universe: &D::Universe) -> Self {
-                let len = universe.binary_search(&max.max(max_universe))
+                let len = universe.binary_search(&max.max_value(max_universe))
                     .map(|x| x+1).unwrap_or_else(|x| x);
                 let enabled_values = (1 << len) - 1;
                 NumericSet { enabled_values }
