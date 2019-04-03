@@ -476,9 +476,6 @@
 <span id="476">476</span>
 <span id="477">477</span>
 <span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">///! Data structures and function that allow for the recreation of a</span>
 <span class="doccomment">///! candidate tree from a log file</span>
@@ -650,10 +647,12 @@
             .<span class="ident">borrow</span>()
             .<span class="ident">outgoing_edges</span>
             .<span class="ident">get</span>(<span class="ident">child_idx</span>)
-            .<span class="ident">expect</span>(<span class="kw-2">&amp;</span><span class="macro">format</span><span class="macro">!</span>(
-            <span class="string">&quot;Attempting to retrieve child with index {}, but node has only {} children.&quot;</span>,
-            <span class="ident">child_idx</span>,
-            <span class="ident">num_outgoing_edges</span>))
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
+                <span class="macro">panic</span><span class="macro">!</span>(
+                    <span class="string">&quot;Attempting to retrieve child with index {}, but node has only {} children.&quot;</span>,
+                    <span class="ident">child_idx</span>,
+                    <span class="ident">num_outgoing_edges</span>)
+            })
             .<span class="ident">child</span>
             .<span class="ident">as_ref</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">child_weak</span><span class="op">|</span> <span class="ident">CandidateNode</span> {
@@ -701,11 +700,9 @@
                     .<span class="ident">upgrade</span>()
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">borrow</span>()
-                    .<span class="ident">outgoing_edges</span>
-                    .<span class="ident">get</span>(<span class="ident">usize</span>::<span class="ident">from</span>(<span class="ident">incoming_edge</span>.<span class="ident">child_idx</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">action</span>
-                    .<span class="ident">clone</span>()
+                    .<span class="ident">outgoing_edges</span>[<span class="ident">usize</span>::<span class="ident">from</span>(<span class="ident">incoming_edge</span>.<span class="ident">child_idx</span>)]
+                .<span class="ident">action</span>
+                .<span class="ident">clone</span>()
             })
     }
 
@@ -796,6 +793,7 @@
 }
 
 <span class="doccomment">/// A reconstructed tree</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CandidateTree</span> {
     <span class="doccomment">/// Virtual root node of the reconstructed tree</span>
     <span class="ident">root</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">CandidateNodeInner</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
@@ -807,10 +805,7 @@
 <span class="kw">impl</span> <span class="ident">CandidateTree</span> {
     <span class="doccomment">/// Creates a new, empty tree</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">CandidateTree</span> {
-            <span class="ident">root</span>: <span class="prelude-val">None</span>,
-            <span class="ident">nodes</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
-        }
+        <span class="self">Self</span>::<span class="ident">default</span>()
     }
 
     <span class="doccomment">/// Creates a new inner node</span>
@@ -824,19 +819,19 @@
     ) <span class="op">-&gt;</span> <span class="ident">CandidateNodeInner</span> {
         <span class="ident">CandidateNodeInner</span> {
             <span class="ident">incoming_edge</span>: <span class="ident">parent</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">parent_id</span>, <span class="ident">child_idx</span>)<span class="op">|</span> <span class="ident">ParentEdge</span> {
-                <span class="ident">parent</span>: <span class="ident">Rc</span>::<span class="ident">downgrade</span>(<span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">parent_id</span>).<span class="ident">unwrap</span>()),
-                <span class="ident">child_idx</span>: <span class="ident">child_idx</span>,
+                <span class="ident">parent</span>: <span class="ident">Rc</span>::<span class="ident">downgrade</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>[<span class="kw-2">&amp;</span><span class="ident">parent_id</span>]),
+                <span class="ident">child_idx</span>,
             }),
-            <span class="ident">discovery_time</span>: <span class="ident">discovery_time</span>,
+            <span class="ident">discovery_time</span>,
             <span class="ident">internal_time</span>: <span class="prelude-val">None</span>,
             <span class="ident">rollout_time</span>: <span class="prelude-val">None</span>,
             <span class="ident">implementation_time</span>: <span class="prelude-val">None</span>,
             <span class="ident">deadend_time</span>: <span class="prelude-val">None</span>,
-            <span class="ident">bound</span>: <span class="ident">bound</span>,
+            <span class="ident">bound</span>,
             <span class="ident">outgoing_edges</span>: <span class="ident">child_actions</span>
                 .<span class="ident">drain</span>(..)
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">action</span><span class="op">|</span> <span class="ident">ChildEdge</span> {
-                    <span class="ident">action</span>: <span class="ident">action</span>,
+                    <span class="ident">action</span>,
                     <span class="ident">child</span>: <span class="prelude-val">None</span>,
                 })
                 .<span class="ident">collect</span>(),
@@ -861,10 +856,9 @@
     <span class="doccomment">/// Panics if no such node exists in the tree.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">NodeId</span>) <span class="op">-&gt;</span> <span class="ident">CandidateNode</span> {
         <span class="ident">CandidateNode</span> {
-            <span class="ident">inner</span>: <span class="ident">Rc</span>::<span class="ident">clone</span>(<span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>).<span class="ident">expect</span>(<span class="kw-2">&amp;</span><span class="macro">format</span><span class="macro">!</span>(
-                <span class="string">&quot;Attempting to retrieve unknown node with id {}&quot;</span>,
-                <span class="ident">id</span>
-            ))),
+            <span class="ident">inner</span>: <span class="ident">Rc</span>::<span class="ident">clone</span>(<span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
+                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Attempting to retrieve unknown node with id {}&quot;</span>, <span class="ident">id</span>)
+            })),
         }
     }
 

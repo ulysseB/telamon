@@ -365,14 +365,6 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines operators.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
@@ -508,14 +500,6 @@
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">op_type</span>,
             <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
-        }
-    }
-
-    <span class="doccomment">/// Returns the name of the operand.</span>
-    <span class="kw">fn</span> <span class="ident">name</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="string">&quot;mov&quot;</span>,
-            <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;cast&quot;</span>,
         }
     }
 }
@@ -742,9 +726,9 @@
             <span class="ident">Mad</span>(<span class="ident">arg0</span>, <span class="ident">arg1</span>, <span class="ident">arg2</span>, <span class="ident">rnd</span>) <span class="op">=&gt;</span> {
                 <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Mad[{}]({}, {}, {})&quot;</span>, <span class="ident">rnd</span>, <span class="ident">arg0</span>, <span class="ident">arg1</span>, <span class="ident">arg2</span>)
             }
-            <span class="ident">Ld</span>(<span class="ident">t</span>, <span class="ident">arg</span>, <span class="ident">ap</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Load({})&quot;</span>, <span class="ident">arg</span>),
-            <span class="ident">St</span>(<span class="ident">dst</span>, <span class="ident">src</span>, <span class="ident">side_effects</span>, <span class="ident">ap</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Store({}, {})&quot;</span>, <span class="ident">dst</span>, <span class="ident">src</span>),
-            <span class="ident">TmpLd</span>(<span class="ident">t</span>, <span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;TempLoad({})&quot;</span>, <span class="ident">mem</span>),
+            <span class="ident">Ld</span>(<span class="ident">_t</span>, <span class="ident">arg</span>, <span class="ident">_ap</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Load({})&quot;</span>, <span class="ident">arg</span>),
+            <span class="ident">St</span>(<span class="ident">dst</span>, <span class="ident">src</span>, <span class="ident">_side_effects</span>, <span class="ident">_ap</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Store({}, {})&quot;</span>, <span class="ident">dst</span>, <span class="ident">src</span>),
+            <span class="ident">TmpLd</span>(<span class="ident">_t</span>, <span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;TempLoad({})&quot;</span>, <span class="ident">mem</span>),
             <span class="ident">TmpSt</span>(<span class="ident">src</span>, <span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;TempStore({}, {})&quot;</span>, <span class="ident">mem</span>, <span class="ident">src</span>),
         }
     }

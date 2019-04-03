@@ -94,6 +94,7 @@
 <span id="94">94</span>
 <span id="95">95</span>
 <span id="96">96</span>
+<span id="97">97</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ffi</span>::<span class="ident">OsStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
@@ -103,6 +104,7 @@
 <span class="kw">use</span> <span class="ident">flate2</span>::{<span class="ident">read</span>, <span class="ident">write</span>, <span class="ident">Compression</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">tfrecord</span>;
 
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">large_enum_variant</span>)]</span>
 <span class="kw">enum</span> <span class="ident">EventLogInner</span> {
     <span class="ident">Raw</span>(<span class="ident">File</span>),
     <span class="ident">Gz</span>(<span class="ident">read</span>::<span class="ident">GzDecoder</span><span class="op">&lt;</span><span class="ident">write</span>::<span class="ident">GzEncoder</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;&gt;</span>),
