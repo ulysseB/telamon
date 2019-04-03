@@ -27,11 +27,11 @@ const CUT: f64 = 2e8f64;
 const MAX_DEADEND_RATIO: f32 = 0.95;
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
-pub trait Kernel<'a>: Sized {
+pub trait Kernel<'a>: Sized + Sync {
     /// The input parameters of the kernel.
     type Parameters: Clone + DeserializeOwned + Serialize;
     /// The values to expect as output.
-    type ExpectedOutput;
+    type ExpectedOutput: Sync;
 
     /// The name of the function computed by the kernel.
     fn name() -> &'static str;
@@ -284,8 +284,14 @@ pub trait Kernel<'a>: Sized {
             builder.get()
         };
         let search_space = kernel.build_body(&signature, context);
+        let expected = kernel.get_expected_output(context);
         let best = unwrap!(
-            explorer::find_best_ex(config, context, search_space),
+            explorer::find_best_ex(
+                config,
+                context,
+                search_space,
+                Some(&|_, context| kernel.check_result(&expected, context))
+            ),
             "no candidates found for kernel {}",
             Self::name()
         );

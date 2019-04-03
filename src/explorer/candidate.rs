@@ -28,11 +28,20 @@ pub struct Candidate<'a> {
 impl<'a> Candidate<'a> {
     /// Creates a new candidate, with depth 0.
     pub fn new(space: SearchSpace<'a>, bound: Bound) -> Self {
+        Self::with_actions(space, bound, std::iter::empty())
+    }
+
+    pub fn with_actions<II>(space: SearchSpace<'a>, bound: Bound, actions: II) -> Self
+    where
+        II: IntoIterator<Item = ActionEx>,
+    {
+        let actions = actions.into_iter().collect::<List<_>>();
+        let depth = actions.len();
         Candidate {
             space,
             bound,
-            depth: 0,
-            actions: List::new(),
+            depth,
+            actions,
         }
     }
 

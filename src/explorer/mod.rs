@@ -30,9 +30,12 @@ use crossbeam;
 use futures::executor::block_on;
 use futures::prelude::*;
 use futures::{channel, SinkExt};
-use log::{info, warn};
+use log::{error, info, warn};
 use std::sync::{self, mpsc};
 use utils::unwrap;
+
+pub type CheckResultFn<'a, 'c> =
+    dyn Fn(&Candidate<'c>, &dyn Context) -> Result<(), String> + Sync + 'a;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
 // * choices should be ranked once and then reused for multiple steps.
@@ -48,6 +51,7 @@ pub fn find_best<'a>(
     config: &Config,
     context: &dyn Context,
     search_space: Vec<SearchSpace<'a>>,
+    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) -> Option<SearchSpace<'a>> {
     find_best_ex(
         config,
@@ -59,6 +63,7 @@ pub fn find_best<'a>(
                 Candidate::new(s, bound)
             })
             .collect(),
+        check_result_fn,
     )
     .map(|c| c.space)
 }
@@ -68,6 +73,7 @@ struct MctsBuilder<'a, 'c> {
     config: &'a Config,
     bandit_config: &'a BanditConfig,
     context: &'a dyn Context,
+    check_result_fn: Option<&'a CheckResultFn<'a, 'c>>,
 }
 
 impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
@@ -85,6 +91,7 @@ impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
             config,
             bandit_config,
             context,
+            check_result_fn,
         } = self;
 
         crossbeam::scope(|scope| {
@@ -103,10 +110,15 @@ impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
                 log_sender.clone(),
             );
 
-            unwrap!(scope
-                .builder()
-                .name("Telamon - Search".to_string())
-                .spawn(move || launch_search(config, store, context, log_sender)))
+            unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
+                move || launch_search(
+                    config,
+                    store,
+                    context,
+                    log_sender,
+                    check_result_fn
+                )
+            ))
         })
         .join()
     }
@@ -117,6 +129,7 @@ struct TreeBuilder<'l, 'a> {
     config: &'l Config,
     bandit_config: &'l BanditConfig,
     context: &'l dyn Context,
+    check_result_fn: Option<&'l CheckResultFn<'l, 'a>>,
 }
 
 impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
@@ -130,6 +143,7 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
             config,
             bandit_config,
             context,
+            check_result_fn,
         } = self;
 
         crossbeam::scope(|scope| {
@@ -146,21 +160,21 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
                 log_sender.clone(),
             );
 
-            unwrap!(scope
-                .builder()
-                .name("Telamon - Search".to_string())
-                .spawn(move || launch_search(config, tree, context, log_sender)))
+            unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
+                move || launch_search(config, tree, context, log_sender, check_result_fn)
+            ))
         })
         .join()
     }
 }
 
 /// Same as `find_best`, but allows to specify pre-existing actions and also returns the
-/// actionsfor the best candidate.
+/// actions for the best candidate.
 pub fn find_best_ex<'a>(
     config: &Config,
     context: &dyn Context,
     candidates: Vec<Candidate<'a>>,
+    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) -> Option<Candidate<'a>> {
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref bandit_config) => {
@@ -169,6 +183,7 @@ pub fn find_best_ex<'a>(
                 config,
                 bandit_config,
                 context,
+                check_result_fn,
             };
             match &bandit_config.tree_policy {
                 self::config::TreePolicy::UCT(uct_config) => {
@@ -196,6 +211,7 @@ pub fn find_best_ex<'a>(
                 config,
                 bandit_config,
                 context,
+                check_result_fn,
             };
 
             let default_policy = Box::new(bandit_config.new_nodes_order);
@@ -236,7 +252,13 @@ pub fn find_best_ex<'a>(
             let candidate_list = ParallelCandidateList::new(config.num_workers);
             candidate_list.insert_many(candidates);
             unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
-                move || launch_search(config, candidate_list, context, log_sender)
+                move || launch_search(
+                    config,
+                    candidate_list,
+                    context,
+                    log_sender,
+                    check_result_fn
+                )
             ))
         })
         .join(),
@@ -250,6 +272,7 @@ fn launch_search<'a, T: Store<'a>>(
     candidate_store: T,
     context: &dyn Context,
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
+    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) -> Option<Candidate<'a>> {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
     let maybe_candidate = crossbeam::scope(|scope| {
@@ -266,7 +289,13 @@ fn launch_search<'a, T: Store<'a>>(
                         log_sender,
                     )
                 });
-        explore_space(config, &candidate_store, monitor_sender, context);
+        explore_space(
+            config,
+            &candidate_store,
+            monitor_sender,
+            context,
+            check_result_fn,
+        );
         unwrap!(best_cand_opt)
     })
     .join();
@@ -284,22 +313,55 @@ fn explore_space<'a, T>(
     candidate_store: &T,
     eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>,
     context: &dyn Context,
+    check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) where
     T: Store<'a>,
 {
     context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
+        let mut best = None;
+        let mut n_evals = 0;
+
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
-            let callback = move |leaf, eval| {
-                if let Err(err) =
-                    block_on(eval_sender.send((leaf, eval, payload)).map(|_| ()))
-                {
-                    warn!("Got disconnected , {:?}", err);
-                }
-            };
-            evaluator
-                .add_kernel(Candidate { space, ..cand }, SendBoxFnOnce::from(callback));
+            evaluator.add_kernel(
+                Candidate { space, ..cand },
+                SendBoxFnOnce::from(move |leaf, eval| {
+                    n_evals += 1;
+
+                    if let Some(check_result_fn) = check_result_fn {
+                        if config.check_all || best.is_none() || Some(eval) < best {
+                            // The values computed by the kernel are kept in the context (yikes!)
+                            if let Err(err) = check_result_fn(&leaf, context) {
+                                error!("Invalid results ({}) for {}", err, leaf);
+                                let out = config
+                                    .output_path(format!("error_{}", n_evals))
+                                    .unwrap();
+                                error!("Writing data at {}", out.display());
+
+                                leaf.space.dump_code(context, out).unwrap_or_else(
+                                    |err| {
+                                        error!("Error while dumping candidate: {}", err)
+                                    },
+                                );
+
+                                return;
+                            }
+                        }
+                    }
+
+                    // Only update best if the check passed!
+                    if best.is_none() || Some(eval) < best {
+                        best = Some(eval);
+                    }
+
+                    if let Err(err) =
+                        block_on(eval_sender.send((leaf, eval, payload)).map(|_| ()))
+                    {
+                        warn!("Got disconnected , {:?}", err);
+                    }
+                }),
+            );
         }
     });
 }
