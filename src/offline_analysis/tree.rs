@@ -168,10 +168,12 @@ impl CandidateNode {
             .borrow()
             .outgoing_edges
             .get(child_idx)
-            .expect(&format!(
-            "Attempting to retrieve child with index {}, but node has only {} children.",
-            child_idx,
-            num_outgoing_edges))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Attempting to retrieve child with index {}, but node has only {} children.",
+                    child_idx,
+                    num_outgoing_edges)
+            })
             .child
             .as_ref()
             .map(|child_weak| CandidateNode {
@@ -219,11 +221,9 @@ impl CandidateNode {
                     .upgrade()
                     .unwrap()
                     .borrow()
-                    .outgoing_edges
-                    .get(usize::from(incoming_edge.child_idx))
-                    .unwrap()
-                    .action
-                    .clone()
+                    .outgoing_edges[usize::from(incoming_edge.child_idx)]
+                .action
+                .clone()
             })
     }
 
@@ -314,6 +314,7 @@ impl CandidateNode {
 }
 
 /// A reconstructed tree
+#[derive(Default)]
 pub struct CandidateTree {
     /// Virtual root node of the reconstructed tree
     root: Option<Weak<RefCell<CandidateNodeInner>>>,
@@ -325,10 +326,7 @@ pub struct CandidateTree {
 impl CandidateTree {
     /// Creates a new, empty tree
     pub fn new() -> Self {
-        CandidateTree {
-            root: None,
-            nodes: FnvHashMap::default(),
-        }
+        Self::default()
     }
 
     /// Creates a new inner node
@@ -342,19 +340,19 @@ impl CandidateTree {
     ) -> CandidateNodeInner {
         CandidateNodeInner {
             incoming_edge: parent.map(|(parent_id, child_idx)| ParentEdge {
-                parent: Rc::downgrade(self.nodes.get(&parent_id).unwrap()),
-                child_idx: child_idx,
+                parent: Rc::downgrade(&self.nodes[&parent_id]),
+                child_idx,
             }),
-            discovery_time: discovery_time,
+            discovery_time,
             internal_time: None,
             rollout_time: None,
             implementation_time: None,
             deadend_time: None,
-            bound: bound,
+            bound,
             outgoing_edges: child_actions
                 .drain(..)
                 .map(|action| ChildEdge {
-                    action: action,
+                    action,
                     child: None,
                 })
                 .collect(),
@@ -379,10 +377,9 @@ impl CandidateTree {
     /// Panics if no such node exists in the tree.
     pub fn get_node(&self, id: NodeId) -> CandidateNode {
         CandidateNode {
-            inner: Rc::clone(self.nodes.get(&id).expect(&format!(
-                "Attempting to retrieve unknown node with id {}",
-                id
-            ))),
+            inner: Rc::clone(self.nodes.get(&id).unwrap_or_else(|| {
+                panic!("Attempting to retrieve unknown node with id {}", id)
+            })),
         }
     }
 

@@ -6,6 +6,7 @@ use std::path::Path;
 use flate2::{read, write, Compression};
 use utils::tfrecord;
 
+#[allow(clippy::large_enum_variant)]
 enum EventLogInner {
     Raw(File),
     Gz(read::GzDecoder<write::GzEncoder<File>>),
