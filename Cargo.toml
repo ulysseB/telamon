@@ -8,12 +8,6 @@ edition = "2018"
 readme = "README.md"
 repository = "https://github.com/ulysseB/telamon/"
 
-[[bin]]
-name = "expandconfig"
-
-[[bin]]
-name = "parse_event_log"
-
 [[bench]]
 name = "descent"
 harness = false
