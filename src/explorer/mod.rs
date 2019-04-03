@@ -31,6 +31,7 @@ use futures::executor::block_on;
 use futures::prelude::*;
 use futures::{channel, SinkExt};
 use log::{error, info, warn};
+use std::io::Write;
 use std::sync::{self, mpsc};
 use utils::unwrap;
 
@@ -339,7 +340,7 @@ fn explore_space<'a, T>(
                                     .unwrap();
                                 error!("Writing data at {}", out.display());
 
-                                leaf.space.dump_code(context, out).unwrap_or_else(
+                                leaf.space.dump_code(context, &out).unwrap_or_else(
                                     |err| {
                                         error!("Error while dumping candidate: {}", err)
                                     },

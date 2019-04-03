@@ -6,7 +6,7 @@ mod kernel;
 pub mod linalg;
 pub mod statistics;
 
-pub use crate::kernel::{analyze_bounds, Kernel};
+pub use crate::kernel::{analyze_bounds, Kernel, KernelBuilder, MemInit};
 
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;
@@ -58,6 +58,7 @@ pub trait Scalar:
     + ndarray::ScalarOperand
     + PartialOrd
     + std::ops::Neg<Output = Self>
+    + 'static
 {
     /// Returns the amount of allowed error in tests.
     fn epsilon() -> Self {

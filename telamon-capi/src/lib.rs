@@ -15,7 +15,7 @@ use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
 use telamon::explorer::config::Config;
 use telamon::helper::TilingPattern;
-pub use telamon_kernels::{linalg, Kernel};
+pub use telamon_kernels::{linalg, Kernel, MemInit};
 use telamon_x86 as x86;
 
 // Pointers to `device::Context` and `device::Device` are not C-like pointers.
@@ -64,7 +64,7 @@ impl KernelParameters {
                     config,
                     params.clone(),
                     0,
-                    true,
+                    MemInit::RandomFill,
                     context,
                 );
             }

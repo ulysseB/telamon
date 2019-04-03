@@ -3,6 +3,9 @@
 //! a specific implementation of a kernel, which in turn allows to run tests on this specific
 //! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in
 //! tests
+use std::any::Any;
+use std::borrow::Cow;
+
 use crate::statistics;
 use bincode;
 use itertools::Itertools;
@@ -26,12 +29,124 @@ const CUT: f64 = 2e8f64;
 //const MAX_DEADEND_RATIO: usize = 20;
 const MAX_DEADEND_RATIO: f32 = 0.95;
 
+/// Memory initialization strategies.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum MemInit {
+    /// Memory is left uninitialized
+    Uninit,
+    /// Memory is randomly filled with zeroes
+    RandomFill,
+}
+
+#[derive(Debug, Clone)]
+pub struct KernelBuilder<'a> {
+    /// The name of the kernel.  If `None`, taken from the `Kernel::name`.
+    name: Option<Cow<'a, str>>,
+    /// Memory initialisation strategy.
+    mem_init: MemInit,
+}
+
+impl<'a> Default for KernelBuilder<'a> {
+    fn default() -> Self {
+        KernelBuilder {
+            // Defaults to kernel name
+            name: None,
+            mem_init: MemInit::Uninit,
+        }
+    }
+}
+
+impl<'a> KernelBuilder<'a> {
+    /// Sets the name of the generated kernel.  This will appear in log files.
+    pub fn name<T: Into<Cow<'a, str>>>(mut self, name: T) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Sets the memory initialization strategy.  See `MemInit` for details.
+    pub fn mem_init(mut self, mem_init: MemInit) -> Self {
+        self.mem_init = mem_init;
+        self
+    }
+
+    /// Create a kernel in the given context.  This returns a frozen reference to the context, the
+    /// kernel, and its signature.
+    pub fn build<'b, K, AM>(
+        &self,
+        params: K::Parameters,
+        context: &'b mut AM,
+    ) -> (ir::Signature, K, &'b AM)
+    where
+        AM: device::ArgMap<'a> + device::Context,
+        K: Kernel<'a> + 'b,
+    {
+        let name = self
+            .name
+            .as_ref()
+            .map(Cow::clone)
+            .unwrap_or_else(|| K::name().into());
+        let (kernel, signature);
+        {
+            let mut builder = SignatureBuilder::new(&name, context);
+            builder.set_random_fill(match self.mem_init {
+                MemInit::RandomFill => true,
+                MemInit::Uninit => false,
+            });
+            kernel = K::build_signature(params, &mut builder);
+            signature = builder.get();
+        }
+
+        (signature, kernel, context)
+    }
+}
+
+pub trait ErasedKernel {
+    fn erased_build_body<'b>(
+        &self,
+        signature: &'b ir::Signature,
+        context: &'b dyn device::Context,
+    ) -> Vec<Candidate<'b>>;
+
+    fn erased_get_expected_output(&self, context: &device::Context) -> Box<dyn Any>;
+
+    fn erased_check_result(
+        &self,
+        expected: &dyn Any,
+        context: &device::Context,
+    ) -> Result<(), String>;
+}
+
+impl<'a, K: Kernel<'a>> ErasedKernel for K {
+    fn erased_build_body<'b>(
+        &self,
+        signature: &'b ir::Signature,
+        context: &'b dyn device::Context,
+    ) -> Vec<Candidate<'b>> {
+        self.build_body(signature, context)
+    }
+    fn erased_get_expected_output(&self, context: &device::Context) -> Box<dyn Any> {
+        Box::new(<K as Kernel<'a>>::get_expected_output(self, context))
+    }
+
+    fn erased_check_result(
+        &self,
+        expected: &dyn Any,
+        context: &device::Context,
+    ) -> Result<(), String> {
+        if let Some(expected) = expected.downcast_ref::<K::ExpectedOutput>() {
+            self.check_result(expected, context)
+        } else {
+            Err("Bad dynamic type.".to_string())
+        }
+    }
+}
+
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized + Sync {
     /// The input parameters of the kernel.
     type Parameters: Clone + DeserializeOwned + Serialize;
     /// The values to expect as output.
-    type ExpectedOutput: Sync;
+    type ExpectedOutput: Sync + 'static;
 
     /// The name of the function computed by the kernel.
     fn name() -> &'static str;
@@ -52,6 +167,7 @@ pub trait Kernel<'a>: Sized + Sync {
         signature: &'b ir::Signature,
         ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>>;
+
     /// Computes the expected output.
     fn get_expected_output(&self, _: &dyn device::Context) -> Self::ExpectedOutput;
 
@@ -72,13 +188,9 @@ pub trait Kernel<'a>: Sized + Sync {
     ) where
         AM: device::Context + device::ArgMap<'a>,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), ctx);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params.clone(), &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, ctx) = KernelBuilder::default()
+            .mem_init(MemInit::RandomFill)
+            .build::<Self, AM>(params.clone(), ctx);
         let mut candidate = kernel.build_body(&signature, ctx).remove(0);
         let order = explorer::config::NewNodeOrder::WeightedRandom;
         let ordering = explorer::config::ChoiceOrdering::default();
@@ -111,13 +223,9 @@ pub trait Kernel<'a>: Sized + Sync {
         let (params, action_list): (Self::Parameters, List<ActionEx>) =
             bincode::deserialize(&cand_bytes).unwrap();
 
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), ctx);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, ctx) = KernelBuilder::default()
+            .mem_init(MemInit::RandomFill)
+            .build::<Self, AM>(params, ctx);
         let expected_output = kernel.get_expected_output(ctx);
         let candidate = kernel.build_body(&signature, ctx).remove(0);
 
@@ -150,13 +258,9 @@ pub trait Kernel<'a>: Sized + Sync {
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::default()
+            .mem_init(MemInit::RandomFill)
+            .build::<Self, AM>(params, context);
         let expected_output = kernel.get_expected_output(context);
         let candidates = kernel.build_body(&signature, context);
         let mut num_deadends = 0;
@@ -202,19 +306,15 @@ pub trait Kernel<'a>: Sized + Sync {
     fn test_bound<AM>(
         params: Self::Parameters,
         num_tests: usize,
-        random_fill: bool,
+        mem_init: MemInit,
         context: &mut AM,
     ) -> Vec<BoundSample>
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(random_fill);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::default()
+            .mem_init(mem_init)
+            .build::<Self, AM>(params, context);
         let candidates = kernel.build_body(&signature, context);
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
@@ -270,19 +370,15 @@ pub trait Kernel<'a>: Sized + Sync {
         config: &explorer::Config,
         params: Self::Parameters,
         num_samples: usize,
-        random_fill: bool,
+        mem_init: MemInit,
         context: &mut AM,
     ) -> Vec<f64>
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(random_fill);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::default()
+            .mem_init(mem_init)
+            .build::<Self, AM>(params, context);
         let search_space = kernel.build_body(&signature, context);
         let expected = kernel.get_expected_output(context);
         let best = unwrap!(
@@ -293,7 +389,7 @@ pub trait Kernel<'a>: Sized + Sync {
                 Some(&|_, context| kernel.check_result(&expected, context))
             ),
             "no candidates found for kernel {}",
-            Self::name()
+            signature.name,
         );
         let best_fn = codegen::Function::build(&best.space);
         context.benchmark(&best_fn, num_samples)
@@ -309,12 +405,9 @@ pub trait Kernel<'a>: Sized + Sync {
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::default()
+            .mem_init(MemInit::Uninit)
+            .build::<Self, AM>(params, context);
         let candidates = kernel.build_body(&signature, context);
         let num_deadends = (0..num_samples)
             .into_par_iter()
