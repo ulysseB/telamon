@@ -32,6 +32,9 @@ impl X86printer {
     fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
         let namer = name_map.namer();
         let print_decl = |(&t, &n)| {
+            if let Type::PtrTo(..) = t {
+                unreachable!("Type PtrTo are never inserted in this map");
+            }
             let prefix = Namer::gen_prefix(t);
             let mut s = format!("{} ", Self::get_type(t));
             s.push_str(
