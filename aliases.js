@@ -1,4 +1,5 @@
 var ALIASES = {};
+ALIASES["aftermath_convert_log"] = {};
 ALIASES["characterize"] = {};
 ALIASES["exec_dump"] = {};
 ALIASES["expandconfig"] = {};

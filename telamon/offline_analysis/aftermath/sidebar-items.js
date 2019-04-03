@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["TraceWriter","Writer producing trace files in Aftermath format"]]});

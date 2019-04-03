@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["tree",""]]});
+initSidebarItems({"mod":[["aftermath",""],["tree",""]]});
