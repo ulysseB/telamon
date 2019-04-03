@@ -333,7 +333,7 @@ fn explore_space<'a, T>(
                         if config.check_all || best.is_none() || Some(eval) < best {
                             // The values computed by the kernel are kept in the context (yikes!)
                             if let Err(err) = check_result_fn(&leaf, context) {
-                                error!("Invalid results ({}) for {}", err, leaf);
+                                error!("Invalid results for {}", leaf);
                                 let out = config
                                     .output_path(format!("error_{}", n_evals))
                                     .unwrap();
@@ -344,6 +344,14 @@ fn explore_space<'a, T>(
                                         error!("Error while dumping candidate: {}", err)
                                     },
                                 );
+
+                                write!(
+                                    std::fs::File::create(out.with_extension("txt"))
+                                        .unwrap(),
+                                    "{}",
+                                    err
+                                )
+                                .unwrap();
 
                                 return;
                             }
