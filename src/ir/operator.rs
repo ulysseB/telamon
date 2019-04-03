@@ -134,14 +134,6 @@ impl UnaryOp {
             UnaryOp::Cast(t) => t,
         }
     }
-
-    /// Returns the name of the operand.
-    fn name(self) -> &'static str {
-        match self {
-            UnaryOp::Mov => "mov",
-            UnaryOp::Cast(..) => "cast",
-        }
-    }
 }
 
 /// The operation performed by an instruction.
@@ -366,9 +358,9 @@ impl<'a, L> std::fmt::Display for Operator<'a, L> {
             Mad(arg0, arg1, arg2, rnd) => {
                 write!(fmt, "Mad[{}]({}, {}, {})", rnd, arg0, arg1, arg2)
             }
-            Ld(t, arg, ap) => write!(fmt, "Load({})", arg),
-            St(dst, src, side_effects, ap) => write!(fmt, "Store({}, {})", dst, src),
-            TmpLd(t, mem) => write!(fmt, "TempLoad({})", mem),
+            Ld(_t, arg, _ap) => write!(fmt, "Load({})", arg),
+            St(dst, src, _side_effects, _ap) => write!(fmt, "Store({}, {})", dst, src),
+            TmpLd(_t, mem) => write!(fmt, "TempLoad({})", mem),
             TmpSt(src, mem) => write!(fmt, "TempStore({}, {})", mem, src),
         }
     }

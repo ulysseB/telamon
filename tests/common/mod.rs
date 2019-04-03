@@ -1,6 +1,5 @@
 //! Contains integration tests for Exhaust.
 #![allow(dead_code)]
-pub mod fake;
 
 use log::*;
 use std::io::sink;

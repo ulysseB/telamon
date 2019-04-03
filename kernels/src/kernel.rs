@@ -122,11 +122,14 @@ pub trait Kernel<'a>: Sized {
         let candidate = kernel.build_body(&signature, ctx).remove(0);
 
         let implem = action_list.iter().fold(candidate, |cand, action| {
-            cand.apply_decision(ctx, action.clone()).expect(&format!(
-                "In kernel {}, Could not apply action {:?}",
-                Self::name(),
-                action
-            ))
+            cand.apply_decision(ctx, action.clone())
+                .unwrap_or_else(|()| {
+                    panic!(
+                        "In kernel {}, Could not apply action {:?}",
+                        Self::name(),
+                        action
+                    )
+                })
         });
 
         let device_fn = codegen::Function::build(&implem.space);
