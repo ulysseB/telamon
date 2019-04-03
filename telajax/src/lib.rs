@@ -27,7 +27,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 use lazy_static::lazy_static;
 use libc;
 use log::debug;
-use parking_lot;
 use std::{
     ffi::CStr,
     result::Result,
@@ -223,15 +222,6 @@ impl Device {
                 Ok(event)
             }
         }
-    }
-
-    /// Print func id then execute it
-    pub fn execute_kernel_id(
-        &self,
-        kernel: &mut Kernel,
-        kernel_id: u16,
-    ) -> Result<(), opencl::Error> {
-        self.execute_kernel(kernel)
     }
 
     /// Executes a `Kernel` and then wait for completion.

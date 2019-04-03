@@ -1,0 +1,89 @@
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <pthread.h>
+#include <utask.h>
+#include <mppa_async.h>
+#include <mppa_power.h>
+#include <mppa_remote.h>
+
+#define UTASK_BARRIER_NB (2)
+#define UTASK_SUCCESS (0)
+#define UTASK_ERROR (1)
+
+typedef struct{{
+       long long count[UTASK_BARRIER_NB] __attribute((aligned(8)));
+       long long core_toggle __attribute((aligned(8)));
+       long long count_init;
+}}__utask_barrier_t;
+
+int
+my_pthread_barrier_init(pthread_barrier_t *barrier,
+            const pthread_barrierattr_t *attr __attribute__((unused)),
+            unsigned int count)
+{{
+   *barrier = (pthread_barrier_t) malloc(sizeof(__utask_barrier_t));
+   if((void*)*barrier == NULL){{
+      errno = ENOMEM;
+      return UTASK_ERROR;
+   }}
+   __utask_barrier_t *__barrier = (__utask_barrier_t *)*barrier;
+   __barrier->core_toggle = 0;
+   __barrier->count[0] = count;
+   __barrier->count[1] = count;
+   __barrier->count_init = count;
+   __builtin_k1_wpurge();
+   __builtin_k1_fence();
+   mOS_dinval();
+
+   return UTASK_SUCCESS;
+}}
+
+int my_pthread_barrier_destroy(pthread_barrier_t *barrier)
+{{
+   free((void*)*barrier);
+   __builtin_k1_wpurge();
+   __builtin_k1_fence();
+   mOS_dinval();
+   return 0;
+}}
+
+
+typedef struct thread_dim_id {{
+pthread_barrier_t * barrier;
+{dim_decl} }} thread_dim_id_t;
+
+typedef struct thread_args {{
+  thread_dim_id_t * tid;
+  void ** args;
+}} thread_arg_t;
+
+{fun_str}
+
+
+void execute(thread_dim_id_t *tid, void** args) {{
+  {fun_params_cast};
+  {fun_name}(tid, {fun_params});
+}}
+
+
+
+void * exec_wrap(void * args) {{
+  thread_arg_t thr_args = *(thread_arg_t *) args;
+  execute(thr_args.tid,  thr_args.args);
+  return NULL;
+}}
+
+void entry_point({cl_arg_def}, void* __timer_ptr) {{
+  // KERNEL {id}
+  unsigned long timestamp;
+  void* args[{n_arg}];
+  {build_ptr_struct};
+  pthread_barrier_t barrier;
+  timestamp = __k1_read_dsu_timestamp();
+  {gen_threads}
+  {thread_join}
+  timestamp = __k1_read_dsu_timestamp() - timestamp;
+  *(unsigned long *)__timer_ptr = timestamp;
+}}

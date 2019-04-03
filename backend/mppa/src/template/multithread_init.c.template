@@ -1,0 +1,17 @@
+{ind_var_decl}
+int err;
+pthread_t thr_ids[{num_threads}]; 
+thread_arg_t thread_args[{num_threads}]; 
+thread_dim_id_t thread_tids[{num_threads}]; 
+err = my_pthread_barrier_init(&barrier, NULL,{num_threads}); 
+if (err) {{printf("FAILED TO INIT BARRIER with err %d\n", err); return;}} 
+thread_dim_id_t tids[{num_threads}];
+
+{loop_init}
+thread_args[{ind}].args = args; 
+{tid_struct}
+tids[{ind}].barrier = &barrier; 
+thread_args[{ind}].tid = &tids[{ind}]; 
+err = pthread_create(&thr_ids[{ind}], NULL, exec_wrap, (void *)&thread_args[{ind}]); 
+if (err) {{printf("FAILED TO CREATE\n"); return;}} 
+{loop_jump}

@@ -1,31 +1,32 @@
 //! Defines the CPU target.
-mod compile;
+// TODO(mppa): improve the IR.
+// - check privatisation between threads is correct
+// - allow multiple threads groups in the same cluster, to overlap transfers
+// - blocking async transfers
+// - events + retiming
 mod context;
-mod cpu;
-mod cpu_argument;
+mod mppa;
 mod printer;
 
 pub use crate::context::Context;
-pub use crate::cpu::Cpu;
-pub use crate::printer::X86printer;
+pub use crate::mppa::Mppa;
+pub use crate::printer::MppaPrinter;
 
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
-use telamon::codegen;
-use telamon::ir;
+use telamon::{codegen, ir};
 use utils::*;
 
 #[derive(Default)]
-struct Namer {
+pub struct Namer {
     num_var: FnvHashMap<ir::Type, usize>,
     num_sizes: usize,
     num_glob_ptr: usize,
 }
 
 impl Namer {
-    /// Generate a variable name prefix from a type.
-    fn gen_prefix(t: ir::Type) -> &'static str {
+    pub fn gen_prefix(t: ir::Type) -> &'static str {
         match t {
             ir::Type::I(1) => "p",
             ir::Type::I(8) => "c",
@@ -36,6 +37,20 @@ impl Namer {
             ir::Type::F(32) => "f",
             ir::Type::F(64) => "d",
             ir::Type::PtrTo(..) => "ptr",
+            _ => panic!("invalid CPU type"),
+        }
+    }
+
+    pub fn get_string(t: ir::Type) -> &'static str {
+        match t {
+            ir::Type::PtrTo(_) => "uintptr_t",
+            ir::Type::F(32) => "float",
+            ir::Type::F(64) => "double",
+            ir::Type::I(1) => "uint8_t",
+            ir::Type::I(8) => "uint8_t",
+            ir::Type::I(16) => "uint16_t",
+            ir::Type::I(32) => "uint32_t",
+            ir::Type::I(64) => "uint64_t",
             _ => panic!("invalid CPU type"),
         }
     }

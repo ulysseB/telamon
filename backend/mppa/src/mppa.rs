@@ -1,43 +1,20 @@
-//! Describes CUDA-enabled GPUs.
+use std;
+use std::io::Write;
 use telamon::codegen::Function;
 use telamon::device;
 use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
-use telamon::search_space::*;
-
-use itertools::*;
-use std::io::Write;
+use telamon::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
+use utils::unwrap;
 use utils::*;
 
-use crate::printer::X86printer;
+/// Describes a MPPA chip.
+#[derive(Default)]
+pub struct Mppa;
 
-/// Represents CUDA GPUs.
-#[derive(Clone)]
-pub struct Cpu {
-    /// The name of the CPU.
-    pub name: String,
-}
-
-impl Cpu {
-    pub fn dummy_cpu() -> Self {
-        Cpu {
-            name: String::from("x86"),
-        }
-    }
-}
-
-impl device::Device for Cpu {
-    fn print(&self, fun: &Function, out: &mut Write) {
-        let mut printer = X86printer::default();
-        write!(out, "{}", printer.wrapper_function(fun)).unwrap();
-        write!(
-            out,
-            "{}",
-            fun.device_code_args()
-                .map(|x| format!("{:?}", x))
-                .format("\n")
-        )
-        .unwrap();
+impl device::Device for Mppa {
+    fn print(&self, _fun: &Function, out: &mut Write) {
+        unwrap!(write!(out, "Basic MPPA"));
     }
 
     fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
@@ -66,16 +43,16 @@ impl device::Device for Cpu {
         512
     }
 
-    fn can_vectorize(&self, _: &ir::Dimension, _: &ir::Operator) -> bool {
-        false
-    }
-
-    fn max_vectorization(&self, _: &ir::Operator) -> [u32; 2] {
-        [1, 1]
-    }
-
     fn has_vector_registers(&self) -> bool {
         false
+    }
+
+    fn can_vectorize(&self, _dim: &ir::Dimension, _op: &ir::Operator) -> bool {
+        false
+    }
+
+    fn max_vectorization(&self, _op: &ir::Operator) -> [u32; 2] {
+        [1, 1]
     }
 
     fn shared_mem(&self) -> u32 {
@@ -98,20 +75,7 @@ impl device::Device for Cpu {
     }
 
     fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn add_block_overhead(
-        &self,
-        _: model::size::FactorRange,
-        _: model::size::FactorRange,
-        _: model::size::Range,
-        _: &mut HwPressure,
-    ) {
-    }
-
-    fn lower_type(&self, t: ir::Type, _space: &SearchSpace) -> Option<ir::Type> {
-        Some(t)
+        "MPPA"
     }
 
     fn hw_pressure(
@@ -128,22 +92,22 @@ impl device::Device for Cpu {
 
     fn loop_iter_pressure(&self, _kind: DimKind) -> (HwPressure, HwPressure) {
         //TODO(model): implement minimal model
-        (model::HwPressure::zero(self), model::HwPressure::zero(self))
+        (HwPressure::zero(self), HwPressure::zero(self))
     }
 
     fn thread_rates(&self) -> HwPressure {
         //TODO(model): implement minimal model
-        model::HwPressure::new(1.0, vec![])
+        HwPressure::new(1.0, vec![])
     }
 
     fn block_rates(&self) -> HwPressure {
         //TODO(model): implement minimal model
-        model::HwPressure::new(1.0, vec![])
+        HwPressure::new(1.0, vec![])
     }
 
     fn total_rates(&self) -> HwPressure {
         //TODO(model): implement minimal model
-        model::HwPressure::new(1.0, vec![])
+        HwPressure::new(1.0, vec![])
     }
 
     fn bottlenecks(&self) -> &[&'static str] {
@@ -156,11 +120,24 @@ impl device::Device for Cpu {
 
     fn additive_indvar_pressure(&self, _t: &ir::Type) -> HwPressure {
         //TODO(model): implement minimal model
-        model::HwPressure::zero(self)
+        HwPressure::zero(self)
     }
 
     fn multiplicative_indvar_pressure(&self, _t: &ir::Type) -> HwPressure {
         //TODO(model): implement minimal model
-        model::HwPressure::zero(self)
+        HwPressure::zero(self)
+    }
+
+    fn add_block_overhead(
+        &self,
+        _: model::size::FactorRange,
+        _: model::size::FactorRange,
+        _: model::size::Range,
+        _pressure: &mut HwPressure,
+    ) {
+    }
+
+    fn lower_type(&self, t: ir::Type, _space: &SearchSpace) -> Option<ir::Type> {
+        Some(t)
     }
 }

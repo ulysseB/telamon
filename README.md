@@ -54,6 +54,21 @@ We can now describe the body of the kernel itself. Here we create a kernel that 
 instructions for us. The builder keeps the list of open loops and nest new instructions in
 them.
 
+``` mppa
+
+Telamon now has a nearly functional mppa backend. While most kernels run
+perfectly fine, it is still buggy and a lot of hacks take place as the runtime
+we rely on is not really satisfying. Also for diverse reasons, telamon
+must be run and compiled with a prefix scl enable llvm-toolset-7
+"MPPACL_LOCAL_SIZE=128K cargo ...". scl enable llvm-toolset-7 tells cargo not to
+use custom Kalray C library (although we need them for compiling kernels for
+mppa). MPPACL_LOCAL_SIZE=128K is mandatory if we want to use multithreaded
+kernels. For example, in kernels:
+ scl enable llvm-toolset-7 "MPPACL_LOCAL_SIZE=128K cargo run  --features=mppa
+ --bin exec_dump gesummv gesummv.dump"
+ is used to run a dump (of a given kernel) on mppa. Feel free to put that in an
+ alias.
+
 ```rust
 let mut builder = helper::Builder::new(&signature, context.device());
 

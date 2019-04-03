@@ -88,7 +88,6 @@ tempdir = "0.3.7"
 criterion = "0.2.4"
 jemalloc-ctl = "0.1"
 telamon-cuda = { path = "backend/cuda", default-features = false }
-telamon-x86 = { path = "backend/x86" }
 
 [features]
 default = []
@@ -101,6 +100,7 @@ mppa = ["telajax"]
 members = [
     "backend/cuda",
     "backend/x86",
+    "backend/mppa",
     "kernels",
     "telamon-gen",
     "telajax",

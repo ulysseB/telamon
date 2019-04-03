@@ -21,6 +21,7 @@ cuda-sys = { optional = true, version = "0.1.0" }
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional=true }
+telamon-mppa = { path = "../backend/mppa", optional=true }
 telamon-x86 = { path = "../backend/x86" }
 utils = { package = "telamon-utils", path = "../telamon-utils" }
 
@@ -28,6 +29,9 @@ utils = { package = "telamon-utils", path = "../telamon-utils" }
 futures = "0.1.23"
 
 [features]
+mppa = [
+    "telamon-mppa",
+]
 cuda = [
     "telamon-cuda",
     "cuda-sys",
