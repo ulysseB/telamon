@@ -31,6 +31,7 @@ impl device::Device for Cpu {
     fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
         match t {
             Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
+            Type::I(i) if i == 1 || i == 8 || i == 16 => Ok(()),
             Type::PtrTo(_) => Ok(()),
             t => Err(ir::TypeError::InvalidType { t }),
         }
