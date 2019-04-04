@@ -272,7 +272,7 @@ impl CudaPrinter {
         )
     }
 
-    pub fn host_function(&mut self, fun: &Function, gpu: &Gpu, out: &mut Write) {
+    pub fn host_function(&mut self, fun: &Function, gpu: &Gpu, out: &mut dyn Write) {
         let block_sizes = Self::host_3sizes(fun.block_dims().iter());
         let thread_sizes = Self::host_3sizes(fun.thread_dims().iter().rev());
         let extern_param_names = fun

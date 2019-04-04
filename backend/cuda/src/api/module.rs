@@ -69,7 +69,7 @@ impl<'a> Kernel<'a> {
         &self,
         blocks: &[u32; 3],
         threads: &[u32; 3],
-        args: &[&Argument],
+        args: &[&dyn Argument],
     ) -> Result<u64, ()> {
         unsafe {
             let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();
@@ -96,7 +96,7 @@ impl<'a> Kernel<'a> {
         &self,
         blocks: &[u32; 3],
         threads: &[u32; 3],
-        args: &[&Argument],
+        args: &[&dyn Argument],
         counters: &PerfCounterSet,
     ) -> Vec<u64> {
         counters.instrument(unsafe { &*self.function }, blocks, threads, args)
@@ -108,7 +108,7 @@ impl<'a> Kernel<'a> {
         &self,
         blocks: &[u32; 3],
         threads: &[u32; 3],
-        args: &[&Argument],
+        args: &[&dyn Argument],
     ) -> f64 {
         unsafe {
             let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();

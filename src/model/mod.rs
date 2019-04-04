@@ -46,7 +46,7 @@ use utils::*;
 
 /// Returns a lower bound on the execution time of all the implementation candidates in
 /// `space`, when executed in `context`.
-pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
+pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
     // Build the dependency maps dag.
     let local_info = LocalInfo::compute(space, context);
     trace!("local_info {:?}", local_info);
@@ -129,7 +129,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
 /// Populates the dependency maps and the levels with dependency edges and back-edges.
 fn populate(
     space: &SearchSpace,
-    device: &Device,
+    device: &dyn Device,
     local_info: &LocalInfo,
     code_points: &CodePointDag,
     levels: &mut [Level],
@@ -339,7 +339,7 @@ fn repeat_level(
 // TODO(cleanup): refactor to reduce the number of parameters.
 #[allow(clippy::all)]
 fn apply_dim_map(
-    device: &Device,
+    device: &dyn Device,
     space: &SearchSpace,
     local_info: &LocalInfo,
     levels: &[Level],

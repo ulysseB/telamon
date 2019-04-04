@@ -14,7 +14,7 @@ pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
-    fn device(&self) -> &Device;
+    fn device(&self) -> &dyn Device;
     /// Returns the execution time of a fully specified implementation in nanoseconds.
     ///
     /// This function should be called multiple times to obtain accurate execution time.
@@ -30,7 +30,7 @@ pub trait Context: Sync {
         &self,
         num_workers: usize,
         mode: EvalMode,
-        inner: &(Fn(&mut AsyncEvaluator<'a, 'b>) + Sync),
+        inner: &(dyn Fn(&mut dyn AsyncEvaluator<'a, 'b>) + Sync),
     );
     /// Returns a parameter interpreted as a size, if possible.
     fn param_as_size(&self, name: &str) -> Option<u32>;

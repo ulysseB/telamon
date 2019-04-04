@@ -44,7 +44,7 @@ pub fn bind_array<'a, T: 'a>(name: &str, len: usize, context: &mut Context<'a>) 
 /// Generates a kernel with two nested empty loops.
 pub fn two_empty_loops<'a>(
     base: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     outer: &DimSize,
     inner: &DimSize,
 ) -> SearchSpace<'a> {
@@ -61,7 +61,7 @@ pub fn two_empty_loops<'a>(
 /// Generates a kernel with chained adds in a loop.
 pub fn loop_chained_adds<'a>(
     base: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     loop_size: &DimSize,
     chained: u32,
     out: &str,
@@ -82,7 +82,8 @@ pub fn loop_chained_adds<'a>(
 
 /// A function that produce a single instruction using the first argument on one of its
 /// operands. The second argument may be used for other operands.
-pub type InstGenerator = Fn(&AutoOperand<'static>, &&str, &mut Builder) -> ir::InstId;
+pub type InstGenerator =
+    dyn Fn(&dyn AutoOperand<'static>, &&str, &mut Builder) -> ir::InstId;
 
 /// Generates a single thread with a loop containing chained instructions.
 ///
@@ -94,7 +95,7 @@ pub type InstGenerator = Fn(&AutoOperand<'static>, &&str, &mut Builder) -> ir::I
 /// * `out`: an array to store the computation result.
 pub fn inst_chain<'a, T>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     inst_gen: &InstGenerator,
     n_iter: &DimSize,
     n_chained: u32,
@@ -123,7 +124,7 @@ where
 /// array, `stride` cells further.
 pub fn init_stride_array<'a>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     array: &str,
     n: u32,
     stride: i32,
@@ -158,7 +159,7 @@ pub fn init_stride_array<'a>(
 #[allow(clippy::too_many_arguments)]
 pub fn load_chain<'a>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     n_threads: u32,
     n_iter: &DimSize,
     n_chained: u32,
@@ -193,7 +194,7 @@ pub fn load_chain<'a>(
 /// Generates chained loads from shared memory.
 pub fn shared_load_chain<'a>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     n_iter: &DimSize,
     n_chained: u32,
     array_size: u32,
@@ -360,7 +361,7 @@ pub fn parallel_store<'a>(
 /// Generates a wrap of syncthreads separated by a single instruction.
 pub fn syncthread<'a>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     n_iter: &DimSize,
     n_chained: u32,
     wrap_size: u32,
@@ -389,7 +390,7 @@ pub fn syncthread<'a>(
 #[allow(clippy::too_many_arguments)]
 pub fn chain_in_syncthread<'a>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     n_iter: &DimSize,
     sync_chained: u32,
     add_chained: u32,
@@ -437,7 +438,7 @@ pub fn chain_in_syncthread<'a>(
 /// Generates a global memory load in a loop.
 pub fn load_in_loop<'a>(
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     k_size: &DimSize,
     threads: u32,
     out: &str,

@@ -29,7 +29,7 @@ const NUM_OUTLIERS: usize = 4;
 pub struct Context<'a> {
     gpu_model: Gpu,
     executor: &'a Executor,
-    parameters: FnvHashMap<String, Arc<Argument + 'a>>,
+    parameters: FnvHashMap<String, Arc<dyn Argument + 'a>>,
 }
 
 impl<'a> Context<'a> {
@@ -62,12 +62,12 @@ impl<'a> Context<'a> {
     }
 
     /// Returns a parameter given its name.
-    pub fn get_param(&self, name: &str) -> &Argument {
+    pub fn get_param(&self, name: &str) -> &dyn Argument {
         self.parameters[name].as_ref()
     }
 
     /// Binds a parameter to the gien name.
-    pub fn bind_param(&mut self, name: String, arg: Arc<Argument + 'a>) {
+    pub fn bind_param(&mut self, name: String, arg: Arc<dyn Argument + 'a>) {
         self.parameters.insert(name, arg);
     }
 
@@ -149,7 +149,7 @@ impl<'a> device::ArgMap<'a> for Context<'a> {
 }
 
 impl<'a> device::Context for Context<'a> {
-    fn device(&self) -> &Device {
+    fn device(&self) -> &dyn Device {
         &self.gpu_model
     }
 
@@ -175,7 +175,7 @@ impl<'a> device::Context for Context<'a> {
         &self,
         num_workers: usize,
         mode: EvalMode,
-        inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'b, 'c>) + Sync),
     ) {
         // Setup the evaluator.
         let blocked_time = &atomic::AtomicUsize::new(0);

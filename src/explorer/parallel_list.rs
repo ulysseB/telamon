@@ -28,7 +28,7 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
     ) {
     }
 
-    fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, context: &dyn Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             if let Some(candidate) = self.pop() {
                 let choice_opt = choice::default_list(&candidate.space).next();

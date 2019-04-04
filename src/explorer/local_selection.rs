@@ -15,7 +15,7 @@ pub struct Rollout<'a> {
     /// The policy to use when selecting among the available actions
     pub node_order: &'a NewNodeOrder,
     /// The context to use for propagation
-    pub context: &'a Context,
+    pub context: &'a dyn Context,
     /// Current best score.  Used in a branch-and-bound fashion with the lower-bound from the
     /// performance model, and possibly in other policy-specific computations.
     pub cut: f64,
@@ -134,7 +134,7 @@ impl<'a> Rollout<'a> {
 pub fn descend<'a>(
     choice_order: &ChoiceOrdering,
     node_order: NewNodeOrder,
-    context: &Context,
+    context: &dyn Context,
     candidate: Candidate<'a>,
     cut: f64,
 ) -> Option<Candidate<'a>> {

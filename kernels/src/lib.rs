@@ -1,4 +1,6 @@
 //! Defines common kernels used to test and benchmark Telamon.
+#![deny(bare_trait_objects)]
+
 mod kernel;
 
 pub mod linalg;
@@ -14,7 +16,7 @@ use telamon::{explorer, model, search_space};
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate<'a>(
     space: search_space::SearchSpace<'a>,
-    ctx: &device::Context,
+    ctx: &dyn device::Context,
 ) -> explorer::Candidate<'a> {
     let bound = model::bound(&space, ctx);
     explorer::Candidate::new(space, bound)

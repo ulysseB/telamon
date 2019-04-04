@@ -105,7 +105,7 @@ impl NewObjs {
     }
 
     /// Registers a new statement
-    pub fn add_stmt(&mut self, stmt: &Statement) {
+    pub fn add_stmt(&mut self, stmt: &dyn Statement) {
         self.statements.push(stmt.stmt_id());
     }
 

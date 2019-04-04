@@ -292,7 +292,7 @@ impl Gpu {
         space: &SearchSpace,
         dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
         inst: &ir::Instruction,
-        ctx: &device::Context,
+        ctx: &dyn device::Context,
     ) -> HwPressure {
         use telamon::ir::Operator::*;
         let t = inst.t().map(|t| self.lower_type(t, space).unwrap_or(t));
@@ -391,7 +391,7 @@ impl Gpu {
 }
 
 impl device::Device for Gpu {
-    fn print(&self, fun: &Function, out: &mut Write) {
+    fn print(&self, fun: &Function, out: &mut dyn Write) {
         let mut printer = CudaPrinter::default();
         printer.host_function(fun, self, out)
     }
@@ -510,8 +510,8 @@ impl device::Device for Gpu {
         space: &SearchSpace,
         dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
         _nesting: &FnvHashMap<ir::StmtId, model::Nesting>,
-        stmt: &ir::Statement,
-        ctx: &device::Context,
+        stmt: &dyn ir::Statement,
+        ctx: &dyn device::Context,
     ) -> model::HwPressure {
         if let Some(inst) = stmt.as_inst() {
             self.inst_pressure(space, dim_sizes, inst, ctx)

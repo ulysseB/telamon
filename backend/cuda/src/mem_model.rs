@@ -38,7 +38,7 @@ pub fn analyse(
     gpu: &Gpu,
     inst: &ir::Instruction,
     sizes: &FnvHashMap<ir::DimId, size::Range>,
-    ctx: &Context,
+    ctx: &dyn Context,
 ) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
@@ -94,7 +94,7 @@ fn info(
     is_shared_access: Trivalent,
     gpu: &Gpu,
     sizes: &FnvHashMap<ir::DimId, size::Range>,
-    ctx: &Context,
+    ctx: &dyn Context,
 ) -> MemInfo {
     let mut info = MemInfo::default();
     let thread_dims = tensor_thread_dims(space, inst, dims, sizes, ctx);
@@ -155,7 +155,7 @@ fn tensor_thread_dims(
     inst: &ir::Instruction,
     tensor_dims: &FnvHashMap<ir::DimId, ir::PartialSize>,
     sizes: &FnvHashMap<ir::DimId, size::Range>,
-    ctx: &Context,
+    ctx: &dyn Context,
 ) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
     let dims = inst

@@ -1,4 +1,6 @@
 //! Defines the CPU target.
+#![deny(bare_trait_objects)]
+
 mod compile;
 mod context;
 mod cpu;

@@ -115,7 +115,7 @@ impl FastBound {
     /// internals.
     pub fn explain(
         &self,
-        device: &Device,
+        device: &dyn Device,
         levels: &[Level],
         code_points: &[CodePoint],
     ) -> Bound {
@@ -229,7 +229,7 @@ impl FastOrigin {
     /// model.
     fn explain(
         &self,
-        device: &Device,
+        device: &dyn Device,
         levels: &[Level],
         code_points: &[CodePoint],
     ) -> Origin {
@@ -463,7 +463,7 @@ impl HwPressure {
     }
 
     /// Creates a null `Pressure` for the given device.
-    pub fn zero(device: &Device) -> Self {
+    pub fn zero(device: &dyn Device) -> Self {
         HwPressure::new(0f64, device.bottlenecks().iter().map(|_| 0f64).collect())
     }
 

@@ -437,7 +437,7 @@ impl VariableNames {
     /// Creates the mapping from variables to names.
     fn create(
         function: &codegen::Function,
-        namer: &mut Namer,
+        namer: &mut dyn Namer,
     ) -> FnvHashMap<ir::VarId, Self> {
         let mut vars_names = FnvHashMap::<_, Self>::default();
         for var in function.variables() {
@@ -454,7 +454,7 @@ impl VariableNames {
     }
 
     /// Creates a new set of names for a variable instantiated along the given dimensions.
-    fn new<IT>(t: ir::Type, dims: IT, namer: &mut Namer) -> Self
+    fn new<IT>(t: ir::Type, dims: IT, namer: &mut dyn Namer) -> Self
     where
         IT: IntoIterator<Item = (ir::DimId, usize)>,
     {

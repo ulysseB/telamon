@@ -3,7 +3,7 @@
 // - solution: a value object, superset of memblock, with a location in REG | SHARED | GLOBAL
 
 set Statements:
-  item_type = "ir::Statement"
+  item_type = "dyn ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
   id_getter = "$item.stmt_id()"

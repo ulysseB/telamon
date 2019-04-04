@@ -54,7 +54,7 @@ impl Signature {
     }
 
     /// Adds a parameter with the given name and type to the signature.
-    pub fn add_array(&mut self, device: &Device, name: String, elem_t: ir::Type) {
+    pub fn add_array(&mut self, device: &dyn Device, name: String, elem_t: ir::Type) {
         self.params.push(Parameter {
             name,
             t: device.pointer_type(MemSpace::GLOBAL),
@@ -71,7 +71,7 @@ impl Signature {
 #[derive(Clone)]
 pub struct Function<'a, L = ir::LoweringMap> {
     signature: &'a Signature,
-    device: &'a Device,
+    device: &'a dyn Device,
     insts: SparseVec<ir::InstId, Instruction<'a, L>>,
     dims: SparseVec<ir::DimId, Dimension<'a, L>>,
     static_dims: Vec<ir::DimId>,
@@ -87,7 +87,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
 
 impl<'a, L> Function<'a, L> {
     /// Creates a new function.
-    pub fn new(signature: &'a Signature, device: &'a Device) -> Self {
+    pub fn new(signature: &'a Signature, device: &'a dyn Device) -> Self {
         Function {
             signature,
             device,
@@ -111,7 +111,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the device the function is compiled for.
-    pub fn device(&self) -> &'a Device {
+    pub fn device(&self) -> &'a dyn Device {
         self.device
     }
 
@@ -212,7 +212,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to a statement given its id.
-    pub(super) fn statement_mut(&mut self, id: ir::StmtId) -> &mut Statement<'a, L> {
+    pub(super) fn statement_mut(&mut self, id: ir::StmtId) -> &mut dyn Statement<'a, L> {
         match id {
             StmtId::Inst(id) => self.inst_mut(id),
             StmtId::Dim(id) => self.dim_mut(id),
@@ -220,7 +220,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a `Statement` given its id.
-    pub fn statement(&self, id: StmtId) -> &Statement<'a, L> {
+    pub fn statement(&self, id: StmtId) -> &dyn Statement<'a, L> {
         match id {
             StmtId::Inst(id) => &self.insts[id],
             StmtId::Dim(id) => self.dim(id),
@@ -228,7 +228,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Lists all `Statement`s.
-    pub fn statements<'b>(&'b self) -> impl Iterator<Item = &'b Statement<'a, L>> {
+    pub fn statements<'b>(&'b self) -> impl Iterator<Item = &'b dyn Statement<'a, L>> {
         self.insts()
             .map(|x| x as _)
             .chain(self.dims().map(|x| x as _))

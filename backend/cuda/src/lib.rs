@@ -1,4 +1,5 @@
 //! Defines the CUDA target.
+#![deny(bare_trait_objects)]
 #[cfg(feature = "real_gpu")]
 mod api;
 #[cfg(not(feature = "real_gpu"))]

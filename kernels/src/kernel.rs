@@ -50,16 +50,16 @@ pub trait Kernel<'a>: Sized {
     fn build_body<'b>(
         &self,
         signature: &'b ir::Signature,
-        ctx: &'b device::Context,
+        ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>>;
     /// Computes the expected output.
-    fn get_expected_output(&self, _: &device::Context) -> Self::ExpectedOutput;
+    fn get_expected_output(&self, _: &dyn device::Context) -> Self::ExpectedOutput;
 
     /// Ensures the generated code performs the correct operation.
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String>;
 
     /// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on
@@ -329,7 +329,7 @@ pub trait Kernel<'a>: Sized {
 /// Descend along a path in the search tree and stores the bounds encountered on the way.
 fn descend_check_bounds<'a>(
     candidates: &[Candidate<'a>],
-    context: &device::Context,
+    context: &dyn device::Context,
 ) -> Option<(Candidate<'a>, Vec<Bound>)> {
     let order = explorer::config::NewNodeOrder::WeightedRandom;
     let mut candidates = std::borrow::Cow::Borrowed(candidates);

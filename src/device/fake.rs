@@ -33,7 +33,7 @@ impl super::Device for Device {
         "fake_device"
     }
 
-    fn print(&self, _: &codegen::Function, _: &mut Write) {}
+    fn print(&self, _: &codegen::Function, _: &mut dyn Write) {}
 
     fn check_type(&self, _: ir::Type) -> Result<(), ir::TypeError> {
         Ok(())
@@ -115,8 +115,8 @@ impl super::Device for Device {
         _: &SearchSpace,
         _: &FnvHashMap<ir::DimId, model::size::Range>,
         _: &FnvHashMap<ir::StmtId, model::Nesting>,
-        _: &ir::Statement,
-        _: &super::Context,
+        _: &dyn ir::Statement,
+        _: &dyn super::Context,
     ) -> HwPressure {
         HwPressure::zero(self)
     }
@@ -198,7 +198,7 @@ impl<D: super::Device> super::Context for Context<D> {
         &self,
         _: usize,
         _: EvalMode,
-        inner: &(Fn(&mut AsyncEvaluator<'b, 'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn AsyncEvaluator<'b, 'c>) + Sync),
     ) {
         struct FakeEvaluator<'a, 'b> {
             phantom: PhantomData<(&'a (), &'b ())>,

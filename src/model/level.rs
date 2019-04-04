@@ -39,7 +39,7 @@ impl Level {
     /// Creates a level iterating on the given dimensions. If no dimension is given,
     /// the level containts the whole program.
     fn new(
-        ctx: &Context,
+        ctx: &dyn Context,
         space: &SearchSpace,
         local_info: &LocalInfo,
         dims: VecSet<ir::DimId>,
@@ -85,7 +85,7 @@ impl Level {
 
 /// Computes the `HwPressure` caused by the intersection of the bodies of the given loops.
 pub fn sum_pressure(
-    ctx: &Context,
+    ctx: &dyn Context,
     space: &SearchSpace,
     local_info: &LocalInfo,
     bound_level: BottleneckLevel,
@@ -211,7 +211,7 @@ where
 
 /// Generates a bound based on the pressure produced by a block of threads.
 fn block_bound(
-    ctx: &Context,
+    ctx: &dyn Context,
     space: &SearchSpace,
     info: &LocalInfo,
     dims: &[ir::DimId],
@@ -244,7 +244,7 @@ pub fn must_consider_dim(space: &SearchSpace, dim: ir::DimId) -> bool {
 /// between the nestings at each end of the edge.
 pub fn generate(
     space: &SearchSpace,
-    ctx: &Context,
+    ctx: &dyn Context,
     local_info: &LocalInfo,
 ) -> (Vec<Level>, Vec<DimMap>) {
     // Build the list of nestings, exclude block and vector dimensions.
@@ -413,7 +413,7 @@ pub struct RepeatLevel {
 impl RepeatLevel {
     pub fn new(
         space: &SearchSpace,
-        ctx: &Context,
+        ctx: &dyn Context,
         level_id: usize,
         level: &Level,
     ) -> Option<Self> {
@@ -473,7 +473,7 @@ impl LevelDag {
         levels: &[Level],
         dim_maps: Vec<DimMap>,
         dep_map_size: usize,
-        ctx: &Context,
+        ctx: &dyn Context,
     ) -> Self {
         let mut dag = LevelDag::new(space, dep_map_size);
         for (level_id, level) in levels.iter().enumerate() {

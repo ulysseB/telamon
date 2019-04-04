@@ -56,7 +56,7 @@ where
     fn build_body<'b>(
         &self,
         signature: &'b ir::Signature,
-        ctx: &'b device::Context,
+        ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>> {
         let tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[1024, 4]);
         let mut builder = Builder::new(signature, ctx.device());
@@ -71,14 +71,14 @@ where
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
+    fn get_expected_output(&self, context: &dyn device::Context) -> ArrayD<S> {
         self.x.read_to_host(context) + self.y.read_to_host(context)
     }
 
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String> {
         let z = self.z.read_to_host(context);
         if z.iter()
@@ -138,7 +138,7 @@ where
     fn build_body<'b>(
         &self,
         signature: &'b ir::Signature,
-        ctx: &'b device::Context,
+        ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
@@ -164,7 +164,7 @@ where
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array1<S> {
         let a_shape = (self.m as usize, self.n as usize);
         self.a
             .read_to_host(context)
@@ -182,7 +182,7 @@ where
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String> {
         let y = self
             .y
@@ -254,7 +254,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
     fn build_body<'b>(
         &self,
         signature: &'b ir::Signature,
-        ctx: &'b device::Context,
+        ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
@@ -288,7 +288,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array1<S> {
         let (m, n) = (self.m as usize, self.n as usize);
         let a = unwrap!(self.a.read_to_host(context).into_shape((m, n)));
         let b = unwrap!(self.b.read_to_host(context).into_shape((m, n)));
@@ -299,7 +299,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String> {
         let y = unwrap!(self.y.read_to_host(context).into_shape(self.m as usize));
         if y.iter()
@@ -407,7 +407,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(
         &self,
         signature: &'b ir::Signature,
-        ctx: &'b device::Context,
+        ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>> {
         let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
         let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
@@ -478,7 +478,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &device::Context) -> Array2<S> {
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
         let a_shape = (self.params.m as usize, self.params.k as usize);
         let b_shape = (self.params.k as usize, self.params.n as usize);
         let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
@@ -489,7 +489,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String> {
         let c_shape = (self.params.m as usize, self.params.n as usize);
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
@@ -601,7 +601,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
     fn build_body<'b>(
         &self,
         signature: &'b ir::Signature,
-        ctx: &'b device::Context,
+        ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.params.m as u32, &[64]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.params.n as u32, &[64]);
@@ -652,7 +652,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &device::Context) -> Array3<S> {
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array3<S> {
         let batch = self.params.batch as usize;
         let m = self.params.m as usize;
         let n = self.params.n as usize;
@@ -678,7 +678,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String> {
         let batch = self.params.batch as usize;
         let c_shape = (batch, self.params.m as usize, self.params.n as usize);
