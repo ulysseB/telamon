@@ -239,11 +239,13 @@ impl device::Context for Context {
         // Anyway, we can see with printing that results make sense
         // Actually this should be checked again. I'm not sure we are reading on the cluster and
         // getting the right result could be a happy coincidence
-        let vec_i8 = out_mem.read_i8();
+        let vec_u8: Vec<u8> = out_mem
+            .read_i8()
+            .iter()
+            .map(|byte| i8::to_le_bytes(*byte)[0])
+            .collect();
         let mut buf: [u8; 4] = [0; 4];
-        for (byte, elem) in vec_i8.iter().zip_eq(buf.iter_mut()) {
-            *elem = i8::to_le_bytes(*byte)[0];
-        }
+        buf.copy_from_slice(vec_u8.as_slice());
         let res = u32::from_le_bytes(buf);
         self.writeback_slots.push(out_mem).unwrap();
         Ok(res as f64)
