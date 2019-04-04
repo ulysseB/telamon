@@ -1,5 +1,5 @@
 //! Provides functions to print PTX code.
-use crate::{Gpu, Namer};
+use crate::{Gpu, ValuePrinter};
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
@@ -10,7 +10,7 @@ use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use utils::*;
 
 #[derive(Default)]
-pub struct CudaPrinter {
+pub(crate) struct CudaPrinter {
     buffer: String,
 }
 
@@ -66,14 +66,14 @@ impl CudaPrinter {
         }
     }
 
-    /// Prints the variables declared by the `Namer`.
-    fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
-        let namer = name_map.namer();
+    /// Prints the variables declared by the `ValuePrinter`.
+    fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
+        let value_printer = name_map.value_printer();
         let print_decl = |(&t, n)| {
-            let prefix = Namer::gen_prefix(t);
+            let prefix = ValuePrinter::gen_prefix(t);
             format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)
         };
-        namer
+        value_printer
             .num_var
             .iter()
             .map(print_decl)
@@ -82,18 +82,21 @@ impl CudaPrinter {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(function: &Function, namer: &mut NameMap<Namer>) -> String {
+    fn decl_par_indexes(
+        function: &Function,
+        name_map: &mut NameMap<ValuePrinter>,
+    ) -> String {
         let mut decls = vec![];
         // Load block indexes.
         for (dim, dir) in function.block_dims().iter().zip(&["x", "y", "z"]) {
-            let index = namer.name_index(dim.id());
+            let index = name_map.name_index(dim.id());
             decls.push(format!("mov.u32 {}, %ctaid.{};", index, dir));
         }
         // Compute thread indexes.
         for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
             decls.push(format!(
                 "mov.s32 {}, %tid.{};",
-                namer.name_index(dim.id()),
+                name_map.name_index(dim.id()),
                 dir
             ));
         }
@@ -101,9 +104,13 @@ impl CudaPrinter {
     }
 
     /// Declares a shared memory block.
-    fn shared_mem_decl(&mut self, block: &MemoryRegion, namer: &mut NameMap<Namer>) {
+    fn shared_mem_decl(
+        &mut self,
+        block: &MemoryRegion,
+        name_map: &mut NameMap<ValuePrinter>,
+    ) {
         let ptr_type_name = Self::get_type(Type::I(32));
-        let name = namer.name_addr(block.id());
+        let name = name_map.name_addr(block.id());
         unwrap!(writeln!(
             self.buffer,
             "  .shared.align 16 .u8 {vec_name}[{size}];\
@@ -167,7 +174,11 @@ impl CudaPrinter {
     }
 
     /// Prints a parameter decalartion.
-    fn param_decl(&mut self, param: &ParamVal, namer: &NameMap<Namer>) -> String {
+    fn param_decl(
+        &mut self,
+        param: &ParamVal,
+        name_map: &NameMap<ValuePrinter>,
+    ) -> String {
         format!(
             ".param .{t}{attr} {name}",
             t = Self::get_type(param.t()),
@@ -176,7 +187,7 @@ impl CudaPrinter {
             } else {
                 ""
             },
-            name = namer.name_param(param.key()),
+            name = name_map.name_param(param.key()),
         )
     }
     /// Prints a rounding mode selector.
@@ -192,8 +203,8 @@ impl CudaPrinter {
 
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function, gpu: &Gpu) -> String {
-        let mut namer = Namer::default();
-        let name_map = &mut NameMap::new(function, &mut namer);
+        let mut value_printer = ValuePrinter::default();
+        let name_map = &mut NameMap::new(function, &mut value_printer);
         let param_decls = function
             .device_code_args()
             .map(|v| self.param_decl(v, name_map))
@@ -356,11 +367,8 @@ impl CudaPrinter {
     }
 }
 
-impl Printer<Namer> for CudaPrinter {
-    /// Get a proper string representation of an integer in target language
-    fn get_int(n: u32) -> String {
-        format!("{}", n)
-    }
+impl InstPrinter for CudaPrinter {
+    type VP = ValuePrinter;
 
     /// Print result = op1 op op2
     fn print_binop(
@@ -551,11 +559,11 @@ impl Printer<Namer> for CudaPrinter {
     fn name_operand<'a>(
         vector_levels: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        namer: &'a NameMap<Namer>,
+        name_map: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_levels[0].is_empty());
         if vector_levels[1].is_empty() {
-            namer.name_op(op)
+            name_map.name_op(op)
         } else {
             let sizes = vector_levels[1]
                 .iter()
@@ -568,7 +576,7 @@ impl Printer<Namer> for CudaPrinter {
                         .zip_eq(indexes)
                         .map(|(d, idx)| (d.id(), idx))
                         .collect_vec();
-                    namer.indexed_op_name(op, &indexes_map)
+                    name_map.indexed_op_name(op, &indexes_map)
                 })
                 .format(", ");
             Cow::Owned(format!("{{{}}}", names))
@@ -578,11 +586,11 @@ impl Printer<Namer> for CudaPrinter {
     fn name_inst<'a>(
         vector_levels: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        namer: &'a NameMap<Namer>,
+        name_map: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_levels[0].is_empty());
         if vector_levels[1].is_empty() {
-            Cow::Borrowed(namer.name_inst(inst))
+            Cow::Borrowed(name_map.name_inst(inst))
         } else {
             let sizes = vector_levels[1]
                 .iter()
@@ -595,7 +603,7 @@ impl Printer<Namer> for CudaPrinter {
                         .zip_eq(indexes)
                         .map(|(d, idx)| (d.id(), idx))
                         .collect_vec();
-                    namer.indexed_inst_name(inst, &indexes_map)
+                    name_map.indexed_inst_name(inst, &indexes_map)
                 })
                 .format(", ");
             Cow::Owned(format!("{{{}}}", names))

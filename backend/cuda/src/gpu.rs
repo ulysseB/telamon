@@ -2,7 +2,7 @@
 #[cfg(feature = "real_gpu")]
 use crate::characterize;
 use crate::mem_model::{self, MemInfo};
-use crate::{CudaPrinter, Executor};
+use crate::{printer::CudaPrinter, Executor};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use telamon::codegen::Function;

@@ -1,4 +1,4 @@
-use crate::Namer;
+use crate::ValuePrinter;
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
@@ -9,14 +9,18 @@ use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]
-pub struct X86printer {
+pub(crate) struct X86printer {
     buffer: String,
 }
 
 impl X86printer {
     /// Declares all parameters of the function with the appropriate type
-    fn param_decl(&mut self, param: &ParamVal, namer: &NameMap<Namer>) -> String {
-        let name = namer.name_param(param.key());
+    fn param_decl(
+        &mut self,
+        param: &ParamVal,
+        value_printer: &NameMap<ValuePrinter>,
+    ) -> String {
+        let name = value_printer.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
                 format!("{} {}", Self::get_type(*par_type), name)
@@ -28,14 +32,14 @@ impl X86printer {
         }
     }
 
-    /// Declared all variables that have been required from the namer
-    fn var_decls(&mut self, name_map: &NameMap<Namer>) -> String {
-        let namer = name_map.namer();
+    /// Declared all variables that have been required from the value_printer
+    fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
+        let value_printer = name_map.value_printer();
         let print_decl = |(&t, &n)| {
             if let Type::PtrTo(..) = t {
                 unreachable!("Type PtrTo are never inserted in this map");
             }
-            let prefix = Namer::gen_prefix(t);
+            let prefix = ValuePrinter::gen_prefix(t);
             let mut s = format!("{} ", Self::get_type(t));
             s.push_str(
                 &(0..n)
@@ -46,18 +50,18 @@ impl X86printer {
             s.push_str(";\n  ");
             s
         };
-        let other_var_decl = namer
+        let other_var_decl = value_printer
             .num_var
             .iter()
             .map(print_decl)
             .collect_vec()
             .join("\n  ");
-        if namer.num_glob_ptr == 0 {
+        if value_printer.num_glob_ptr == 0 {
             other_var_decl
         } else {
             format!(
                 "intptr_t {};\n{}",
-                &(0..namer.num_glob_ptr)
+                &(0..value_printer.num_glob_ptr)
                     .map(|i| format!("ptr{}", i))
                     .collect_vec()
                     .join(", "),
@@ -70,21 +74,25 @@ impl X86printer {
     fn decl_par_indexes(
         &mut self,
         function: &Function,
-        namer: &mut NameMap<Namer>,
+        value_printer: &mut NameMap<ValuePrinter>,
     ) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
         // Compute thread indexes.
         for (ind, dim) in function.thread_dims().iter().enumerate() {
-            decls.push(format!("{} = tid.t{};\n", namer.name_index(dim.id()), ind));
+            decls.push(format!(
+                "{} = tid.t{};\n",
+                value_printer.name_index(dim.id()),
+                ind
+            ));
         }
         decls.join("\n  ")
     }
 
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function) -> String {
-        let mut namer = Namer::default();
-        let name_map = &mut NameMap::new(function, &mut namer);
+        let mut value_printer = ValuePrinter::default();
+        let name_map = &mut NameMap::new(function, &mut value_printer);
         let param_decls = function
             .device_code_args()
             .map(|v| self.param_decl(v, name_map))
@@ -361,10 +369,8 @@ impl X86printer {
     }
 }
 
-impl Printer<Namer> for X86printer {
-    fn get_int(n: u32) -> String {
-        format!("{}", n)
-    }
+impl InstPrinter for X86printer {
+    type VP = ValuePrinter;
 
     fn print_binop(
         &mut self,
@@ -509,20 +515,20 @@ impl Printer<Namer> for X86printer {
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        namer: &'a NameMap<Namer>,
+        value_printer: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
-        namer.name_op(op)
+        value_printer.name_op(op)
     }
 
     fn name_inst<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        namer: &'a NameMap<Namer>,
+        value_printer: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
-        namer.name_inst(inst).into()
+        value_printer.name_inst(inst).into()
     }
 }
