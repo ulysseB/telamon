@@ -32,7 +32,11 @@ use futures::prelude::*;
 use futures::{channel, SinkExt};
 use log::{error, info, warn};
 use std::io::Write;
-use std::sync::{self, mpsc};
+use std::sync::{
+    self,
+    atomic::{AtomicUsize, Ordering},
+    mpsc, Arc, Mutex,
+};
 use utils::unwrap;
 
 pub type CheckResultFn<'a, 'c> =
@@ -318,50 +322,70 @@ fn explore_space<'a, T>(
 ) where
     T: Store<'a>,
 {
-    context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
-        let mut best = None;
-        let mut n_evals = 0;
+    let mut best_mutex = Arc::new(Mutex::new(None));
+    let mut n_evals = Arc::new(AtomicUsize::new(0));
 
+    context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
+            let best_mutex = Arc::clone(&best_mutex);
+            let n_evals = Arc::clone(&n_evals);
             evaluator.add_kernel(
                 Candidate { space, ..cand },
                 SendBoxFnOnce::from(move |leaf, eval| {
-                    n_evals += 1;
+                    let best = best_mutex.lock().unwrap();
+                    let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
 
                     if let Some(check_result_fn) = check_result_fn {
-                        if config.check_all || best.is_none() || Some(eval) < best {
+                        if eval.is_finite()
+                            && (config.check_all || best.is_none() || Some(eval) < best)
+                        {
                             // The values computed by the kernel are kept in the context (yikes!)
                             if let Err(err) = check_result_fn(&leaf, context) {
-                                error!("Invalid results for {}", leaf);
+                                error!(
+                                    "Invalid results ({}) at #{} for {}",
+                                    eval, n_evals, leaf
+                                );
                                 let out = config
                                     .output_path(format!("error_{}", n_evals))
                                     .unwrap();
-                                error!("Writing data at {}", out.display());
-
-                                leaf.space.dump_code(context, &out).unwrap_or_else(
-                                    |err| {
-                                        error!("Error while dumping candidate: {}", err)
-                                    },
-                                );
+                                std::fs::create_dir_all(&out).unwrap();
 
                                 write!(
-                                    std::fs::File::create(out.with_extension("txt"))
+                                    std::fs::File::create(out.join("actions.json"))
                                         .unwrap(),
                                     "{}",
-                                    err
+                                    serde_json::to_string(&leaf.actions).unwrap()
+                                )
+                                .unwrap();
+                                std::fs::File::create(out.join("error.txt"))
+                                    .unwrap()
+                                    .write_all(err.as_bytes());
+
+                                write!(
+                                    std::fs::File::create(out.join("human.txt")).unwrap(),
+                                    "Invalid results ({}) at #{} for {}",
+                                    eval,
+                                    n_evals,
+                                    leaf
                                 )
                                 .unwrap();
 
-                                return;
+                                leaf.space
+                                    .dump_code(context, out.join("code"))
+                                    .unwrap_or_else(|err| {
+                                        error!("Error while dumping candidate: {}", err)
+                                    });
+
+                                eval = std::f64::INFINITY;
                             }
                         }
                     }
 
                     // Only update best if the check passed!
-                    if best.is_none() || Some(eval) < best {
-                        best = Some(eval);
+                    if eval.is_finite() && (best.is_none() || Some(eval) < *best) {
+                        *best = Some(eval);
                     }
 
                     if let Err(err) =
