@@ -207,10 +207,11 @@ impl<'a> device::Context for Context<'a> {
                         candidate.actions,
                         &thunk
                     );
-                    if eval < best_eval {
-                        best_eval = eval;
+                    if callback.call(candidate, eval) {
+                        if eval < best_eval {
+                            best_eval = eval;
+                        }
                     }
-                    callback.call(candidate, eval);
                 }
             });
             unwrap!(res);

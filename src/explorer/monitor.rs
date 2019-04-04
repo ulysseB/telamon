@@ -6,15 +6,17 @@ use crate::explorer::candidate::Candidate;
 use crate::explorer::config::Config;
 use crate::explorer::logger::LogMessage;
 use crate::explorer::store::Store;
-use futures::channel;
-use futures::executor::block_on;
 use futures::prelude::*;
+use futures::{executor, future, task, Async};
 use log::warn;
 use serde::{Deserialize, Serialize};
-use std;
-use std::sync;
+use std::sync::{
+    self,
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::{Duration, Instant};
-use tokio_timer::*;
+use std::{self, thread};
 use utils::unwrap;
 
 pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, <T as Store<'a>>::PayLoad);
@@ -26,12 +28,6 @@ pub enum TerminationReason {
     MaxEvaluations,
     /// The timeout was reached.
     Timeout,
-}
-
-impl<T> From<TimeoutError<T>> for TerminationReason {
-    fn from(_: TimeoutError<T>) -> Self {
-        TerminationReason::Timeout
-    }
 }
 
 impl std::fmt::Display for TerminationReason {
@@ -68,7 +64,7 @@ pub fn monitor<'a, T, E>(
     config: &Config,
     context: &dyn Context,
     candidate_store: &T,
-    recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
+    recv: futures::sync::mpsc::Receiver<MonitorMessage<'a, T>>,
     log_sender: sync::mpsc::SyncSender<LogMessage<E>>,
 ) -> Option<Candidate<'a>>
 where
@@ -77,27 +73,30 @@ where
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
     let mut status = Status::default();
-    let res = if config.timeout.is_some() {
-        block_until_timeout(
+    let log_sender_ref = &log_sender;
+    let status_mut = &mut status;
+    let fut = recv.map_err(|()| unreachable!()).for_each(move |message| {
+        handle_message(
             config,
             context,
-            recv,
+            message,
             t0,
             candidate_store,
-            &log_sender,
-            &mut status,
+            log_sender_ref,
+            status_mut,
         )
+    });
+    let res = if let Some(timeout_mins) = config.timeout {
+        executor::spawn(
+            fut.select(timeout(Duration::from_secs(timeout_mins * 60)))
+                .map(|((), _)| ())
+                .map_err(|(err, _)| err),
+        )
+        .wait_future()
     } else {
-        block_unbounded(
-            config,
-            context,
-            recv,
-            t0,
-            candidate_store,
-            &log_sender,
-            &mut status,
-        )
+        executor::spawn(fut).wait_future()
     };
+
     let duration = t0.elapsed();
     let duration_secs =
         duration.as_secs() as f64 + f64::from(duration.subsec_nanos()) * 1e-9;
@@ -131,78 +130,6 @@ fn get_new_cut(config: &Config, eval: f64) -> f64 {
     } else {
         eval
     }
-}
-
-/// Given a receiver channel, constructs a future that returns whenever the
-/// tree has been fully explored.
-fn block_unbounded<'a, T, E>(
-    config: &Config,
-    context: &dyn Context,
-    receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-    t0: Instant,
-    candidate_store: &T,
-    log_sender: &sync::mpsc::SyncSender<LogMessage<E>>,
-    status: &mut Status<'a>,
-) -> Result<(), TerminationReason>
-where
-    T: Store<'a>,
-{
-    block_on(
-        receiver
-            .map_err(|n| n.never_into())
-            .for_each(move |message| {
-                handle_message::<T, E>(
-                    config,
-                    context,
-                    message,
-                    t0,
-                    candidate_store,
-                    log_sender,
-                    status,
-                )
-            }),
-    )
-    .map(|_| ())
-}
-
-/// Given a receiver channel, builds a future that returns whenever the tree
-/// has been fully explored or the timeout has been reached
-fn block_until_timeout<'a, 'b, T, E>(
-    config: &'b Config,
-    context: &dyn Context,
-    receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-    t0: Instant,
-    candidate_store: &'b T,
-    log_sender: &'b sync::mpsc::SyncSender<LogMessage<E>>,
-    status: &'b mut Status<'a>,
-) -> Result<(), TerminationReason>
-where
-    T: Store<'a>,
-{
-    let timer = configure_timer();
-    //TODO Find a clean way to get a timeout that never returns - or no timeout at
-    // all
-    let timeout = config.timeout.unwrap_or(10000);
-    let time = Duration::from_secs(timeout as u64 * 60);
-    block_on(
-        timer.timeout(
-            receiver
-                .map_err(|n| n.never_into())
-                .for_each(move |message| {
-                    handle_message::<T, E>(
-                        config,
-                        context,
-                        message,
-                        t0,
-                        candidate_store,
-                        log_sender,
-                        status,
-                    )
-                })
-                .map(|_| ()),
-            time,
-        ),
-    )
 }
 
 /// All work that has to be done on reception of a message, meaning updating
@@ -276,11 +203,49 @@ where
     Ok(())
 }
 
-/// Builds and returns a timer that suits our needs - that is, which timeout
-/// can be set to at least a few tens of hours
-fn configure_timer() -> Timer {
-    let builder = wheel();
-    let builder = builder.tick_duration(Duration::new(10, 0));
-    let builder = builder.num_slots(usize::pow(2, 16));
-    builder.build()
+struct TimeoutWorker {
+    running: Arc<AtomicBool>,
+    thread: thread::Thread,
+}
+
+impl Drop for TimeoutWorker {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+        self.thread.unpark();
+    }
+}
+
+fn timeout(duration: Duration) -> Box<dyn Future<Item = (), Error = TerminationReason>> {
+    let start_time = std::time::Instant::now();
+
+    let mut worker = None;
+    Box::new(future::poll_fn(move || {
+        if start_time.elapsed() > duration {
+            Err(TerminationReason::Timeout)
+        } else {
+            if worker.is_none() {
+                let running = Arc::new(AtomicBool::new(true));
+                let task = task::current();
+                let thread_running = Arc::clone(&running);
+                let thread = thread::spawn(move || loop {
+                    if !thread_running.load(Ordering::Relaxed) {
+                        break;
+                    }
+
+                    let elapsed = start_time.elapsed();
+                    if elapsed < duration {
+                        thread::park_timeout(duration - elapsed);
+                    } else {
+                        task.notify();
+                    }
+                })
+                .thread()
+                .clone();
+
+                worker = Some(TimeoutWorker { running, thread });
+            }
+
+            Ok(Async::NotReady)
+        }
+    }))
 }

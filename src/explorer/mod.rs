@@ -27,11 +27,9 @@ use crate::search_space::SearchSpace;
 
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
-use futures::executor::block_on;
+use futures::executor;
 use futures::prelude::*;
-use futures::{channel, SinkExt};
 use log::{error, info, warn};
-use std::io::Write;
 use std::sync::{
     self,
     atomic::{AtomicUsize, Ordering},
@@ -279,7 +277,7 @@ fn launch_search<'a, T: Store<'a>>(
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
     check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) -> Option<Candidate<'a>> {
-    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
+    let (monitor_sender, monitor_receiver) = futures::sync::mpsc::channel(100);
     let maybe_candidate = crossbeam::scope(|scope| {
         let best_cand_opt =
             scope
@@ -316,14 +314,14 @@ fn launch_search<'a, T: Store<'a>>(
 fn explore_space<'a, T>(
     config: &Config,
     candidate_store: &T,
-    eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>,
+    eval_sender: futures::sync::mpsc::Sender<MonitorMessage<'a, T>>,
     context: &dyn Context,
     check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) where
     T: Store<'a>,
 {
-    let mut best_mutex = Arc::new(Mutex::new(None));
-    let mut n_evals = Arc::new(AtomicUsize::new(0));
+    let best_mutex = Arc::new(Mutex::new(None));
+    let n_evals = Arc::new(AtomicUsize::new(0));
 
     context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(context) {
@@ -334,46 +332,27 @@ fn explore_space<'a, T>(
             evaluator.add_kernel(
                 Candidate { space, ..cand },
                 SendBoxFnOnce::from(move |leaf, mut eval: f64| {
-                    let best = best_mutex.lock().unwrap();
+                    let mut best = best_mutex.lock().unwrap();
                     let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
 
                     if let Some(check_result_fn) = check_result_fn {
                         if eval.is_finite()
                             && (config.check_all || best.is_none() || Some(eval) < *best)
                         {
-                            // The values computed by the kernel are kept in the context (yikes!)
+                            // The values computed by the kernel are kept in the context, so we
+                            // need to do this *now* before the evaluator runs any other version of
+                            // the kernel.
                             if let Err(err) = check_result_fn(&leaf, context) {
                                 error!(
-                                    "Invalid results ({}) at #{} for {}",
+                                    "Invalid results ({:.4e}ns) at #{} for {}",
                                     eval, n_evals, leaf
                                 );
-                                let out = config
+
+                                config
                                     .output_path(format!("error_{}", n_evals))
-                                    .unwrap();
-                                std::fs::create_dir_all(&out).unwrap();
-
-                                write!(
-                                    std::fs::File::create(out.join("actions.json"))
-                                        .unwrap(),
-                                    "{}",
-                                    serde_json::to_string(&leaf.actions).unwrap()
-                                )
-                                .unwrap();
-                                std::fs::File::create(out.join("error.txt"))
-                                    .unwrap()
-                                    .write_all(err.as_bytes());
-
-                                write!(
-                                    std::fs::File::create(out.join("human.txt")).unwrap(),
-                                    "Invalid results ({}) at #{} for {}",
-                                    eval,
-                                    n_evals,
-                                    leaf
-                                )
-                                .unwrap();
-
-                                leaf.space
-                                    .dump_code(context, out.join("code"))
+                                    .and_then(|path| {
+                                        leaf.dump_to(path, context, eval, &err)
+                                    })
                                     .unwrap_or_else(|err| {
                                         error!("Error while dumping candidate: {}", err)
                                     });
@@ -388,11 +367,15 @@ fn explore_space<'a, T>(
                         *best = Some(eval);
                     }
 
-                    if let Err(err) =
-                        block_on(eval_sender.send((leaf, eval, payload)).map(|_| ()))
+                    if let Err(err) = executor::spawn(
+                        eval_sender.send((leaf, eval, payload)).map(|_| ()),
+                    )
+                    .wait_future()
                     {
                         warn!("Got disconnected , {:?}", err);
                     }
+
+                    eval.is_finite()
                 }),
             );
         }

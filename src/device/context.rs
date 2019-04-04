@@ -9,7 +9,7 @@ use std::sync::Arc;
 use utils::unwrap;
 
 /// A callback that is called after evaluating a kernel.
-pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;
+pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64), bool>;
 
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {

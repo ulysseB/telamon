@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use telamon::device::Context;
 use telamon::explorer::local_selection;
-use telamon::{device, explorer, helper};
+use telamon::{device, explorer};
 use telamon_cuda as cuda;
 use telamon_kernels::{linalg, Kernel, KernelBuilder, MemInit};
 use utils::*;
@@ -34,7 +34,7 @@ fn main() {
     accuracy::<linalg::MatMul<f32>>(&big_malmul, "matmul_256", &executor);
 }
 
-fn accuracy<'a, K>(params: &K::Parameters, name: &str, executor: &'a cuda::Executor)
+fn accuracy<'a, K>(params: &K::Parameters, name: &'a str, executor: &'a cuda::Executor)
 where
     K: Kernel<'a>,
 {
@@ -128,6 +128,7 @@ fn run_evaluations(
                         (move |_, runtime| {
                             unwrap!(sender.send(()));
                             unwrap!(results.lock()).push(runtime);
+                            true
                         })
                         .into(),
                     );
@@ -138,6 +139,7 @@ fn run_evaluations(
                         candidate.clone(),
                         (move |_, runtime| {
                             unwrap!(results.lock()).push(runtime);
+                            true
                         })
                         .into(),
                     );

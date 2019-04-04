@@ -85,8 +85,6 @@ where
             .zip_eq(expected)
             .any(|(&z0, &z1)| (z0 - z1).is_err_ok())
         {
-            let x = self.x.read_to_host(context);
-            let y = self.y.read_to_host(context);
             // Axpy typically called with very large arguments; error message is unreadable
             // and several gigabytes long...
             Err("Invalid Axpy output".to_string())

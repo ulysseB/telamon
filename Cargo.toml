@@ -39,7 +39,7 @@ config = "0.8.0"
 crossbeam = "0.3.2"
 env_logger = "0.5.9"
 failure = "0.1.1"
-futures-preview = "0.2"
+futures = "0.1.3"
 fnv = "1.0"
 getopts = "0.2.17"
 indexmap = "1.0"
@@ -73,7 +73,6 @@ flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
-tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
 telajax = {path = "telajax", optional = true}
 
 
