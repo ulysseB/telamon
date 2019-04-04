@@ -1412,7 +1412,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span> {
         <span class="comment">// Retry loop (in case of deadends)</span>
         <span class="kw">loop</span> {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stop</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>) {

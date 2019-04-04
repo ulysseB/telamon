@@ -463,16 +463,16 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>;
     <span class="doccomment">/// Computes the expected output.</span>
-    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">ExpectedOutput</span>;
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">ExpectedOutput</span>;
 
     <span class="doccomment">/// Ensures the generated code performs the correct operation.</span>
     <span class="kw">fn</span> <span class="ident">check_result</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on</span>
@@ -742,7 +742,7 @@
 <span class="doccomment">/// Descend along a path in the search tree and stores the bounds encountered on the way.</span>
 <span class="kw">fn</span> <span class="ident">descend_check_bounds</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
     <span class="ident">candidates</span>: <span class="kw-2">&amp;</span>[<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>],
-    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Bound</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">candidates</span>);

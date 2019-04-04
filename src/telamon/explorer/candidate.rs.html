@@ -163,7 +163,7 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_choice</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
         <span class="ident">choice</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">choice</span>
@@ -183,7 +183,7 @@
     <span class="doccomment">/// Applies a choice to a candidate.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_decision</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
         <span class="ident">action</span>: <span class="ident">ActionEx</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;applying action {:?}&quot;</span>, <span class="ident">action</span>);

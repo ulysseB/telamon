@@ -118,7 +118,7 @@
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">trivially_copy_pass_by_ref</span>)]</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Device</span>: <span class="ident">Sync</span> {
     <span class="doccomment">/// Prints the code corresponding to a device `Function`.</span>
-    <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Write</span>);
+    <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">Write</span>);
     <span class="doccomment">/// Indicates if a `Type` can be implemented on the device.</span>
     <span class="kw">fn</span> <span class="ident">check_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ir</span>::<span class="ident">TypeError</span><span class="op">&gt;</span>;
     <span class="doccomment">/// Returns the maximal number of block dimensions.</span>
@@ -152,8 +152,8 @@
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
         <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
         <span class="ident">nesting</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">Nesting</span><span class="op">&gt;</span>,
-        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Statement</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">ir</span>::<span class="ident">Statement</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
     <span class="doccomment">/// Returns the pressure produced by a single iteration of a loop and the latency</span>
     <span class="doccomment">/// overhead of iterations.</span>
@@ -188,7 +188,7 @@
     <span class="kw">fn</span> <span class="ident">lower_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Builds and outputs a constrained IR instance.</span>
-    <span class="kw">fn</span> <span class="ident">gen_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">implementation</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Write</span>) {
+    <span class="kw">fn</span> <span class="ident">gen_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">implementation</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">Write</span>) {
         <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">Function</span>::<span class="ident">build</span>(<span class="ident">implementation</span>);
         <span class="self">self</span>.<span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>, <span class="ident">out</span>);
     }

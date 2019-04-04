@@ -907,7 +907,7 @@
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
         <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
         <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
         <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">inst</span>.<span class="ident">t</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">lower_type</span>(<span class="ident">t</span>, <span class="ident">space</span>).<span class="ident">unwrap_or</span>(<span class="ident">t</span>));
@@ -1006,7 +1006,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">device</span>::<span class="ident">Device</span> <span class="kw">for</span> <span class="ident">Gpu</span> {
-    <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Write</span>) {
+    <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">Write</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">printer</span> <span class="op">=</span> <span class="ident">CudaPrinter</span>::<span class="ident">default</span>();
         <span class="ident">printer</span>.<span class="ident">host_function</span>(<span class="ident">fun</span>, <span class="self">self</span>, <span class="ident">out</span>)
     }
@@ -1125,8 +1125,8 @@
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
         <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
         <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
-        <span class="ident">stmt</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Statement</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">stmt</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">ir</span>::<span class="ident">Statement</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">model</span>::<span class="ident">HwPressure</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inst</span>) <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">as_inst</span>() {
             <span class="self">self</span>.<span class="ident">inst_pressure</span>(<span class="ident">space</span>, <span class="ident">dim_sizes</span>, <span class="ident">inst</span>, <span class="ident">ctx</span>)

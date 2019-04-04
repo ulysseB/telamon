@@ -739,7 +739,7 @@
     }
 
     <span class="doccomment">/// Adds a parameter with the given name and type to the signature.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_array</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="ident">Device</span>, <span class="ident">name</span>: <span class="ident">String</span>, <span class="ident">elem_t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_array</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Device</span>, <span class="ident">name</span>: <span class="ident">String</span>, <span class="ident">elem_t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) {
         <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">push</span>(<span class="ident">Parameter</span> {
             <span class="ident">name</span>,
             <span class="ident">t</span>: <span class="ident">device</span>.<span class="ident">pointer_type</span>(<span class="ident">MemSpace</span>::<span class="ident">GLOBAL</span>),
@@ -756,7 +756,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">LoweringMap</span><span class="op">&gt;</span> {
     <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Device</span>,
+    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
     <span class="ident">insts</span>: <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InstId</span>, <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span>,
     <span class="ident">dims</span>: <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span>,
     <span class="ident">static_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
@@ -772,7 +772,7 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Device</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Function</span> {
             <span class="ident">signature</span>,
             <span class="ident">device</span>,
@@ -796,7 +796,7 @@
     }
 
     <span class="doccomment">/// Returns the device the function is compiled for.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Device</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span> {
         <span class="self">self</span>.<span class="ident">device</span>
     }
 
@@ -897,7 +897,7 @@
     }
 
     <span class="doccomment">/// Returns a mutable reference to a statement given its id.</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">statement_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">StmtId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">statement_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">StmtId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">id</span> {
             <span class="ident">StmtId</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">inst_mut</span>(<span class="ident">id</span>),
             <span class="ident">StmtId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">dim_mut</span>(<span class="ident">id</span>),
@@ -905,7 +905,7 @@
     }
 
     <span class="doccomment">/// Returns a `Statement` given its id.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">statement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">StmtId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">statement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">StmtId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">id</span> {
             <span class="ident">StmtId</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">insts</span>[<span class="ident">id</span>],
             <span class="ident">StmtId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">dim</span>(<span class="ident">id</span>),
@@ -913,7 +913,7 @@
     }
 
     <span class="doccomment">/// Lists all `Statement`s.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">statements</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">statements</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">insts</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>)
             .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">dims</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>))

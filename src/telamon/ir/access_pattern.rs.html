@@ -142,7 +142,7 @@
     }
 
     <span class="doccomment">/// Returns the type of pointer to use for the access.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pointer_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="ident">Device</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pointer_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Device</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="comment">// We either have a memory ID or the array is located in global memory.</span>
         <span class="self">self</span>.<span class="ident">mem_block</span>()
             .<span class="ident">map</span>(<span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>)

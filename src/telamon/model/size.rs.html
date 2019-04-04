@@ -156,7 +156,7 @@
 }
 
 <span class="doccomment">/// Bounds the values a size can take, in the given context.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bounds</span>(<span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Range</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bounds</span>(<span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Range</span> {
     <span class="kw">let</span> (<span class="ident">factor</span>, <span class="ident">param_factors</span>, <span class="ident">dim_size_factors</span>) <span class="op">=</span> <span class="ident">size</span>.<span class="ident">factors</span>();
     <span class="kw">let</span> <span class="ident">divisors</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">divisors</span>();
     <span class="kw">let</span> <span class="ident">factor</span> <span class="op">=</span> <span class="ident">param_factors</span>
@@ -215,7 +215,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">factors</span>(
     <span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
 ) <span class="op">-&gt;</span> <span class="ident">FactorRange</span> {
     <span class="kw">let</span> (<span class="ident">factor</span>, <span class="ident">param_factors</span>, <span class="ident">dim_size_factors</span>) <span class="op">=</span> <span class="ident">size</span>.<span class="ident">factors</span>();
     <span class="kw">let</span> <span class="ident">divisors</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">divisors</span>();

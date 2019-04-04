@@ -417,7 +417,7 @@
 
 <span class="doccomment">/// Returns a lower bound on the execution time of all the implementation candidates in</span>
 <span class="doccomment">/// `space`, when executed in `context`.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bound</span>(<span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Bound</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bound</span>(<span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Bound</span> {
     <span class="comment">// Build the dependency maps dag.</span>
     <span class="kw">let</span> <span class="ident">local_info</span> <span class="op">=</span> <span class="ident">LocalInfo</span>::<span class="ident">compute</span>(<span class="ident">space</span>, <span class="ident">context</span>);
     <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;local_info {:?}&quot;</span>, <span class="ident">local_info</span>);
@@ -500,7 +500,7 @@
 <span class="doccomment">/// Populates the dependency maps and the levels with dependency edges and back-edges.</span>
 <span class="kw">fn</span> <span class="ident">populate</span>(
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="ident">Device</span>,
+    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Device</span>,
     <span class="ident">local_info</span>: <span class="kw-2">&amp;</span><span class="ident">LocalInfo</span>,
     <span class="ident">code_points</span>: <span class="kw-2">&amp;</span><span class="ident">CodePointDag</span>,
     <span class="ident">levels</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">Level</span>],
@@ -710,7 +710,7 @@
 <span class="comment">// TODO(cleanup): refactor to reduce the number of parameters.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">all</span>)]</span>
 <span class="kw">fn</span> <span class="ident">apply_dim_map</span>(
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="ident">Device</span>,
+    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Device</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">local_info</span>: <span class="kw-2">&amp;</span><span class="ident">LocalInfo</span>,
     <span class="ident">levels</span>: <span class="kw-2">&amp;</span>[<span class="ident">Level</span>],

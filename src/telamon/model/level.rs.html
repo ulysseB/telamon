@@ -654,7 +654,7 @@
     <span class="doccomment">/// Creates a level iterating on the given dimensions. If no dimension is given,</span>
     <span class="doccomment">/// the level containts the whole program.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
         <span class="ident">local_info</span>: <span class="kw-2">&amp;</span><span class="ident">LocalInfo</span>,
         <span class="ident">dims</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
@@ -700,7 +700,7 @@
 
 <span class="doccomment">/// Computes the `HwPressure` caused by the intersection of the bodies of the given loops.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sum_pressure</span>(
-    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">local_info</span>: <span class="kw-2">&amp;</span><span class="ident">LocalInfo</span>,
     <span class="ident">bound_level</span>: <span class="ident">BottleneckLevel</span>,
@@ -826,7 +826,7 @@
 
 <span class="doccomment">/// Generates a bound based on the pressure produced by a block of threads.</span>
 <span class="kw">fn</span> <span class="ident">block_bound</span>(
-    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">info</span>: <span class="kw-2">&amp;</span><span class="ident">LocalInfo</span>,
     <span class="ident">dims</span>: <span class="kw-2">&amp;</span>[<span class="ident">ir</span>::<span class="ident">DimId</span>],
@@ -859,7 +859,7 @@
 <span class="doccomment">/// between the nestings at each end of the edge.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">local_info</span>: <span class="kw-2">&amp;</span><span class="ident">LocalInfo</span>,
 ) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Level</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimMap</span><span class="op">&gt;</span>) {
     <span class="comment">// Build the list of nestings, exclude block and vector dimensions.</span>
@@ -1028,7 +1028,7 @@
 <span class="kw">impl</span> <span class="ident">RepeatLevel</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
         <span class="ident">level_id</span>: <span class="ident">usize</span>,
         <span class="ident">level</span>: <span class="kw-2">&amp;</span><span class="ident">Level</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
@@ -1088,7 +1088,7 @@
         <span class="ident">levels</span>: <span class="kw-2">&amp;</span>[<span class="ident">Level</span>],
         <span class="ident">dim_maps</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimMap</span><span class="op">&gt;</span>,
         <span class="ident">dep_map_size</span>: <span class="ident">usize</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dag</span> <span class="op">=</span> <span class="ident">LevelDag</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">dep_map_size</span>);
         <span class="kw">for</span> (<span class="ident">level_id</span>, <span class="ident">level</span>) <span class="kw">in</span> <span class="ident">levels</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {

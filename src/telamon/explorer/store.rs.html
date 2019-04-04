@@ -59,7 +59,7 @@
         <span class="ident">eval</span>: <span class="ident">f64</span>,
     );
     <span class="doccomment">/// Retrieve a Candidate for evaluation, returns `None` if no candidate remains.</span>
-    <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span>;
     <span class="doccomment">/// Displays statistics about the candidate store.</span>
     <span class="kw">fn</span> <span class="ident">print_stats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {}
 }

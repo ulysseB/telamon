@@ -757,7 +757,7 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">1024</span>, <span class="number">4</span>]);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">ctx</span>.<span class="ident">device</span>());
@@ -772,14 +772,14 @@
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
-    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">ArrayD</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">ArrayD</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>) <span class="op">+</span> <span class="self">self</span>.<span class="ident">y</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">check_result</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">z</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
         <span class="kw">if</span> <span class="ident">z</span>.<span class="ident">iter</span>()
@@ -839,7 +839,7 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>, <span class="number">16</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>]);
@@ -865,7 +865,7 @@
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
-    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array1</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array1</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">a_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="self">self</span>.<span class="ident">a</span>
             .<span class="ident">read_to_host</span>(<span class="ident">context</span>)
@@ -883,7 +883,7 @@
     <span class="kw">fn</span> <span class="ident">check_result</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">y</span>
@@ -955,7 +955,7 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>, <span class="number">16</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>]);
@@ -989,7 +989,7 @@
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
-    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array1</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array1</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">m</span>, <span class="ident">n</span>) <span class="op">=</span> (<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>((<span class="ident">m</span>, <span class="ident">n</span>)));
         <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">b</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>((<span class="ident">m</span>, <span class="ident">n</span>)));
@@ -1000,7 +1000,7 @@
     <span class="kw">fn</span> <span class="ident">check_result</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">y</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>));
         <span class="kw">if</span> <span class="ident">y</span>.<span class="ident">iter</span>()
@@ -1108,7 +1108,7 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">infer_tiling</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m_tiling</span>, <span class="kw-2">&amp;</span>[<span class="number">32</span>, <span class="number">4</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">infer_tiling</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n_tiling</span>, <span class="kw-2">&amp;</span>[<span class="number">32</span>, <span class="number">4</span>]);
@@ -1179,7 +1179,7 @@
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
-    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array2</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array2</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">a_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">let</span> <span class="ident">b_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="ident">a_shape</span>));
@@ -1190,7 +1190,7 @@
     <span class="kw">fn</span> <span class="ident">check_result</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">c_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">c</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="ident">c_shape</span>));
@@ -1302,7 +1302,7 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>]);
@@ -1353,7 +1353,7 @@
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
-    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array3</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array3</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">batch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">batch</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>;
@@ -1379,7 +1379,7 @@
     <span class="kw">fn</span> <span class="ident">check_result</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">batch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">batch</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">let</span> <span class="ident">c_shape</span> <span class="op">=</span> (<span class="ident">batch</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);

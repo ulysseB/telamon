@@ -292,7 +292,7 @@
         <span class="string">&quot;fake_device&quot;</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Function</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Write</span>) {}
+    <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Function</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">Write</span>) {}
 
     <span class="kw">fn</span> <span class="ident">check_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ir</span>::<span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(())
@@ -374,8 +374,8 @@
         <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Statement</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">super</span>::<span class="ident">Context</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">ir</span>::<span class="ident">Statement</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="kw">super</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
         <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>)
     }
@@ -457,7 +457,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw">_</span>: <span class="ident">usize</span>,
         <span class="kw">_</span>: <span class="ident">EvalMode</span>,
-        <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>),
+        <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>),
     ) {
         <span class="kw">struct</span> <span class="ident">FakeEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
             <span class="ident">phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> (), <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> ())<span class="op">&gt;</span>,

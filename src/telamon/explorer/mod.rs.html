@@ -586,7 +586,7 @@
 <span class="kw">fn</span> <span class="ident">launch_search</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
     <span class="ident">candidate_store</span>: <span class="ident">T</span>,
-    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">log_sender</span>: <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">T</span>::<span class="ident">Event</span><span class="op">&gt;&gt;</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="kw">let</span> (<span class="ident">monitor_sender</span>, <span class="ident">monitor_receiver</span>) <span class="op">=</span> <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">100</span>);
@@ -621,7 +621,7 @@
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
     <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
     <span class="ident">eval_sender</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
 ) <span class="kw">where</span>
     <span class="ident">T</span>: <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 {
@@ -644,7 +644,7 @@
 
 <span class="doccomment">/// Explores the full search space.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_space</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span>(
-    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">space</span>: <span class="ident">SearchSpace</span>,
     <span class="kw-2">mut</span> <span class="ident">on_node</span>: <span class="ident">F</span>,
     <span class="kw-2">mut</span> <span class="ident">on_leaf</span>: <span class="ident">G</span>,
