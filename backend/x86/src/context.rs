@@ -27,16 +27,16 @@ const EVAL_BUFFER_SIZE: usize = 100;
 /// A CPU evaluation context.
 pub struct Context {
     cpu_model: Cpu,
-    parameters: FnvHashMap<String, Arc<Argument>>,
+    parameters: FnvHashMap<String, Arc<dyn Argument>>,
 }
 
 impl Context {
     /// Returns a parameter given its name.
-    pub fn get_param(&self, name: &str) -> &Argument {
+    pub fn get_param(&self, name: &str) -> &dyn Argument {
         self.parameters[name].as_ref()
     }
 
-    fn bind_param(&mut self, name: String, value: Arc<Argument>) {
+    fn bind_param(&mut self, name: String, value: Arc<dyn Argument>) {
         //assert_eq!(param.t, value.t());
         self.parameters.insert(name, value);
     }
@@ -53,10 +53,10 @@ impl Context {
                     ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name]))
                 }
                 ParamVal::GlobalMem(_, size, _) => {
-                    ThunkArg::TmpArray((self as &device::Context).eval_size(size))
+                    ThunkArg::TmpArray((self as &dyn device::Context).eval_size(size))
                 }
                 ParamVal::Size(size) => {
-                    ThunkArg::Size((self as &device::Context).eval_size(size) as i32)
+                    ThunkArg::Size((self as &dyn device::Context).eval_size(size) as i32)
                 }
             })
             .collect_vec()
@@ -93,13 +93,13 @@ impl<'a> device::ArgMap<'a> for Context {
     ) -> Arc<dyn device::ArrayArgument + 'a> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.allocate_array(size));
-        self.bind_param(param.name.clone(), Arc::clone(&array) as Arc<Argument>);
+        self.bind_param(param.name.clone(), Arc::clone(&array) as Arc<dyn Argument>);
         array
     }
 }
 
 impl device::Context for Context {
-    fn device(&self) -> &Device {
+    fn device(&self) -> &dyn Device {
         &self.cpu_model
     }
 
@@ -130,7 +130,7 @@ impl device::Context for Context {
         &self,
         num_workers: usize,
         _mode: EvalMode,
-        inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'b, 'c>) + Sync),
     ) {
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         crossbeam::scope(move |scope| {
@@ -172,7 +172,7 @@ enum HoldThunk<'a> {
 }
 
 enum ThunkArg {
-    ArgRef(Arc<Argument>),
+    ArgRef(Arc<dyn Argument>),
     Size(i32),
     TmpArray(u32),
 }

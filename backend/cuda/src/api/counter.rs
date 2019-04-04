@@ -48,7 +48,7 @@ impl<'a> PerfCounterSet<'a> {
         fun: &CudaFunction,
         blocks: &[u32],
         threads: &[u32],
-        args: &[&Argument],
+        args: &[&dyn Argument],
     ) -> Vec<u64> {
         let mut event_ids: Vec<u32> = Vec::with_capacity(self.num_event);
         let mut event_values: Vec<u64> = Vec::with_capacity(self.num_event);

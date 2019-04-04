@@ -20,7 +20,7 @@ use utils::*;
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub trait Device: Sync {
     /// Prints the code corresponding to a device `Function`.
-    fn print(&self, function: &Function, out: &mut Write);
+    fn print(&self, function: &Function, out: &mut dyn Write);
     /// Indicates if a `Type` can be implemented on the device.
     fn check_type(&self, t: ir::Type) -> Result<(), ir::TypeError>;
     /// Returns the maximal number of block dimensions.
@@ -54,8 +54,8 @@ pub trait Device: Sync {
         space: &SearchSpace,
         dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
         nesting: &FnvHashMap<ir::StmtId, Nesting>,
-        bb: &ir::Statement,
-        ctx: &Context,
+        bb: &dyn ir::Statement,
+        ctx: &dyn Context,
     ) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency
     /// overhead of iterations.
@@ -90,7 +90,7 @@ pub trait Device: Sync {
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type>;
 
     /// Builds and outputs a constrained IR instance.
-    fn gen_code(&self, implementation: &SearchSpace, out: &mut Write) {
+    fn gen_code(&self, implementation: &SearchSpace, out: &mut dyn Write) {
         let code = Function::build(implementation);
         self.print(&code, out);
     }

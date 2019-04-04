@@ -18,7 +18,7 @@ pub struct Builder<'a> {
 
 impl<'a> Builder<'a> {
     /// Creates a new `Builder` for a `Function` with the given signature.
-    pub fn new(signature: &'a Signature, device: &'a Device) -> Builder<'a> {
+    pub fn new(signature: &'a Signature, device: &'a dyn Device) -> Builder<'a> {
         Builder {
             function: Function::new(signature, device),
             open_dims: FnvHashMap::default(),
@@ -39,7 +39,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns an operand from an `AutoOperand`.
-    fn get_op<'b: 'a>(&mut self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
+    fn get_op<'b: 'a>(&mut self, op: &dyn AutoOperand<'b>) -> Operand<'a, ()> {
         op.get(self)
     }
 
@@ -47,8 +47,8 @@ impl<'a> Builder<'a> {
     pub fn binop<'b: 'a>(
         &mut self,
         op: ir::BinOp,
-        lhs: &AutoOperand<'b>,
-        rhs: &AutoOperand<'b>,
+        lhs: &dyn AutoOperand<'b>,
+        rhs: &dyn AutoOperand<'b>,
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
@@ -59,8 +59,8 @@ impl<'a> Builder<'a> {
     /// Adds an `Add` instruction to the fuction.
     pub fn add<'b: 'a>(
         &mut self,
-        lhs: &AutoOperand<'b>,
-        rhs: &AutoOperand<'b>,
+        lhs: &dyn AutoOperand<'b>,
+        rhs: &dyn AutoOperand<'b>,
     ) -> InstId {
         self.binop(ir::BinOp::Add, lhs, rhs)
     }
@@ -68,8 +68,8 @@ impl<'a> Builder<'a> {
     /// Adds a `Sub` instruction to the function.
     pub fn sub<'b: 'a>(
         &mut self,
-        lhs: &AutoOperand<'b>,
-        rhs: &AutoOperand<'b>,
+        lhs: &dyn AutoOperand<'b>,
+        rhs: &dyn AutoOperand<'b>,
     ) -> InstId {
         self.binop(ir::BinOp::Sub, lhs, rhs)
     }
@@ -77,8 +77,8 @@ impl<'a> Builder<'a> {
     /// Adds a `Mul` instruction to the function. Defaults to low mode.
     pub fn mul<'b: 'a>(
         &mut self,
-        lhs: &AutoOperand<'b>,
-        rhs: &AutoOperand<'b>,
+        lhs: &dyn AutoOperand<'b>,
+        rhs: &dyn AutoOperand<'b>,
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
@@ -90,8 +90,8 @@ impl<'a> Builder<'a> {
     /// Adds a 'Mul` instruction with a wide mode to the function.
     pub fn mul_ex<'b: 'a>(
         &mut self,
-        lhs: &AutoOperand<'b>,
-        rhs: &AutoOperand<'b>,
+        lhs: &dyn AutoOperand<'b>,
+        rhs: &dyn AutoOperand<'b>,
         t: Type,
     ) -> InstId {
         let lhs_op = self.get_op(lhs);
@@ -105,9 +105,9 @@ impl<'a> Builder<'a> {
     /// depending on the operand types.
     pub fn mad<'b: 'a>(
         &mut self,
-        mul_lhs: &AutoOperand<'b>,
-        mul_rhs: &AutoOperand<'b>,
-        add_rhs: &AutoOperand<'b>,
+        mul_lhs: &dyn AutoOperand<'b>,
+        mul_rhs: &dyn AutoOperand<'b>,
+        add_rhs: &dyn AutoOperand<'b>,
     ) -> InstId {
         let mul_lhs_op = self.get_op(mul_lhs);
         let mul_rhs_op = self.get_op(mul_rhs);
@@ -120,14 +120,14 @@ impl<'a> Builder<'a> {
     /// Adds a `Div` instruction to the fuction.
     pub fn div<'b: 'a>(
         &mut self,
-        lhs: &AutoOperand<'b>,
-        rhs: &AutoOperand<'b>,
+        lhs: &dyn AutoOperand<'b>,
+        rhs: &dyn AutoOperand<'b>,
     ) -> InstId {
         self.binop(ir::BinOp::Div, lhs, rhs)
     }
 
     /// Adds a `Mov` instruction to the function.
-    pub fn mov<'b: 'a>(&mut self, arg: &AutoOperand<'b>) -> InstId {
+    pub fn mov<'b: 'a>(&mut self, arg: &dyn AutoOperand<'b>) -> InstId {
         let arg_op = self.get_op(arg);
         self.inst(op::UnaryOp(ir::UnaryOp::Mov, arg_op))
     }
@@ -136,7 +136,7 @@ impl<'a> Builder<'a> {
     pub fn ld<'b: 'a>(
         &mut self,
         ret_type: Type,
-        addr: &AutoOperand<'b>,
+        addr: &dyn AutoOperand<'b>,
         pattern: AccessPattern<'a>,
     ) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::COHERENT)
@@ -146,7 +146,7 @@ impl<'a> Builder<'a> {
     pub fn ld_nc<'b: 'a>(
         &mut self,
         ret_type: Type,
-        addr: &AutoOperand<'b>,
+        addr: &dyn AutoOperand<'b>,
         pattern: AccessPattern<'a>,
     ) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::ALL)
@@ -156,7 +156,7 @@ impl<'a> Builder<'a> {
     pub fn ld_ex<'b: 'a>(
         &mut self,
         ret_type: Type,
-        addr: &AutoOperand<'b>,
+        addr: &dyn AutoOperand<'b>,
         pattern: AccessPattern<'a>,
         flags: InstFlag,
     ) -> InstId {
@@ -169,8 +169,8 @@ impl<'a> Builder<'a> {
     /// Adds a store instruction.
     pub fn st<'b: 'a>(
         &mut self,
-        addr: &AutoOperand<'b>,
-        val: &AutoOperand<'b>,
+        addr: &dyn AutoOperand<'b>,
+        val: &dyn AutoOperand<'b>,
         pattern: AccessPattern<'a>,
     ) -> InstId {
         self.st_ex(addr, val, true, pattern, InstFlag::ALL)
@@ -179,8 +179,8 @@ impl<'a> Builder<'a> {
     /// Adds a store instruction with the given flags and memory block.
     pub fn st_ex<'b: 'a>(
         &mut self,
-        addr: &AutoOperand<'b>,
-        val: &AutoOperand<'b>,
+        addr: &dyn AutoOperand<'b>,
+        val: &dyn AutoOperand<'b>,
         side_effect: bool,
         pattern: AccessPattern<'a>,
         flags: InstFlag,
@@ -193,14 +193,19 @@ impl<'a> Builder<'a> {
     }
 
     /// Adds a cast instruction to the given type.
-    pub fn cast<'b: 'a>(&mut self, val: &AutoOperand<'b>, t: Type) -> InstId {
+    pub fn cast<'b: 'a>(&mut self, val: &dyn AutoOperand<'b>, t: Type) -> InstId {
         let val_op = self.get_op(val);
         self.inst(op::UnaryOp(ir::UnaryOp::Cast(t), val_op))
     }
 
     /// Restricts the order between two basic blocks. Does not restricts LINK and NPACK
     /// flags.
-    pub fn order(&mut self, lhs: &MetaStatement, rhs: &MetaStatement, order: Order) {
+    pub fn order(
+        &mut self,
+        lhs: &dyn MetaStatement,
+        rhs: &dyn MetaStatement,
+        order: Order,
+    ) {
         for lhs in lhs.borrow().ids() {
             for rhs in rhs.borrow().ids() {
                 self.action(Action::Order(lhs, rhs, order));
@@ -366,7 +371,7 @@ impl<'a> Builder<'a> {
     /// access pattern.
     pub fn tensor_access(
         &mut self,
-        addr: &AutoOperand<'a>,
+        addr: &dyn AutoOperand<'a>,
         mem_id: Option<ir::MemId>,
         t: ir::Type,
         dims: &[&LogicalDim],
@@ -397,7 +402,7 @@ impl<'a> Builder<'a> {
     /// Builds an induction variable.
     pub fn induction_var(
         &mut self,
-        base: &AutoOperand<'a>,
+        base: &dyn AutoOperand<'a>,
         dims: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> ir::IndVarId {
         let base = self.get_op(base);

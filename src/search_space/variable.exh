@@ -9,7 +9,7 @@ set Variables:
 end
 
 set DefStatements($var in Variables) subsetof Statements:
-  item_type = "ir::Statement"
+  item_type = "dyn ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
   id_getter = "$item.id()"
@@ -21,7 +21,7 @@ set DefStatements($var in Variables) subsetof Statements:
 end
 
 set UseStatements($var in Variables) subsetof Statements:
-  item_type = "ir::Statement"
+  item_type = "dyn ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
   id_getter = "$item.id()"

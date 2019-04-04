@@ -66,7 +66,7 @@ impl<'a> AccessPattern<'a> {
     }
 
     /// Returns the type of pointer to use for the access.
-    pub fn pointer_type(&self, device: &Device) -> ir::Type {
+    pub fn pointer_type(&self, device: &dyn Device) -> ir::Type {
         // We either have a memory ID or the array is located in global memory.
         self.mem_block()
             .map(ir::Type::PtrTo)

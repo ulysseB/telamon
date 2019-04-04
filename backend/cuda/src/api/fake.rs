@@ -106,14 +106,19 @@ impl<'a> Kernel<'a> {
         &self,
         _: &[u32; 3],
         _: &[u32; 3],
-        _: &[&Argument],
+        _: &[&dyn Argument],
     ) -> Result<u64, ()> {
         match *self.executor {}
     }
 
     /// Runs a kernel and returns the number of nanoseconds it takes to execute,
     /// measured using cuda event rather than hardware counters.
-    pub fn time_real_conds(&self, _: &[u32; 3], _: &[u32; 3], _: &[&Argument]) -> f64 {
+    pub fn time_real_conds(
+        &self,
+        _: &[u32; 3],
+        _: &[u32; 3],
+        _: &[&dyn Argument],
+    ) -> f64 {
         match *self.executor {}
     }
 

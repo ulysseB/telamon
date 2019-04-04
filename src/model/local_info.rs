@@ -26,7 +26,7 @@ pub struct LocalInfo<'a> {
 
 impl<'a> LocalInfo<'a> {
     /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace<'a>, context: &Context) -> Self {
+    pub fn compute(space: &SearchSpace<'a>, context: &dyn Context) -> Self {
         let dim_sizes = space
             .ir_instance()
             .dims()
@@ -100,7 +100,7 @@ impl<'a> LocalInfo<'a> {
 }
 
 fn add_indvar_pressure(
-    device: &Device,
+    device: &dyn Device,
     space: &SearchSpace,
     dim_sizes: &FnvHashMap<ir::DimId, size::Range>,
     indvar: &ir::InductionVar,
@@ -313,7 +313,7 @@ impl Default for Parallelism {
 fn parallelism(
     nesting: &FnvHashMap<ir::StmtId, Nesting>,
     space: &SearchSpace,
-    ctx: &Context,
+    ctx: &dyn Context,
 ) -> Parallelism {
     let size_thread_dims = space
         .ir_instance()

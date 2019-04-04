@@ -28,7 +28,7 @@ impl<'a> Cfg<'a> {
         match self {
             Cfg::Root(body) | Cfg::Threads(_, _, body) => {
                 Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
-                    as Box<Iterator<Item = _>>
+                    as Box<dyn Iterator<Item = _>>
             }
             Cfg::Loop(dim, body) => {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
@@ -43,7 +43,7 @@ impl<'a> Cfg<'a> {
         match self {
             Cfg::Root(body) | Cfg::Loop(_, body) | Cfg::Threads(_, _, body) => {
                 let iter = body.iter().flat_map(|cfg| cfg.instructions());
-                Box::new(iter) as Box<Iterator<Item = _>>
+                Box::new(iter) as Box<dyn Iterator<Item = _>>
             }
             Cfg::Instruction(_, inst) => Box::new(std::iter::once(inst)) as _,
         }
@@ -57,7 +57,7 @@ impl<'a> Cfg<'a> {
                     .iter()
                     .flat_map(|c| c.induction_levels())
                     .chain(ind_levels);
-                Box::new(levels) as Box<Iterator<Item = _>>
+                Box::new(levels) as Box<dyn Iterator<Item = _>>
             }
             Cfg::Root(ref body) => {
                 Box::new(body.iter().flat_map(|c| c.induction_levels()))

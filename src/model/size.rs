@@ -29,7 +29,7 @@ impl Range {
 }
 
 /// Bounds the values a size can take, in the given context.
-pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Range {
+pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &dyn Context) -> Range {
     let (factor, param_factors, dim_size_factors) = size.factors();
     let divisors = size.divisors();
     let factor = param_factors
@@ -88,7 +88,7 @@ impl FactorRange {
 pub fn factors(
     size: &ir::PartialSize,
     space: &SearchSpace,
-    ctx: &Context,
+    ctx: &dyn Context,
 ) -> FactorRange {
     let (factor, param_factors, dim_size_factors) = size.factors();
     let divisors = size.divisors();

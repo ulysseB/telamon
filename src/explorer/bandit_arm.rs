@@ -326,7 +326,7 @@ where
         }
     }
 
-    fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, context: &dyn Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         // Retry loop (in case of deadends)
         loop {
             if self.stop.load(Ordering::Relaxed) {

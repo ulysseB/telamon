@@ -13,6 +13,7 @@
 // limitations under the License.
 #![warn(clippy::all)]
 #![allow(clippy::block_in_if_condition_stmt)]
+#![deny(bare_trait_objects)]
 
 pub mod codegen;
 #[macro_use]

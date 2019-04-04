@@ -38,7 +38,7 @@ impl<'a> Candidate<'a> {
 
     pub fn apply_choice(
         &self,
-        context: &Context,
+        context: &dyn Context,
         choice: Vec<ActionEx>,
     ) -> Vec<Candidate<'a>> {
         let res = choice
@@ -58,7 +58,7 @@ impl<'a> Candidate<'a> {
     /// Applies a choice to a candidate.
     pub fn apply_decision(
         &self,
-        context: &Context,
+        context: &dyn Context,
         action: ActionEx,
     ) -> Result<Self, ()> {
         debug!("applying action {:?}", action);

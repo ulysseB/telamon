@@ -54,26 +54,26 @@ impl<'a> IntoIterator for &'a LogicalDim {
 /// A logical basic block, that can actually be implemented by multiple ones.
 pub trait MetaStatement {
     /// Returns the ids on the underlying basic blocks.
-    fn ids(&self) -> Box<Iterator<Item = ir::StmtId> + '_>;
+    fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_>;
 }
 
 impl<T> MetaStatement for T
 where
     T: Into<ir::StmtId> + Copy,
 {
-    fn ids(&self) -> Box<Iterator<Item = ir::StmtId> + '_> {
+    fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_> {
         Box::new(std::iter::once((*self).into()))
     }
 }
 
 impl MetaStatement for Option<LogicalDim> {
-    fn ids(&self) -> Box<Iterator<Item = ir::StmtId> + '_> {
+    fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_> {
         Box::new(self.iter().flat_map(|dim| dim.ids()))
     }
 }
 
 impl MetaStatement for LogicalDim {
-    fn ids(&self) -> Box<Iterator<Item = ir::StmtId> + '_> {
+    fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_> {
         Box::new(self.iter().map(|id| id.into()))
     }
 }

@@ -24,7 +24,7 @@ impl<'a> DimSize<'a> {
     }
 
     /// Converts the size into a numerical value for a given context.
-    pub fn eval(&self, context: &Context) -> u32 {
+    pub fn eval(&self, context: &dyn Context) -> u32 {
         self.params
             .iter()
             .map(|p| unwrap!(context.param_as_size(p)))
@@ -138,7 +138,7 @@ impl<'a> TensorBuilder<'a> {
 /// A tensor allocated in main memory.
 pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
-    array: std::sync::Arc<ArrayArgument + 'a>,
+    array: std::sync::Arc<dyn ArrayArgument + 'a>,
     iter_dims: Vec<(DimSize<'a>, DimSize<'a>)>,
     read_only: bool,
     s: std::marker::PhantomData<S>,
@@ -153,7 +153,7 @@ where
         name: &'a str,
         dim_sizes: Vec<DimSize<'a>>,
         read_only: bool,
-        array: std::sync::Arc<ArrayArgument + 'a>,
+        array: std::sync::Arc<dyn ArrayArgument + 'a>,
     ) -> Self {
         let mut incr: DimSize = unwrap!(S::t().len_byte()).into();
         let mut iter_dims = dim_sizes
@@ -214,7 +214,7 @@ where
     }
 
     /// Reads the tensor value in the context and copies it on the host.
-    pub fn read_to_host(&self, context: &Context) -> ArrayD<S> {
+    pub fn read_to_host(&self, context: &dyn Context) -> ArrayD<S> {
         use ndarray::ShapeBuilder;
         let mut raw = self.array.as_ref().read::<S>();
         let (sizes, strides): (Vec<_>, _) = self

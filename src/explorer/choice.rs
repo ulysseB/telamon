@@ -165,7 +165,7 @@ pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choi
 }
 
 /// Generates a choice from a list of possible values.
-fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
+fn gen_choice<T, IT>(values: IT, action_gen: &dyn Fn(T) -> Action) -> Option<Choice>
 where
     IT: IntoIterator<Item = T>,
 {

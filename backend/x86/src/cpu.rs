@@ -27,7 +27,7 @@ impl Cpu {
 }
 
 impl device::Device for Cpu {
-    fn print(&self, fun: &Function, out: &mut Write) {
+    fn print(&self, fun: &Function, out: &mut dyn Write) {
         let mut printer = X86printer::default();
         write!(out, "{}", printer.wrapper_function(fun)).unwrap();
         write!(
@@ -119,8 +119,8 @@ impl device::Device for Cpu {
         _: &SearchSpace,
         _: &FnvHashMap<ir::DimId, model::size::Range>,
         _: &FnvHashMap<ir::StmtId, model::Nesting>,
-        _: &ir::Statement,
-        _: &device::Context,
+        _: &dyn ir::Statement,
+        _: &dyn device::Context,
     ) -> model::HwPressure {
         // TODO(model): implement model
         model::HwPressure::zero(self)

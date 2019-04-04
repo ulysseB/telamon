@@ -275,7 +275,7 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 
 /// An argument of a kernel ready to evaluate.
 enum ThunkArg<'a> {
-    ArgRef(&'a api::Argument),
+    ArgRef(&'a dyn api::Argument),
     Size(Box<dyn device::ScalarArgument>),
     TmpArray(usize),
 }

@@ -248,7 +248,7 @@ pub fn find_best_ex<'a>(
 fn launch_search<'a, T: Store<'a>>(
     config: &Config,
     candidate_store: T,
-    context: &Context,
+    context: &dyn Context,
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
 ) -> Option<Candidate<'a>> {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
@@ -283,7 +283,7 @@ fn explore_space<'a, T>(
     config: &Config,
     candidate_store: &T,
     eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>,
-    context: &Context,
+    context: &dyn Context,
 ) where
     T: Store<'a>,
 {
@@ -306,7 +306,7 @@ fn explore_space<'a, T>(
 
 /// Explores the full search space.
 pub fn gen_space<F, G>(
-    context: &Context,
+    context: &dyn Context,
     space: SearchSpace,
     mut on_node: F,
     mut on_leaf: G,
