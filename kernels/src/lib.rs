@@ -14,7 +14,6 @@ use telamon::helper::{self, SignatureBuilder};
 use telamon::{explorer, model, search_space};
 
 use ::ndarray::{ArrayBase, Data, Dimension, FoldWhile, Zip};
-use num::Float;
 
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate<'a>(

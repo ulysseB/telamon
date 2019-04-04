@@ -5,16 +5,18 @@ use crossbeam;
 use crossbeam::queue::ArrayQueue;
 use itertools::Itertools;
 use libc;
-use std;
 use std::sync::{
     atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
     mpsc, Arc,
 };
 use std::time::Instant;
+use std::{self, fmt};
 use telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
-use telamon::device::Context as ContextTrait;
-use telamon::device::{self, ArrayArgument, AsyncCallback, EvalMode, ScalarArgument};
+use telamon::device::{
+    self, ArrayArgument, AsyncCallback, CompiledKernel, Context as ContextTrait,
+    EvalMode, ScalarArgument,
+};
 use telamon::explorer;
 use telamon::ir;
 use utils::unwrap;
@@ -274,12 +276,14 @@ impl device::Context for Context {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move |_| {
-                while let Ok((candidate, mut kernel, callback)) = recv.recv() {
-                    // TODO: measure time directly on MPPA
-                    let t0 = Instant::now();
-                    self.executor.execute_kernel(&mut kernel).unwrap();
-                    let t = t0.elapsed();
-                    callback.call(candidate, t.subsec_nanos() as f64);
+                while let Ok((candidate, kernel, callback)) = recv.recv() {
+                    callback.call(
+                        candidate,
+                        &mut Code {
+                            kernel,
+                            executor: self.executor,
+                        },
+                    );
                 }
             }));
         })
@@ -334,7 +338,7 @@ where
     'a: 'b,
     'c: 'b,
 {
-    fn add_kernel(
+    fn add_any_kernel(
         &mut self,
         candidate: explorer::Candidate<'a>,
         callback: device::AsyncCallback<'a, 'c>,
@@ -344,5 +348,26 @@ where
             self.context.setup_kernel(&dev_fun)
         };
         unwrap!(self.sender.send((candidate, kernel, callback)));
+    }
+}
+
+struct Code<'a> {
+    kernel: telajax::Kernel,
+    executor: &'a telajax::Device,
+}
+
+impl<'a> fmt::Display for Code<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "<mppa kernel>");
+    }
+}
+
+impl<'a> CompiledKernel for Code<'a> {
+    fn evaluate(&mut self) -> Option<f64> {
+        // TODO: measure time directly on MPPA
+        let t0 = Instant::now();
+        self.executor.execute_kernel(&mut self.kernel).unwrap();
+        let d = t0.elapsed();
+        Some(d.subsec_nanos() as f64 + d.secs() as f64 * 1_000_000_000.)
     }
 }

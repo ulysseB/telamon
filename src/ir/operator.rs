@@ -1,7 +1,6 @@
 //! Defines operators.
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
-use itertools::Itertools;
 use std::borrow::Cow;
 use std::{self, fmt};
 
@@ -282,7 +281,7 @@ impl<'a, L> Operator<'a, L> {
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.operands_mut()
             .iter_mut()
-            .foreach(|x| x.merge_dims(lhs, rhs));
+            .for_each(|x| x.merge_dims(lhs, rhs));
     }
 
     /// Returns the pattern of access to the memory by the instruction, if any.

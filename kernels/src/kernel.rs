@@ -107,12 +107,12 @@ pub trait ErasedKernel {
         context: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>>;
 
-    fn erased_get_expected_output(&self, context: &device::Context) -> Box<dyn Any>;
+    fn erased_get_expected_output(&self, context: &dyn device::Context) -> Box<dyn Any>;
 
     fn erased_check_result(
         &self,
         expected: &dyn Any,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String>;
 }
 
@@ -124,14 +124,14 @@ impl<'a, K: Kernel<'a>> ErasedKernel for K {
     ) -> Vec<Candidate<'b>> {
         self.build_body(signature, context)
     }
-    fn erased_get_expected_output(&self, context: &device::Context) -> Box<dyn Any> {
+    fn erased_get_expected_output(&self, context: &dyn device::Context) -> Box<dyn Any> {
         Box::new(<K as Kernel<'a>>::get_expected_output(self, context))
     }
 
     fn erased_check_result(
         &self,
         expected: &dyn Any,
-        context: &device::Context,
+        context: &dyn device::Context,
     ) -> Result<(), String> {
         if let Some(expected) = expected.downcast_ref::<K::ExpectedOutput>() {
             self.check_result(expected, context)
@@ -318,6 +318,7 @@ pub trait Kernel<'a>: Sized + Sync {
         let candidates = kernel.build_body(&signature, context);
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
+        let stabilizer = &context.stabilizer();
         context.async_eval(
             num_cpus::get(),
             device::EvalMode::TestBound,
@@ -329,35 +330,33 @@ pub trait Kernel<'a>: Sized + Sync {
                 }
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
-                    evaluator.add_kernel(
-                        leaf,
-                        (move |leaf: Candidate, runtime: f64| {
-                            let bound = leaf.bound.clone();
-                            let mut leaves = unwrap!(leaves.lock());
-                            let mut actions = leaf.actions.iter().cloned().collect_vec();
-                            actions.reverse();
-                            for (idx, partial_bound) in bounds.iter().enumerate() {
-                                assert!(
-                                    partial_bound.value() <= bound.value() * 1.01,
-                                    "invalid inner bound: {} < {}, kernel {}, \
-                                     actions {:?} then {:?}",
-                                    partial_bound,
-                                    bound,
-                                    Self::name(),
-                                    &actions[..idx],
-                                    &actions[idx..]
-                                );
-                            }
-                            info!("new evaluation: {:.2e}ns, bound {}", runtime, bound);
-                            leaves.push(BoundSample {
-                                actions,
+                    evaluator.add_kernel(leaf, move |leaf, kernel| {
+                        let bound = leaf.bound.clone();
+                        let runtime = stabilizer
+                            .evaluate(kernel, Some(bound.value()), None)
+                            .unwrap();
+                        let mut leaves = unwrap!(leaves.lock());
+                        let mut actions = leaf.actions.iter().cloned().collect_vec();
+                        actions.reverse();
+                        for (idx, partial_bound) in bounds.iter().enumerate() {
+                            assert!(
+                                partial_bound.value() <= bound.value() * 1.01,
+                                "invalid inner bound: {} < {}, kernel {}, \
+                                 actions {:?} then {:?}",
+                                partial_bound,
                                 bound,
-                                runtime,
-                            });
-                            true
-                        })
-                        .into(),
-                    );
+                                Self::name(),
+                                &actions[..idx],
+                                &actions[idx..]
+                            );
+                        }
+                        info!("new evaluation: {:.2e}ns, bound {}", runtime, bound);
+                        leaves.push(BoundSample {
+                            actions,
+                            bound,
+                            runtime,
+                        });
+                    });
                 } else {
                     num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
                 }

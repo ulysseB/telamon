@@ -3,13 +3,33 @@ use crate::codegen::{self, Function};
 use crate::device::{ArrayArgument, Device, ScalarArgument};
 use crate::explorer::Candidate;
 use crate::ir;
-use boxfnonce::SendBoxFnOnce;
+use itertools::{process_results, Itertools};
+use log::info;
 use num;
 use std::sync::Arc;
-use utils::unwrap;
+use utils::{cmp_f64, unwrap};
 
-/// A callback that is called after evaluating a kernel.
-pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64), bool>;
+/// An object representing a compiled kernel, which can directly be evaluated.  Note that even
+/// though the name implies it, the underlying object needs not to actually be compiled -- but
+/// users of the context may call `evaluate` repeatedly, hence it should have low overhead.
+pub trait CompiledKernel: std::fmt::Display {
+    fn evaluate(&mut self) -> Option<f64>;
+}
+
+pub trait AsyncCallbackFn<'a> {
+    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn CompiledKernel);
+}
+
+impl<'a, F> AsyncCallbackFn<'a> for F
+where
+    F: FnOnce(Candidate<'a>, &mut dyn CompiledKernel),
+{
+    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn CompiledKernel) {
+        (*self)(candidate, kernel)
+    }
+}
+
+pub type AsyncCallback<'a, 'b> = Box<dyn AsyncCallbackFn<'a> + Send + 'b>;
 
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {
@@ -50,6 +70,12 @@ pub trait Context: Sync {
         );
         result
     }
+
+    /// Returns a default stabilizer configuration for use with this context.  By default, no
+    /// stabilization is performed, so that stable devices don't need to override this.
+    fn stabilizer(&self) -> Stabilizer {
+        Stabilizer::default()
+    }
 }
 
 /// Binds the argument names to their values.
@@ -89,7 +115,23 @@ impl<'a, T: ?Sized> ArgMapExt<'a> for T where T: ArgMap<'a> {}
 /// An evaluation context that runs kernels asynchronously on the target device.
 pub trait AsyncEvaluator<'a, 'b> {
     /// Add a kernel to evaluate.
-    fn add_kernel(&mut self, candidate: Candidate<'a>, callback: AsyncCallback<'a, 'b>);
+    fn add_any_kernel(
+        &mut self,
+        candidate: Candidate<'a>,
+        callback: AsyncCallback<'a, 'b>,
+    );
+}
+
+impl<'a, 'b, 'c> dyn AsyncEvaluator<'a, 'b> + 'c {
+    /// Helper to add a kernel to an evaluator trait object.  Using `add_any_kernel` directly trips
+    /// up type inference and requires explicitely typing closure arguments; using `add_kernel`
+    /// instead allows a nicer syntax with closures.
+    pub fn add_kernel<F>(&mut self, candidate: Candidate<'a>, callback: F)
+    where
+        F: FnOnce(Candidate<'a>, &mut dyn CompiledKernel) + Send + 'b,
+    {
+        self.add_any_kernel(candidate, Box::new(callback))
+    }
 }
 
 /// Indicates how evaluation should be performed.
@@ -110,5 +152,111 @@ impl EvalMode {
             EvalMode::FindBest => true,
             EvalMode::TestBound | EvalMode::TestEval => false,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Stabilizer {
+    /// If true, the bad candidates will be skipped.  Bad candidates correspond to candidates whose
+    /// bound is higher than the best provided.
+    skip_bad_candidates: bool,
+    /// Candidates with a runtime over `SKIP_THRESHOLD * best` are skipped after the first
+    /// evaluation.   Ignored if `skip_bad_candidates` is `false`.
+    skip_threshold: f64,
+    /// Number of evaluation to perform on each candidate.
+    num_evals: usize,
+    /// Number of outlier evaluations to discard
+    num_outliers: usize,
+}
+
+impl Default for Stabilizer {
+    fn default() -> Self {
+        Stabilizer {
+            skip_bad_candidates: false,
+
+            // FIXME: Tune values and add a second threshold after a few iterations
+            skip_threshold: 3.,
+            num_evals: 1,
+            num_outliers: 0,
+        }
+    }
+}
+
+impl Stabilizer {
+    pub fn skip_bad_candidates(mut self, skip_bad_candidates: bool) -> Self {
+        self.skip_bad_candidates = skip_bad_candidates;
+        self
+    }
+
+    pub fn skip_threshold(mut self, skip_threshold: f64) -> Self {
+        self.skip_threshold = skip_threshold;
+        self
+    }
+
+    pub fn num_evals(mut self, num_evals: usize) -> Self {
+        self.num_evals = num_evals;
+        self
+    }
+
+    pub fn num_outliers(mut self, num_outliers: usize) -> Self {
+        self.num_outliers = num_outliers;
+        self
+    }
+}
+
+impl Stabilizer {
+    pub fn evaluate(
+        &self,
+        kernel: &mut dyn CompiledKernel,
+        bound: Option<f64>,
+        best: Option<f64>,
+    ) -> Option<f64> {
+        use std::cmp;
+
+        let mut num_evals = self.num_evals;
+        if self.skip_bad_candidates {
+            if let Some(bound) = bound {
+                if let Some(best) = best {
+                    if bound >= best {
+                        info!("candidate skipped because of its bound");
+                        return Some(std::f64::INFINITY);
+                    }
+                }
+
+                let t0 = kernel.evaluate()?;
+
+                if t0 * self.skip_threshold >= bound {
+                    info!("candidate skipped after its first evaluation");
+                    return Some(t0);
+                }
+
+                // Avoid spending too much time on very slow candidates.
+                num_evals = cmp::max(1, cmp::min(self.num_evals, (1.0e9 / t0) as usize));
+            }
+        }
+
+        let num_samples = cmp::max(1, num_evals.saturating_sub(self.num_outliers));
+
+        // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
+        // earlier and make tests to know when (for example, measure the MAX delta between
+        // min and median with N outliers).
+        let runtimes = (0..num_evals).map(|_| kernel.evaluate().ok_or(()));
+        let runtimes_by_value = process_results(runtimes, |iter| {
+            iter.sorted_by(|lhs, rhs| cmp_f64(*lhs, *rhs))
+        })
+        .ok()?
+        .collect::<Vec<_>>();
+        let median = runtimes_by_value[num_evals / 2];
+        let runtimes_by_delta = runtimes_by_value
+            .into_iter()
+            .sorted_by(|lhs, rhs| cmp_f64((lhs - median).abs(), (rhs - median).abs()))
+            .collect::<Vec<_>>();
+        let average = runtimes_by_delta[..num_samples]
+            .iter()
+            .cloned()
+            .sum::<f64>()
+            / num_samples as f64;
+
+        Some(average)
     }
 }

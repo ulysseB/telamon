@@ -25,7 +25,6 @@ use crate::device::{Context, EvalMode};
 use crate::model::bound;
 use crate::search_space::SearchSpace;
 
-use boxfnonce::SendBoxFnOnce;
 use crossbeam;
 use futures::executor;
 use futures::prelude::*;
@@ -33,7 +32,7 @@ use log::{error, info, warn};
 use std::sync::{
     self,
     atomic::{AtomicUsize, Ordering},
-    mpsc, Arc, Mutex,
+    mpsc, Mutex,
 };
 use utils::unwrap;
 
@@ -320,64 +319,62 @@ fn explore_space<'a, T>(
 ) where
     T: Store<'a>,
 {
-    let best_mutex = Arc::new(Mutex::new(None));
-    let n_evals = Arc::new(AtomicUsize::new(0));
+    let best_mutex = &Mutex::new(None);
+    let n_evals = &AtomicUsize::new(0);
+    let stabilizer = &context.stabilizer().skip_bad_candidates(true);
 
     context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
-            let best_mutex = Arc::clone(&best_mutex);
-            let n_evals = Arc::clone(&n_evals);
-            evaluator.add_kernel(
-                Candidate { space, ..cand },
-                SendBoxFnOnce::from(move |leaf, mut eval: f64| {
-                    let mut best = best_mutex.lock().unwrap();
-                    let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
+            evaluator.add_kernel(Candidate { space, ..cand }, move |leaf, compiled| {
+                let mut best = best_mutex.lock().unwrap();
+                let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
 
-                    if let Some(check_result_fn) = check_result_fn {
-                        if eval.is_finite()
-                            && (config.check_all || best.is_none() || Some(eval) < *best)
-                        {
-                            // The values computed by the kernel are kept in the context, so we
-                            // need to do this *now* before the evaluator runs any other version of
-                            // the kernel.
-                            if let Err(err) = check_result_fn(&leaf, context) {
-                                error!(
-                                    "Invalid results ({:.4e}ns) at #{} for {}",
-                                    eval, n_evals, leaf
-                                );
+                let mut eval = unwrap!(
+                    stabilizer.evaluate(compiled, Some(leaf.bound.value()), *best),
+                    "evaluation failed for actions {:?}, with kernel {}",
+                    leaf.actions,
+                    compiled
+                );
 
-                                config
-                                    .output_path(format!("error_{}", n_evals))
-                                    .and_then(|path| {
-                                        leaf.dump_to(path, context, eval, &err)
-                                    })
-                                    .unwrap_or_else(|err| {
-                                        error!("Error while dumping candidate: {}", err)
-                                    });
+                if let Some(check_result_fn) = check_result_fn {
+                    if eval.is_finite()
+                        && (config.check_all || best.is_none() || Some(eval) < *best)
+                    {
+                        // The values computed by the kernel are kept in the context, so we
+                        // need to do this *now* before the evaluator runs any other version of
+                        // the kernel.
+                        if let Err(err) = check_result_fn(&leaf, context) {
+                            error!(
+                                "Invalid results ({:.4e}ns) at #{} for {}",
+                                eval, n_evals, leaf
+                            );
 
-                                eval = std::f64::INFINITY;
-                            }
+                            config
+                                .output_path(format!("error_{}", n_evals))
+                                .and_then(|path| leaf.dump_to(path, context, eval, &err))
+                                .unwrap_or_else(|err| {
+                                    error!("Error while dumping candidate: {}", err)
+                                });
+
+                            eval = std::f64::INFINITY;
                         }
                     }
+                }
 
-                    // Only update best if the check passed!
-                    if eval.is_finite() && (best.is_none() || Some(eval) < *best) {
-                        *best = Some(eval);
-                    }
+                // Only update best if the check passed!
+                if eval.is_finite() && (best.is_none() || Some(eval) < *best) {
+                    *best = Some(eval);
+                }
 
-                    if let Err(err) = executor::spawn(
-                        eval_sender.send((leaf, eval, payload)).map(|_| ()),
-                    )
-                    .wait_future()
-                    {
-                        warn!("Got disconnected , {:?}", err);
-                    }
-
-                    eval.is_finite()
-                }),
-            );
+                if let Err(err) =
+                    executor::spawn(eval_sender.send((leaf, eval, payload)).map(|_| ()))
+                        .wait_future()
+                {
+                    warn!("Got disconnected , {:?}", err);
+                }
+            });
         }
     });
 }
