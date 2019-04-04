@@ -95,21 +95,21 @@ pub trait Scalar: device::ScalarArgument + ndarray::NdFloat {
 
 impl Scalar for f32 {
     fn atol() -> Self {
-        1e-6
+        1e-8
     }
 
     fn rtol() -> Self {
-        1e-6
+        1e-5
     }
 }
 
 impl Scalar for f64 {
     fn atol() -> Self {
-        1e-6
+        1e-8
     }
 
     fn rtol() -> Self {
-        1e-6
+        1e-5
     }
 }
 
