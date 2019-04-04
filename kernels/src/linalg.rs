@@ -2,10 +2,8 @@
 #![allow(clippy::many_single_char_names)]
 
 use crate::kernel::Kernel;
-use crate::{build_candidate, create_size, infer_tiling, Scalar};
-#[rustfmt::skip]
+use crate::{allclose, build_candidate, create_size, infer_tiling, Scalar};
 use ::ndarray::{Array1, Array2, Array3, ArrayD};
-use itertools::Itertools;
 use rand;
 use serde::{Deserialize, Serialize};
 use telamon::explorer::Candidate;
@@ -22,6 +20,7 @@ where
     S: Scalar,
 {
     n: i32,
+    alpha: S,
     x: Tensor<'a, S>,
     y: Tensor<'a, S>,
     z: Tensor<'a, S>,
@@ -46,11 +45,12 @@ where
         AM: device::ArgMap<'a> + device::Context,
     {
         let n_size = create_size(n, "n", generic, builder);
-        builder.scalar("alpha", S::one());
+        let alpha = S::one();
+        builder.scalar("alpha", alpha);
         let x = builder.tensor::<S>("x", vec![n_size.clone()], true);
         let y = builder.tensor::<S>("y", vec![n_size.clone()], true);
         let z = builder.tensor::<S>("z", vec![n_size], false);
-        Axpy { n, x, y, z }
+        Axpy { alpha, n, x, y, z }
     }
 
     fn build_body<'b>(
@@ -72,7 +72,9 @@ where
     }
 
     fn get_expected_output(&self, context: &dyn device::Context) -> ArrayD<S> {
-        self.x.read_to_host(context) + self.y.read_to_host(context)
+        let mut z = self.x.read_to_host(context);
+        z.scaled_add(self.alpha, &self.y.read_to_host(context));
+        z
     }
 
     fn check_result(
@@ -81,10 +83,7 @@ where
         context: &dyn device::Context,
     ) -> Result<(), String> {
         let z = self.z.read_to_host(context);
-        if z.iter()
-            .zip_eq(expected)
-            .any(|(&z0, &z1)| (z0 - z1).is_err_ok())
-        {
+        if !allclose(&z, expected) {
             // Axpy typically called with very large arguments; error message is unreadable
             // and several gigabytes long...
             Err("Invalid Axpy output".to_string())
@@ -186,10 +185,7 @@ where
             .read_to_host(context)
             .into_shape(self.m as usize)
             .unwrap();
-        if y.iter()
-            .zip_eq(expected)
-            .any(|(&y0, &y1)| (y0 - y1).is_err_ok())
-        {
+        if !allclose(&y, expected) {
             let x = self.x.read_to_host(context);
             let a = self.a.read_to_host(context);
             Err(format!(
@@ -299,10 +295,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         context: &dyn device::Context,
     ) -> Result<(), String> {
         let y = unwrap!(self.y.read_to_host(context).into_shape(self.m as usize));
-        if y.iter()
-            .zip_eq(expected)
-            .any(|(&y0, &y1)| (y0 - y1).is_err_ok())
-        {
+        if !allclose(&y, expected) {
             let x = self.x.read_to_host(context);
             let a = self.a.read_to_host(context);
             let b = self.b.read_to_host(context);
@@ -490,10 +483,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     ) -> Result<(), String> {
         let c_shape = (self.params.m as usize, self.params.n as usize);
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
-        if c.iter()
-            .zip_eq(expected)
-            .any(|(&c0, &c1)| (c0 - c1).is_err_ok())
-        {
+        if !allclose(&c, expected) {
             let a = self.a.read_to_host(context);
             let b = self.b.read_to_host(context);
             Err(format!(
@@ -680,10 +670,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let batch = self.params.batch as usize;
         let c_shape = (batch, self.params.m as usize, self.params.n as usize);
         let c = self.c.read_to_host(context).into_shape(c_shape).unwrap();
-        if c.iter()
-            .zip_eq(expected)
-            .any(|(&c0, &c1)| (c0 - c1).is_err_ok())
-        {
+        if !allclose(&c, expected) {
             let a = self.a.read_to_host(context);
             let b = self.b.read_to_host(context);
             Err(format!(

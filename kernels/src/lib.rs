@@ -13,6 +13,9 @@ use telamon::helper::tensor::DimSize;
 use telamon::helper::{self, SignatureBuilder};
 use telamon::{explorer, model, search_space};
 
+use ::ndarray::{ArrayBase, Data, Dimension, FoldWhile, Zip};
+use num::Float;
+
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate<'a>(
     space: search_space::SearchSpace<'a>,
@@ -51,36 +54,63 @@ fn infer_tiling(
         .unwrap_or_else(|| helper::TilingPattern::infer_pattern(size as u32, max_sizes))
 }
 
-/// A scalar that can be used as the data type for tests.
-pub trait Scalar:
-    device::ScalarArgument
-    + ndarray::LinalgScalar
-    + ndarray::ScalarOperand
-    + PartialOrd
-    + std::ops::Neg<Output = Self>
-    + 'static
+/// Returns `true` if two arrays are element-wise equal within a tolerance.
+///
+/// The tolerance values are defined by the absolute and relative offsets from the `Scalar` trait
+/// for the corresponding type.
+///
+/// The relative difference (`rtol` * abs(`b`)) and the absolute difference `atol` are added
+/// together and compared against the absolute difference between `a` and `b`.
+///
+/// # Panics
+///
+/// If broadcasting the arrays to the same shape is not possible.
+fn allclose<A, S, D, S2, E>(a: &ArrayBase<S, D>, b: &ArrayBase<S2, E>) -> bool
+where
+    A: Scalar,
+    S: Data<Elem = A>,
+    S2: Data<Elem = A>,
+    D: Dimension,
+    E: Dimension,
 {
-    /// Returns the amount of allowed error in tests.
-    fn epsilon() -> Self {
-        Self::zero()
-    }
+    !Zip::from(a)
+        .and(b.broadcast(a.raw_dim()).unwrap())
+        .fold_while((), |_, x, y| {
+            if (*x - *y).abs() < A::atol() + A::rtol() * y.abs() {
+                FoldWhile::Continue(())
+            } else {
+                FoldWhile::Done(())
+            }
+        })
+        .is_done()
+}
 
-    /// Indicates if the scalar can be considered as zero in the context of error
-    /// checking.
-    fn is_err_ok(self) -> bool {
-        self > Self::epsilon() || -self > Self::epsilon()
-    }
+/// A scalar that can be used as the data type for tests.
+pub trait Scalar: device::ScalarArgument + ndarray::NdFloat {
+    /// Absolute tolerance for errors.
+    fn atol() -> Self;
+
+    /// Relative tolerance for errors.
+    fn rtol() -> Self;
 }
 
 impl Scalar for f32 {
-    fn epsilon() -> Self {
-        10e-6
+    fn atol() -> Self {
+        1e-6
+    }
+
+    fn rtol() -> Self {
+        1e-6
     }
 }
 
 impl Scalar for f64 {
-    fn epsilon() -> Self {
-        10e-6
+    fn atol() -> Self {
+        1e-6
+    }
+
+    fn rtol() -> Self {
+        1e-6
     }
 }
 
