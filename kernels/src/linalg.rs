@@ -87,10 +87,9 @@ where
         {
             let x = self.x.read_to_host(context);
             let y = self.y.read_to_host(context);
-            Err(format!(
-                "expected: {}, got {} with x = {} and y = {}",
-                expected, z, x, y
-            ))
+            // Axpy typically called with very large arguments; error message is unreadable
+            // and several gigabytes long...
+            Err("Invalid Axpy output".to_string())
         } else {
             Ok(())
         }
