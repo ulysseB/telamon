@@ -333,13 +333,13 @@ fn explore_space<'a, T>(
             let n_evals = Arc::clone(&n_evals);
             evaluator.add_kernel(
                 Candidate { space, ..cand },
-                SendBoxFnOnce::from(move |leaf, eval| {
+                SendBoxFnOnce::from(move |leaf, mut eval: f64| {
                     let best = best_mutex.lock().unwrap();
                     let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
 
                     if let Some(check_result_fn) = check_result_fn {
                         if eval.is_finite()
-                            && (config.check_all || best.is_none() || Some(eval) < best)
+                            && (config.check_all || best.is_none() || Some(eval) < *best)
                         {
                             // The values computed by the kernel are kept in the context (yikes!)
                             if let Err(err) = check_result_fn(&leaf, context) {

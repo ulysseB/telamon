@@ -32,6 +32,7 @@ pub trait Context: Sync {
         mode: EvalMode,
         inner: &(dyn Fn(&mut dyn AsyncEvaluator<'a, 'b>) + Sync),
     );
+
     /// Returns a parameter interpreted as a size, if possible.
     fn param_as_size(&self, name: &str) -> Option<u32>;
 
