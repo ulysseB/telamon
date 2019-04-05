@@ -237,7 +237,9 @@ impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
 }
 
 /// Provides a unique identifier for logic dimensions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd,
+)]
 #[repr(transparent)]
 pub struct LogicalDimId(pub u32);
 

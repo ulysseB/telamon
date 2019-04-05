@@ -245,7 +245,10 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::MemId) -> Vec<ActionEx> {
                 let dim_pair = remaining_dims.swap_remove(i);
                 let possible_sizes =
                     unwrap!(space.ir_instance().dim(dim_pair.0).possible_sizes());
-                let size = space.domain().get_size(dim_pair.0).min(possible_sizes);
+                let size = space
+                    .domain()
+                    .get_size(dim_pair.0)
+                    .min_value(possible_sizes);
                 let ordered_size = ordered_size * size;
                 ordered_dims.push(dim_pair);
                 to_process.push((ordered_dims, remaining_dims, ordered_size));

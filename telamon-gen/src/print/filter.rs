@@ -239,12 +239,12 @@ fn comparison(
 impl quote::ToTokens for ir::CmpOp {
     fn to_tokens(&self, stream: &mut TokenStream) {
         let name = match self {
-            ir::CmpOp::Eq => "eq",
-            ir::CmpOp::Neq => "neq",
-            ir::CmpOp::Lt => "lt",
-            ir::CmpOp::Gt => "gt",
-            ir::CmpOp::Leq => "leq",
-            ir::CmpOp::Geq => "geq",
+            ir::CmpOp::Eq => "is_eq",
+            ir::CmpOp::Neq => "is_neq",
+            ir::CmpOp::Lt => "is_lt",
+            ir::CmpOp::Gt => "is_gt",
+            ir::CmpOp::Leq => "is_leq",
+            ir::CmpOp::Geq => "is_geq",
         };
         // TODO(span): get the real span from the lexer
         Ident::new(name, Span::call_site()).to_tokens(stream);
