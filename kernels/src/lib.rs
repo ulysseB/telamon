@@ -8,7 +8,7 @@ pub mod statistics;
 
 use std::fmt;
 
-pub use crate::kernel::{analyze_bounds, Kernel};
+pub use crate::kernel::{analyze_bounds, Kernel, KernelBuilder};
 
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;

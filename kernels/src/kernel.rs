@@ -3,6 +3,8 @@
 //! a specific implementation of a kernel, which in turn allows to run tests on this specific
 //! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in
 //! tests
+use std::borrow::Cow;
+
 use crate::statistics;
 use bincode;
 use itertools::Itertools;
@@ -14,7 +16,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::{atomic, Mutex};
 use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
-use telamon::helper::SignatureBuilder;
+use telamon::helper::{MemInit, SignatureBuilder};
 use telamon::model::Bound;
 use telamon::{codegen, device, ir};
 use utils::*;
@@ -25,6 +27,86 @@ const CUT: f64 = 2e8f64;
 // TODO(cleanup): tune MAX_DEADEND_RATIO
 //const MAX_DEADEND_RATIO: usize = 20;
 const MAX_DEADEND_RATIO: f32 = 0.95;
+
+/// Kernel factory, which can be used in order to generate a new kernel.
+///
+/// The two configurations available are:
+///
+///  - [`name`]: specifies an associated name for the kernel's signature.  If not specified, this is
+///    taken from `Kernel::name()`.
+///  - [`mem_init`]: specifies the memory initialization strategy for the parameters.
+///
+/// # Examples
+///
+/// ```ignore
+/// // `context` is an existing `device::Context`
+/// let (signature, kernel, context) = KernelBuilder::new()
+///     .name("My kernel")
+///     .build::<linalg::MatMul<f32>, _>(
+///         linalg::MatMulP::new(128, 128, 128),
+///         &mut context,
+///     );
+///
+/// // Now `context` is an immutable reference
+/// let candidates = kernel.build_body(&signature, context);
+/// ```
+///
+/// [`name`]: #method.name
+/// [`mem_init`]: #method.mem_init
+#[derive(Debug, Clone, Default)]
+pub struct KernelBuilder<'a> {
+    /// The name of the kernel.  If `None`, taken from the `Kernel::name`.
+    name: Option<Cow<'a, str>>,
+    /// Memory initialisation strategy.
+    mem_init: MemInit,
+}
+
+impl<'a> KernelBuilder<'a> {
+    /// Generates the base configuration for creating a kernel, from which configuration methods
+    /// can be chained.
+    pub fn new() -> Self {
+        KernelBuilder::default()
+    }
+
+    /// Sets the name of the generated kernel.  This will appear in log files.
+    pub fn name<T: Into<Cow<'a, str>>>(mut self, name: T) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Sets the memory initialization strategy.  See `MemInit` for details.
+    pub fn mem_init(mut self, mem_init: MemInit) -> Self {
+        self.mem_init = mem_init;
+        self
+    }
+
+    /// Create a kernel in the given context.  This returns a frozen reference to the context, the
+    /// kernel, and its signature.
+    pub fn build<'b, K, AM>(
+        &self,
+        params: K::Parameters,
+        context: &'b mut AM,
+    ) -> (ir::Signature, K, &'b AM)
+    where
+        AM: device::ArgMap<'a> + device::Context,
+        K: Kernel<'a> + 'b,
+    {
+        let name = self
+            .name
+            .as_ref()
+            .map(Cow::clone)
+            .unwrap_or_else(|| K::name().into());
+        let (kernel, signature);
+        {
+            let mut builder = SignatureBuilder::new(&name, context);
+            builder.set_mem_init(self.mem_init);
+            kernel = K::build_signature(params, &mut builder);
+            signature = builder.get();
+        }
+
+        (signature, kernel, context)
+    }
+}
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized + Sync {
@@ -73,13 +155,8 @@ pub trait Kernel<'a>: Sized + Sync {
     ) where
         AM: device::Context + device::ArgMap<'a>,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), ctx);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params.clone(), &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, ctx) =
+            KernelBuilder::new().build::<Self, AM>(params.clone(), ctx);
         let mut candidate = kernel.build_body(&signature, ctx).remove(0);
         let order = explorer::config::NewNodeOrder::WeightedRandom;
         let ordering = explorer::config::ChoiceOrdering::default();
@@ -112,13 +189,8 @@ pub trait Kernel<'a>: Sized + Sync {
         let (params, action_list): (Self::Parameters, List<ActionEx>) =
             bincode::deserialize(&cand_bytes).unwrap();
 
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), ctx);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, ctx) =
+            KernelBuilder::new().build::<Self, AM>(params, ctx);
         let expected_output = kernel.get_expected_output(ctx);
         let candidate = kernel.build_body(&signature, ctx).remove(0);
 
@@ -151,13 +223,8 @@ pub trait Kernel<'a>: Sized + Sync {
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) =
+            KernelBuilder::new().build::<Self, AM>(params, context);
         let expected_output = kernel.get_expected_output(context);
         let candidates = kernel.build_body(&signature, context);
         let mut num_deadends = 0;
@@ -203,19 +270,15 @@ pub trait Kernel<'a>: Sized + Sync {
     fn test_bound<AM>(
         params: Self::Parameters,
         num_tests: usize,
-        random_fill: bool,
+        mem_init: MemInit,
         context: &mut AM,
     ) -> Vec<BoundSample>
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(random_fill);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::new()
+            .mem_init(mem_init)
+            .build::<Self, AM>(params, context);
         let candidates = kernel.build_body(&signature, context);
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
@@ -273,19 +336,15 @@ pub trait Kernel<'a>: Sized + Sync {
         config: &explorer::Config,
         params: Self::Parameters,
         num_samples: usize,
-        random_fill: bool,
+        mem_init: MemInit,
         context: &mut AM,
     ) -> Vec<f64>
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(random_fill);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::new()
+            .mem_init(mem_init)
+            .build::<Self, AM>(params, context);
         let search_space = kernel.build_body(&signature, context);
         let expected = kernel.get_expected_output(context);
         let best = unwrap!(
@@ -312,12 +371,9 @@ pub trait Kernel<'a>: Sized + Sync {
     where
         AM: device::ArgMap<'a> + device::Context,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
+        let (signature, kernel, context) = KernelBuilder::new()
+            .mem_init(MemInit::Uninit)
+            .build::<Self, AM>(params, context);
         let candidates = kernel.build_body(&signature, context);
         let num_deadends = (0..num_samples)
             .into_par_iter()
