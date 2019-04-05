@@ -8,7 +8,7 @@ use std::f64;
 use std::fmt;
 use std::sync::{atomic, mpsc, Arc};
 use telamon::device::{
-    self, AsyncCallback, CompiledKernel, Device, EvalMode, ScalarArgument,
+    self, AsyncCallback, Device, EvalMode, KernelEvaluator, ScalarArgument,
 };
 use telamon::{codegen, explorer, ir};
 use utils::*;
@@ -230,7 +230,7 @@ impl<'a> fmt::Display for RealtimeThunk<'a> {
     }
 }
 
-impl<'a> CompiledKernel for RealtimeThunk<'a> {
+impl<'a> KernelEvaluator for RealtimeThunk<'a> {
     fn evaluate(&mut self) -> Option<f64> {
         Some(self.thunk.execute().ok()? as f64 / self.smx_clock)
     }

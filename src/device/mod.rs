@@ -6,7 +6,7 @@ mod context;
 
 pub use self::argument::{ArrayArgument, ArrayArgumentExt, ScalarArgument};
 pub use self::context::{
-    ArgMap, ArgMapExt, AsyncCallback, AsyncEvaluator, CompiledKernel, Context, EvalMode,
+    ArgMap, ArgMapExt, AsyncCallback, AsyncEvaluator, Context, EvalMode, KernelEvaluator,
     Stabilizer,
 };
 

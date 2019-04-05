@@ -7,24 +7,32 @@ use itertools::{process_results, Itertools};
 use log::info;
 use num;
 use std::sync::Arc;
+use std::{cmp, fmt};
 use utils::{cmp_f64, unwrap};
 
-/// An object representing a compiled kernel, which can directly be evaluated.  Note that even
-/// though the name implies it, the underlying object needs not to actually be compiled -- but
-/// users of the context may call `evaluate` repeatedly, hence it should have low overhead.
-pub trait CompiledKernel: std::fmt::Display {
+/// A trait representing a kernel evaluator, i.e. an object which can run the kernel and return an
+/// evaluated execution time.
+///
+/// Evaluators can be stabilized (see`Stabilizer`) by computing an average over several
+/// evaluations; hence, implementers of this trait should make sure to have low overhead in the
+/// `evaluate` function over the actual evaluation time.
+pub trait KernelEvaluator: std::fmt::Display {
+    /// Evaluate the kernel runtime, in nanoseconds.
+    ///
+    /// Repeated runs should return an identical value and hence calls to `evaluate` should not
+    /// have side-effects visible from the kernel.
     fn evaluate(&mut self) -> Option<f64>;
 }
 
 pub trait AsyncCallbackFn<'a> {
-    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn CompiledKernel);
+    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn KernelEvaluator);
 }
 
 impl<'a, F> AsyncCallbackFn<'a> for F
 where
-    F: FnOnce(Candidate<'a>, &mut dyn CompiledKernel),
+    F: FnOnce(Candidate<'a>, &mut dyn KernelEvaluator),
 {
-    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn CompiledKernel) {
+    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn KernelEvaluator) {
         (*self)(candidate, kernel)
     }
 }
@@ -128,7 +136,7 @@ impl<'a, 'b, 'c> dyn AsyncEvaluator<'a, 'b> + 'c {
     /// instead allows a nicer syntax with closures.
     pub fn add_kernel<F>(&mut self, candidate: Candidate<'a>, callback: F)
     where
-        F: FnOnce(Candidate<'a>, &mut dyn CompiledKernel) + Send + 'b,
+        F: FnOnce(Candidate<'a>, &mut dyn KernelEvaluator) + Send + 'b,
     {
         self.add_any_kernel(candidate, Box::new(callback))
     }
@@ -205,24 +213,27 @@ impl Stabilizer {
 }
 
 impl Stabilizer {
-    pub fn wrap<'a>(&'a self, kernel: &'a mut dyn CompiledKernel) -> StableEvaluator<'a> {
+    pub fn wrap<'a>(
+        &'a self,
+        kernel: &'a mut dyn KernelEvaluator,
+    ) -> StableEvaluator<'a> {
         StableEvaluator::new(self, kernel)
     }
 
-    pub fn evaluate(&self, kernel: &mut dyn CompiledKernel) -> Option<f64> {
+    pub fn evaluate(&self, kernel: &mut dyn KernelEvaluator) -> Option<f64> {
         self.wrap(kernel).evaluate()
     }
 }
 
 pub struct StableEvaluator<'a> {
     stabilizer: &'a Stabilizer,
-    kernel: &'a mut dyn CompiledKernel,
+    kernel: &'a mut dyn KernelEvaluator,
     bound: Option<f64>,
     best: Option<f64>,
 }
 
 impl<'a> StableEvaluator<'a> {
-    fn new(stabilizer: &'a Stabilizer, kernel: &'a mut dyn CompiledKernel) -> Self {
+    fn new(stabilizer: &'a Stabilizer, kernel: &'a mut dyn KernelEvaluator) -> Self {
         StableEvaluator {
             stabilizer,
             kernel,
@@ -242,8 +253,6 @@ impl<'a> StableEvaluator<'a> {
     }
 
     pub fn evaluate(&mut self) -> Option<f64> {
-        use std::cmp;
-
         let mut num_evals = self.stabilizer.num_evals;
         if self.stabilizer.skip_bad_candidates {
             if let Some(bound) = self.bound {
@@ -293,5 +302,11 @@ impl<'a> StableEvaluator<'a> {
             / num_samples as f64;
 
         Some(average)
+    }
+}
+
+impl<'a> fmt::Display for StableEvaluator<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "stabilized evaluator for {}", self.kernel)
     }
 }

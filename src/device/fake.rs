@@ -12,7 +12,7 @@ use crate::model::{self, HwPressure};
 use crate::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
 
 use super::{
-    ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, CompiledKernel, EvalMode,
+    ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, EvalMode, KernelEvaluator,
     ScalarArgument,
 };
 
@@ -225,7 +225,7 @@ impl<D: super::Device> super::Context for Context<D> {
                     }
                 }
 
-                impl CompiledKernel for FakeCode {
+                impl KernelEvaluator for FakeCode {
                     fn evaluate(&mut self) -> Option<f64> {
                         Some(1.)
                     }

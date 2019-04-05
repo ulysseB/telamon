@@ -14,8 +14,8 @@ use std::{self, fmt};
 use telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::{
-    self, ArrayArgument, AsyncCallback, CompiledKernel, Context as ContextTrait,
-    EvalMode, ScalarArgument,
+    self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,
+    KernelEvaluator, ScalarArgument,
 };
 use telamon::explorer;
 use telamon::ir;
@@ -362,7 +362,7 @@ impl<'a> fmt::Display for Code<'a> {
     }
 }
 
-impl<'a> CompiledKernel for Code<'a> {
+impl<'a> KernelEvaluator for Code<'a> {
     fn evaluate(&mut self) -> Option<f64> {
         // TODO: measure time directly on MPPA
         let t0 = Instant::now();

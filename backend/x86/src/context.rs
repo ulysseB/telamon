@@ -7,7 +7,7 @@ use telamon::codegen::ParamVal;
 
 use telamon::codegen;
 use telamon::device::{
-    self, AsyncCallback, CompiledKernel, Device, EvalMode, ScalarArgument,
+    self, AsyncCallback, Device, EvalMode, KernelEvaluator, ScalarArgument,
 };
 use telamon::explorer;
 use telamon::ir;
@@ -195,7 +195,7 @@ impl<'a> fmt::Display for Code<'a> {
     }
 }
 
-impl<'a> CompiledKernel for Code<'a> {
+impl<'a> KernelEvaluator for Code<'a> {
     fn evaluate(&mut self) -> Option<f64> {
         function_evaluate(self.source, self.arguments).ok()
     }
