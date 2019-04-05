@@ -351,8 +351,8 @@ fn explore_space<'a, T>(
                         // the kernel.
                         if let Err(err) = check_result_fn(&leaf, context) {
                             error!(
-                                "Invalid results ({:.4e}ns) at #{} for {}",
-                                eval, n_evals, leaf
+                                "Invalid results (score {:.4e}ns) at #{} for {}: {}",
+                                eval, n_evals, leaf, err
                             );
 
                             config
