@@ -52,6 +52,7 @@ pub trait Kernel<'a>: Sized {
         signature: &'b ir::Signature,
         ctx: &'b dyn device::Context,
     ) -> Vec<Candidate<'b>>;
+
     /// Computes the expected output.
     fn get_expected_output(&self, _: &dyn device::Context) -> Self::ExpectedOutput;
 
