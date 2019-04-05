@@ -6,6 +6,8 @@ mod kernel;
 pub mod linalg;
 pub mod statistics;
 
+use std::fmt;
+
 pub use crate::kernel::{analyze_bounds, Kernel, KernelBuilder, MemInit};
 
 use telamon::device::{self, ArgMap, Context};
@@ -73,7 +75,7 @@ where
     E: Dimension,
 {
     !Zip::from(a)
-        .and(b.broadcast(a.raw_dim()).unwrap())
+        .and_broadcast(b)
         .fold_while((), |_, x, y| {
             if (*x - *y).abs() < A::atol() + A::rtol() * y.abs() {
                 FoldWhile::Continue(())
@@ -82,6 +84,126 @@ where
             }
         })
         .is_done()
+}
+
+#[derive(Debug)]
+struct IncorrectOutput<S> {
+    max_absolute_error: S,
+    sum_absolute_error: S,
+    max_relative_error: S,
+    sum_relative_error: S,
+    num_above_threshold: usize,
+    total_size: usize,
+}
+
+impl<S: Scalar> Default for IncorrectOutput<S> {
+    fn default() -> Self {
+        IncorrectOutput {
+            max_absolute_error: S::zero(),
+            sum_absolute_error: S::zero(),
+            max_relative_error: S::zero(),
+            sum_relative_error: S::zero(),
+            num_above_threshold: 0,
+            total_size: 0,
+        }
+    }
+}
+
+impl<S: Scalar> std::error::Error for IncorrectOutput<S> {}
+
+impl<S: Scalar> IncorrectOutput<S> {
+    fn max_absolute_error(&self) -> S {
+        self.max_absolute_error
+    }
+
+    fn avg_absolute_error(&self) -> S {
+        self.sum_absolute_error / S::from(self.total_size).unwrap()
+    }
+
+    fn max_relative_error(&self) -> S {
+        self.max_relative_error
+    }
+
+    fn avg_relative_error(&self) -> S {
+        self.sum_relative_error / S::from(self.total_size).unwrap()
+    }
+
+    fn fraction_above_threshold(&self) -> S {
+        S::from(self.num_above_threshold).unwrap() / S::from(self.total_size).unwrap()
+    }
+}
+
+impl<S> fmt::Display for IncorrectOutput<S>
+where
+    S: Scalar,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "error max ± {:.4e} ({:.2}%), avg ± {:.4e} ({:.2}%), with {}/{} ({:.2}%) values above threshold",
+            self.max_absolute_error(),
+            self.max_relative_error() * S::from(100).unwrap(),
+            self.avg_absolute_error(),
+            self.avg_relative_error() * S::from(100).unwrap(),
+            self.num_above_threshold,
+            self.total_size,
+            self.fraction_above_threshold() * S::from(100).unwrap(),
+        )
+    }
+}
+
+fn check_output<A, S, D, S2, E>(
+    actual: &ArrayBase<S, D>,
+    expected: &ArrayBase<S2, E>,
+) -> Result<(), IncorrectOutput<A>>
+where
+    A: Scalar,
+    S: Data<Elem = A>,
+    S2: Data<Elem = A>,
+    D: Dimension,
+    E: Dimension,
+{
+    if allclose(actual, expected) {
+        Ok(())
+    } else {
+        Err(Zip::from(actual)
+            .and_broadcast(expected)
+            .fold_while(
+                IncorrectOutput::default(),
+                |output_diff, actual, expected| {
+                    let absolute_error = (*actual - *expected).abs();
+                    let relative_error = absolute_error / expected.abs();
+                    FoldWhile::Continue(IncorrectOutput {
+                        max_absolute_error: if absolute_error
+                            > output_diff.max_absolute_error
+                        {
+                            absolute_error
+                        } else {
+                            output_diff.max_absolute_error
+                        },
+                        sum_absolute_error: output_diff.sum_absolute_error
+                            + absolute_error,
+                        max_relative_error: if relative_error
+                            > output_diff.max_relative_error
+                        {
+                            relative_error
+                        } else {
+                            output_diff.max_relative_error
+                        },
+                        sum_relative_error: output_diff.sum_relative_error
+                            + relative_error,
+                        num_above_threshold: output_diff.num_above_threshold
+                            + if absolute_error < A::atol() + A::rtol() * expected.abs() {
+                                0
+                            } else {
+                                1
+                            },
+                        total_size: output_diff.total_size + 1,
+                    })
+                },
+            )
+            .into_inner())
+    }
 }
 
 /// A scalar that can be used as the data type for tests.

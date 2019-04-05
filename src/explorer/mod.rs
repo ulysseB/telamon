@@ -332,7 +332,11 @@ fn explore_space<'a, T>(
                 let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
 
                 let mut eval = unwrap!(
-                    stabilizer.evaluate(compiled, Some(leaf.bound.value()), *best),
+                    stabilizer
+                        .wrap(compiled)
+                        .bound(Some(leaf.bound.value()))
+                        .best(*best)
+                        .evaluate(),
                     "evaluation failed for actions {:?}, with kernel {}",
                     leaf.actions,
                     compiled

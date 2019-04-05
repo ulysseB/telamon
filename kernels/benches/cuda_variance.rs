@@ -125,7 +125,7 @@ fn run_evaluations(
                 if let Some(duration) = sleep {
                     let (sender, waiter) = oneshot::channel();
                     evaluator.add_kernel(candidate.clone(), move |_, kernel| {
-                        let runtime = stabilizer.evaluate(kernel, None, None).unwrap();
+                        let runtime = stabilizer.evaluate(kernel).unwrap();
                         unwrap!(sender.send(()));
                         unwrap!(results.lock()).push(runtime);
                     });
@@ -133,7 +133,7 @@ fn run_evaluations(
                     std::thread::sleep(duration);
                 } else {
                     evaluator.add_kernel(candidate.clone(), move |_, kernel| {
-                        let runtime = stabilizer.evaluate(kernel, None, None).unwrap();
+                        let runtime = stabilizer.evaluate(kernel).unwrap();
                         unwrap!(results.lock()).push(runtime);
                     });
                 }

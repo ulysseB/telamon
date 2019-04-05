@@ -205,42 +205,77 @@ impl Stabilizer {
 }
 
 impl Stabilizer {
-    pub fn evaluate(
-        &self,
-        kernel: &mut dyn CompiledKernel,
-        bound: Option<f64>,
-        best: Option<f64>,
-    ) -> Option<f64> {
+    pub fn wrap<'a>(&'a self, kernel: &'a mut dyn CompiledKernel) -> StableEvaluator<'a> {
+        StableEvaluator::new(self, kernel)
+    }
+
+    pub fn evaluate(&self, kernel: &mut dyn CompiledKernel) -> Option<f64> {
+        self.wrap(kernel).evaluate()
+    }
+}
+
+pub struct StableEvaluator<'a> {
+    stabilizer: &'a Stabilizer,
+    kernel: &'a mut dyn CompiledKernel,
+    bound: Option<f64>,
+    best: Option<f64>,
+}
+
+impl<'a> StableEvaluator<'a> {
+    fn new(stabilizer: &'a Stabilizer, kernel: &'a mut dyn CompiledKernel) -> Self {
+        StableEvaluator {
+            stabilizer,
+            kernel,
+            bound: None,
+            best: None,
+        }
+    }
+
+    pub fn bound(mut self, bound: Option<f64>) -> Self {
+        self.bound = bound;
+        self
+    }
+
+    pub fn best(mut self, best: Option<f64>) -> Self {
+        self.best = best;
+        self
+    }
+
+    pub fn evaluate(&mut self) -> Option<f64> {
         use std::cmp;
 
-        let mut num_evals = self.num_evals;
-        if self.skip_bad_candidates {
-            if let Some(bound) = bound {
-                if let Some(best) = best {
+        let mut num_evals = self.stabilizer.num_evals;
+        if self.stabilizer.skip_bad_candidates {
+            if let Some(bound) = self.bound {
+                if let Some(best) = self.best {
                     if bound >= best {
                         info!("candidate skipped because of its bound");
                         return Some(std::f64::INFINITY);
                     }
                 }
 
-                let t0 = kernel.evaluate()?;
+                let t0 = self.kernel.evaluate()?;
 
-                if t0 * self.skip_threshold >= bound {
+                if t0 * self.stabilizer.skip_threshold >= bound {
                     info!("candidate skipped after its first evaluation");
                     return Some(t0);
                 }
 
                 // Avoid spending too much time on very slow candidates.
-                num_evals = cmp::max(1, cmp::min(self.num_evals, (1.0e9 / t0) as usize));
+                num_evals = cmp::max(
+                    1,
+                    cmp::min(self.stabilizer.num_evals, (1.0e9 / t0) as usize),
+                );
             }
         }
 
-        let num_samples = cmp::max(1, num_evals.saturating_sub(self.num_outliers));
+        let num_samples =
+            cmp::max(1, num_evals.saturating_sub(self.stabilizer.num_outliers));
 
         // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
         // earlier and make tests to know when (for example, measure the MAX delta between
         // min and median with N outliers).
-        let runtimes = (0..num_evals).map(|_| kernel.evaluate().ok_or(()));
+        let runtimes = (0..num_evals).map(|_| self.kernel.evaluate().ok_or(()));
         let runtimes_by_value = process_results(runtimes, |iter| {
             iter.sorted_by(|lhs, rhs| cmp_f64(*lhs, *rhs))
         })

@@ -2,7 +2,7 @@
 #![allow(clippy::many_single_char_names)]
 
 use crate::kernel::Kernel;
-use crate::{allclose, build_candidate, create_size, infer_tiling, Scalar};
+use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
 use ::ndarray::{Array1, Array2, Array3, ArrayD};
 use rand;
 use serde::{Deserialize, Serialize};
@@ -83,10 +83,8 @@ where
         context: &dyn device::Context,
     ) -> Result<(), String> {
         let z = self.z.read_to_host(context);
-        if !allclose(&z, expected) {
-            // Axpy typically called with very large arguments; error message is unreadable
-            // and several gigabytes long...
-            Err("Invalid Axpy output".to_string())
+        if let Err(invalid) = check_output(&z, expected) {
+            Err(format!("Invalid axpy output: {}", invalid))
         } else {
             Ok(())
         }
@@ -185,13 +183,8 @@ where
             .read_to_host(context)
             .into_shape(self.m as usize)
             .unwrap();
-        if !allclose(&y, expected) {
-            let x = self.x.read_to_host(context);
-            let a = self.a.read_to_host(context);
-            Err(format!(
-                "expected: {}, got {} with x = {} and a = {}",
-                expected, y, x, a
-            ))
+        if let Err(invalid) = check_output(&y, expected) {
+            Err(format!("Invalid mv output: {}", invalid))
         } else {
             Ok(())
         }
@@ -295,12 +288,8 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         context: &dyn device::Context,
     ) -> Result<(), String> {
         let y = unwrap!(self.y.read_to_host(context).into_shape(self.m as usize));
-        if !allclose(&y, expected) {
-            let x = self.x.read_to_host(context);
-            let a = self.a.read_to_host(context);
-            let b = self.b.read_to_host(context);
-            Err(format!("expected: {}, got {} with alpha = {}, beta = {}, x = {}, a = {} and b = {}", 
-                        expected, y, self.alpha, self.beta, x, a, b))
+        if let Err(invalid) = check_output(&y, expected) {
+            Err(format!("Invalid gesummv output: {}", invalid))
         } else {
             Ok(())
         }
@@ -483,13 +472,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     ) -> Result<(), String> {
         let c_shape = (self.params.m as usize, self.params.n as usize);
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
-        if !allclose(&c, expected) {
-            let a = self.a.read_to_host(context);
-            let b = self.b.read_to_host(context);
-            Err(format!(
-                "expected: {}, got {} with a = {} and b = {}",
-                expected, c, a, b
-            ))
+        if let Err(invalid) = check_output(&c, expected) {
+            Err(format!("Invalid gemm output: {}", invalid))
         } else {
             Ok(())
         }
@@ -670,13 +654,8 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let batch = self.params.batch as usize;
         let c_shape = (batch, self.params.m as usize, self.params.n as usize);
         let c = self.c.read_to_host(context).into_shape(c_shape).unwrap();
-        if !allclose(&c, expected) {
-            let a = self.a.read_to_host(context);
-            let b = self.b.read_to_host(context);
-            Err(format!(
-                "expected: {}, got {} with a = {} and b = {}",
-                expected, c, a, b
-            ))
+        if let Err(invalid) = check_output(&c, expected) {
+            Err(format!("Invalid batched_gemm output: {}", invalid))
         } else {
             Ok(())
         }

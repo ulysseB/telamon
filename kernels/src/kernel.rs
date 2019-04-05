@@ -333,7 +333,9 @@ pub trait Kernel<'a>: Sized + Sync {
                     evaluator.add_kernel(leaf, move |leaf, kernel| {
                         let bound = leaf.bound.clone();
                         let runtime = stabilizer
-                            .evaluate(kernel, Some(bound.value()), None)
+                            .wrap(kernel)
+                            .bound(Some(bound.value()))
+                            .evaluate()
                             .unwrap();
                         let mut leaves = unwrap!(leaves.lock());
                         let mut actions = leaf.actions.iter().cloned().collect_vec();
