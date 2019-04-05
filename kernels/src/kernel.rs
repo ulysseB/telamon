@@ -27,11 +27,11 @@ const CUT: f64 = 2e8f64;
 const MAX_DEADEND_RATIO: f32 = 0.95;
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
-pub trait Kernel<'a>: Sized {
+pub trait Kernel<'a>: Sized + Sync {
     /// The input parameters of the kernel.
     type Parameters: Clone + DeserializeOwned + Serialize;
     /// The values to expect as output.
-    type ExpectedOutput;
+    type ExpectedOutput: Sync + 'static;
 
     /// The name of the function computed by the kernel.
     fn name() -> &'static str;
@@ -218,6 +218,7 @@ pub trait Kernel<'a>: Sized {
         let candidates = kernel.build_body(&signature, context);
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
+        let stabilizer = &context.stabilizer();
         context.async_eval(
             num_cpus::get(),
             device::EvalMode::TestBound,
@@ -229,34 +230,35 @@ pub trait Kernel<'a>: Sized {
                 }
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
-                    evaluator.add_kernel(
-                        leaf,
-                        (move |leaf: Candidate, runtime: f64| {
-                            let bound = leaf.bound.clone();
-                            let mut leaves = unwrap!(leaves.lock());
-                            let mut actions = leaf.actions.iter().cloned().collect_vec();
-                            actions.reverse();
-                            for (idx, partial_bound) in bounds.iter().enumerate() {
-                                assert!(
-                                    partial_bound.value() <= bound.value() * 1.01,
-                                    "invalid inner bound: {} < {}, kernel {}, \
-                                     actions {:?} then {:?}",
-                                    partial_bound,
-                                    bound,
-                                    Self::name(),
-                                    &actions[..idx],
-                                    &actions[idx..]
-                                );
-                            }
-                            info!("new evaluation: {:.2e}ns, bound {}", runtime, bound);
-                            leaves.push(BoundSample {
-                                actions,
+                    evaluator.add_kernel(leaf, move |leaf, kernel| {
+                        let bound = leaf.bound.clone();
+                        let runtime = stabilizer
+                            .wrap(kernel)
+                            .bound(Some(bound.value()))
+                            .evaluate()
+                            .unwrap();
+                        let mut leaves = unwrap!(leaves.lock());
+                        let mut actions = leaf.actions.iter().cloned().collect_vec();
+                        actions.reverse();
+                        for (idx, partial_bound) in bounds.iter().enumerate() {
+                            assert!(
+                                partial_bound.value() <= bound.value() * 1.01,
+                                "invalid inner bound: {} < {}, kernel {}, \
+                                 actions {:?} then {:?}",
+                                partial_bound,
                                 bound,
-                                runtime,
-                            });
-                        })
-                        .into(),
-                    );
+                                Self::name(),
+                                &actions[..idx],
+                                &actions[idx..]
+                            );
+                        }
+                        info!("new evaluation: {:.2e}ns, bound {}", runtime, bound);
+                        leaves.push(BoundSample {
+                            actions,
+                            bound,
+                            runtime,
+                        });
+                    });
                 } else {
                     num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
                 }
@@ -284,10 +286,16 @@ pub trait Kernel<'a>: Sized {
             builder.get()
         };
         let search_space = kernel.build_body(&signature, context);
+        let expected = kernel.get_expected_output(context);
         let best = unwrap!(
-            explorer::find_best_ex(config, context, search_space),
+            explorer::find_best_ex(
+                config,
+                context,
+                search_space,
+                Some(&|_, context| kernel.check_result(&expected, context))
+            ),
             "no candidates found for kernel {}",
-            Self::name()
+            signature.name,
         );
         let best_fn = codegen::Function::build(&best.space);
         context.benchmark(&best_fn, num_samples)

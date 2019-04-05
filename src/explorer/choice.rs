@@ -23,7 +23,7 @@ pub enum ActionEx {
 impl fmt::Debug for ActionEx {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            // Actions are already explicitely self-describing enough
+            // Actions are already explicitly self-describing enough
             ActionEx::Action(action) => write!(f, "{:?}", action),
             ActionEx::LowerLayout {
                 mem,

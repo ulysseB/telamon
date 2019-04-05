@@ -9,16 +9,11 @@ cc = "1.0"
 
 [dependencies]
 crossbeam = "0.7"
-lazy_static = { version = "1.0", optional = true }
-errno = { version = "0.2", optional = true }
-env_logger = "0.5"
-failure = "0.1"
 itertools = "0.8"
 libc = "0.2.40"
 libloading = "0.5.0"
 log = "0.4"
 num = "0.2"
-rpds = { version = "0.5.0", features = ["serde"] }
 telamon = {path = "../../"}
 tempfile = "3.0.1"
 utils = {package = "telamon-utils", path = "../../telamon-utils"}

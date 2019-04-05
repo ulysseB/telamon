@@ -8,6 +8,8 @@ use log::{debug, info, trace};
 use rpds::List;
 use std;
 use std::cmp::{Ordering, PartialOrd};
+use std::io::{self, Write};
+use std::path::Path;
 
 use itertools::Itertools;
 use utils::unwrap;
@@ -28,11 +30,20 @@ pub struct Candidate<'a> {
 impl<'a> Candidate<'a> {
     /// Creates a new candidate, with depth 0.
     pub fn new(space: SearchSpace<'a>, bound: Bound) -> Self {
+        Self::with_actions(space, bound, std::iter::empty())
+    }
+
+    pub fn with_actions<II>(space: SearchSpace<'a>, bound: Bound, actions: II) -> Self
+    where
+        II: IntoIterator<Item = ActionEx>,
+    {
+        let actions = actions.into_iter().collect::<List<_>>();
+        let depth = actions.len();
         Candidate {
             space,
             bound,
-            depth: 0,
-            actions: List::new(),
+            depth,
+            actions,
         }
     }
 
@@ -53,6 +64,35 @@ impl<'a> Candidate<'a> {
             info!("deadend encountered in the search space");
         }
         res
+    }
+
+    /// Dump all pertinent information about the candidate into a directory.  Useful for debugging.
+    pub fn dump_to<P: AsRef<Path>>(
+        &self,
+        path: P,
+        context: &dyn Context,
+        eval: f64,
+        err: &String,
+    ) -> io::Result<()> {
+        std::fs::create_dir_all(path.as_ref()).unwrap();
+
+        write!(
+            std::fs::File::create(path.as_ref().join("actions.json"))?,
+            "{}",
+            serde_json::to_string(&self.actions).unwrap()
+        )?;
+
+        std::fs::File::create(path.as_ref().join("error.txt"))?
+            .write_all(err.as_bytes())?;
+
+        write!(
+            std::fs::File::create(path.as_ref().join("human.txt")).unwrap(),
+            "Invalid results ({:.4e}ns) for {}",
+            eval,
+            self
+        )?;
+
+        self.space.dump_code(context, path.as_ref().join("code"))
     }
 
     /// Applies a choice to a candidate.

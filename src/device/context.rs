@@ -3,13 +3,41 @@ use crate::codegen::{self, Function};
 use crate::device::{ArrayArgument, Device, ScalarArgument};
 use crate::explorer::Candidate;
 use crate::ir;
-use boxfnonce::SendBoxFnOnce;
+use itertools::{process_results, Itertools};
+use log::info;
 use num;
 use std::sync::Arc;
-use utils::unwrap;
+use std::{cmp, fmt};
+use utils::{cmp_f64, unwrap};
 
-/// A callback that is called after evaluating a kernel.
-pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;
+/// A trait representing a kernel evaluator, i.e. an object which can run the kernel and return an
+/// evaluated execution time.
+///
+/// Evaluators can be stabilized (see`Stabilizer`) by computing an average over several
+/// evaluations; hence, implementers of this trait should make sure to have low overhead in the
+/// `evaluate` function over the actual evaluation time.
+pub trait KernelEvaluator: std::fmt::Display {
+    /// Evaluate the kernel runtime, in nanoseconds.
+    ///
+    /// Repeated runs should return an identical value and hence calls to `evaluate` should not
+    /// have side-effects visible from the kernel.
+    fn evaluate(&mut self) -> Option<f64>;
+}
+
+pub trait AsyncCallbackFn<'a> {
+    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn KernelEvaluator);
+}
+
+impl<'a, F> AsyncCallbackFn<'a> for F
+where
+    F: FnOnce(Candidate<'a>, &mut dyn KernelEvaluator),
+{
+    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn KernelEvaluator) {
+        (*self)(candidate, kernel)
+    }
+}
+
+pub type AsyncCallback<'a, 'b> = Box<dyn AsyncCallbackFn<'a> + Send + 'b>;
 
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {
@@ -32,6 +60,7 @@ pub trait Context: Sync {
         mode: EvalMode,
         inner: &(dyn Fn(&mut dyn AsyncEvaluator<'a, 'b>) + Sync),
     );
+
     /// Returns a parameter interpreted as a size, if possible.
     fn param_as_size(&self, name: &str) -> Option<u32>;
 
@@ -48,6 +77,12 @@ pub trait Context: Sync {
             size, dividend
         );
         result
+    }
+
+    /// Returns a default stabilizer configuration for use with this context.  By default, no
+    /// stabilization is performed, so that stable devices don't need to override this.
+    fn stabilizer(&self) -> Stabilizer {
+        Stabilizer::default()
     }
 }
 
@@ -88,7 +123,23 @@ impl<'a, T: ?Sized> ArgMapExt<'a> for T where T: ArgMap<'a> {}
 /// An evaluation context that runs kernels asynchronously on the target device.
 pub trait AsyncEvaluator<'a, 'b> {
     /// Add a kernel to evaluate.
-    fn add_kernel(&mut self, candidate: Candidate<'a>, callback: AsyncCallback<'a, 'b>);
+    fn add_dyn_kernel(
+        &mut self,
+        candidate: Candidate<'a>,
+        callback: AsyncCallback<'a, 'b>,
+    );
+}
+
+impl<'a, 'b, 'c> dyn AsyncEvaluator<'a, 'b> + 'c {
+    /// Helper to add a kernel to an evaluator trait object.  Using `add_dyn_kernel` directly trips
+    /// up type inference and requires explicitly typing closure arguments; using `add_kernel`
+    /// instead allows a nicer syntax with closures.
+    pub fn add_kernel<F>(&mut self, candidate: Candidate<'a>, callback: F)
+    where
+        F: FnOnce(Candidate<'a>, &mut dyn KernelEvaluator) + Send + 'b,
+    {
+        self.add_dyn_kernel(candidate, Box::new(callback))
+    }
 }
 
 /// Indicates how evaluation should be performed.
@@ -109,5 +160,168 @@ impl EvalMode {
             EvalMode::FindBest => true,
             EvalMode::TestBound | EvalMode::TestEval => false,
         }
+    }
+}
+
+/// Configuration for kernel evaluation stabilization.
+///
+/// This allows evaluating kernels while averaging several runs to smooth out the possible variance
+/// in measurements (e.g. timer precisions).  This is a builder for a `StableEvaluator` (which can
+/// also skip candidates early if the first evaluation is very bad) but can also be used to
+/// evaluate a kernel directly.
+#[derive(Debug, Clone)]
+pub struct Stabilizer {
+    /// If true, the bad candidates will be skipped.  Bad candidates correspond to candidates whose
+    /// bound is higher than the best provided.
+    skip_bad_candidates: bool,
+    /// Candidates with a runtime over `SKIP_THRESHOLD * best` are skipped after the first
+    /// evaluation.   Ignored if `skip_bad_candidates` is `false`.
+    skip_threshold: f64,
+    /// Number of evaluation to perform on each candidate.
+    num_evals: usize,
+    /// Number of outlier evaluations to discard
+    num_outliers: usize,
+}
+
+impl Default for Stabilizer {
+    fn default() -> Self {
+        Stabilizer {
+            skip_bad_candidates: false,
+
+            // FIXME: Tune values and add a second threshold after a few iterations
+            skip_threshold: 3.,
+            num_evals: 1,
+            num_outliers: 0,
+        }
+    }
+}
+
+impl Stabilizer {
+    pub fn skip_bad_candidates(mut self, skip_bad_candidates: bool) -> Self {
+        self.skip_bad_candidates = skip_bad_candidates;
+        self
+    }
+
+    pub fn skip_threshold(mut self, skip_threshold: f64) -> Self {
+        self.skip_threshold = skip_threshold;
+        self
+    }
+
+    pub fn num_evals(mut self, num_evals: usize) -> Self {
+        self.num_evals = num_evals;
+        self
+    }
+
+    pub fn num_outliers(mut self, num_outliers: usize) -> Self {
+        self.num_outliers = num_outliers;
+        self
+    }
+}
+
+impl Stabilizer {
+    pub fn wrap<'a>(
+        &'a self,
+        kernel: &'a mut dyn KernelEvaluator,
+    ) -> StableEvaluator<'a> {
+        StableEvaluator::new(self, kernel)
+    }
+
+    pub fn evaluate(&self, kernel: &mut dyn KernelEvaluator) -> Option<f64> {
+        self.wrap(kernel).evaluate()
+    }
+}
+
+/// Stabilized evaluator as created by a `Stabilizer`.
+///
+/// This wraps a `KernelEvaluator` with a `Stabilizer`, which is used to configure the number of
+/// runs to do when averaging evaluation.
+///
+/// The stable evaluator can also contain a lower bound on the runtime and the best runtime seen
+/// so far; if provided, they are used to skip candidates ruled out by the performance bound or
+/// (based on the stabilizer's configuration) to skip stabilization if the first run is much worse
+/// than the best runtime seen.
+pub struct StableEvaluator<'a> {
+    stabilizer: &'a Stabilizer,
+    kernel: &'a mut dyn KernelEvaluator,
+    bound: Option<f64>,
+    best: Option<f64>,
+}
+
+impl<'a> StableEvaluator<'a> {
+    fn new(stabilizer: &'a Stabilizer, kernel: &'a mut dyn KernelEvaluator) -> Self {
+        StableEvaluator {
+            stabilizer,
+            kernel,
+            bound: None,
+            best: None,
+        }
+    }
+
+    pub fn bound(mut self, bound: Option<f64>) -> Self {
+        self.bound = bound;
+        self
+    }
+
+    pub fn best(mut self, best: Option<f64>) -> Self {
+        self.best = best;
+        self
+    }
+
+    pub fn evaluate(&mut self) -> Option<f64> {
+        let mut num_evals = self.stabilizer.num_evals;
+        if self.stabilizer.skip_bad_candidates {
+            if let Some(bound) = self.bound {
+                if let Some(best) = self.best {
+                    if bound >= best {
+                        info!("candidate skipped because of its bound");
+                        return Some(std::f64::INFINITY);
+                    }
+                }
+
+                let t0 = self.kernel.evaluate()?;
+
+                if t0 * self.stabilizer.skip_threshold >= bound {
+                    info!("candidate skipped after its first evaluation");
+                    return Some(t0);
+                }
+
+                // Avoid spending too much time on very slow candidates.
+                num_evals = cmp::max(
+                    1,
+                    cmp::min(self.stabilizer.num_evals, (1.0e9 / t0) as usize),
+                );
+            }
+        }
+
+        let num_samples =
+            cmp::max(1, num_evals.saturating_sub(self.stabilizer.num_outliers));
+
+        // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
+        // earlier and make tests to know when (for example, measure the MAX delta between
+        // min and median with N outliers).
+        let runtimes = (0..num_evals).map(|_| self.kernel.evaluate().ok_or(()));
+        let runtimes_by_value = process_results(runtimes, |iter| {
+            iter.sorted_by(|lhs, rhs| cmp_f64(*lhs, *rhs))
+        })
+        .ok()?
+        .collect::<Vec<_>>();
+        let median = runtimes_by_value[num_evals / 2];
+        let runtimes_by_delta = runtimes_by_value
+            .into_iter()
+            .sorted_by(|lhs, rhs| cmp_f64((lhs - median).abs(), (rhs - median).abs()))
+            .collect::<Vec<_>>();
+        let average = runtimes_by_delta[..num_samples]
+            .iter()
+            .cloned()
+            .sum::<f64>()
+            / num_samples as f64;
+
+        Some(average)
+    }
+}
+
+impl<'a> fmt::Display for StableEvaluator<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "stabilized evaluator for {}", self.kernel)
     }
 }

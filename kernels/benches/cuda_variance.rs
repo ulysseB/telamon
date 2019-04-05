@@ -115,34 +115,29 @@ fn analyse_runtimes(mut runtimes: Vec<f64>, name: &str, bound: &str) -> (f64, f6
 /// Runs a series of evaluation, sleeping the given duration betwen each evaluation.
 fn run_evaluations(
     candidates: &[explorer::Candidate],
-    context: &Context,
+    context: &dyn Context,
     num_samples: usize,
     sleep: Option<Duration>,
 ) -> Vec<Vec<f64>> {
     let runtimes = candidates.iter().map(|_| Mutex::new(vec![])).collect_vec();
+    let stabilizer = &context.stabilizer();
     context.async_eval(1, device::EvalMode::TestEval, &|evaluator| {
         for (candidate, results) in candidates.iter().zip_eq(&runtimes) {
             for _ in 0..num_samples {
                 if let Some(duration) = sleep {
                     let (sender, waiter) = oneshot::channel();
-                    evaluator.add_kernel(
-                        candidate.clone(),
-                        (move |_, runtime| {
-                            unwrap!(sender.send(()));
-                            unwrap!(results.lock()).push(runtime);
-                        })
-                        .into(),
-                    );
+                    evaluator.add_kernel(candidate.clone(), move |_, kernel| {
+                        let runtime = stabilizer.evaluate(kernel).unwrap();
+                        unwrap!(sender.send(()));
+                        unwrap!(results.lock()).push(runtime);
+                    });
                     unwrap!(waiter.wait());
                     std::thread::sleep(duration);
                 } else {
-                    evaluator.add_kernel(
-                        candidate.clone(),
-                        (move |_, runtime| {
-                            unwrap!(results.lock()).push(runtime);
-                        })
-                        .into(),
-                    );
+                    evaluator.add_kernel(candidate.clone(), move |_, kernel| {
+                        let runtime = stabilizer.evaluate(kernel).unwrap();
+                        unwrap!(results.lock()).push(runtime);
+                    });
                 }
             }
         }

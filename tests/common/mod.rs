@@ -19,7 +19,7 @@ pub fn empty_signature() -> ir::Signature {
 pub fn gen_best(context: &Context, space: SearchSpace) {
     let mut config = explorer::Config::read();
     config.num_workers = 1;
-    let best = explorer::find_best(&config, context, vec![space]).unwrap();
+    let best = explorer::find_best(&config, context, vec![space], None).unwrap();
     context.device().gen_code(&best, &mut sink());
 }
 

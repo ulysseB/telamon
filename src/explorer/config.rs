@@ -35,6 +35,9 @@ pub struct Config {
     /// Indicates the search must be stopped if a candidate with an execution time better
     /// than the bound (in ns) is found.
     pub stop_bound: Option<f64>,
+    /// If true, check all implementations found for correctness.  Otherwise (the default) only the
+    /// best candidates are checked.
+    pub check_all: bool,
     /// Indicates the search must be stopped after the given number of minutes.
     pub timeout: Option<u64>,
     /// Indicates the search must be stopped after the given number of
@@ -157,6 +160,7 @@ impl Default for Config {
             output_dir: ".".to_string(),
             log_file: "watch.log".to_string(),
             event_log: "eventlog.tfrecord.gz".to_string(),
+            check_all: false,
             num_workers: num_cpus::get(),
             algorithm: SearchAlgorithm::default(),
             stop_bound: None,
