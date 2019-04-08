@@ -193,6 +193,8 @@
 <span id="193">193</span>
 <span id="194">194</span>
 <span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! A module for handling accesses to the device memory.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
@@ -205,7 +207,9 @@
 <span class="comment">// TODO(cleanup): move layouts into internal blocks.</span>
 
 <span class="doccomment">/// Uniquely identifies a block.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">transparent</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MemId</span>(<span class="kw">pub</span> <span class="ident">u32</span>);
 

@@ -299,14 +299,14 @@
     <span class="doccomment">/// Returns the minimum of an integer domain.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_min</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">print</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">universe</span> <span class="op">=</span> <span class="ident">universe</span>(<span class="self">self</span>.<span class="ident">value_type</span>(), <span class="ident">ctx</span>);
-        <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">quote</span>::<span class="macro">quote</span><span class="macro">!</span>(<span class="ident">NumSet</span>::<span class="ident">min</span>(<span class="kw-2">&amp;</span>#<span class="self">self</span>, #<span class="ident">universe</span>));
+        <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">quote</span>::<span class="macro">quote</span><span class="macro">!</span>(<span class="ident">NumSet</span>::<span class="ident">min_value</span>(<span class="kw-2">&amp;</span>#<span class="self">self</span>, #<span class="ident">universe</span>));
         <span class="ident">Value</span>::<span class="ident">new</span>(<span class="ident">tokens</span>, <span class="ident">ir</span>::<span class="ident">ValueType</span>::<span class="ident">Constant</span>)
     }
 
     <span class="doccomment">/// Returns the maximum of an integer domain.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">print</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">universe</span> <span class="op">=</span> <span class="ident">universe</span>(<span class="self">self</span>.<span class="ident">value_type</span>(), <span class="ident">ctx</span>);
-        <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">quote</span>::<span class="macro">quote</span><span class="macro">!</span>(<span class="ident">NumSet</span>::<span class="ident">max</span>(<span class="kw-2">&amp;</span>#<span class="self">self</span>, #<span class="ident">universe</span>));
+        <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">quote</span>::<span class="macro">quote</span><span class="macro">!</span>(<span class="ident">NumSet</span>::<span class="ident">max_value</span>(<span class="kw-2">&amp;</span>#<span class="self">self</span>, #<span class="ident">universe</span>));
         <span class="ident">Value</span>::<span class="ident">new</span>(<span class="ident">tokens</span>, <span class="ident">ir</span>::<span class="ident">ValueType</span>::<span class="ident">Constant</span>)
     }
 }

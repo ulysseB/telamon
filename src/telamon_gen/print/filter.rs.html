@@ -492,12 +492,12 @@
 <span class="kw">impl</span> <span class="ident">quote</span>::<span class="ident">ToTokens</span> <span class="kw">for</span> <span class="ident">ir</span>::<span class="ident">CmpOp</span> {
     <span class="kw">fn</span> <span class="ident">to_tokens</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">stream</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TokenStream</span>) {
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Eq</span> <span class="op">=&gt;</span> <span class="string">&quot;eq&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Neq</span> <span class="op">=&gt;</span> <span class="string">&quot;neq&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;lt&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Gt</span> <span class="op">=&gt;</span> <span class="string">&quot;gt&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;leq&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Geq</span> <span class="op">=&gt;</span> <span class="string">&quot;geq&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Eq</span> <span class="op">=&gt;</span> <span class="string">&quot;is_eq&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Neq</span> <span class="op">=&gt;</span> <span class="string">&quot;is_neq&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;is_lt&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Gt</span> <span class="op">=&gt;</span> <span class="string">&quot;is_gt&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;is_leq&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Geq</span> <span class="op">=&gt;</span> <span class="string">&quot;is_geq&quot;</span>,
         };
         <span class="comment">// TODO(span): get the real span from the lexer</span>
         <span class="ident">Ident</span>::<span class="ident">new</span>(<span class="ident">name</span>, <span class="ident">Span</span>::<span class="ident">call_site</span>()).<span class="ident">to_tokens</span>(<span class="ident">stream</span>);

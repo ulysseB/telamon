@@ -254,6 +254,9 @@
 <span id="254">254</span>
 <span id="255">255</span>
 <span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Choices that can be applied to split the search space.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
@@ -502,7 +505,10 @@
                 <span class="kw">let</span> <span class="ident">dim_pair</span> <span class="op">=</span> <span class="ident">remaining_dims</span>.<span class="ident">swap_remove</span>(<span class="ident">i</span>);
                 <span class="kw">let</span> <span class="ident">possible_sizes</span> <span class="op">=</span>
                     <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">dim</span>(<span class="ident">dim_pair</span>.<span class="number">0</span>).<span class="ident">possible_sizes</span>());
-                <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_size</span>(<span class="ident">dim_pair</span>.<span class="number">0</span>).<span class="ident">min</span>(<span class="ident">possible_sizes</span>);
+                <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">space</span>
+                    .<span class="ident">domain</span>()
+                    .<span class="ident">get_size</span>(<span class="ident">dim_pair</span>.<span class="number">0</span>)
+                    .<span class="ident">min_value</span>(<span class="ident">possible_sizes</span>);
                 <span class="kw">let</span> <span class="ident">ordered_size</span> <span class="op">=</span> <span class="ident">ordered_size</span> <span class="op">*</span> <span class="ident">size</span>;
                 <span class="ident">ordered_dims</span>.<span class="ident">push</span>(<span class="ident">dim_pair</span>);
                 <span class="ident">to_process</span>.<span class="ident">push</span>((<span class="ident">ordered_dims</span>, <span class="ident">remaining_dims</span>, <span class="ident">ordered_size</span>));
