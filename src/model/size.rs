@@ -62,8 +62,8 @@ pub fn dim_bounds(dim: ir::DimId, space: &SearchSpace) -> Range {
     let size = space.domain().get_size(dim);
     let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
     Range {
-        min: size.min(universe).into(),
-        max: size.max(universe).into(),
+        min: size.min_value(universe).into(),
+        max: size.max_value(universe).into(),
     }
 }
 

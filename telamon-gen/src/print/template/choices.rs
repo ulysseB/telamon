@@ -1,4 +1,4 @@
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 #[repr(C)]
 pub enum Choice {
     {{~#each choices}}

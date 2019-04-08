@@ -84,14 +84,14 @@ impl Value {
     /// Returns the minimum of an integer domain.
     pub fn get_min(&self, ctx: &print::Context) -> Self {
         let universe = universe(self.value_type(), ctx);
-        let tokens = quote::quote!(NumSet::min(&#self, #universe));
+        let tokens = quote::quote!(NumSet::min_value(&#self, #universe));
         Value::new(tokens, ir::ValueType::Constant)
     }
 
     /// Returns the maximum of an integer domain.
     pub fn get_max(&self, ctx: &print::Context) -> Self {
         let universe = universe(self.value_type(), ctx);
-        let tokens = quote::quote!(NumSet::max(&#self, #universe));
+        let tokens = quote::quote!(NumSet::max_value(&#self, #universe));
         Value::new(tokens, ir::ValueType::Constant)
     }
 }

@@ -10,9 +10,9 @@ pub fn get() -> TokenStream {
             type Universe: ?Sized;
 
             /// Returns the maximum value in the domain.
-            fn min(&self, universe: &Self::Universe) -> u32;
+            fn min_value(&self, universe: &Self::Universe) -> u32;
             /// Returns the minimum value in the domain.
-            fn max(&self, universe: &Self::Universe) -> u32;
+            fn max_value(&self, universe: &Self::Universe) -> u32;
 
             /// Converts the domain into a numeric set with the given domain. Values that
             /// are not in `new_universe` are skipped.
@@ -21,9 +21,9 @@ pub fn get() -> TokenStream {
                 self_universe: &Self::Universe,
                 new_universe: &[u32]
             ) -> NumericSet {
-                let start = new_universe.binary_search(&self.min(self_universe))
+                let start = new_universe.binary_search(&self.min_value(self_universe))
                     .unwrap_or_else(|x| x);
-                let len = new_universe.binary_search(&self.max(self_universe))
+                let len = new_universe.binary_search(&self.max_value(self_universe))
                     .unwrap_or_else(|x| x) - start;
                 let enabled_values = ((1 << len) - 1) << start;
                 NumericSet { enabled_values }
@@ -31,40 +31,40 @@ pub fn get() -> TokenStream {
 
             /// Returns the value of the domain, if it is constrained.
             fn as_constrained(&self, universe: &Self::Universe) -> Option<u32> {
-                let value = self.min(universe);
-                if value == self.max(universe) { Some(value) } else { None }
+                let value = self.min_value(universe);
+                if value == self.max_value(universe) { Some(value) } else { None }
             }
 
-            fn lt<D: NumSet>(&self, universe: &Self::Universe,
+            fn is_lt<D: NumSet>(&self, universe: &Self::Universe,
                              other: D, other_universe: &D::Universe) -> bool {
-                self.max(universe) < other.min(other_universe)
+                self.max_value(universe) < other.min_value(other_universe)
             }
 
-            fn gt<D: NumSet>(&self, universe: &Self::Universe,
+            fn is_gt<D: NumSet>(&self, universe: &Self::Universe,
                              other: D, other_universe: &D::Universe) -> bool {
-                self.min(universe) > other.max(other_universe)
+                self.min_value(universe) > other.max_value(other_universe)
             }
 
-            fn leq<D: NumSet>(&self, universe: &Self::Universe,
+            fn is_leq<D: NumSet>(&self, universe: &Self::Universe,
                               other: D, other_universe: &D::Universe) -> bool {
-                self.max(universe) <= other.min(other_universe)
+                self.max_value(universe) <= other.min_value(other_universe)
             }
 
-            fn geq<D: NumSet>(&self, universe: &Self::Universe,
+            fn is_geq<D: NumSet>(&self, universe: &Self::Universe,
                               other: D, other_universe: &D::Universe) -> bool {
-                self.min(universe) >= other.max(other_universe)
+                self.min_value(universe) >= other.max_value(other_universe)
             }
 
-            fn eq<D: NumSet>(&self, universe: &Self::Universe,
+            fn is_eq<D: NumSet>(&self, universe: &Self::Universe,
                              other: D, other_universe: &D::Universe) -> bool {
-                self.min(universe) == other.max(other_universe) &&
-                    self.max(universe) == other.min(other_universe)
+                self.min_value(universe) == other.max_value(other_universe) &&
+                    self.max_value(universe) == other.min_value(other_universe)
             }
 
-            fn neq<D: NumSet>(&self, universe: &Self::Universe,
+            fn is_neq<D: NumSet>(&self, universe: &Self::Universe,
                               other: D, other_universe: &D::Universe) -> bool {
-                self.min(universe) > other.max(other_universe) ||
-                    self.max(universe) < other.min(other_universe)
+                self.min_value(universe) > other.max_value(other_universe) ||
+                    self.max_value(universe) < other.min_value(other_universe)
             }
         }
 
@@ -93,19 +93,19 @@ pub fn get() -> TokenStream {
         impl NumSet for u32 {
             type Universe = ();
 
-            fn min(&self, _: &()) -> u32 { *self }
+            fn min_value(&self, _: &()) -> u32 { *self }
 
-            fn max(&self, _: &()) -> u32 { *self }
+            fn max_value(&self, _: &()) -> u32 { *self }
         }
 
         impl<'a> NumSet for &'a [u32] {
             type Universe = ();
 
-            fn min(&self, _: &()) -> u32 {
+            fn min_value(&self, _: &()) -> u32 {
                 if self.is_empty() { 1 } else { self[0] }
             }
 
-            fn max(&self, _: &()) -> u32 {
+            fn max_value(&self, _: &()) -> u32 {
                 if self.is_empty() { 0 } else { self[self.len()-1] }
             }
 

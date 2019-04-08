@@ -99,18 +99,18 @@ mod single_enum {
         assert_eq!(all.lcm(universe), 120);
 
         // Test comparison operators.
-        assert!(all.lt(universe, Range::new_eq(&(), 9, &()), &()));
-        assert!(!all.lt(universe, Range::new_eq(&(), 8, &()), &()));
-        assert!(all.gt(universe, Range::new_eq(&(), 0, &()), &()));
-        assert!(!all.gt(universe, Range::new_eq(&(), 1, &()), &()));
-        assert!(all.leq(universe, Range::new_eq(&(), 8, &()), &()));
-        assert!(!all.leq(universe, Range::new_eq(&(), 7, &()), &()));
-        assert!(all.geq(universe, Range::new_eq(&(), 1, &()), &()));
-        assert!(!all.geq(universe, Range::new_eq(&(), 2, &()), &()));
-        assert!(all.neq(universe, &[6, 7][..], &()));
-        assert!(!all.neq(universe, &[4, 7][..], &()));
+        assert!(all.is_lt(universe, Range::new_eq(&(), 9, &()), &()));
+        assert!(!all.is_lt(universe, Range::new_eq(&(), 8, &()), &()));
+        assert!(all.is_gt(universe, Range::new_eq(&(), 0, &()), &()));
+        assert!(!all.is_gt(universe, Range::new_eq(&(), 1, &()), &()));
+        assert!(all.is_leq(universe, Range::new_eq(&(), 8, &()), &()));
+        assert!(!all.is_leq(universe, Range::new_eq(&(), 7, &()), &()));
+        assert!(all.is_geq(universe, Range::new_eq(&(), 1, &()), &()));
+        assert!(!all.is_geq(universe, Range::new_eq(&(), 2, &()), &()));
+        assert!(all.is_neq(universe, &[6, 7][..], &()));
+        assert!(!all.is_neq(universe, &[4, 7][..], &()));
         let uni2_minus_uni1 = NumericSet::new_eq(universe2, &[2, 9][..], &());
-        assert!(all.neq(universe, uni2_minus_uni1, universe2));
+        assert!(all.is_neq(universe, uni2_minus_uni1, universe2));
 
         // Test constructors.
         assert_eq!(

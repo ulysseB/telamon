@@ -1,5 +1,5 @@
 /// A decision to apply to the domain.
-#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy, Serialize, Deserialize, Ord, PartialOrd)]
 #[repr(C)]
 pub enum Action {
     {{~#each choices}}

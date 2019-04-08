@@ -9,7 +9,9 @@ use utils::*;
 // TODO(cleanup): move layouts into internal blocks.
 
 /// Uniquely identifies a block.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Ord, PartialOrd,
+)]
 #[repr(transparent)]
 pub struct MemId(pub u32);
 
