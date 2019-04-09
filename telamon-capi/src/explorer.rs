@@ -64,7 +64,7 @@ pub unsafe extern "C" fn telamon_explore(
         .cloned()
         .map(|search_space| search_space.0)
         .collect();
-    let best = explorer::find_best(&*config, &*(*context).0, search_space);
+    let best = explorer::find_best(&*config, &*(*context).0, search_space, None);
     best.map(SearchSpace)
         .map(Box::new)
         .map(Box::into_raw)

@@ -102,7 +102,7 @@ fn main() {
     // Step 4. Launch a search.
     let mut config = explorer::Config::default();
     config.timeout = Some(5); // The search stops after 5 minutes.
-    let best = explorer::find_best(&config, &context, vec![space]).unwrap();
+    let best = explorer::find_best(&config, &context, vec![space], None).unwrap();
 
     // Step 5. Print the generated code.
     let code = codegen::Function::build(&best);

@@ -4,7 +4,7 @@ use crate::helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use crate::ir::{self, op, Parameter, Type};
 use crate::ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
-use itertools::{flatten, Itertools};
+use itertools::Itertools;
 use log::debug;
 use std::borrow::Borrow;
 use utils::*;
@@ -237,7 +237,7 @@ impl<'a> Builder<'a> {
         var: ir::VarId,
         logical_dims: &[&LogicalDim],
     ) -> ir::VarId {
-        let dims = flatten(logical_dims.iter().cloned()).collect();
+        let dims = logical_dims.iter().cloned().flatten().collect();
         self.function
             .add_variable(ir::VarDef::Last(var, dims))
             .unwrap()

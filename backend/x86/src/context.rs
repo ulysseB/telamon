@@ -6,7 +6,9 @@ use crate::printer::X86printer;
 use telamon::codegen::ParamVal;
 
 use telamon::codegen;
-use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
+use telamon::device::{
+    self, AsyncCallback, Device, EvalMode, KernelEvaluator, ScalarArgument,
+};
 use telamon::explorer;
 use telamon::ir;
 
@@ -14,10 +16,10 @@ use crossbeam;
 use itertools::Itertools;
 use libc;
 use log::debug;
-use std;
 use std::f64;
 use std::io::Write;
 use std::sync::{mpsc, Arc, MutexGuard};
+use std::{self, fmt};
 use tempfile;
 use utils::*;
 
@@ -154,8 +156,13 @@ impl device::Context for Context {
                 .spawn(move |_| {
                     while let Ok((candidate, fun_str, code_args, callback)) = recv.recv()
                     {
-                        let eval = unwrap!(function_evaluate(&fun_str, &code_args));
-                        callback.call(candidate, eval);
+                        callback.call(
+                            candidate,
+                            &mut Code {
+                                source: &fun_str,
+                                arguments: &code_args,
+                            },
+                        );
                     }
                 })
                 .unwrap();
@@ -175,6 +182,23 @@ enum ThunkArg {
     ArgRef(Arc<dyn Argument>),
     Size(i32),
     TmpArray(u32),
+}
+
+struct Code<'a> {
+    source: &'a str,
+    arguments: &'a [ThunkArg],
+}
+
+impl<'a> fmt::Display for Code<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.source)
+    }
+}
+
+impl<'a> KernelEvaluator for Code<'a> {
+    fn evaluate(&mut self) -> Option<f64> {
+        function_evaluate(self.source, self.arguments).ok()
+    }
 }
 
 /// Given a function string and its arguments as ThunkArg, compile to a binary, executes it and
@@ -241,7 +265,7 @@ where
     'a: 'b,
     'c: 'b,
 {
-    fn add_kernel(
+    fn add_dyn_kernel(
         &mut self,
         candidate: explorer::Candidate<'a>,
         callback: device::AsyncCallback<'a, 'c>,

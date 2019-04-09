@@ -3,11 +3,13 @@ use crate::kernel::Thunk;
 use crate::{Executor, Gpu, JITDaemon, Kernel};
 ///! Defines the CUDA evaluation context.
 use crossbeam;
-use itertools::{process_results, Itertools};
 use log::{debug, info};
 use std::f64;
+use std::fmt;
 use std::sync::{atomic, mpsc, Arc};
-use telamon::device::{self, AsyncCallback, Device, EvalMode, ScalarArgument};
+use telamon::device::{
+    self, AsyncCallback, Device, EvalMode, KernelEvaluator, ScalarArgument,
+};
 use telamon::{codegen, explorer, ir};
 use utils::*;
 
@@ -15,15 +17,6 @@ use utils::*;
 const EVAL_BUFFER_SIZE: usize = 100;
 // TODO(perf): enable optimizations when possible
 const JIT_OPT_LEVEL: usize = 2;
-
-/// Candidates with a runtime above `SKIP_THRESHOLD * cut` are skipped after the first
-/// evaluation.
-const SKIP_THRESHOLD: f64 = 3.;
-// FIXME: tune values + add a second threshold after a few iterations
-/// Number of evaluations of perform on each candidate.
-const NUM_EVALS: usize = 20;
-/// Number of outlier evaluations to discard.
-const NUM_OUTLIERS: usize = 4;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
@@ -78,51 +71,6 @@ impl<'a> Context<'a> {
             EvalMode::FindBest | EvalMode::TestEval => JIT_OPT_LEVEL,
         }
     }
-
-    /// Evaluates `thunk` multiple times to obtain accurate execution times.
-    fn eval_runtime(
-        &self,
-        thunk: &Thunk,
-        bound: f64,
-        current_best: f64,
-        mode: EvalMode,
-    ) -> Result<f64, ()> {
-        if bound >= current_best && mode.skip_bad_candidates() {
-            info!("candidate skipped because of its bound");
-            return Ok(std::f64::INFINITY);
-        }
-        let t0 = self.ticks_to_ns(thunk.execute()?);
-        if mode.skip_bad_candidates() && t0 * SKIP_THRESHOLD >= bound {
-            info!("candidate skipped after its first evaluation");
-            return Ok(t0);
-        }
-        // Avoid spending too much time on very slow candidates.
-        let num_evals = std::cmp::max(1, std::cmp::min(NUM_EVALS, (1.0e9 / t0) as usize));
-        let num_samples = std::cmp::max(1, num_evals.saturating_sub(NUM_OUTLIERS));
-        // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
-        // earlier and make tests to know when (for example, measure the MAX delta between
-        // min and median with N outliers).
-        let runtimes = (0..num_evals).map(|_| thunk.execute());
-        let runtimes_by_value =
-            process_results(runtimes, |iter| iter.sorted())?.collect_vec();
-        let median = self.ticks_to_ns(runtimes_by_value[num_evals / 2]);
-        let runtimes_by_delta = runtimes_by_value
-            .into_iter()
-            .map(|t| self.ticks_to_ns(t))
-            .sorted_by(|lhs, rhs| cmp_f64((lhs - median).abs(), (rhs - median).abs()))
-            .collect_vec();
-        let average = runtimes_by_delta[..num_samples]
-            .iter()
-            .cloned()
-            .sum::<f64>()
-            / num_samples as f64;
-        Ok(average)
-    }
-
-    /// Converts a number of clock ticks into a number of nanoseconds.
-    fn ticks_to_ns(&self, ticks: u64) -> f64 {
-        ticks as f64 / self.gpu_model.smx_clock
-    }
 }
 
 impl<'a> device::ArgMap<'a> for Context<'a> {
@@ -155,6 +103,10 @@ impl<'a> device::Context for Context<'a> {
 
     fn param_as_size(&self, name: &str) -> Option<u32> {
         self.get_param(name).as_size()
+    }
+
+    fn stabilizer(&self) -> device::Stabilizer {
+        device::Stabilizer::default().num_evals(20).num_outliers(4)
     }
 
     fn evaluate(&self, function: &codegen::Function, mode: EvalMode) -> Result<f64, ()> {
@@ -198,19 +150,14 @@ impl<'a> device::Context for Context<'a> {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
             let res = scope.builder().name(eval_thread_name).spawn(move |_| {
-                let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
-                    let bound = candidate.bound.value();
-                    let eval = unwrap!(
-                        self.eval_runtime(&thunk, bound, best_eval, mode),
-                        "evaluation failed for actions {:?}, with kernel {:?}",
-                        candidate.actions,
-                        &thunk
+                    callback.call(
+                        candidate,
+                        &mut RealtimeThunk {
+                            thunk,
+                            smx_clock: self.gpu_model.smx_clock,
+                        },
                     );
-                    if eval < best_eval {
-                        best_eval = eval;
-                    }
-                    callback.call(candidate, eval);
                 }
             });
             unwrap!(res);
@@ -242,7 +189,7 @@ where
     'a: 'b,
     'c: 'b,
 {
-    fn add_kernel(
+    fn add_dyn_kernel(
         &mut self,
         candidate: explorer::Candidate<'a>,
         callback: device::AsyncCallback<'a, 'c>,
@@ -269,5 +216,22 @@ where
         let t_usize = t.as_secs() as usize * 1_000_000_000 + t.subsec_nanos() as usize;
         self.blocked_time
             .fetch_add(t_usize, atomic::Ordering::Relaxed);
+    }
+}
+
+struct RealtimeThunk<'a> {
+    thunk: Thunk<'a>,
+    smx_clock: f64,
+}
+
+impl<'a> fmt::Display for RealtimeThunk<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{:?}", &self.thunk)
+    }
+}
+
+impl<'a> KernelEvaluator for RealtimeThunk<'a> {
+    fn evaluate(&mut self) -> Option<f64> {
+        Some(self.thunk.execute().ok()? as f64 / self.smx_clock)
     }
 }

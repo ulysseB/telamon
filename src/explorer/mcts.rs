@@ -96,7 +96,6 @@ struct NodeInner<'c, N, E> {
     ///
     /// This is directly a pointer to the parent node and edge index in order to avoid an
     /// additional indirection through the `Edge` when following a path upwards.
-    #[allow(dead_code)]
     parent: Option<(WeakNode<'c, N, E>, EdgeIndex)>,
 
     /// Child edges.  Edges have a backward pointer to the node and additional metadata such as the
@@ -157,6 +156,28 @@ impl<'c, N, E> Node<'c, N, E> {
     /// Depth of the node.  The root is at depth 0.
     pub fn depth(&self) -> usize {
         self.inner.depth
+    }
+
+    /// Returns the actions used for creating the node.  The actions are returned in the reverse
+    /// order in which they were taken, i.e. the first action taken is last in the vector.
+    pub fn rev_actions(&self) -> Vec<Action> {
+        let mut actions = Vec::with_capacity(self.depth());
+
+        let mut node = self.clone();
+        while let Some((parent, index)) = node.inner.parent.as_ref() {
+            let parent = parent.upgrade().expect("node removed from tree");
+            actions.push(parent[*index].action().clone());
+            node = parent;
+        }
+
+        actions
+    }
+
+    /// List of actions used for creating the node, in order of creation.
+    pub fn actions(&self) -> Vec<Action> {
+        let mut actions = self.rev_actions();
+        actions.reverse();
+        actions
     }
 
     /// Bound from the performance model.  If `None`, the node is dead and was killed by constraint
@@ -1321,7 +1342,11 @@ where
         }
         .map(|(candidate, trace)| {
             (
-                Candidate::new(candidate, trace.node.bound().unwrap().clone()),
+                Candidate::with_actions(
+                    candidate,
+                    trace.node.bound().unwrap().clone(),
+                    trace.node.actions(),
+                ),
                 trace,
             )
         })

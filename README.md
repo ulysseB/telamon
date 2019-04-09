@@ -92,7 +92,7 @@ We are now ready to start the search space exploration to find the best candidat
 ```rust
 use telamon::explorer;
 
-let best = explorer::find_best(explorer::config::read(), &context, search_space).unwrap();
+let best = explorer::find_best(explorer::config::read(), &context, search_space, None).unwrap();
 context.device().gen_code(&best, &mut std::io::stdout());
 ```
 

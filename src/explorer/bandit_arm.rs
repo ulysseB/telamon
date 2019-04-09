@@ -416,7 +416,7 @@ where
                                 }
 
                                 // Deadend reached while exploring; restart from the root
-                                // TODO(bclement): We should backpropagate explicitely here.
+                                // TODO(bclement): We should backpropagate explicitly here.
                                 self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
 
                                 // Don't clean deadends here: this is *not* an in-tree deadend.

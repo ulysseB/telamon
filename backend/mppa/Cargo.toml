@@ -9,18 +9,11 @@ cc = "1.0"
 
 [dependencies]
 crossbeam = "0.7"
-lazy_static = { version = "1.0" }
-env_logger = "0.5"
-failure = "0.1"
 itertools = "0.8"
 libc = "0.2.40"
-libloading = "0.5.0"
 log = "0.4"
 num = "0.2"
-num_cpus = "1.8.0"
-rpds = { version = "0.5.0", features = ["serde"] }
 telamon = {path = "../../"}
-tempfile = "3.0.1"
 telajax = {path = "../../telajax"}
 utils = {package = "telamon-utils", path = "../../telamon-utils"}
 

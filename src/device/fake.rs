@@ -12,7 +12,8 @@ use crate::model::{self, HwPressure};
 use crate::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
 
 use super::{
-    ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, EvalMode, ScalarArgument,
+    ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, EvalMode, KernelEvaluator,
+    ScalarArgument,
 };
 
 /// A fake device.
@@ -209,13 +210,29 @@ impl<D: super::Device> super::Context for Context<D> {
             'a: 'b,
             'c: 'b,
         {
-            fn add_kernel(
+            fn add_dyn_kernel(
                 &mut self,
                 candidate: Candidate<'a>,
                 callback: AsyncCallback<'a, 'c>,
             ) {
+                use std::fmt;
+
+                struct FakeCode;
+
+                impl fmt::Display for FakeCode {
+                    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                        write!(fmt, "<...>")
+                    }
+                }
+
+                impl KernelEvaluator for FakeCode {
+                    fn evaluate(&mut self) -> Option<f64> {
+                        Some(1.)
+                    }
+                }
+
                 codegen::Function::build(&candidate.space);
-                callback.call(candidate, 1.0);
+                callback.call(candidate, &mut FakeCode);
             }
         }
 

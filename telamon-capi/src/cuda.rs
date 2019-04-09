@@ -65,7 +65,7 @@ pub unsafe extern "C" fn telamon_cuda_get_device(
 
 /// Allocates and binds an array to the given parameter. `size` is given in bytes.
 ///
-/// The allocated array is managed by the context and doesn't need to be explicitely
+/// The allocated array is managed by the context and doesn't need to be explicitly
 /// destroyed.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_cuda_bind_array(
