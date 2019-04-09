@@ -117,7 +117,7 @@ impl<T: Clone + Ord> PartialPermutations<T> {
     where
         IT: IntoIterator<Item = T>,
     {
-        let mut values = values.into_iter().sorted();
+        let mut values = values.into_iter().sorted().collect::<Vec<_>>();
         if k < values.len() {
             values[k..].reverse();
         }

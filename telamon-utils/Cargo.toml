@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 fnv = "1.0"
-itertools = "0.6"
+itertools = "0.8"
 linked-list = "0.0.3"
 linked-hash-map = "0.5"
 num = "0.2.0"

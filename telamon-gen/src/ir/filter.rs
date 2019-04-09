@@ -240,7 +240,8 @@ impl Code {
                 *code = RcStr::new(code.replace(&old_pattern, &new_pattern));
                 (var, new_name)
             })
-            .sorted_by(|x, y| std::cmp::Ord::cmp(&x.0, &y.0));
+            .sorted_by(|x, y| std::cmp::Ord::cmp(&x.0, &y.0))
+            .collect::<Vec<_>>();
         self.vars.dedup();
     }
 }

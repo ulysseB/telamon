@@ -21,7 +21,7 @@ libc = "0.2.40"
 [dependencies]
 env_logger = "0.5.9"
 handlebars = "0.28.0"
-itertools = "0.7.8"
+itertools = "0.8"
 lalrpop-util = "0.14"
 lazy_static = "1.0.0"
 libc = "0.2.40"

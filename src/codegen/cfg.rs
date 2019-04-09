@@ -34,7 +34,7 @@ impl<'a> Cfg<'a> {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
                 Box::new(std::iter::once(dim).chain(body_dims)) as _
             }
-            Cfg::Instruction(dims, _) => Box::new(itertools::flatten(dims)),
+            Cfg::Instruction(dims, _) => Box::new(dims.iter().flatten()),
         }
     }
 
@@ -99,7 +99,7 @@ impl<'a> Cfg<'a> {
             }
         };
         // Pop dimensions exit points.
-        for _ in itertools::flatten(&dims) {
+        for _ in dims.iter().flatten() {
             match events.next().unwrap() {
                 CfgEvent::Exit(_, ExitEvent::SeqDim) => (),
                 event => panic!("unexpected event {:?}", event),
