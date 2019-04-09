@@ -1502,7 +1502,7 @@
                                 }
 
                                 <span class="comment">// Deadend reached while exploring; restart from the root</span>
-                                <span class="comment">// TODO(bclement): We should backpropagate explicitely here.</span>
+                                <span class="comment">// TODO(bclement): We should backpropagate explicitly here.</span>
                                 <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
 
                                 <span class="comment">// Don&#39;t clean deadends here: this is *not* an in-tree deadend.</span>

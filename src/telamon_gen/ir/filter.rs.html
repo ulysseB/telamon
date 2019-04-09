@@ -1122,6 +1122,7 @@
 <span id="1122">1122</span>
 <span id="1123">1123</span>
 <span id="1124">1124</span>
+<span id="1125">1125</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Filter on choices.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Adaptable</span>, <span class="ident">SetRef</span>};
@@ -1365,7 +1366,8 @@
                 <span class="kw-2">*</span><span class="ident">code</span> <span class="op">=</span> <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">code</span>.<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="ident">old_pattern</span>, <span class="kw-2">&amp;</span><span class="ident">new_pattern</span>));
                 (<span class="ident">var</span>, <span class="ident">new_name</span>)
             })
-            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ord</span>::<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">y</span>.<span class="number">0</span>));
+            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ord</span>::<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">y</span>.<span class="number">0</span>))
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
         <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dedup</span>();
     }
 }

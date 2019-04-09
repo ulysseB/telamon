@@ -529,6 +529,10 @@
 <span id="529">529</span>
 <span id="530">530</span>
 <span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -567,6 +571,9 @@
     <span class="doccomment">/// Indicates the search must be stopped if a candidate with an execution time better</span>
     <span class="doccomment">/// than the bound (in ns) is found.</span>
     <span class="kw">pub</span> <span class="ident">stop_bound</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// If true, check all implementations found for correctness.  Otherwise (the default) only the</span>
+    <span class="doccomment">/// best candidates are checked.</span>
+    <span class="kw">pub</span> <span class="ident">check_all</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Indicates the search must be stopped after the given number of minutes.</span>
     <span class="kw">pub</span> <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Indicates the search must be stopped after the given number of</span>
@@ -689,6 +696,7 @@
             <span class="ident">output_dir</span>: <span class="string">&quot;.&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">log_file</span>: <span class="string">&quot;watch.log&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">event_log</span>: <span class="string">&quot;eventlog.tfrecord.gz&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">check_all</span>: <span class="bool-val">false</span>,
             <span class="ident">num_workers</span>: <span class="ident">num_cpus</span>::<span class="ident">get</span>(),
             <span class="ident">algorithm</span>: <span class="ident">SearchAlgorithm</span>::<span class="ident">default</span>(),
             <span class="ident">stop_bound</span>: <span class="prelude-val">None</span>,

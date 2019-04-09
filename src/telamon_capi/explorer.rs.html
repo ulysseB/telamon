@@ -137,7 +137,7 @@
         .<span class="ident">cloned</span>()
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">search_space</span><span class="op">|</span> <span class="ident">search_space</span>.<span class="number">0</span>)
         .<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">best</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">find_best</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="kw-2">*</span>(<span class="kw-2">*</span><span class="ident">context</span>).<span class="number">0</span>, <span class="ident">search_space</span>);
+    <span class="kw">let</span> <span class="ident">best</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">find_best</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="kw-2">*</span>(<span class="kw-2">*</span><span class="ident">context</span>).<span class="number">0</span>, <span class="ident">search_space</span>, <span class="prelude-val">None</span>);
     <span class="ident">best</span>.<span class="ident">map</span>(<span class="ident">SearchSpace</span>)
         .<span class="ident">map</span>(<span class="ident">Box</span>::<span class="ident">new</span>)
         .<span class="ident">map</span>(<span class="ident">Box</span>::<span class="ident">into_raw</span>)

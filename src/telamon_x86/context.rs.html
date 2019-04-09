@@ -256,6 +256,30 @@
 <span id="256">256</span>
 <span id="257">257</span>
 <span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">compile</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cpu</span>::<span class="ident">Cpu</span>;
@@ -265,7 +289,9 @@
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">codegen</span>::<span class="ident">ParamVal</span>;
 
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">codegen</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">AsyncCallback</span>, <span class="ident">Device</span>, <span class="ident">EvalMode</span>, <span class="ident">ScalarArgument</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>::{
+    <span class="self">self</span>, <span class="ident">AsyncCallback</span>, <span class="ident">Device</span>, <span class="ident">EvalMode</span>, <span class="ident">KernelEvaluator</span>, <span class="ident">ScalarArgument</span>,
+};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>;
 
@@ -273,10 +299,10 @@
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
-<span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">f64</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">mpsc</span>, <span class="ident">Arc</span>, <span class="ident">MutexGuard</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">fmt</span>};
 <span class="kw">use</span> <span class="ident">tempfile</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -413,8 +439,13 @@
                 .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">candidate</span>, <span class="ident">fun_str</span>, <span class="ident">code_args</span>, <span class="ident">callback</span>)) <span class="op">=</span> <span class="ident">recv</span>.<span class="ident">recv</span>()
                     {
-                        <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">function_evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">fun_str</span>, <span class="kw-2">&amp;</span><span class="ident">code_args</span>));
-                        <span class="ident">callback</span>.<span class="ident">call</span>(<span class="ident">candidate</span>, <span class="ident">eval</span>);
+                        <span class="ident">callback</span>.<span class="ident">call</span>(
+                            <span class="ident">candidate</span>,
+                            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Code</span> {
+                                <span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="ident">fun_str</span>,
+                                <span class="ident">arguments</span>: <span class="kw-2">&amp;</span><span class="ident">code_args</span>,
+                            },
+                        );
                     }
                 })
                 .<span class="ident">unwrap</span>();
@@ -434,6 +465,23 @@
     <span class="ident">ArgRef</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Argument</span><span class="op">&gt;</span>),
     <span class="ident">Size</span>(<span class="ident">i32</span>),
     <span class="ident">TmpArray</span>(<span class="ident">u32</span>),
+}
+
+<span class="kw">struct</span> <span class="ident">Code</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>,
+    <span class="ident">arguments</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">ThunkArg</span>],
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Code</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">source</span>)
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">KernelEvaluator</span> <span class="kw">for</span> <span class="ident">Code</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> {
+        <span class="ident">function_evaluate</span>(<span class="self">self</span>.<span class="ident">source</span>, <span class="self">self</span>.<span class="ident">arguments</span>).<span class="ident">ok</span>()
+    }
 }
 
 <span class="doccomment">/// Given a function string and its arguments as ThunkArg, compile to a binary, executes it and</span>
@@ -500,7 +548,7 @@
     <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>,
     <span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;b</span>,
 {
-    <span class="kw">fn</span> <span class="ident">add_kernel</span>(
+    <span class="kw">fn</span> <span class="ident">add_dyn_kernel</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">candidate</span>: <span class="ident">explorer</span>::<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
         <span class="ident">callback</span>: <span class="ident">device</span>::<span class="ident">AsyncCallback</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>,

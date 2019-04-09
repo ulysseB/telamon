@@ -283,7 +283,7 @@
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">ActionEx</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="comment">// Actions are already explicitely self-describing enough</span>
+            <span class="comment">// Actions are already explicitly self-describing enough</span>
             <span class="ident">ActionEx</span>::<span class="ident">Action</span>(<span class="ident">action</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">action</span>),
             <span class="ident">ActionEx</span>::<span class="ident">LowerLayout</span> {
                 <span class="ident">mem</span>,

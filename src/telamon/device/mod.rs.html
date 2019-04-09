@@ -95,6 +95,7 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
+<span id="98">98</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">fake</span>;
@@ -104,7 +105,8 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">argument</span>::{<span class="ident">ArrayArgument</span>, <span class="ident">ArrayArgumentExt</span>, <span class="ident">ScalarArgument</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::{
-    <span class="ident">ArgMap</span>, <span class="ident">ArgMapExt</span>, <span class="ident">AsyncCallback</span>, <span class="ident">AsyncEvaluator</span>, <span class="ident">Context</span>, <span class="ident">EvalMode</span>,
+    <span class="ident">ArgMap</span>, <span class="ident">ArgMapExt</span>, <span class="ident">AsyncCallback</span>, <span class="ident">AsyncEvaluator</span>, <span class="ident">Context</span>, <span class="ident">EvalMode</span>, <span class="ident">KernelEvaluator</span>,
+    <span class="ident">Stabilizer</span>,
 };
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::<span class="ident">Function</span>;

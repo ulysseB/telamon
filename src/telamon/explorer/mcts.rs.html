@@ -2049,6 +2049,31 @@
 <span id="2049">2049</span>
 <span id="2050">2050</span>
 <span id="2051">2051</span>
+<span id="2052">2052</span>
+<span id="2053">2053</span>
+<span id="2054">2054</span>
+<span id="2055">2055</span>
+<span id="2056">2056</span>
+<span id="2057">2057</span>
+<span id="2058">2058</span>
+<span id="2059">2059</span>
+<span id="2060">2060</span>
+<span id="2061">2061</span>
+<span id="2062">2062</span>
+<span id="2063">2063</span>
+<span id="2064">2064</span>
+<span id="2065">2065</span>
+<span id="2066">2066</span>
+<span id="2067">2067</span>
+<span id="2068">2068</span>
+<span id="2069">2069</span>
+<span id="2070">2070</span>
+<span id="2071">2071</span>
+<span id="2072">2072</span>
+<span id="2073">2073</span>
+<span id="2074">2074</span>
+<span id="2075">2075</span>
+<span id="2076">2076</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Search space exploration using MCTS-style algorithm</span>
 <span class="doccomment">//!</span>
@@ -2148,7 +2173,6 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This is directly a pointer to the parent node and edge index in order to avoid an</span>
     <span class="doccomment">/// additional indirection through the `Edge` when following a path upwards.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">WeakNode</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>, <span class="ident">EdgeIndex</span>)<span class="op">&gt;</span>,
 
     <span class="doccomment">/// Child edges.  Edges have a backward pointer to the node and additional metadata such as the</span>
@@ -2209,6 +2233,28 @@
     <span class="doccomment">/// Depth of the node.  The root is at depth 0.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">depth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">depth</span>
+    }
+
+    <span class="doccomment">/// Returns the actions used for creating the node.  The actions are returned in the reverse</span>
+    <span class="doccomment">/// order in which they were taken, i.e. the first action taken is last in the vector.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rev_actions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="self">self</span>.<span class="ident">depth</span>());
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">clone</span>();
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">parent</span>, <span class="ident">index</span>)) <span class="op">=</span> <span class="ident">node</span>.<span class="ident">inner</span>.<span class="ident">parent</span>.<span class="ident">as_ref</span>() {
+            <span class="kw">let</span> <span class="ident">parent</span> <span class="op">=</span> <span class="ident">parent</span>.<span class="ident">upgrade</span>().<span class="ident">expect</span>(<span class="string">&quot;node removed from tree&quot;</span>);
+            <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">parent</span>[<span class="kw-2">*</span><span class="ident">index</span>].<span class="ident">action</span>().<span class="ident">clone</span>());
+            <span class="ident">node</span> <span class="op">=</span> <span class="ident">parent</span>;
+        }
+
+        <span class="ident">actions</span>
+    }
+
+    <span class="doccomment">/// List of actions used for creating the node, in order of creation.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">actions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">rev_actions</span>();
+        <span class="ident">actions</span>.<span class="ident">reverse</span>();
+        <span class="ident">actions</span>
     }
 
     <span class="doccomment">/// Bound from the performance model.  If `None`, the node is dead and was killed by constraint</span>
@@ -3373,7 +3419,11 @@
         }
         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">candidate</span>, <span class="ident">trace</span>)<span class="op">|</span> {
             (
-                <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">candidate</span>, <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">bound</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>()),
+                <span class="ident">Candidate</span>::<span class="ident">with_actions</span>(
+                    <span class="ident">candidate</span>,
+                    <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">bound</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>(),
+                    <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">actions</span>(),
+                ),
                 <span class="ident">trace</span>,
             )
         })

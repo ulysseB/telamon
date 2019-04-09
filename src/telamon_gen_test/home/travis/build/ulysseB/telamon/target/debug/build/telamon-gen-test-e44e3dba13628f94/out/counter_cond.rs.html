@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `/home/travis/build/ulysseB/telamon/target/debug/build/telamon-gen-test-b3488832866ecdc4/out/fail0.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>fail0.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../light.css" id="themeStyle"><script src="../../../../../../../../../../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../noscript.css"></noscript><style type="text/css">#crate-search{background-image:url("../../../../../../../../../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../../../../../../../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../../../../../../../../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../../../../../../../../../../settings.html"><img src="../../../../../../../../../../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `/home/travis/build/ulysseB/telamon/target/debug/build/telamon-gen-test-e44e3dba13628f94/out/counter_cond.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>counter_cond.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../../../../../../../../../../light.css" id="themeStyle"><script src="../../../../../../../../../../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../noscript.css"></noscript><style type="text/css">#crate-search{background-image:url("../../../../../../../../../../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../../../../../../../../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../../../../../../../../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../../../../../../../../../../settings.html"><img src="../../../../../../../../../../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -806,108 +806,6 @@
 <span id="806">806</span>
 <span id="807">807</span>
 <span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
-<span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
-<span id="839">839</span>
-<span id="840">840</span>
-<span id="841">841</span>
-<span id="842">842</span>
-<span id="843">843</span>
-<span id="844">844</span>
-<span id="845">845</span>
-<span id="846">846</span>
-<span id="847">847</span>
-<span id="848">848</span>
-<span id="849">849</span>
-<span id="850">850</span>
-<span id="851">851</span>
-<span id="852">852</span>
-<span id="853">853</span>
-<span id="854">854</span>
-<span id="855">855</span>
-<span id="856">856</span>
-<span id="857">857</span>
-<span id="858">858</span>
-<span id="859">859</span>
-<span id="860">860</span>
-<span id="861">861</span>
-<span id="862">862</span>
-<span id="863">863</span>
-<span id="864">864</span>
-<span id="865">865</span>
-<span id="866">866</span>
-<span id="867">867</span>
-<span id="868">868</span>
-<span id="869">869</span>
-<span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
-<span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
-<span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
-<span id="893">893</span>
-<span id="894">894</span>
-<span id="895">895</span>
-<span id="896">896</span>
-<span id="897">897</span>
-<span id="898">898</span>
-<span id="899">899</span>
-<span id="900">900</span>
-<span id="901">901</span>
-<span id="902">902</span>
-<span id="903">903</span>
-<span id="904">904</span>
-<span id="905">905</span>
-<span id="906">906</span>
-<span id="907">907</span>
-<span id="908">908</span>
-<span id="909">909</span>
-<span id="910">910</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
@@ -927,11 +825,11 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainStore</span> {
     
-        <span class="ident">foo</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>,)
+        <span class="ident">foo</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 , <span class="ident">Foo</span><span class="op">&gt;&gt;</span>,
     
-        <span class="ident">bar</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>,)
-, <span class="ident">Bar</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">bounded_counter</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
+, <span class="ident">Range</span><span class="op">&gt;&gt;</span>,
     
 }
 
@@ -947,23 +845,17 @@
     <span class="doccomment">/// Initializes the domain.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>)]</span>
     <span class="kw">fn</span> <span class="ident">init</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>) {
-        <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">insert</span>((<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),),<span class="ident">Foo</span>::<span class="ident">all</span>());
-             } <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bar</span>).<span class="ident">insert</span>((<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),),<span class="ident">Bar</span>::<span class="ident">all</span>());
-             } }
+        <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">insert</span>((<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim</span>),),<span class="ident">Foo</span>::<span class="ident">all</span>());
+             } <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bounded_counter</span>).<span class="ident">insert</span>((),<span class="ident">Range</span>::<span class="ident">all</span>());
+            }
 
     <span class="doccomment">/// Allocates the choices when new objects are created.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">alloc</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>, <span class="ident">new_objs</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">NewObjs</span>) {
         <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
-    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">set_a</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-    <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">insert</span>((<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),),<span class="ident">Foo</span>::<span class="ident">all</span>());
-            
-    
-}<span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
-    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">set_b</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-    <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bar</span>).<span class="ident">insert</span>((<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),),<span class="ident">Bar</span>::<span class="ident">all</span>());
+    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">dim</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+    <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">insert</span>((<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),),<span class="ident">Foo</span>::<span class="ident">all</span>());
             
     
 }}
@@ -972,38 +864,38 @@
 
 <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_foo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
-     <span class="self">self</span>.<span class="ident">foo</span>[<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)] 
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_foo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
+     <span class="self">self</span>.<span class="ident">foo</span>[<span class="kw-2">&amp;</span>(<span class="ident">dim</span>,)] 
 }
 
 <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has been restricted</span>
 <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_foo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>,<span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
-    <span class="ident">diff</span>.<span class="ident">foo</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)).<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">foo</span>[<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)])
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_foo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,<span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
+    <span class="ident">diff</span>.<span class="ident">foo</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">dim</span>,)).<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">foo</span>[<span class="kw-2">&amp;</span>(<span class="ident">dim</span>,)])
 }
 
 <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_foo</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Foo</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_foo</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Foo</span>) {
     
-    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set foo{:?} to {:?}&quot;</span>, (<span class="ident">item</span>,), <span class="ident">value</span>);
-    <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">item</span>,))) <span class="op">=</span> <span class="ident">value</span>;
+    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set foo{:?} to {:?}&quot;</span>, (<span class="ident">dim</span>,), <span class="ident">value</span>);
+    <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">dim</span>,))) <span class="op">=</span> <span class="ident">value</span>;
 }
 
 <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old value in `diff`</span>
 <span class="doccomment">/// and indicates if the new domain is failed.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_foo</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Foo</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_foo</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Foo</span>,
                          <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">foo</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">dim</span>,)));
     <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
     <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
     <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict foo{:?} to {:?}&quot;</span>, (<span class="ident">item</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
-        <span class="ident">diff</span>.<span class="ident">foo</span>.<span class="ident">entry</span>((<span class="ident">item</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict foo{:?} to {:?}&quot;</span>, (<span class="ident">dim</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
+        <span class="ident">diff</span>.<span class="ident">foo</span>.<span class="ident">entry</span>((<span class="ident">dim</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
     }
     <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
 }
@@ -1012,42 +904,57 @@
 
 <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_bar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Bar</span> {
-     <span class="self">self</span>.<span class="ident">bar</span>[<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)] 
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_bounded_counter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Range</span> {
+     <span class="self">self</span>.<span class="ident">bounded_counter</span>[<span class="kw-2">&amp;</span>()] 
 }
 
 <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has been restricted</span>
 <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_bar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>,<span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="ident">Bar</span> {
-    <span class="ident">diff</span>.<span class="ident">bar</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)).<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">bar</span>[<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)])
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_bounded_counter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>,<span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="ident">Range</span> {
+    <span class="ident">diff</span>.<span class="ident">bounded_counter</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>()).<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">bounded_counter</span>[<span class="kw-2">&amp;</span>()])
 }
 
 <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_bar</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Bar</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_bounded_counter</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Range</span>) {
     
-    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set bar{:?} to {:?}&quot;</span>, (<span class="ident">item</span>,), <span class="ident">value</span>);
-    <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bar</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">item</span>,))) <span class="op">=</span> <span class="ident">value</span>;
+    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set bounded_counter{:?} to {:?}&quot;</span>, (), <span class="ident">value</span>);
+    <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bounded_counter</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>())) <span class="op">=</span> <span class="ident">value</span>;
 }
 
 <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old value in `diff`</span>
 <span class="doccomment">/// and indicates if the new domain is failed.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_bar</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Bar</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_bounded_counter</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Range</span>,
                          <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bar</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">item</span>,)));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bounded_counter</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>()));
     <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-    <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
+    <span class="ident">ptr</span>.<span class="ident">apply_diff_add</span>(<span class="ident">value</span>);
     <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict bar{:?} to {:?}&quot;</span>, (<span class="ident">item</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
-        <span class="ident">diff</span>.<span class="ident">bar</span>.<span class="ident">entry</span>((<span class="ident">item</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict bounded_counter{:?} to {:?}&quot;</span>, (), <span class="kw-2">*</span><span class="ident">ptr</span>);
+        <span class="ident">diff</span>.<span class="ident">bounded_counter</span>.<span class="ident">entry</span>(()).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
     }
     <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
 }
 
+<span class="doccomment">/// Updates a counter by changing the value of an increment.</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+<span class="kw">fn</span> <span class="ident">update_bounded_counter</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">old_incr</span>: <span class="ident">Range</span>,
+                   <span class="ident">new_incr</span>: <span class="ident">Range</span>, <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">bounded_counter</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>()));
+    <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+    <span class="ident">ptr</span>.<span class="ident">sub_add</span>(<span class="ident">old_incr</span>);
+    <span class="ident">ptr</span>.<span class="ident">add_add</span>(<span class="ident">new_incr</span>);
+    <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;update bounded_counter{:?} to {:?}&quot;</span>, (), <span class="kw-2">*</span><span class="ident">ptr</span>);
+        <span class="ident">diff</span>.<span class="ident">bounded_counter</span>.<span class="ident">entry</span>(()).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+    }
+    <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
+}
 
 }
 
@@ -1055,24 +962,24 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainDiff</span> {
     
-        <span class="kw">pub</span> <span class="ident">foo</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">foo</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 ,
             (<span class="ident">Foo</span>, <span class="ident">Foo</span>)<span class="op">&gt;</span>,
     
-        <span class="kw">pub</span> <span class="ident">bar</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>,)
+        <span class="kw">pub</span> <span class="ident">bounded_counter</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>()
 ,
-            (<span class="ident">Bar</span>, <span class="ident">Bar</span>)<span class="op">&gt;</span>,
+            (<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span>,
     
 }
 
 <span class="kw">impl</span> <span class="ident">DomainDiff</span> {
     <span class="doccomment">/// Indicates if the `DomainDiff` does not holds any modification.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {<span class="self">self</span>.<span class="ident">foo</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">bar</span>.<span class="ident">is_empty</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {<span class="self">self</span>.<span class="ident">foo</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">bounded_counter</span>.<span class="ident">is_empty</span>()
         }
     
         <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_foo_diff</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
-            <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>,)
+            <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,)
 ),<span class="ident">Foo</span>, <span class="ident">Foo</span>)<span class="op">&gt;</span> {
             <span class="self">self</span>.<span class="ident">foo</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
                 <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">foo</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
@@ -1081,11 +988,11 @@
         }
     
         <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_bar_diff</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
-            <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>,)
-),<span class="ident">Bar</span>, <span class="ident">Bar</span>)<span class="op">&gt;</span> {
-            <span class="self">self</span>.<span class="ident">bar</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-                <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">bar</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_bounded_counter_diff</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>)
+            <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>((()
+),<span class="ident">Range</span>, <span class="ident">Range</span>)<span class="op">&gt;</span> {
+            <span class="self">self</span>.<span class="ident">bounded_counter</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
+                <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">bounded_counter</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
                 (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
             })
         }
@@ -1104,32 +1011,30 @@
 
     <span class="doccomment">/// Returns the values a `foo` can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(<span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(<span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
                   <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
-        <span class="kw">for</span> <span class="ident">obj_85</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">subset_a</span>::<span class="ident">reverse</span>(<span class="ident">ir_instance</span>, <span class="ident">item</span>.<span class="ident">id</span>()) {<span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter_0</span>(<span class="ident">item</span>,<span class="ident">obj_85</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
-    
- } 
-
+        
         <span class="ident">values</span>
     }
 
     <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(<span class="ident">old</span>: <span class="ident">Foo</span>, <span class="ident">new</span>: <span class="ident">Foo</span>,
-                     <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
+                     <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
                      <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
                      <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         {
-            <span class="kw">let</span> <span class="ident">item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">item</span>);<span class="kw">for</span> <span class="ident">obj_86</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">subset_a</span>::<span class="ident">reverse</span>(<span class="ident">ir_instance</span>, <span class="ident">item</span>.<span class="ident">id</span>()) {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
-    <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter_0</span>(<span class="ident">obj_86</span>,<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
-    
-
-    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
-    <span class="ident">bar</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj_86</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>; } 
+            <span class="kw">let</span> <span class="ident">dim</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">dim</span>);<span class="kw">if</span> <span class="ident">old</span>.<span class="ident">is</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>).<span class="ident">is_maybe</span>() {
+    <span class="kw">let</span> <span class="ident">new_status</span> <span class="op">=</span> <span class="ident">new</span>.<span class="ident">is</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>);
+    <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> { <span class="number">1</span> };
+    <span class="kw">if</span> <span class="ident">new_status</span>.<span class="ident">is_true</span>() {
+        <span class="ident">store</span>.<span class="ident">restrict_bounded_counter</span>(<span class="ident">Range</span> { <span class="ident">min</span>: { <span class="ident">NumSet</span> :: <span class="ident">min_value</span> ( <span class="op">&amp;</span>  <span class="ident">value</span>  , { <span class="op">&amp;</span> ( ) } ) }, <span class="ident">max</span>: <span class="number">0</span> }, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+    }<span class="kw">else</span> <span class="kw">if</span> <span class="ident">new_status</span>.<span class="ident">is_false</span>() {
+        <span class="ident">store</span>.<span class="ident">restrict_bounded_counter</span>(
+            <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: { <span class="ident">NumSet</span> :: <span class="ident">max_value</span> ( <span class="op">&amp;</span>  <span class="ident">value</span>  , { <span class="op">&amp;</span> ( ) } ) } }, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+    }
+}
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">actions</span> { <span class="ident">apply_action</span>(<span class="ident">action</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>; }
@@ -1138,85 +1043,66 @@
 
     <span class="doccomment">/// Generate actions that restrict the values the choice can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(<span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(<span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
                             <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
                             <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Foo</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">item</span>,);
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">dim</span>,);
         <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict foo{:?} to {:?}&quot;</span>, (<span class="ident">item</span>,), <span class="ident">new_values</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict foo{:?} to {:?}&quot;</span>, (<span class="ident">dim</span>,), <span class="ident">new_values</span>);
         <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() { <span class="kw">return</span> <span class="prelude-val">Err</span>(()); }
         <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
-                <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">item</span>,<span class="ident">new_values</span>)])
+                <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>,<span class="ident">new_values</span>)])
             } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[]) }
         
     }
 
     <span class="doccomment">/// Restrict the values the choice can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(<span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(<span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
                     <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
                     <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Foo</span>,
                     <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">item</span>,<span class="ident">new_values</span>, <span class="ident">diff</span>)
+        <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">dim</span>,<span class="ident">new_values</span>, <span class="ident">diff</span>)
     }
 
-    <span class="doccomment">/// Restricts the values `foo` can take.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(<span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>, <span class="ident">obj_87</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">Obj</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-                     <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">FAILED</span>;
-    <span class="kw">let</span> <span class="ident">bar_21</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bar</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj_87</span>),);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_88</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
-    <span class="kw">if</span> <span class="op">!</span> <span class="ident">bar_21</span> . <span class="ident">intersects</span> ( <span class="ident">Bar</span> :: <span class="ident">A</span> )
-        { <span class="ident">values_88</span>.<span class="ident">restrict</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>); }
     
-    <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_88</span>);
-
-    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;restrict foo{:?} to {:?} in filter 0&quot;</span>, (<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),<span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj_87</span>),), <span class="ident">values</span>);
-    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with bar_21 = {:?}&quot;</span>, <span class="ident">bar_21</span>);
-    <span class="ident">values</span>
-}
     }
 
     
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">bar</span> {
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">bounded_counter</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="doccomment">/// Returns the values a `bar` can take.</span>
+    <span class="doccomment">/// Returns the values a `bounded_counter` can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(<span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-                  <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="ident">Bar</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">item</span>) <span class="op">=</span><span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">from_superset</span>(<span class="ident">ir_instance</span>, <span class="ident">item</span>){
-<span class="kw">for</span> <span class="ident">obj_89</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">subset_a</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>)) {<span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter_0</span>(<span class="ident">item</span>,<span class="ident">obj_89</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(<span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+                  <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="ident">Range</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Range</span>::<span class="ident">all</span>();
+        <span class="ident">values</span>.<span class="ident">restrict</span>({ <span class="ident">Range</span> :: <span class="ident">new_lt</span> ( { <span class="op">&amp;</span> ( ) } , { <span class="number">3</span> } , { <span class="op">&amp;</span> ( ) } ) });
     
- } 
- } 
+            <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
+        <span class="ident">values</span>.<span class="ident">restrict</span>({ <span class="ident">Range</span> :: <span class="ident">new_geq</span> ( { <span class="op">&amp;</span> ( ) } , { <span class="number">1</span> } , { <span class="op">&amp;</span> ( ) } ) });
+    
+            <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
+        
+
+
         <span class="ident">values</span>
     }
 
     <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(<span class="ident">old</span>: <span class="ident">Bar</span>, <span class="ident">new</span>: <span class="ident">Bar</span>,
-                     <span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(<span class="ident">old</span>: <span class="ident">Range</span>, <span class="ident">new</span>: <span class="ident">Range</span>,
+                     <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
                      <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
                      <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         {
-            <span class="kw">let</span> <span class="ident">item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">item</span>);<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">item</span>) <span class="op">=</span><span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">from_superset</span>(<span class="ident">ir_instance</span>, <span class="ident">item</span>){
-<span class="kw">for</span> <span class="ident">obj_90</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">subset_a</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>)) {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
-    <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter_0</span>(<span class="ident">obj_90</span>,<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
-    
-
-    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
-    <span class="ident">foo</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj_90</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>; }  } 
+            <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">filter</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>);
+<span class="self">self</span>::<span class="ident">restrict</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">actions</span> { <span class="ident">apply_action</span>(<span class="ident">action</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>; }
@@ -1225,43 +1111,75 @@
 
     <span class="doccomment">/// Generate actions that restrict the values the choice can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(<span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(<span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
                             <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-                            <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Bar</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bar</span>(<span class="ident">item</span>,);
+                            <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Range</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bounded_counter</span>();
         <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict bar{:?} to {:?}&quot;</span>, (<span class="ident">item</span>,), <span class="ident">new_values</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict bounded_counter{:?} to {:?}&quot;</span>, (), <span class="ident">new_values</span>);
         <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() { <span class="kw">return</span> <span class="prelude-val">Err</span>(()); }
-        <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
-                <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">item</span>,<span class="ident">new_values</span>)])
-            } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[]) }
-        
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+            <span class="kw">for</span> <span class="ident">dim_82</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+<span class="kw">let</span> <span class="ident">incr_status</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_82</span>),).<span class="ident">is</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>);
+<span class="kw">let</span> <span class="ident">incr_amount</span> <span class="op">=</span> { <span class="number">1</span> };
+<span class="kw">if</span> <span class="ident">incr_status</span>.<span class="ident">is_maybe</span>() {
+    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict incr foo{:?} to {:?} with amount={:?}&quot;</span>,
+           (<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_82</span>),), <span class="ident">new_values</span>, <span class="ident">incr_amount</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
+    <span class="kw">if</span> <span class="ident">current</span>.<span class="ident">min</span> <span class="op">+</span> { <span class="ident">NumSet</span> :: <span class="ident">min_value</span> ( <span class="op">&amp;</span>  <span class="ident">incr_amount</span>  , { <span class="op">&amp;</span> ( ) } ) } <span class="op">&gt;</span> <span class="ident">new_values</span>.<span class="ident">max</span> {
+        <span class="ident">val</span>.<span class="ident">restrict</span>(<span class="op">!</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>));
+    }
+    <span class="kw">if</span> <span class="ident">current</span>.<span class="ident">max</span> <span class="op">&lt;</span> <span class="ident">new_values</span>.<span class="ident">min</span> <span class="op">+</span> { <span class="ident">NumSet</span> :: <span class="ident">max_value</span> ( <span class="op">&amp;</span>  <span class="ident">incr_amount</span>  , { <span class="op">&amp;</span> ( ) } ) } {
+        <span class="ident">val</span>.<span class="ident">restrict</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>);
+    }
+    <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">foo</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_82</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">val</span>)<span class="question-mark">?</span>);
+}
+
+ } 
+            <span class="prelude-val">Ok</span>(<span class="ident">actions</span>)
     }
 
     <span class="doccomment">/// Restrict the values the choice can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(<span class="ident">item</span>: <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(<span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
                     <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-                    <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Bar</span>,
+                    <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Range</span>,
                     <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="ident">store</span>.<span class="ident">restrict_bar</span>(<span class="ident">item</span>,<span class="ident">new_values</span>, <span class="ident">diff</span>)
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bounded_counter</span>();
+            <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
+            <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() { <span class="kw">return</span> <span class="prelude-val">Err</span>(()); }
+            <span class="kw">for</span> <span class="ident">dim_82</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+<span class="kw">let</span> <span class="ident">incr_status</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_82</span>),).<span class="ident">is</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>);
+<span class="kw">let</span> <span class="ident">incr_amount</span> <span class="op">=</span> { <span class="number">1</span> };
+<span class="kw">if</span> <span class="ident">incr_status</span>.<span class="ident">is_maybe</span>() {
+    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict incr foo{:?} to {:?} with amount={:?}&quot;</span>,
+           (<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_82</span>),), <span class="ident">new_values</span>, <span class="ident">incr_amount</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
+    <span class="kw">if</span> <span class="ident">current</span>.<span class="ident">min</span> <span class="op">+</span> { <span class="ident">NumSet</span> :: <span class="ident">min_value</span> ( <span class="op">&amp;</span>  <span class="ident">incr_amount</span>  , { <span class="op">&amp;</span> ( ) } ) } <span class="op">&gt;</span> <span class="ident">new_values</span>.<span class="ident">max</span> {
+        <span class="ident">val</span>.<span class="ident">restrict</span>(<span class="op">!</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>));
+    }
+    <span class="kw">if</span> <span class="ident">current</span>.<span class="ident">max</span> <span class="op">&lt;</span> <span class="ident">new_values</span>.<span class="ident">min</span> <span class="op">+</span> { <span class="ident">NumSet</span> :: <span class="ident">max_value</span> ( <span class="op">&amp;</span>  <span class="ident">incr_amount</span>  , { <span class="op">&amp;</span> ( ) } ) } {
+        <span class="ident">val</span>.<span class="ident">restrict</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>);
+    }
+    <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_82</span>),<span class="ident">val</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+}
+
+ } 
+            <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Restricts the values `bar` can take.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(<span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">Obj</span>, <span class="ident">obj_91</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-                     <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="ident">Bar</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">FAILED</span>;
-    <span class="kw">let</span> <span class="ident">foo_22</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj_91</span>),);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_92</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
-    <span class="kw">if</span> <span class="op">!</span> <span class="ident">foo_22</span> . <span class="ident">intersects</span> ( <span class="ident">Foo</span> :: <span class="ident">A</span> )
-        { <span class="ident">values_92</span>.<span class="ident">restrict</span>(<span class="ident">Bar</span> :: <span class="ident">A</span>); }
     
-    <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_92</span>);
-
-    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;restrict bar{:?} to {:?} in filter 0&quot;</span>, (<span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj_91</span>),), <span class="ident">values</span>);
-    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with foo_22 = {:?}&quot;</span>, <span class="ident">foo_22</span>);
-    <span class="ident">values</span>
+    <span class="doccomment">/// Compute the value of the counter can take depending on the values the increments can take.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compute_counter</span>(
+                       <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+                       <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
+                       <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>)
+        <span class="op">-&gt;</span> <span class="ident">Range</span> 
+{
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counter_val</span> <span class="op">=</span><span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span>(), <span class="number">0</span>, <span class="kw-2">&amp;</span>());<span class="kw">for</span> <span class="ident">dim_83</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> { <span class="number">1</span> } ; <span class="kw">let</span> <span class="ident">incr</span> <span class="op">=</span> { <span class="ident">store</span> . <span class="ident">get_old_foo</span> (  <span class="ident">ir</span> :: <span class="ident">dim</span> :: <span class="ident">Obj</span> :: <span class="ident">id</span> ( <span class="ident">dim_83</span> )  , <span class="ident">diff</span> ) } ; <span class="kw">if</span> ( <span class="ident">Foo</span> :: <span class="ident">A</span> ) . <span class="ident">intersects</span> ( <span class="ident">incr</span> ) { <span class="ident">counter_val</span> . <span class="ident">max</span> <span class="op">+=</span> { <span class="ident">NumSet</span> :: <span class="ident">max_value</span> ( <span class="op">&amp;</span>  <span class="ident">value</span>  , { <span class="op">&amp;</span> ( ) } ) } ; } <span class="kw">if</span> ( <span class="ident">Foo</span> :: <span class="ident">A</span> ) . <span class="ident">contains</span> ( <span class="ident">incr</span> ) { <span class="ident">counter_val</span> . <span class="ident">min</span> <span class="op">+=</span> { <span class="ident">NumSet</span> :: <span class="ident">min_value</span> ( <span class="op">&amp;</span>  <span class="ident">value</span>  , { <span class="op">&amp;</span> ( ) } ) } ; }
+     } 
+    <span class="ident">counter_val</span>
 }
     }
 
@@ -1512,146 +1430,23 @@
 }
 
 
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="ident">u8</span> }
-
-<span class="kw">impl</span> <span class="ident">Bar</span> {
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">A</span>: <span class="ident">Bar</span> <span class="op">=</span> <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="number">0b1</span> };
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">B</span>: <span class="ident">Bar</span> <span class="op">=</span> <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="number">0b10</span> };
-
-
-
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ALL</span>: <span class="ident">Bar</span> <span class="op">=</span> <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="number">0b11</span> };
-
-    <span class="doccomment">/// Returns the empty domain.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FAILED</span>: <span class="ident">Bar</span> <span class="op">=</span> <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="number">0</span> };
-
-    <span class="doccomment">/// Returns the full domain.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">all</span>() <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="self">Self</span>::<span class="ident">ALL</span> }
-
-    <span class="doccomment">/// Insert values in the domain.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">alternatives</span>: <span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="ident">bits</span> <span class="op">|=</span> <span class="ident">alternatives</span>.<span class="ident">bits</span>
-    }
-
-    <span class="doccomment">/// Lists the alternatives contained in the domain.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="self">Self</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> {
-        <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">bits</span>;
-        (<span class="number">0</span>..<span class="number">2</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="number">1</span> <span class="op">&lt;&lt;</span> <span class="ident">x</span>)
-            .<span class="ident">filter</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">x</span><span class="op">|</span> (<span class="ident">bits</span> <span class="op">&amp;</span> <span class="ident">x</span>) <span class="op">!=</span> <span class="number">0</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="ident">x</span> })
-    }
-
-    <span class="doccomment">/// Indicates if two choices will have the same value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">is_constrained</span>() <span class="op">&amp;&amp;</span> <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">other</span>
-    }
-
-    <span class="doccomment">/// Indicates if two choices cannot be equal.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">neq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="op">!</span><span class="self">self</span>.<span class="ident">intersects</span>(<span class="ident">other</span>)
-    }
-
-    
-}
-
-<span class="kw">impl</span> <span class="ident">Domain</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">fn</span> <span class="ident">is_failed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">bits</span> <span class="op">==</span> <span class="number">0</span> }
-
-    <span class="kw">fn</span> <span class="ident">is_constrained</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">bits</span>.<span class="ident">count_ones</span>() <span class="op">&lt;=</span> <span class="number">1</span> }
-
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        (<span class="self">self</span>.<span class="ident">bits</span> <span class="op">&amp;</span> <span class="ident">other</span>.<span class="ident">bits</span>) <span class="op">==</span> <span class="ident">other</span>.<span class="ident">bits</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">intersects</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        (<span class="self">self</span>.<span class="ident">bits</span> <span class="op">&amp;</span> <span class="ident">other</span>.<span class="ident">bits</span>) <span class="op">!=</span> <span class="number">0</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">restrict</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">alternatives</span>: <span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="ident">bits</span> <span class="op">&amp;=</span> <span class="ident">alternatives</span>.<span class="ident">bits</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">BitAnd</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Bar</span>;
-
-    <span class="kw">fn</span> <span class="ident">bitand</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="self">self</span>.<span class="ident">bits</span> <span class="op">&amp;</span> <span class="ident">other</span>.<span class="ident">bits</span> }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">BitOr</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Bar</span>;
-
-    <span class="kw">fn</span> <span class="ident">bitor</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="self">self</span>.<span class="ident">bits</span> <span class="op">|</span> <span class="ident">other</span>.<span class="ident">bits</span> }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">BitXor</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Bar</span>;
-
-    <span class="kw">fn</span> <span class="ident">bitxor</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="self">self</span>.<span class="ident">bits</span> <span class="op">^</span> <span class="ident">other</span>.<span class="ident">bits</span> }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Not</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Bar</span>;
-
-    <span class="kw">fn</span> <span class="ident">not</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Bar</span> { <span class="ident">bits</span>: <span class="self">self</span>.<span class="ident">bits</span> <span class="op">^</span> <span class="number">0b11</span> }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">BitOrAssign</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">fn</span> <span class="ident">bitor_assign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="ident">bits</span> <span class="op">|=</span> <span class="ident">other</span>.<span class="ident">bits</span>;
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">BitAndAssign</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">fn</span> <span class="ident">bitand_assign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="ident">bits</span> <span class="op">&amp;=</span> <span class="ident">other</span>.<span class="ident">bits</span>;
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Bar</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">intersects</span>(<span class="ident">Bar</span>::<span class="ident">A</span>) { <span class="ident">values</span>.<span class="ident">push</span>(<span class="string">&quot;A&quot;</span>); }<span class="kw">if</span> <span class="self">self</span>.<span class="ident">intersects</span>(<span class="ident">Bar</span>::<span class="ident">B</span>) { <span class="ident">values</span>.<span class="ident">push</span>(<span class="string">&quot;B&quot;</span>); }
-        <span class="kw">if</span> <span class="ident">values</span>.<span class="ident">is_empty</span>() {
-            <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;--&quot;</span>)
-        } <span class="kw">else</span> {
-            <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">values</span>[<span class="number">0</span>])<span class="question-mark">?</span>;
-            <span class="kw">for</span> <span class="ident">value</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">values</span>[<span class="number">1</span>..] { <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot; | {}&quot;</span>, <span class="ident">value</span>)<span class="question-mark">?</span>; }
-            <span class="prelude-val">Ok</span>(())
-        }
-    }
-}
-
-
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Choice</span> {
-        <span class="doccomment">/// cbindgen:field-names=[item, domain]</span>
-        <span class="ident">Foo</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>,),
+        <span class="doccomment">/// cbindgen:field-names=[dim, domain]</span>
+        <span class="ident">Foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,),
     
-        <span class="doccomment">/// cbindgen:field-names=[item, domain]</span>
-        <span class="ident">Bar</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>,),
+        <span class="doccomment">/// cbindgen:field-names=[domain]</span>
+        <span class="ident">BoundedCounter</span>(),
     }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Choice</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">action</span>: <span class="ident">Action</span>) <span class="op">-&gt;</span> <span class="ident">Choice</span> {
         <span class="kw">match</span> <span class="ident">action</span> {
                 <span class="ident">Action</span>::<span class="ident">Foo</span>(
-                <span class="ident">item</span>, <span class="kw">_</span> ) <span class="op">=&gt;</span> <span class="ident">Choice</span>::<span class="ident">Foo</span>(<span class="ident">item</span>,),
-                <span class="ident">Action</span>::<span class="ident">Bar</span>(
-                <span class="ident">item</span>, <span class="kw">_</span> ) <span class="op">=&gt;</span> <span class="ident">Choice</span>::<span class="ident">Bar</span>(<span class="ident">item</span>,),
+                <span class="ident">dim</span>, <span class="kw">_</span> ) <span class="op">=&gt;</span> <span class="ident">Choice</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>,),
+                <span class="ident">Action</span>::<span class="ident">BoundedCounter</span>(
+                 <span class="kw">_</span> ) <span class="op">=&gt;</span> <span class="ident">Choice</span>::<span class="ident">BoundedCounter</span>(),
         }
     }
 }
@@ -1660,11 +1455,11 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Action</span> {
-        <span class="doccomment">/// cbindgen:field-names=[item, domain]</span>
-        <span class="ident">Foo</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Id</span>,<span class="ident">Foo</span>),
+        <span class="doccomment">/// cbindgen:field-names=[dim, domain]</span>
+        <span class="ident">Foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>,<span class="ident">Foo</span>),
     
-        <span class="doccomment">/// cbindgen:field-names=[item, domain]</span>
-        <span class="ident">Bar</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Id</span>,<span class="ident">Bar</span>),
+        <span class="doccomment">/// cbindgen:field-names=[domain]</span>
+        <span class="ident">BoundedCounter</span>(<span class="ident">Range</span>),
     }
 
 <span class="kw">impl</span> <span class="ident">Action</span> {
@@ -1672,14 +1467,11 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-                <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">item</span>,<span class="ident">domain</span>) <span class="op">=&gt;</span><span class="prelude-val">Some</span>(
-                    <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">item</span>,
+                <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>,<span class="ident">domain</span>) <span class="op">=&gt;</span><span class="prelude-val">Some</span>(
+                    <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>,
                                                   <span class="op">!</span><span class="ident">domain</span>)
                 ),
-                <span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">item</span>,<span class="ident">domain</span>) <span class="op">=&gt;</span><span class="prelude-val">Some</span>(
-                    <span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">item</span>,
-                                                  <span class="op">!</span><span class="ident">domain</span>)
-                ),
+                <span class="ident">Action</span>::<span class="ident">BoundedCounter</span>(<span class="ident">domain</span>) <span class="op">=&gt;</span><span class="prelude-val">None</span>,
         }
     }
 }
@@ -1689,27 +1481,27 @@
         <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;applying action {:?}&quot;</span>, <span class="ident">action</span>);
     <span class="kw">match</span> <span class="ident">action</span> {
-            <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">item</span>, <span class="ident">value</span>) <span class="op">=&gt;</span>
-            <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">item</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
-            <span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">item</span>, <span class="ident">value</span>) <span class="op">=&gt;</span>
-            <span class="ident">store</span>.<span class="ident">restrict_bar</span>(<span class="ident">item</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
+            <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>, <span class="ident">value</span>) <span class="op">=&gt;</span>
+            <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">dim</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
+            <span class="ident">Action</span>::<span class="ident">BoundedCounter</span>(<span class="ident">value</span>) <span class="op">=&gt;</span>
+            <span class="ident">store</span>.<span class="ident">restrict_bounded_counter</span>(<span class="ident">value</span>, <span class="ident">diff</span>),
     }
 }
 
 <span class="doccomment">/// Propagate the changes stored in `diff`.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propagate_changes</span>(<span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
                      <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">item</span>, ), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span>
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">dim</span>, ), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span>
                 <span class="ident">diff</span>.<span class="ident">pop_foo_diff</span>() {
             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating foo{:?} {:?} -&gt; {:?}&quot;</span>,
-                   (<span class="ident">item</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
-            <span class="ident">foo</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>,<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+                   (<span class="ident">dim</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
+            <span class="ident">foo</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>,<span class="ident">dim</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
         }
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">item</span>, ), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span>
-                <span class="ident">diff</span>.<span class="ident">pop_bar_diff</span>() {
-            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating bar{:?} {:?} -&gt; {:?}&quot;</span>,
-                   (<span class="ident">item</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
-            <span class="ident">bar</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>,<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span>
+                <span class="ident">diff</span>.<span class="ident">pop_bounded_counter_diff</span>() {
+            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating bounded_counter{:?} {:?} -&gt; {:?}&quot;</span>,
+                   (), <span class="ident">old</span>, <span class="ident">new</span>);
+            <span class="ident">bounded_counter</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
         }
     <span class="prelude-val">Ok</span>(())
 }
@@ -1747,19 +1539,27 @@
     <span class="comment">// Run all the filters once.</span>
     <span class="kw">let</span> <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(); <span class="comment">// Pass an empty diff to propagate and triggers.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unused_diff</span> <span class="op">=</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>();
-    <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">foo</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
-         } <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter</span>(<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">bar</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
+    <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">dim</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
+<span class="ident">foo</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
          } 
+    <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">bounded_counter</span>::<span class="ident">compute_counter</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>);
+    <span class="ident">store</span>.<span class="ident">set_bounded_counter</span>(<span class="ident">values</span>);
+<span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">bounded_counter</span>::<span class="ident">filter</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>);
+<span class="ident">bounded_counter</span>::<span class="ident">restrict</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
+        
     <span class="comment">// Propagate the filters where necessary.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     
-    <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),);
-<span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">foo</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>); } <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bar</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),);
-<span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter</span>(<span class="ident">item</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">bar</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">item</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>); } <span class="comment">// Propagate triggers.</span>
+    <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {<span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim</span>),);
+<span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">dim</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
+<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">foo</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>); } <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bounded_counter</span>();
+
+    <span class="kw">let</span> <span class="ident">counter_value</span> <span class="op">=</span> <span class="ident">bounded_counter</span>::<span class="ident">compute_counter</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>);
+    <span class="kw">if</span> <span class="ident">old_value</span> <span class="op">!=</span> <span class="ident">counter_value</span> {
+        <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">BoundedCounter</span>(<span class="ident">old_value</span>.<span class="ident">get_diff_add</span>(<span class="ident">counter_value</span>)));
+    }
+<span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">bounded_counter</span>::<span class="ident">filter</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>);
+<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">bounded_counter</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>);<span class="comment">// Propagate triggers.</span>
     <span class="prelude-val">Ok</span>(<span class="ident">actions</span>)
 }
 
@@ -1772,46 +1572,42 @@
                        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unused_diff</span> <span class="op">=</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>();
     <span class="comment">// Disable new increments of existing counters.</span>
-    <span class="comment">// Call filters.</span>
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
-    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">set_a</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-    <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">obj</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">foo</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
+    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">dim</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+    <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="op">!</span>(<span class="ident">Foo</span> :: <span class="ident">A</span>), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
+
         
     
-}<span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
-    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">set_b</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-    <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter</span>(<span class="ident">obj</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">bar</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
+}<span class="comment">// Call filters.</span>
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
+    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">dim</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+    <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">obj</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
+<span class="ident">foo</span>::<span class="ident">restrict</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>)<span class="question-mark">?</span>;
         
     
 }<span class="comment">// Propagate decisions that are not already propagted.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
-    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">set_a</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-    <span class="kw">let</span> <span class="ident">item</span> <span class="op">=</span> <span class="ident">obj</span>;
+    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">dim</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+    <span class="kw">let</span> <span class="ident">dim</span> <span class="op">=</span> <span class="ident">obj</span>;
         
-    <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),);
+    <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),);
 <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter</span>(<span class="ident">obj</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">foo</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>);
-        
-    
-}<span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
-    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">set_b</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-    <span class="kw">let</span> <span class="ident">item</span> <span class="op">=</span> <span class="ident">obj</span>;
-        
-    <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bar</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),);
-<span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter</span>(<span class="ident">obj</span>,<span class="ident">ir_instance</span>, <span class="ident">store</span>);
-<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">bar</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">set_b</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>);
+<span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">foo</span>::<span class="ident">restrict_delayed</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),<span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">new_value</span>)<span class="question-mark">?</span>);
         
     
 }<span class="comment">// Take new increment on existing counters into account.</span>
-    <span class="comment">// Call new propagators on existing filters.</span>
-    <span class="kw">for</span> <span class="op">&amp;</span> ( <span class="ident">arg_id</span> , <span class="ident">obj_id</span> ) <span class="kw">in</span> ( <span class="ident">new_objs</span> . <span class="ident">subset_a</span> ) . <span class="ident">iter</span> ( ) { <span class="kw">let</span> <span class="ident">arg</span> <span class="op">=</span>  <span class="ident">ir</span> :: <span class="ident">subset_b</span> :: <span class="ident">get</span> ( <span class="ident">ir_instance</span> , <span class="ident">arg_id</span> )  ; <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span>  <span class="ident">ir</span> :: <span class="ident">set_a</span> :: <span class="ident">get</span> ( <span class="ident">ir_instance</span> , <span class="ident">obj_id</span> )  ; <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span> :: <span class="ident">all</span> ( ) ; <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">foo</span> :: <span class="ident">filter_0</span> ( <span class="ident">obj</span> , <span class="ident">arg</span> , <span class="ident">ir_instance</span> , <span class="ident">store</span> ) ; <span class="ident">values</span> . <span class="ident">restrict</span> ( <span class="ident">filter_res</span> ) ; <span class="ident">trace</span> <span class="op">!</span> ( <span class="string">&quot;call restrict from {}, line {}&quot;</span> , <span class="ident">file</span> <span class="op">!</span> ( ) , <span class="ident">line</span> <span class="op">!</span> ( ) ) ; <span class="ident">foo</span> :: <span class="ident">restrict</span> ( <span class="ident">ir</span> :: <span class="ident">set_a</span> :: <span class="ident">Obj</span> :: <span class="ident">id</span> ( <span class="ident">obj</span> ) , <span class="ident">ir_instance</span> , <span class="ident">store</span> , <span class="ident">values</span> , <span class="ident">diff</span> ) <span class="question-mark">?</span>; <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span> :: <span class="ident">all</span> ( ) ; <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">bar</span> :: <span class="ident">filter_0</span> ( <span class="ident">arg</span> , <span class="ident">obj</span> , <span class="ident">ir_instance</span> , <span class="ident">store</span> ) ; <span class="ident">values</span> . <span class="ident">restrict</span> ( <span class="ident">filter_res</span> ) ; <span class="ident">trace</span> <span class="op">!</span> ( <span class="string">&quot;call restrict from {}, line {}&quot;</span> , <span class="ident">file</span> <span class="op">!</span> ( ) , <span class="ident">line</span> <span class="op">!</span> ( ) ) ; <span class="ident">bar</span> :: <span class="ident">restrict</span> ( <span class="ident">ir</span> :: <span class="ident">set_b</span> :: <span class="ident">Obj</span> :: <span class="ident">id</span> ( <span class="ident">arg</span> ) , <span class="ident">ir_instance</span> , <span class="ident">store</span> , <span class="ident">values</span> , <span class="ident">diff</span> ) <span class="question-mark">?</span>; }
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>)
+    <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">dim</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+    <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+    
+        
+    
+}<span class="comment">// Call new propagators on existing filters.</span>
+    
     <span class="comment">// Check if we should call the new triggers.</span>
     <span class="comment">// Propagate triggers.</span>
     <span class="prelude-val">Ok</span>(<span class="ident">actions</span>)
