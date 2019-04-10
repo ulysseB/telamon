@@ -115,6 +115,24 @@
 <span id="115">115</span>
 <span id="116">116</span>
 <span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helper functions to create a function signature and bind parameters.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">ArgMapExt</span>, <span class="ident">ArrayArgumentExt</span>, <span class="ident">ScalarArgument</span>};
@@ -125,12 +143,27 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
+<span class="doccomment">/// Memory initialization strategies.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MemInit</span> {
+    <span class="doccomment">/// Memory is randomly filled.  This is the default behavior.</span>
+    <span class="ident">RandomFill</span>,
+    <span class="doccomment">/// Memory is left uninitialized</span>
+    <span class="ident">Uninit</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">MemInit</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">MemInit</span>::<span class="ident">RandomFill</span>
+    }
+}
+
 <span class="doccomment">/// Helper struct to build a `Signature`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">AM</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
 {
-    <span class="ident">random_fill</span>: <span class="ident">bool</span>,
+    <span class="ident">mem_init</span>: <span class="ident">MemInit</span>,
     <span class="ident">rng</span>: <span class="ident">rand</span>::<span class="ident">XorShiftRng</span>,
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">AM</span>,
     <span class="ident">signature</span>: <span class="ident">Signature</span>,
@@ -148,7 +181,7 @@
         };
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand</span>::<span class="ident">XorShiftRng</span>::<span class="ident">from_seed</span>(<span class="ident">Default</span>::<span class="ident">default</span>());
         <span class="ident">Builder</span> {
-            <span class="ident">random_fill</span>: <span class="bool-val">false</span>,
+            <span class="ident">mem_init</span>: <span class="ident">MemInit</span>::<span class="ident">Uninit</span>,
             <span class="ident">context</span>,
             <span class="ident">signature</span>,
             <span class="ident">rng</span>,
@@ -156,8 +189,8 @@
     }
 
     <span class="doccomment">/// Arrays are filled with random data if set to true.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_random_fill</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) {
-        <span class="self">self</span>.<span class="ident">random_fill</span> <span class="op">=</span> <span class="ident">enable</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mem_init</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mem_init</span>: <span class="ident">MemInit</span>) {
+        <span class="self">self</span>.<span class="ident">mem_init</span> <span class="op">=</span> <span class="ident">mem_init</span>;
     }
 
     <span class="doccomment">/// Creates a new parameter and binds it to the given value.</span>
@@ -198,9 +231,12 @@
         <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">params</span>.<span class="ident">last</span>());
         <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>.<span class="ident">bind_array</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="ident">param</span>, <span class="ident">size</span>);
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">rng</span>;
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">random_fill</span> {
-            <span class="kw">let</span> <span class="ident">random</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">S</span>::<span class="ident">gen_random</span>(<span class="ident">rng</span>)).<span class="ident">collect_vec</span>();
-            <span class="ident">array</span>.<span class="ident">as_ref</span>().<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="ident">random</span>);
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">mem_init</span> {
+            <span class="ident">MemInit</span>::<span class="ident">RandomFill</span> <span class="op">=&gt;</span> {
+                <span class="kw">let</span> <span class="ident">random</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">S</span>::<span class="ident">gen_random</span>(<span class="ident">rng</span>)).<span class="ident">collect_vec</span>();
+                <span class="ident">array</span>.<span class="ident">as_ref</span>().<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="ident">random</span>);
+            }
+            <span class="ident">MemInit</span>::<span class="ident">Uninit</span> <span class="op">=&gt;</span> (),
         }
         <span class="ident">array</span>
     }

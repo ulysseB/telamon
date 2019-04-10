@@ -414,6 +414,21 @@
 <span id="414">414</span>
 <span id="415">415</span>
 <span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">candidate</span>;
@@ -443,9 +458,8 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
 
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
-<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">executor</span>::<span class="ident">block_on</span>;
+<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">executor</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">channel</span>, <span class="ident">SinkExt</span>};
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{
     <span class="self">self</span>,
@@ -519,7 +533,7 @@
             <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
                 .<span class="ident">builder</span>()
                 .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                .<span class="ident">spawn</span>(<span class="op">||</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>))));
+                .<span class="ident">spawn</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>))));
 
             <span class="kw">let</span> <span class="ident">store</span> <span class="op">=</span> <span class="ident">mcts</span>::<span class="ident">MctsStore</span>::<span class="ident">new</span>(
                 <span class="ident">space</span>,
@@ -530,17 +544,20 @@
                 <span class="ident">log_sender</span>.<span class="ident">clone</span>(),
             );
 
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>()).<span class="ident">spawn</span>(
-                <span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">launch_search</span>(
                     <span class="ident">config</span>,
                     <span class="ident">store</span>,
                     <span class="ident">context</span>,
                     <span class="ident">log_sender</span>,
                     <span class="ident">check_result_fn</span>
-                )
-            ))
+                ))
+                .<span class="ident">unwrap</span>()
+                .<span class="ident">join</span>())
         })
-        .<span class="ident">join</span>()
+        .<span class="ident">unwrap</span>()
     }
 }
 
@@ -571,7 +588,7 @@
             <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
                 .<span class="ident">builder</span>()
                 .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
+                .<span class="ident">spawn</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
 
             <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">bandit_arm</span>::<span class="ident">Tree</span>::<span class="ident">new</span>(
                 <span class="ident">candidates</span>,
@@ -580,11 +597,20 @@
                 <span class="ident">log_sender</span>.<span class="ident">clone</span>(),
             );
 
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>()).<span class="ident">spawn</span>(
-                <span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">tree</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>, <span class="ident">check_result_fn</span>)
-            ))
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">launch_search</span>(
+                    <span class="ident">config</span>,
+                    <span class="ident">tree</span>,
+                    <span class="ident">context</span>,
+                    <span class="ident">log_sender</span>,
+                    <span class="ident">check_result_fn</span>
+                ))
+                .<span class="ident">unwrap</span>()
+                .<span class="ident">join</span>())
         })
-        .<span class="ident">join</span>()
+        .<span class="ident">unwrap</span>()
     }
 }
 
@@ -667,21 +693,24 @@
             <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
                 .<span class="ident">builder</span>()
                 .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
+                .<span class="ident">spawn</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
 
             <span class="kw">let</span> <span class="ident">candidate_list</span> <span class="op">=</span> <span class="ident">ParallelCandidateList</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>);
             <span class="ident">candidate_list</span>.<span class="ident">insert_many</span>(<span class="ident">candidates</span>);
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>()).<span class="ident">spawn</span>(
-                <span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">launch_search</span>(
                     <span class="ident">config</span>,
                     <span class="ident">candidate_list</span>,
                     <span class="ident">context</span>,
                     <span class="ident">log_sender</span>,
                     <span class="ident">check_result_fn</span>
-                )
-            ))
+                ))
+                .<span class="ident">unwrap</span>()
+                .<span class="ident">join</span>())
         })
-        .<span class="ident">join</span>(),
+        .<span class="ident">unwrap</span>(),
     }
 }
 
@@ -694,21 +723,21 @@
     <span class="ident">log_sender</span>: <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">T</span>::<span class="ident">Event</span><span class="op">&gt;&gt;</span>,
     <span class="ident">check_result_fn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CheckResultFn</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-    <span class="kw">let</span> (<span class="ident">monitor_sender</span>, <span class="ident">monitor_receiver</span>) <span class="op">=</span> <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">100</span>);
+    <span class="kw">let</span> (<span class="ident">monitor_sender</span>, <span class="ident">monitor_receiver</span>) <span class="op">=</span> <span class="ident">futures</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">100</span>);
     <span class="kw">let</span> <span class="ident">maybe_candidate</span> <span class="op">=</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
-        <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span>
-            <span class="ident">scope</span>
-                .<span class="ident">builder</span>()
-                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>())
-                .<span class="ident">spawn</span>(<span class="op">||</span> {
-                    <span class="ident">monitor</span>(
-                        <span class="ident">config</span>,
-                        <span class="ident">context</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>,
-                        <span class="ident">monitor_receiver</span>,
-                        <span class="ident">log_sender</span>,
-                    )
-                });
+        <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span> <span class="ident">scope</span>
+            .<span class="ident">builder</span>()
+            .<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>())
+            .<span class="ident">spawn</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="ident">monitor</span>(
+                    <span class="ident">config</span>,
+                    <span class="ident">context</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>,
+                    <span class="ident">monitor_receiver</span>,
+                    <span class="ident">log_sender</span>,
+                )
+            })
+            .<span class="ident">unwrap</span>();
         <span class="ident">explore_space</span>(
             <span class="ident">config</span>,
             <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>,
@@ -716,9 +745,9 @@
             <span class="ident">context</span>,
             <span class="ident">check_result_fn</span>,
         );
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">best_cand_opt</span>)
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">best_cand_opt</span>.<span class="ident">join</span>())
     })
-    .<span class="ident">join</span>();
+    .<span class="ident">unwrap</span>();
     <span class="comment">// At this point all threads have ended and nobody is going to be</span>
     <span class="comment">// exploring the candidate store anymore, so the stats printer</span>
     <span class="comment">// should have a consistent view on the tree.</span>
@@ -731,7 +760,7 @@
 <span class="kw">fn</span> <span class="ident">explore_space</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
     <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
-    <span class="ident">eval_sender</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">eval_sender</span>: <span class="ident">futures</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
     <span class="ident">check_result_fn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CheckResultFn</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
 ) <span class="kw">where</span>
@@ -791,7 +820,8 @@
                 }
 
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
-                    <span class="ident">block_on</span>(<span class="ident">eval_sender</span>.<span class="ident">send</span>((<span class="ident">leaf</span>, <span class="ident">eval</span>, <span class="ident">payload</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()))
+                    <span class="ident">executor</span>::<span class="ident">spawn</span>(<span class="ident">eval_sender</span>.<span class="ident">send</span>((<span class="ident">leaf</span>, <span class="ident">eval</span>, <span class="ident">payload</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()))
+                        .<span class="ident">wait_future</span>()
                 {
                     <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Got disconnected , {:?}&quot;</span>, <span class="ident">err</span>);
                 }

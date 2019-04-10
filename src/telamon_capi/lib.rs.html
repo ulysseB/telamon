@@ -175,7 +175,7 @@
 <span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_char</span>, <span class="ident">c_int</span>, <span class="ident">c_uint</span>, <span class="ident">size_t</span>, <span class="ident">uint32_t</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">TilingPattern</span>;
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="ident">MemInit</span>, <span class="ident">TilingPattern</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">telamon_kernels</span>::{<span class="ident">linalg</span>, <span class="ident">Kernel</span>};
 <span class="kw">use</span> <span class="ident">telamon_x86</span> <span class="kw">as</span> <span class="ident">x86</span>;
 
@@ -225,7 +225,7 @@
                     <span class="ident">config</span>,
                     <span class="ident">params</span>.<span class="ident">clone</span>(),
                     <span class="number">0</span>,
-                    <span class="bool-val">true</span>,
+                    <span class="ident">MemInit</span>::<span class="ident">RandomFill</span>,
                     <span class="ident">context</span>,
                 );
             }
