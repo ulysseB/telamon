@@ -1,4 +1,5 @@
 //! Benchmarks the accuracy of bounds on CUDA GPUs.
+use telamon::helper::MemInit;
 use telamon_cuda as cuda;
 use telamon_kernels::{analyze_bounds, linalg, Kernel};
 
@@ -25,7 +26,7 @@ where
     K: Kernel<'a>,
 {
     let mut context = cuda::Context::new(executor);
-    let bounds = K::test_bound(params, num_runs, true, &mut context);
+    let bounds = K::test_bound(params, num_runs, MemInit::RandomFill, &mut context);
     println!("bounds for kernel {}", K::name());
     analyze_bounds(bounds);
 }

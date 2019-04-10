@@ -26,9 +26,8 @@ use crate::model::bound;
 use crate::search_space::SearchSpace;
 
 use crossbeam;
-use futures::executor::block_on;
+use futures::executor;
 use futures::prelude::*;
-use futures::{channel, SinkExt};
 use log::{error, info, warn};
 use std::sync::{
     self,
@@ -102,7 +101,7 @@ impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
             unwrap!(scope
                 .builder()
                 .name("Telamon - Logger".to_string())
-                .spawn(|| unwrap!(logger::log(config, log_receiver))));
+                .spawn(|_| unwrap!(logger::log(config, log_receiver))));
 
             let store = mcts::MctsStore::new(
                 space,
@@ -113,17 +112,20 @@ impl<'a, 'c: 'a> MctsBuilder<'a, 'c> {
                 log_sender.clone(),
             );
 
-            unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
-                move || launch_search(
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Search".to_string())
+                .spawn(move |_| launch_search(
                     config,
                     store,
                     context,
                     log_sender,
                     check_result_fn
-                )
-            ))
+                ))
+                .unwrap()
+                .join())
         })
-        .join()
+        .unwrap()
     }
 }
 
@@ -154,7 +156,7 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
             unwrap!(scope
                 .builder()
                 .name("Telamon - Logger".to_string())
-                .spawn(|| (unwrap!(logger::log(config, log_receiver)))));
+                .spawn(|_| (unwrap!(logger::log(config, log_receiver)))));
 
             let tree = bandit_arm::Tree::new(
                 candidates,
@@ -163,11 +165,20 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
                 log_sender.clone(),
             );
 
-            unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
-                move || launch_search(config, tree, context, log_sender, check_result_fn)
-            ))
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Search".to_string())
+                .spawn(move |_| launch_search(
+                    config,
+                    tree,
+                    context,
+                    log_sender,
+                    check_result_fn
+                ))
+                .unwrap()
+                .join())
         })
-        .join()
+        .unwrap()
     }
 }
 
@@ -250,21 +261,24 @@ pub fn find_best_ex<'a>(
             unwrap!(scope
                 .builder()
                 .name("Telamon - Logger".to_string())
-                .spawn(|| (unwrap!(logger::log(config, log_receiver)))));
+                .spawn(|_| (unwrap!(logger::log(config, log_receiver)))));
 
             let candidate_list = ParallelCandidateList::new(config.num_workers);
             candidate_list.insert_many(candidates);
-            unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
-                move || launch_search(
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Search".to_string())
+                .spawn(move |_| launch_search(
                     config,
                     candidate_list,
                     context,
                     log_sender,
                     check_result_fn
-                )
-            ))
+                ))
+                .unwrap()
+                .join())
         })
-        .join(),
+        .unwrap(),
     }
 }
 
@@ -277,21 +291,21 @@ fn launch_search<'a, T: Store<'a>>(
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
     check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) -> Option<Candidate<'a>> {
-    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
+    let (monitor_sender, monitor_receiver) = futures::sync::mpsc::channel(100);
     let maybe_candidate = crossbeam::scope(|scope| {
-        let best_cand_opt =
-            scope
-                .builder()
-                .name("Telamon - Monitor".to_string())
-                .spawn(|| {
-                    monitor(
-                        config,
-                        context,
-                        &candidate_store,
-                        monitor_receiver,
-                        log_sender,
-                    )
-                });
+        let best_cand_opt = scope
+            .builder()
+            .name("Telamon - Monitor".to_string())
+            .spawn(|_| {
+                monitor(
+                    config,
+                    context,
+                    &candidate_store,
+                    monitor_receiver,
+                    log_sender,
+                )
+            })
+            .unwrap();
         explore_space(
             config,
             &candidate_store,
@@ -299,9 +313,9 @@ fn launch_search<'a, T: Store<'a>>(
             context,
             check_result_fn,
         );
-        unwrap!(best_cand_opt)
+        unwrap!(best_cand_opt.join())
     })
-    .join();
+    .unwrap();
     // At this point all threads have ended and nobody is going to be
     // exploring the candidate store anymore, so the stats printer
     // should have a consistent view on the tree.
@@ -314,7 +328,7 @@ fn launch_search<'a, T: Store<'a>>(
 fn explore_space<'a, T>(
     config: &Config,
     candidate_store: &T,
-    eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>,
+    eval_sender: futures::sync::mpsc::Sender<MonitorMessage<'a, T>>,
     context: &dyn Context,
     check_result_fn: Option<&CheckResultFn<'_, 'a>>,
 ) where
@@ -374,7 +388,8 @@ fn explore_space<'a, T>(
                 }
 
                 if let Err(err) =
-                    block_on(eval_sender.send((leaf, eval, payload)).map(|_| ()))
+                    executor::spawn(eval_sender.send((leaf, eval, payload)).map(|_| ()))
+                        .wait_future()
                 {
                     warn!("Got disconnected , {:?}", err);
                 }

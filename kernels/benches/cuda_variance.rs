@@ -7,9 +7,9 @@ use std::sync::Mutex;
 use std::time::Duration;
 use telamon::device::Context;
 use telamon::explorer::local_selection;
-use telamon::{device, explorer, helper};
+use telamon::{device, explorer};
 use telamon_cuda as cuda;
-use telamon_kernels::{linalg, Kernel};
+use telamon_kernels::{linalg, Kernel, KernelBuilder};
 use utils::*;
 
 /// The number of candidates to try.
@@ -34,33 +34,30 @@ fn main() {
     accuracy::<linalg::MatMul<f32>>(&big_malmul, "matmul_256", &executor);
 }
 
-fn accuracy<'a, K>(params: &K::Parameters, name: &str, executor: &'a cuda::Executor)
+fn accuracy<'a, K>(params: &K::Parameters, name: &'a str, executor: &'a cuda::Executor)
 where
     K: Kernel<'a>,
 {
     let mut context = cuda::Context::new(executor);
     info!("Generating {} candidates", NUM_TESTS);
-    let (kernel, signature) = {
-        let mut builder = helper::SignatureBuilder::new(name, &mut context);
-        builder.set_random_fill(true);
-        let kernel = K::build_signature(params.clone(), &mut builder);
-        (kernel, builder.get())
-    };
-    let candidates = kernel.build_body(&signature, &context);
+    let (signature, kernel, context) = KernelBuilder::default()
+        .name(name)
+        .build::<K, cuda::Context>(params.clone(), &mut context);
+    let candidates = kernel.build_body(&signature, context);
     let candidates = std::iter::repeat(())
         .flat_map(|()| {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let candidate_idx = order.pick_candidate(&candidates, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
-            local_selection::descend(&Default::default(), order, &context, candidate, CUT)
+            local_selection::descend(&Default::default(), order, context, candidate, CUT)
         })
         .take(NUM_TESTS)
         .collect_vec();
     info!("Evaluating candidates, simulating a GPU-bound exploration");
-    let fast_evals = run_evaluations(&candidates, &context, NUM_FAST_SAMPLES, None);
+    let fast_evals = run_evaluations(&candidates, context, NUM_FAST_SAMPLES, None);
     info!("Evaluating candidates, simulating a CPU-bound exploration");
     let sleep = Some(SLEEP_TIME);
-    let slow_evals = run_evaluations(&candidates, &context, NUM_SLOW_SAMPLES, sleep);
+    let slow_evals = run_evaluations(&candidates, context, NUM_SLOW_SAMPLES, sleep);
     info!("Evaluation finished, analysing results");
     let results = candidates
         .iter()

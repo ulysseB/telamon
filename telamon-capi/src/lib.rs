@@ -14,7 +14,7 @@ pub mod search_space;
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
 use telamon::explorer::config::Config;
-use telamon::helper::TilingPattern;
+use telamon::helper::{MemInit, TilingPattern};
 pub use telamon_kernels::{linalg, Kernel};
 use telamon_x86 as x86;
 
@@ -64,7 +64,7 @@ impl KernelParameters {
                     config,
                     params.clone(),
                     0,
-                    true,
+                    MemInit::RandomFill,
                     context,
                 );
             }

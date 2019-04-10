@@ -7,7 +7,7 @@ pub mod tensor;
 
 pub use self::builder::Builder;
 pub use self::operand::{AutoOperand, Reduce, TmpArray};
-pub use self::signature::Builder as SignatureBuilder;
+pub use self::signature::{Builder as SignatureBuilder, MemInit};
 
 use crate::ir;
 use serde::{Deserialize, Serialize};

@@ -7,12 +7,27 @@ use rand::prelude::*;
 use std::sync::Arc;
 use utils::unwrap;
 
+/// Memory initialization strategies.
+#[derive(Debug, Copy, Clone)]
+pub enum MemInit {
+    /// Memory is randomly filled.  This is the default behavior.
+    RandomFill,
+    /// Memory is left uninitialized
+    Uninit,
+}
+
+impl Default for MemInit {
+    fn default() -> Self {
+        MemInit::RandomFill
+    }
+}
+
 /// Helper struct to build a `Signature`.
 pub struct Builder<'a, AM>
 where
     AM: device::Context + 'a,
 {
-    random_fill: bool,
+    mem_init: MemInit,
     rng: rand::XorShiftRng,
     context: &'a mut AM,
     signature: Signature,
@@ -30,7 +45,7 @@ where
         };
         let rng = rand::XorShiftRng::from_seed(Default::default());
         Builder {
-            random_fill: false,
+            mem_init: MemInit::Uninit,
             context,
             signature,
             rng,
@@ -38,8 +53,8 @@ where
     }
 
     /// Arrays are filled with random data if set to true.
-    pub fn set_random_fill(&mut self, enable: bool) {
-        self.random_fill = enable;
+    pub fn set_mem_init(&mut self, mem_init: MemInit) {
+        self.mem_init = mem_init;
     }
 
     /// Creates a new parameter and binds it to the given value.
@@ -80,9 +95,12 @@ where
         let param = unwrap!(self.signature.params.last());
         let array = self.context.bind_array::<S>(param, size);
         let rng = &mut self.rng;
-        if self.random_fill {
-            let random = (0..size).map(|_| S::gen_random(rng)).collect_vec();
-            array.as_ref().write(&random);
+        match self.mem_init {
+            MemInit::RandomFill => {
+                let random = (0..size).map(|_| S::gen_random(rng)).collect_vec();
+                array.as_ref().write(&random);
+            }
+            MemInit::Uninit => (),
         }
         array
     }
