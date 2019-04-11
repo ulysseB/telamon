@@ -19,12 +19,13 @@ pub enum Operand<'a> {
     Operand(&'a ir::Operand),
 }
 
-/// Assign names to variables.
+/// Print the appropriate String for a given value on target
+/// Values could be constants or variables.
 pub trait ValuePrinter {
     /// Provides a string representing a floating point constant.
-    fn get_const_float(_: &Ratio<BigInt>, _: u16) -> String;
+    fn get_const_float(&self, _: &Ratio<BigInt>, _: u16) -> String;
     /// Provides a string representing an integer constant.
-    fn get_const_int(_: &BigInt, _: u16) -> String;
+    fn get_const_int(&self, _: &BigInt, _: u16) -> String;
     /// Provides a name for a variable of the given type.
     fn name(&mut self, t: Type) -> String;
     /// Generates a name for a parameter.
@@ -199,11 +200,15 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         indexes: Cow<FnvHashMap<ir::DimId, usize>>,
     ) -> Cow<str> {
         match operand {
-            ir::Operand::Int(val, len) => Cow::Owned(VP::get_const_int(val, len)),
-            ir::Operand::Float(val, len) => Cow::Owned(VP::get_const_float(val, len)),
+            ir::Operand::Int(val, len) => {
+                Cow::Owned(self.value_printer.get_const_int(val, *len))
+            }
+            ir::Operand::Float(val, len) => {
+                Cow::Owned(self.value_printer.get_const_float(val, *len))
+            }
             ir::Operand::Inst(id, _, dim_map, _)
             | ir::Operand::Reduce(id, _, dim_map, _) => {
-                Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
+                Cow::Borrowed(self.name_mapped_inst(*id, indexes.into_owned(), dim_map))
             }
             ir::Operand::Index(id) => {
                 if let Some(idx) = indexes.get(id) {
@@ -433,9 +438,9 @@ impl VariableNames {
     }
 
     /// Creates the mapping from variables to names.
-    fn create<VP: ValuePrinter>(
+    fn create(
         function: &codegen::Function,
-        value_printer: &mut VP,
+        value_printer: &mut dyn ValuePrinter,
     ) -> FnvHashMap<ir::VarId, Self> {
         let mut vars_names = FnvHashMap::<_, Self>::default();
         for var in function.variables() {
@@ -452,7 +457,7 @@ impl VariableNames {
     }
 
     /// Creates a new set of names for a variable instantiated along the given dimensions.
-    fn new<IT, VP: ValuePrinter>(t: ir::Type, dims: IT, value_printer: &mut VP) -> Self
+    fn new<IT>(t: ir::Type, dims: IT, value_printer: &mut dyn ValuePrinter) -> Self
     where
         IT: IntoIterator<Item = (ir::DimId, usize)>,
     {

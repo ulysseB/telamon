@@ -368,7 +368,7 @@ impl CudaPrinter {
 }
 
 impl InstPrinter for CudaPrinter {
-    type VP = ValuePrinter;
+    type ValuePrinter = ValuePrinter;
 
     /// Print result = op1 op op2
     fn print_binop(

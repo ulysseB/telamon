@@ -370,7 +370,7 @@ impl X86printer {
 }
 
 impl InstPrinter for X86printer {
-    type VP = ValuePrinter;
+    type ValuePrinter = ValuePrinter;
 
     fn print_binop(
         &mut self,

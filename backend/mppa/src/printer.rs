@@ -461,7 +461,7 @@ impl MppaPrinter {
 }
 
 impl InstPrinter for MppaPrinter {
-    type VP = ValuePrinter;
+    type ValuePrinter = ValuePrinter;
 
     fn print_binop(
         &mut self,

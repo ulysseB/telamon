@@ -58,14 +58,14 @@ impl ValuePrinter {
 }
 
 impl codegen::ValuePrinter for ValuePrinter {
-    fn get_const_float(val: &Ratio<BigInt>, len: u16) -> String {
+    fn get_const_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
         assert!(len <= 64);
         let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
         let binary = unsafe { std::mem::transmute::<f64, u64>(f) };
         format!("0D{:016X}", binary)
     }
 
-    fn get_const_int(val: &BigInt, len: u16) -> String {
+    fn get_const_int(&self, val: &BigInt, len: u16) -> String {
         assert!(len <= 64);
         format!("{}", unwrap!(val.to_i64()))
     }
