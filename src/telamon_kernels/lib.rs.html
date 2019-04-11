@@ -273,10 +273,10 @@
 <span class="kw">use</span> ::<span class="ident">ndarray</span>::{<span class="ident">ArrayBase</span>, <span class="ident">Data</span>, <span class="ident">Dimension</span>, <span class="ident">FoldWhile</span>, <span class="ident">Zip</span>};
 
 <span class="doccomment">/// Creates a candidate from the search space and registers the tile sizes in it.</span>
-<span class="kw">fn</span> <span class="ident">build_candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">space</span>: <span class="ident">search_space</span>::<span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="kw">fn</span> <span class="ident">build_candidate</span>(
+    <span class="ident">space</span>: <span class="ident">search_space</span>::<span class="ident">SearchSpace</span>,
     <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-) <span class="op">-&gt;</span> <span class="ident">explorer</span>::<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">explorer</span>::<span class="ident">Candidate</span> {
     <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">model</span>::<span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">ctx</span>);
     <span class="ident">explorer</span>::<span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
 }

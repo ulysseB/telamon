@@ -1394,21 +1394,13 @@
 <span id="1394">1394</span>
 <span id="1395">1395</span>
 <span id="1396">1396</span>
-<span id="1397">1397</span>
-<span id="1398">1398</span>
-<span id="1399">1399</span>
-<span id="1400">1400</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>, <span class="ident">clippy</span>::<span class="ident">all</span>)]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
+
+<span class="comment">// Keep the extern crate here to automatically import the `generated_file` macro into all scopes.</span>
+<span class="comment">// Could be cleaned up at some point.</span>
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">utils</span>;
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">num</span>;
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">serde_derive</span>;
 
 <span class="kw">fn</span> <span class="ident">main</span>() {
     <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;use `cargo test` to run tests&quot;</span>)

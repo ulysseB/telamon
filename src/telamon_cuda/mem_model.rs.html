@@ -735,6 +735,7 @@
 <span id="735">735</span>
 <span id="736">736</span>
 <span id="737">737</span>
+<span id="738">738</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Memory accesses analysis.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Gpu</span>;
@@ -1334,6 +1335,7 @@ else { None }
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Context</span>, <span class="ident">Executor</span>, <span class="ident">Gpu</span>};
     <span class="kw">use</span> <span class="ident">env_logger</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
     <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>::<span class="ident">Device</span>;
     <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span>;
     <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="ident">Order</span>;
@@ -1342,11 +1344,11 @@ else { None }
     <span class="doccomment">/// Generates function with a load in two thread dimensions, with non-coalesced</span>
     <span class="doccomment">/// accessed on the first one.</span>
     <span class="kw">fn</span> <span class="ident">gen_function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Gpu</span>,
         <span class="ident">d0_d1_order</span>: <span class="ident">Order</span>,
-    ) <span class="op">-&gt;</span> (<span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">InstId</span>, <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">Range</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">Builder</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">gpu</span>);
+    ) <span class="op">-&gt;</span> (<span class="ident">SearchSpace</span>, <span class="ident">ir</span>::<span class="ident">InstId</span>, <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">Range</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">gpu</span>.<span class="ident">clone</span>()));
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>);
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="ident">gpu</span>.<span class="ident">wrap_size</span>);
         <span class="kw">let</span> <span class="ident">addr_base</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cast</span>(<span class="kw-2">&amp;</span><span class="number">0i64</span>, <span class="ident">gpu</span>.<span class="ident">pointer_type</span>(<span class="ident">MemSpace</span>::<span class="ident">GLOBAL</span>));
@@ -1384,7 +1386,7 @@ else { None }
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">Context</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">executor</span>);
         <span class="kw">let</span> <span class="ident">gpu</span> <span class="op">=</span> <span class="ident">Gpu</span>::<span class="ident">from_executor</span>(<span class="kw-2">&amp;</span><span class="ident">executor</span>);
         <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">gen_signature</span>();
-        <span class="kw">let</span> (<span class="ident">space</span>, <span class="ident">inst</span>, <span class="ident">size_map</span>) <span class="op">=</span> <span class="ident">gen_function</span>(<span class="kw-2">&amp;</span><span class="ident">base</span>, <span class="kw-2">&amp;</span><span class="ident">gpu</span>, <span class="ident">Order</span>::<span class="ident">OUTER</span>);
+        <span class="kw">let</span> (<span class="ident">space</span>, <span class="ident">inst</span>, <span class="ident">size_map</span>) <span class="op">=</span> <span class="ident">gen_function</span>(<span class="ident">base</span>.<span class="ident">into</span>(), <span class="kw-2">&amp;</span><span class="ident">gpu</span>, <span class="ident">Order</span>::<span class="ident">OUTER</span>);
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">inst</span>(<span class="ident">inst</span>);
         <span class="kw">let</span> <span class="ident">inst_info</span> <span class="op">=</span> <span class="ident">analyse</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="kw-2">&amp;</span><span class="ident">gpu</span>, <span class="kw-2">&amp;</span><span class="ident">inst</span>, <span class="kw-2">&amp;</span><span class="ident">size_map</span>, <span class="kw-2">&amp;</span><span class="ident">ctx</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">inst_info</span>.<span class="ident">l1_coalescing</span>, <span class="number">1.0</span> <span class="op">/</span> <span class="ident">f64</span>::<span class="ident">from</span>(<span class="ident">gpu</span>.<span class="ident">wrap_size</span>));
@@ -1400,7 +1402,7 @@ else { None }
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">Context</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">executor</span>);
         <span class="kw">let</span> <span class="ident">gpu</span> <span class="op">=</span> <span class="ident">Gpu</span>::<span class="ident">from_executor</span>(<span class="kw-2">&amp;</span><span class="ident">executor</span>);
         <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">gen_signature</span>();
-        <span class="kw">let</span> (<span class="ident">space</span>, <span class="ident">inst</span>, <span class="ident">size_map</span>) <span class="op">=</span> <span class="ident">gen_function</span>(<span class="kw-2">&amp;</span><span class="ident">base</span>, <span class="kw-2">&amp;</span><span class="ident">gpu</span>, <span class="ident">Order</span>::<span class="ident">INNER</span>);
+        <span class="kw">let</span> (<span class="ident">space</span>, <span class="ident">inst</span>, <span class="ident">size_map</span>) <span class="op">=</span> <span class="ident">gen_function</span>(<span class="ident">base</span>.<span class="ident">into</span>(), <span class="kw-2">&amp;</span><span class="ident">gpu</span>, <span class="ident">Order</span>::<span class="ident">INNER</span>);
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">inst</span>(<span class="ident">inst</span>);
         <span class="kw">let</span> <span class="ident">inst_info</span> <span class="op">=</span> <span class="ident">analyse</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="kw-2">&amp;</span><span class="ident">gpu</span>, <span class="kw-2">&amp;</span><span class="ident">inst</span>, <span class="kw-2">&amp;</span><span class="ident">size_map</span>, <span class="kw-2">&amp;</span><span class="ident">ctx</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">inst_info</span>.<span class="ident">l1_coalescing</span>, <span class="number">1.0</span>);

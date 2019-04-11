@@ -620,7 +620,7 @@
 <span class="doccomment">/// Builds the CFG from the list of dimensions and instructions. Also returns the list of</span>
 <span class="doccomment">/// thread and block dimensions.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span>,
     <span class="ident">insts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
 ) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Cfg</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
@@ -712,7 +712,7 @@
 
 <span class="doccomment">/// Generates the list of `CfgEvent`s and the list of block and thread dimensions.</span>
 <span class="kw">fn</span> <span class="ident">gen_events</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span>,
     <span class="ident">insts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
 ) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CfgEvent</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) {

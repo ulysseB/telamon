@@ -264,19 +264,9 @@
 <span id="264">264</span>
 <span id="265">265</span>
 <span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">PhantomData</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="kw">use</span> <span class="ident">fnv</span>::<span class="ident">FnvHashMap</span>;
@@ -441,22 +431,22 @@
 <span class="doccomment">/// model, but always return 1 for all evaluation results.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">D</span> <span class="op">=</span> <span class="ident">Device</span><span class="op">&gt;</span> {
-    <span class="ident">device</span>: <span class="ident">D</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>,
     <span class="ident">parameters</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="kw">super</span>::<span class="ident">Device</span><span class="op">&gt;</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">device</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Context</span> {
-            <span class="ident">device</span>,
+            <span class="ident">device</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">device</span>),
             <span class="ident">parameters</span>: <span class="ident">HashMap</span>::<span class="ident">new</span>(),
         }
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="kw">super</span>::<span class="ident">Device</span><span class="op">&gt;</span> <span class="kw">super</span>::<span class="ident">Context</span> <span class="kw">for</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="kw">super</span>::<span class="ident">Device</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">device</span>
+    <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="kw">super</span>::<span class="ident">Device</span><span class="op">&gt;</span> {
+        <span class="ident">Arc</span>::<span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">device</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Function</span>, <span class="kw">_</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span> {
@@ -471,25 +461,19 @@
         <span class="self">self</span>.<span class="ident">parameters</span>[<span class="ident">name</span>]
     }
 
-    <span class="kw">fn</span> <span class="ident">async_eval</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>(
+    <span class="kw">fn</span> <span class="ident">async_eval</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw">_</span>: <span class="ident">usize</span>,
         <span class="kw">_</span>: <span class="ident">EvalMode</span>,
-        <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>),
+        <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>),
     ) {
-        <span class="kw">struct</span> <span class="ident">FakeEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
-            <span class="ident">phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> (), <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> ())<span class="op">&gt;</span>,
-        }
+        <span class="kw">struct</span> <span class="ident">FakeEvaluator</span>;
 
-        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">FakeEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>
-        <span class="kw">where</span>
-            <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>,
-            <span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;b</span>,
-        {
+        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">FakeEvaluator</span> {
             <span class="kw">fn</span> <span class="ident">add_dyn_kernel</span>(
                 <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-                <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                <span class="ident">callback</span>: <span class="ident">AsyncCallback</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>,
+                <span class="ident">candidate</span>: <span class="ident">Candidate</span>,
+                <span class="ident">callback</span>: <span class="ident">AsyncCallback</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
             ) {
                 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
@@ -512,9 +496,7 @@
             }
         }
 
-        <span class="ident">inner</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">FakeEvaluator</span> {
-            <span class="ident">phantom</span>: <span class="ident">PhantomData</span>,
-        });
+        <span class="ident">inner</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">FakeEvaluator</span>);
     }
 }
 

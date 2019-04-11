@@ -364,17 +364,19 @@
 <span id="364">364</span>
 <span id="365">365</span>
 <span id="366">366</span>
+<span id="367">367</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines operators.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">AccessPattern</span>, <span class="ident">LoweringMap</span>, <span class="ident">Operand</span>, <span class="ident">Type</span>};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">fmt</span>};
 
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// The rounding mode of an arithmetic operation.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Rounding</span> {
     <span class="doccomment">/// No rounding occurs.</span>
@@ -414,7 +416,7 @@
 }
 
 <span class="doccomment">/// Represents binary arithmetic operators.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BinOp</span> {
     <span class="doccomment">/// Adds two operands.</span>
@@ -474,7 +476,7 @@
 }
 
 <span class="doccomment">/// Arithmetic operators with a single operand.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnaryOp</span> {
     <span class="doccomment">/// Simply copy the input.</span>
@@ -503,30 +505,30 @@
 }
 
 <span class="doccomment">/// The operation performed by an instruction.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span> <span class="op">=</span> <span class="ident">LoweringMap</span><span class="op">&gt;</span> {
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="ident">L</span> <span class="op">=</span> <span class="ident">LoweringMap</span><span class="op">&gt;</span> {
     <span class="doccomment">/// A binary arithmetic operator.</span>
-    <span class="ident">BinOp</span>(<span class="ident">BinOp</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>),
+    <span class="ident">BinOp</span>(<span class="ident">BinOp</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>),
     <span class="doccomment">/// Unary arithmetic operator.</span>
-    <span class="ident">UnaryOp</span>(<span class="ident">UnaryOp</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>),
+    <span class="ident">UnaryOp</span>(<span class="ident">UnaryOp</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Performs a multiplication with the given return type.</span>
-    <span class="ident">Mul</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>, <span class="ident">Type</span>),
+    <span class="ident">Mul</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>, <span class="ident">Type</span>),
     <span class="doccomment">/// Performs s multiplication between the first two operands and adds the</span>
     <span class="doccomment">/// result to the third.</span>
-    <span class="ident">Mad</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>),
+    <span class="ident">Mad</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>),
     <span class="doccomment">/// Loads a value of the given type from the given address.</span>
-    <span class="ident">Ld</span>(<span class="ident">Type</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
+    <span class="ident">Ld</span>(<span class="ident">Type</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">AccessPattern</span>),
     <span class="doccomment">/// Stores the second operand at the address given by the first.</span>
     <span class="doccomment">/// The boolean specifies if the instruction has side effects. A store has no side</span>
     <span class="doccomment">/// effects when it writes into a cell that previously had an undefined value.</span>
-    <span class="ident">St</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
+    <span class="ident">St</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">AccessPattern</span>),
     <span class="doccomment">/// Represents a load from a temporary memory that is not fully defined yet.</span>
     <span class="ident">TmpLd</span>(<span class="ident">Type</span>, <span class="ident">ir</span>::<span class="ident">MemId</span>),
     <span class="doccomment">/// Represents a store to a temporary memory that is not fully defined yet.</span>
-    <span class="ident">TmpSt</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">MemId</span>),
+    <span class="ident">TmpSt</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">MemId</span>),
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Ensures the types of the operands are valid.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -604,7 +606,7 @@
     }
 
     <span class="doccomment">/// Retruns the list of operands.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">St</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
                 <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">lhs</span>, <span class="ident">rhs</span>]
@@ -616,7 +618,7 @@
     }
 
     <span class="doccomment">/// Retruns the list of mutable references to operands.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">St</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
                 <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">lhs</span>, <span class="ident">rhs</span>]
@@ -669,9 +671,9 @@
         <span class="self">self</span>.<span class="ident">mem_access_pattern</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">mem_block</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map_operands</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map_operands</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>,
+        <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
     {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>(<span class="ident">op</span>, <span class="ident">oper1</span>, <span class="ident">oper2</span>, <span class="ident">rounding</span>) <span class="op">=&gt;</span> {
@@ -709,13 +711,13 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">freeze</span>(<span class="self">self</span>, <span class="ident">cnt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Counter</span>) <span class="op">-&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">Operator</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">freeze</span>(<span class="self">self</span>, <span class="ident">cnt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Counter</span>) <span class="op">-&gt;</span> <span class="ident">Operator</span> {
         <span class="self">self</span>.<span class="ident">map_operands</span>(<span class="op">|</span><span class="ident">oper</span><span class="op">|</span> <span class="ident">oper</span>.<span class="ident">freeze</span>(<span class="ident">cnt</span>))
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>(<span class="ident">op</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="ident">rnd</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;{}[{}]({}, {})&quot;</span>, <span class="ident">op</span>, <span class="ident">rnd</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>),

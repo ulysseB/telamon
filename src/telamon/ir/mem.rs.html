@@ -226,7 +226,7 @@
 }
 
 <span class="doccomment">/// A block of memory allocated on the device by the kernel.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Block</span> {
     <span class="ident">id</span>: <span class="ident">MemId</span>,
     <span class="ident">uses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InstId</span><span class="op">&gt;</span>,
@@ -280,7 +280,7 @@
 }
 
 <span class="doccomment">/// Holds the blocks of memory to allocate on the device.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockMap</span> {
     <span class="ident">blocks</span>: <span class="ident">ir</span>::<span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">MemId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
     <span class="ident">layouts</span>: <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">MemId</span><span class="op">&gt;</span>,

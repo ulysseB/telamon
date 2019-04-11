@@ -495,12 +495,17 @@
 <span id="495">495</span>
 <span id="496">496</span>
 <span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! C API wrappers to create Telamon Kernels.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Device</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
-<span class="kw">use</span> <span class="ident">std</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">telamon_utils</span>::<span class="kw-2">*</span>;
 
@@ -513,15 +518,15 @@
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
 <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_signature_new</span>(
     <span class="ident">name</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>,
-) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Signature</span> {
+) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">Signature</span> {
     <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">std</span>::<span class="ident">ffi</span>::<span class="ident">CStr</span>::<span class="ident">from_ptr</span>(<span class="ident">name</span>).<span class="ident">to_str</span>());
-    <span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">ir</span>::<span class="ident">Signature</span>::<span class="ident">new</span>(<span class="ident">name</span>.<span class="ident">to_string</span>())))
+    <span class="ident">Arc</span>::<span class="ident">into_raw</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">ir</span>::<span class="ident">Signature</span>::<span class="ident">new</span>(<span class="ident">name</span>.<span class="ident">to_string</span>())))
 }
 
 <span class="doccomment">/// Deallocates a signature created with `telamon_ir_signature_new`.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_signature_free</span>(<span class="ident">signature</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Signature</span>) {
-    <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">drop</span>(<span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">signature</span>));
+<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_signature_free</span>(<span class="ident">signature</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">Signature</span>) {
+    <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">drop</span>(<span class="ident">Arc</span>::<span class="ident">from_raw</span>(<span class="ident">signature</span>));
 }
 
 <span class="doccomment">/// Returns the parameter at the given position.</span>
@@ -530,7 +535,7 @@
     <span class="ident">signature</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
     <span class="ident">index</span>: <span class="ident">usize</span>,
 ) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">Parameter</span> {
-    <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">signature</span>).<span class="ident">params</span>[<span class="ident">index</span>]
+    <span class="kw-2">&amp;</span><span class="kw-2">*</span>(<span class="kw-2">*</span><span class="ident">signature</span>).<span class="ident">params</span>[<span class="ident">index</span>]
 }
 
 <span class="doccomment">/// Adds a scalar parameter to the function signature.</span>
@@ -577,10 +582,10 @@
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that</span>
 <span class="doccomment">/// cbindgen generates the bindings.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span>(<span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span>(<span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span>()<span class="op">&gt;</span>);
 
-<span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">Function</span> {
-    <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">Function</span> {
+    <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
     }
 }
@@ -593,8 +598,8 @@
     <span class="ident">device</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Device</span>,
 ) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">Function</span> {
     <span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Function</span>(<span class="ident">ir</span>::<span class="ident">Function</span>::<span class="ident">new</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">signature</span>,
-        <span class="kw-2">&amp;</span><span class="kw-2">*</span>(<span class="kw-2">*</span><span class="ident">device</span>).<span class="number">0</span>,
+        <span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">Arc</span>::<span class="ident">from_raw</span>(<span class="ident">signature</span>)),
+        <span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">Arc</span>::<span class="ident">from_raw</span>((<span class="kw-2">*</span><span class="ident">device</span>).<span class="number">0</span>)),
     ))))
 }
 
@@ -653,7 +658,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen</span>
 <span class="doccomment">/// can generate bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Size</span>(<span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Size</span>(<span class="ident">ir</span>::<span class="ident">Size</span>);
 
 <span class="doccomment">/// Create a size equal to:</span>
 <span class="doccomment">/// ```</span>
@@ -661,20 +666,22 @@
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// The size must be freed calling `telamon_ir_size_free` or passed to a function that</span>
 <span class="doccomment">/// takes its ownership.</span>
-<span class="attribute">#[<span class="ident">no_mangle</span>]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_size_new</span>(
-    <span class="ident">const_factor</span>: <span class="ident">u32</span>,
-    <span class="ident">param_factors</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>,
-    <span class="ident">num_params</span>: <span class="ident">usize</span>,
-    <span class="ident">max_val</span>: <span class="ident">u32</span>,
-) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">Size</span> {
-    <span class="kw">let</span> <span class="ident">parameters</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">from_raw_parts</span>(<span class="ident">param_factors</span>, <span class="ident">num_params</span>)
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">ptr</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">ptr</span>)
-        .<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Size</span>::<span class="ident">new</span>(<span class="ident">const_factor</span>, <span class="ident">parameters</span>, <span class="ident">max_val</span>);
-    <span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Size</span>(<span class="ident">size</span>)))
-}
+<span class="comment">// TODO(bclement): Adapt to Arc&lt;Parameters&gt;</span>
+<span class="comment">/*
+#[no_mangle]
+pub unsafe extern &quot;C&quot; fn telamon_ir_size_new(
+    const_factor: u32,
+    param_factors: *const *const ir::Parameter,
+    num_params: usize,
+    max_val: u32,
+) -&gt; *mut Size {
+    let parameters = std::slice::from_raw_parts(param_factors, num_params)
+        .iter()
+        .map(|&amp;ptr| Arc::new(*ptr))
+        .collect();
+    let size = ir::Size::new(const_factor, parameters, max_val);
+    Box::into_raw(Box::new(Size(size)))
+}*/</span>
 
 <span class="doccomment">/// Frees a size allocated with `telamon_ir_size_new`.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
@@ -684,7 +691,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::SizeiPartial` so</span>
 <span class="doccomment">/// cbindgen can generate bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PartialSize</span>(<span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PartialSize</span>(<span class="ident">ir</span>::<span class="ident">PartialSize</span>);
 
 <span class="doccomment">/// Converts an `ir::Size` into an `ir::PartialSize`.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
@@ -716,7 +723,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that</span>
 <span class="doccomment">/// cbindgen can generate bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operand</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operand</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span>()<span class="op">&gt;</span>);
 
 <span class="doccomment">/// Create a constant integer operand. The provided type must be an integer type.</span>
 <span class="doccomment">/// Returns `null` if an error is encountered.</span>
@@ -747,13 +754,16 @@
 
 <span class="doccomment">/// Creates an operand that fetches the value of a parameter. The created operand holds</span>
 <span class="doccomment">/// a reference to `parameter`.</span>
-<span class="attribute">#[<span class="ident">no_mangle</span>]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_operand_new_parameter</span>(
-    <span class="ident">parameter</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>,
-) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">Operand</span> {
-    <span class="kw">let</span> <span class="ident">operand</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Param</span>(<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">parameter</span>);
-    <span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Operand</span>(<span class="ident">operand</span>)))
+<span class="comment">// TODO(bclement): Adapt to Arc&lt;Parameter&gt;</span>
+<span class="comment">/*
+#[no_mangle]
+pub unsafe extern &quot;C&quot; fn telamon_ir_operand_new_parameter(
+    parameter: *const ir::Parameter,
+) -&gt; *mut Operand {
+    let operand = ir::Operand::Param(Arc::new(*parameter));
+    Box::into_raw(Box::new(Operand(operand)))
 }
+*/</span>
 
 <span class="doccomment">/// Creates an operand that returns the current index on a dimension.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
@@ -829,7 +839,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that</span>
 <span class="doccomment">/// cbindgen can generate bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operator</span>(<span class="ident">ir</span>::<span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operator</span>(<span class="ident">ir</span>::<span class="ident">Operator</span><span class="op">&lt;</span>()<span class="op">&gt;</span>);
 
 <span class="doccomment">/// Creates a `mov` operator. Takes ownership of `operand`.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
@@ -965,7 +975,7 @@
     <span class="ident">strided_dims</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">DimId</span>,
     <span class="ident">strides</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PartialSize</span>,
     <span class="ident">num_strided_dims</span>: <span class="ident">usize</span>,
-) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>), <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span>()<span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">AccessPattern</span>), <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">base_address</span> <span class="op">=</span> <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">base_address</span>).<span class="number">0</span>;
     <span class="kw">let</span> <span class="ident">ptr_type</span> <span class="op">=</span> <span class="ident">base_address</span>.<span class="ident">t</span>();
     <span class="kw">let</span> <span class="ident">strided_dims</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">from_raw_parts</span>(<span class="ident">strided_dims</span>, <span class="ident">num_strided_dims</span>);

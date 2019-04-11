@@ -194,6 +194,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="kw">mod</span> <span class="ident">dim_map</span>;
 <span class="kw">mod</span> <span class="ident">operand</span>;
@@ -206,19 +207,18 @@
 };
 
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choices</span>::{<span class="ident">apply_action</span>, <span class="ident">init_domain</span>, <span class="ident">DomainDiff</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="doccomment">/// A partially specified implementation.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">ir_instance</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchSpace</span> {
+    <span class="ident">ir_instance</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
     <span class="ident">domain</span>: <span class="ident">DomainStore</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">SearchSpace</span> {
     <span class="doccomment">/// Creates a new `SearchSpace` for the given `ir_instance`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">ir_instance</span>: <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span>,
+        <span class="ident">ir_instance</span>: <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
         <span class="kw-2">mut</span> <span class="ident">actions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="comment">// Pre-allocate IDs for future lowerings.</span>
@@ -243,7 +243,7 @@
     }
 
     <span class="doccomment">/// Returns the underlying ir instance.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ir_instance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ir_instance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ir_instance</span>
     }
 

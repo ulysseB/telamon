@@ -270,7 +270,7 @@
 }
 
 <span class="doccomment">/// A variable produced by the code.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Variable</span> {
     <span class="ident">id</span>: <span class="ident">VarId</span>,
     <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
@@ -286,7 +286,7 @@
 <span class="doccomment">/// This is usefull to limit the size of the search space by removing useless decisions.</span>
 <span class="doccomment">/// For example, we don&#39;t want to store in memory the operand of a store. Also, we don&#39;t</span>
 <span class="doccomment">/// want to store in RAM a value we just loaded from RAM.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MemoryLevel</span> {
     <span class="doccomment">/// The variable must be stored in registers and the producer and consumer must not be</span>
     <span class="doccomment">/// separated by synchronisations.</span>
@@ -375,7 +375,7 @@
 }
 
 <span class="doccomment">/// Specifies how is a `Variable` defined.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VarDef</span> {
     <span class="doccomment">/// Takes the variable produced by an instruction.</span>
     <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>),

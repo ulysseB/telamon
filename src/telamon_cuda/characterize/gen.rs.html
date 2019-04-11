@@ -523,8 +523,11 @@
 <span id="523">523</span>
 <span id="524">524</span>
 <span id="525">525</span>
+<span id="526">526</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Builds code for micro benchmarks.</span>
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">characterize</span>::<span class="ident">Table</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Context</span>, <span class="ident">Gpu</span>, <span class="ident">Kernel</span>, <span class="ident">PerfCounterSet</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -568,12 +571,12 @@
 }
 
 <span class="doccomment">/// Generates a kernel with two nested empty loops.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">two_empty_loops</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">two_empty_loops</span>(
+    <span class="ident">base</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">outer</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">inner</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">base</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">outer_size</span> <span class="op">=</span> <span class="ident">outer</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
     <span class="kw">let</span> <span class="ident">inner_size</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
@@ -585,13 +588,13 @@
 }
 
 <span class="doccomment">/// Generates a kernel with chained adds in a loop.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">loop_chained_adds</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">loop_chained_adds</span>(
+    <span class="ident">base</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">loop_size</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">chained</span>: <span class="ident">u32</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">base</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mov</span>(<span class="kw-2">&amp;</span><span class="number">0f32</span>);
     <span class="kw">let</span> <span class="ident">loop_size</span> <span class="op">=</span> <span class="ident">loop_size</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
@@ -608,8 +611,7 @@
 
 <span class="doccomment">/// A function that produce a single instruction using the first argument on one of its</span>
 <span class="doccomment">/// operands. The second argument may be used for other operands.</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">InstGenerator</span> <span class="op">=</span>
-    <span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>, <span class="op">&amp;&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Builder</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">InstId</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">InstGenerator</span> <span class="op">=</span> <span class="kw">dyn</span> <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">AutoOperand</span>, <span class="op">&amp;&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Builder</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">InstId</span>;
 
 <span class="doccomment">/// Generates a single thread with a loop containing chained instructions.</span>
 <span class="doccomment">///</span>
@@ -620,14 +622,14 @@
 <span class="doccomment">/// * `arg`: a value that my be used as an operand by instruction.</span>
 <span class="doccomment">/// * `out`: an array to store the computation result.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inst_chain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">inst_gen</span>: <span class="kw-2">&amp;</span><span class="ident">InstGenerator</span>,
     <span class="ident">n_iter</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n_chained</span>: <span class="ident">u32</span>,
     <span class="ident">arg</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span>
 <span class="kw">where</span>
     <span class="ident">T</span>: <span class="ident">ScalarArgument</span> <span class="op">+</span> <span class="ident">Zero</span>,
 {
@@ -648,13 +650,13 @@
 
 <span class="doccomment">/// Generates a function that initializes an array with addresses pointing to the same</span>
 <span class="doccomment">/// array, `stride` cells further.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_stride_array</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_stride_array</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">array</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     <span class="ident">n</span>: <span class="ident">u32</span>,
     <span class="ident">stride</span>: <span class="ident">i32</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="ident">byte_stride</span> <span class="op">=</span> <span class="ident">stride</span> <span class="op">*</span> <span class="number">8</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="ident">n</span>);
@@ -683,15 +685,15 @@
 
 <span class="doccomment">/// Generates a function that performs chained loads.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">too_many_arguments</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_chain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_chain</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">n_threads</span>: <span class="ident">u32</span>,
     <span class="ident">n_iter</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n_chained</span>: <span class="ident">u32</span>,
     <span class="ident">array</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mov</span>(<span class="kw-2">&amp;</span><span class="ident">array</span>);
     <span class="kw">let</span> <span class="ident">loop_size</span> <span class="op">=</span> <span class="ident">n_iter</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
@@ -718,14 +720,14 @@
 }
 
 <span class="doccomment">/// Generates chained loads from shared memory.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shared_load_chain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shared_load_chain</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">n_iter</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n_chained</span>: <span class="ident">u32</span>,
     <span class="ident">array_size</span>: <span class="ident">u32</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">array_dim_size</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="ident">array_size</span>);
     <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">allocate_shared</span>(<span class="number">4</span> <span class="op">*</span> <span class="ident">array_size</span>);
@@ -756,9 +758,9 @@
 
 <span class="doccomment">/// Generates many parallel loads in a single block.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">too_many_arguments</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parallel_load</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Gpu</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parallel_load</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">gpu</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Gpu</span><span class="op">&gt;</span>,
     <span class="ident">num_blocks</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n_chained</span>: <span class="ident">u32</span>,
@@ -767,9 +769,9 @@
     <span class="ident">stride</span>: <span class="ident">u32</span>,
     <span class="ident">array</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">stride</span> <span class="op">*</span> <span class="number">4</span> <span class="op">&lt;=</span> <span class="ident">gpu</span>.<span class="ident">l1_cache_line</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">gpu</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">Arc</span>::<span class="op">&lt;</span><span class="ident">Gpu</span><span class="op">&gt;</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">gpu</span>));
     <span class="kw">let</span> <span class="ident">block_size</span> <span class="op">=</span> <span class="ident">num_blocks</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_dim_ex</span>(<span class="ident">block_size</span>, <span class="ident">DimKind</span>::<span class="ident">BLOCK</span>);
     <span class="comment">// Initialize the result</span>
@@ -834,9 +836,9 @@
 
 <span class="doccomment">/// Generates many parallel stores.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">too_many_arguments</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parallel_store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Gpu</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parallel_store</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">gpu</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Gpu</span><span class="op">&gt;</span>,
     <span class="ident">num_blocks</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n_chained</span>: <span class="ident">u32</span>,
@@ -844,9 +846,9 @@
     <span class="ident">num_wraps</span>: <span class="ident">u32</span>,
     <span class="ident">stride</span>: <span class="ident">u32</span>,
     <span class="ident">array</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">stride</span> <span class="op">*</span> <span class="number">4</span> <span class="op">&lt;=</span> <span class="ident">gpu</span>.<span class="ident">l1_cache_line</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">gpu</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">Arc</span>::<span class="op">&lt;</span><span class="ident">Gpu</span><span class="op">&gt;</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">gpu</span>));
     <span class="kw">let</span> <span class="ident">block_size</span> <span class="op">=</span> <span class="ident">num_blocks</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_dim_ex</span>(<span class="ident">block_size</span>, <span class="ident">DimKind</span>::<span class="ident">BLOCK</span>);
     <span class="kw">let</span> <span class="ident">loop_size</span> <span class="op">=</span> <span class="ident">n</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
@@ -885,13 +887,13 @@
 }
 
 <span class="doccomment">/// Generates a wrap of syncthreads separated by a single instruction.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">syncthread</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">syncthread</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">n_iter</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">n_chained</span>: <span class="ident">u32</span>,
     <span class="ident">wrap_size</span>: <span class="ident">u32</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">loop_size</span> <span class="op">=</span> <span class="ident">n_iter</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
     <span class="kw">let</span> <span class="ident">unroll_size</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="ident">n_chained</span>);
@@ -914,15 +916,15 @@
 
 <span class="doccomment">/// Generates a wrap of syncthreads separated by a single instruction.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">too_many_arguments</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain_in_syncthread</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain_in_syncthread</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">n_iter</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">sync_chained</span>: <span class="ident">u32</span>,
     <span class="ident">add_chained</span>: <span class="ident">u32</span>,
     <span class="ident">wrap_size</span>: <span class="ident">u32</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">loop_size</span> <span class="op">=</span> <span class="ident">n_iter</span>.<span class="ident">to_ir_size</span>(<span class="kw-2">&amp;</span><span class="ident">builder</span>);
     <span class="kw">let</span> <span class="ident">sync_unroll_size</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="ident">sync_chained</span>);
@@ -962,13 +964,13 @@
 }
 
 <span class="doccomment">/// Generates a global memory load in a loop.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_in_loop</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
-    <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw">dyn</span> <span class="ident">Device</span>,
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_in_loop</span>(
+    <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>,
+    <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>,
     <span class="ident">k_size</span>: <span class="kw-2">&amp;</span><span class="ident">DimSize</span>,
     <span class="ident">threads</span>: <span class="ident">u32</span>,
     <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>);
     <span class="kw">let</span> <span class="ident">size_4</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="number">4</span>);
     <span class="kw">let</span> <span class="ident">tmp_mem_size</span> <span class="op">=</span> <span class="number">4</span> <span class="op">*</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">threads</span>;

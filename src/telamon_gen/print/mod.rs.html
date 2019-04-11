@@ -808,7 +808,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">print</span>::<span class="ident">value</span>::{<span class="ident">Value</span>, <span class="ident">ValueIdent</span>};
 <span class="kw">use</span> <span class="ident">lazy_static</span>::<span class="ident">lazy_static</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
-<span class="kw">use</span> <span class="ident">serde_derive</span>::<span class="ident">Serialize</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">Serialize</span>;
 
 <span class="doccomment">/// Reset the state of the printer. This should only be used for testing purpose, when</span>
 <span class="doccomment">/// one whats to compare the outputs of the printer oer sevral runs.</span>
@@ -862,7 +862,7 @@
     ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">tmpl</span>:<span class="ident">ident</span>)<span class="op">/</span><span class="op">+</span>, $(<span class="op">&lt;</span> $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">lifetime</span>: <span class="ident">tt</span>),<span class="op">*</span> <span class="op">&gt;</span>, )<span class="op">*</span>
      $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>: <span class="ident">ty</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">val</span>: <span class="ident">expr</span>),<span class="kw-2">*</span>) <span class="op">=&gt;</span> {
         {
-            <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">serde_derive</span>::<span class="ident">Serialize</span>)]</span>
+            <span class="attribute">#[<span class="ident">derive</span>(::<span class="ident">serde</span>::<span class="ident">Serialize</span>)]</span>
             <span class="kw">struct</span> <span class="ident">Data</span><span class="op">&lt;</span>$($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">lifetime</span>),<span class="kw-2">*</span>),<span class="kw-2">*</span><span class="op">&gt;</span> { $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>),<span class="op">*</span> };
             <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">Data</span> { $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">val</span>),<span class="op">*</span> };
             <span class="kw">let</span> <span class="ident">template</span> <span class="op">=</span> <span class="macro">concat_sep</span><span class="macro">!</span>(<span class="string">&quot;.&quot;</span>, $(<span class="macro">stringify</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">tmpl</span>)),<span class="kw-2">*</span>);

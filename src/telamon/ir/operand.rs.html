@@ -268,6 +268,8 @@
 <span id="268">268</span>
 <span id="269">269</span>
 <span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes the different kinds of operands an instruction can have.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
@@ -277,9 +279,11 @@
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">traits</span>::{<span class="ident">Signed</span>, <span class="ident">Zero</span>};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">unwrap</span>, <span class="ident">FnvHashMap</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoweringMap</span> {
     <span class="doccomment">/// Memory ID to use for the temporary array</span>
     <span class="ident">mem_id</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
@@ -351,7 +355,7 @@
 
 <span class="doccomment">/// Indicates how dimensions can be mapped. The `L` type indicates how</span>
 <span class="doccomment">/// to lower mapped dimensions.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DimMapScope</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
     <span class="doccomment">/// The dimensions are mapped within registers, without producing syncthreads.</span>
     <span class="ident">Local</span>,
@@ -367,8 +371,8 @@
 }
 
 <span class="doccomment">/// Represents an instruction operand.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span> <span class="op">=</span> <span class="ident">LoweringMap</span><span class="op">&gt;</span> {
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span> <span class="op">=</span> <span class="ident">LoweringMap</span><span class="op">&gt;</span> {
     <span class="doccomment">/// An integer constant, on a given number of bits.</span>
     <span class="ident">Int</span>(<span class="ident">BigInt</span>, <span class="ident">u16</span>),
     <span class="doccomment">/// A float constant, on a given number of bits.</span>
@@ -379,7 +383,7 @@
     <span class="doccomment">/// The current index in a loop.</span>
     <span class="ident">Index</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>),
     <span class="doccomment">/// A parameter of the function.</span>
-    <span class="ident">Param</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Parameter</span>),
+    <span class="ident">Param</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Parameter</span><span class="op">&gt;</span>),
     <span class="doccomment">/// The address of a memory block.</span>
     <span class="ident">Addr</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>),
     <span class="doccomment">/// The value of the current instruction at a previous iteration.</span>
@@ -390,17 +394,17 @@
     <span class="ident">Variable</span>(<span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="ident">Type</span>),
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the type of the `Operand`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Type</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">Int</span>(<span class="kw">_</span>, <span class="ident">n_bit</span>) <span class="op">=&gt;</span> <span class="ident">Type</span>::<span class="ident">I</span>(<span class="ident">n_bit</span>),
-            <span class="ident">Float</span>(<span class="kw">_</span>, <span class="ident">n_bit</span>) <span class="op">=&gt;</span> <span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">n_bit</span>),
-            <span class="ident">Addr</span>(<span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">mem</span>),
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Int</span>(<span class="kw">_</span>, <span class="ident">n_bit</span>) <span class="op">=&gt;</span> <span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw-2">*</span><span class="ident">n_bit</span>),
+            <span class="ident">Float</span>(<span class="kw">_</span>, <span class="ident">n_bit</span>) <span class="op">=&gt;</span> <span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw-2">*</span><span class="ident">n_bit</span>),
+            <span class="ident">Addr</span>(<span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw-2">*</span><span class="ident">mem</span>),
             <span class="ident">Index</span>(..) <span class="op">=&gt;</span> <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>),
             <span class="ident">Param</span>(<span class="ident">p</span>) <span class="op">=&gt;</span> <span class="ident">p</span>.<span class="ident">t</span>,
-            <span class="ident">Variable</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
-            <span class="ident">Inst</span>(<span class="kw">_</span>, <span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">Reduce</span>(<span class="kw">_</span>, <span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">InductionVar</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
+            <span class="ident">Variable</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="kw-2">*</span><span class="ident">t</span>,
+            <span class="ident">Inst</span>(<span class="kw">_</span>, <span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">Reduce</span>(<span class="kw">_</span>, <span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">InductionVar</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="kw-2">*</span><span class="ident">t</span>,
         }
     }
 
@@ -486,8 +490,8 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">freeze</span>(<span class="self">self</span>, <span class="ident">cnt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Counter</span>) <span class="op">-&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">Operand</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">freeze</span>(<span class="self">self</span>, <span class="ident">cnt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Counter</span>) <span class="op">-&gt;</span> <span class="ident">Operand</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Int</span>(<span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> <span class="ident">Int</span>(<span class="ident">val</span>, <span class="ident">len</span>),
             <span class="ident">Float</span>(<span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> <span class="ident">Float</span>(<span class="ident">val</span>, <span class="ident">len</span>),
@@ -511,7 +515,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Int</span>(<span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;{}u{}&quot;</span>, <span class="ident">val</span>, <span class="ident">len</span>),

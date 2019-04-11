@@ -657,9 +657,11 @@
 <span id="657">657</span>
 <span id="658">658</span>
 <span id="659">659</span>
+<span id="660">660</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Linera algebra kernels.</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">many_single_char_names</span>)]</span>
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">kernel</span>::<span class="ident">Kernel</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">build_candidate</span>, <span class="ident">check_output</span>, <span class="ident">create_size</span>, <span class="ident">infer_tiling</span>, <span class="ident">Scalar</span>};
@@ -713,9 +715,9 @@
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">1024</span>, <span class="number">4</span>]);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">ctx</span>.<span class="ident">device</span>());
 
@@ -787,12 +789,12 @@
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>, <span class="number">16</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>]);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">ctx</span>.<span class="ident">device</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">ctx</span>.<span class="ident">device</span>());
         <span class="kw">let</span> <span class="ident">ld_x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">load</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_tiling</span>.<span class="ident">clone</span>()], <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">ld_a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">a</span>.<span class="ident">load</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_tiling</span>, <span class="ident">n_tiling</span>], <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">init_dim_m</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">ld_a</span>[<span class="number">0</span>]);
@@ -895,12 +897,12 @@
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>, <span class="number">16</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>]);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">Builder</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">ctx</span>.<span class="ident">device</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">Builder</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">ctx</span>.<span class="ident">device</span>());
         <span class="kw">let</span> <span class="ident">ld_x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">load</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_tiling</span>.<span class="ident">clone</span>()], <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">ab_tiling</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_tiling</span>, <span class="ident">n_tiling</span>];
         <span class="kw">let</span> <span class="ident">ld_a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">a</span>.<span class="ident">load</span>(<span class="ident">ab_tiling</span>.<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
@@ -1041,9 +1043,9 @@
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">infer_tiling</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m_tiling</span>, <span class="kw-2">&amp;</span>[<span class="number">32</span>, <span class="number">4</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">infer_tiling</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n_tiling</span>, <span class="kw-2">&amp;</span>[<span class="number">32</span>, <span class="number">4</span>]);
         <span class="kw">let</span> <span class="ident">k_tiling</span> <span class="op">=</span> <span class="ident">infer_tiling</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k_tiling</span>, <span class="kw-2">&amp;</span>[<span class="number">32</span>]);
@@ -1227,9 +1229,9 @@
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>]);
         <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>]);
         <span class="kw">let</span> <span class="ident">k_tiling</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">TilingPattern</span>::<span class="ident">infer_pattern</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>]);

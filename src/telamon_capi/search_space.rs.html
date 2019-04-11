@@ -91,7 +91,7 @@
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of</span>
 <span class="doccomment">/// `search_space::SearchSpace`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchSpace</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">search_space</span>::<span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchSpace</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">search_space</span>::<span class="ident">SearchSpace</span>);
 
 <span class="doccomment">/// Creates a new search space from an IR function. The caller stays</span>
 <span class="doccomment">/// is responsible for freeing the instance and action pointers; the</span>

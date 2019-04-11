@@ -182,7 +182,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">f64</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ParallelCandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">Store</span> <span class="kw">for</span> <span class="ident">ParallelCandidateList</span> {
     <span class="kw">type</span> <span class="ident">PayLoad</span> <span class="op">=</span> ();
 
     <span class="kw">type</span> <span class="ident">Event</span> <span class="op">=</span> ();
@@ -199,7 +199,7 @@
     ) {
     }
 
-    <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span> {
         <span class="kw">loop</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">candidate</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pop</span>() {
                 <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">default_list</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
@@ -216,12 +216,12 @@
 }
 
 <span class="doccomment">/// A `CandidateList` that can be accessed by multiple threads.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ParallelCandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">mutex</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span><span class="op">&lt;</span>(<span class="ident">CandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ParallelCandidateList</span> {
+    <span class="ident">mutex</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span><span class="op">&lt;</span>(<span class="ident">CandidateList</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
     <span class="ident">wakeup</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Condvar</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParallelCandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">ParallelCandidateList</span> {
     <span class="doccomment">/// Creates a new `ParallelCandidateList` that can be accessed by num_worker threads.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">num_worker</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">ParallelCandidateList</span> {
@@ -231,7 +231,7 @@
     }
 
     <span class="doccomment">/// Insert multiple candidates to process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_many</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_many</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lock</span>();
         <span class="kw">for</span> <span class="ident">candidate</span> <span class="kw">in</span> <span class="ident">candidates</span> {
             <span class="ident">lock</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">candidate</span>);
@@ -240,7 +240,7 @@
     }
 
     <span class="doccomment">/// Returns a candidate to process or `None` if the queue has been entirely processed.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lock</span>();
         <span class="kw">loop</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">candidate</span>) <span class="op">=</span> <span class="ident">lock</span>.<span class="number">0</span>.<span class="ident">pop</span>() {
@@ -258,16 +258,16 @@
     }
 
     <span class="doccomment">/// Acquire the lock to the candidate list</span>
-    <span class="kw">fn</span> <span class="ident">lock</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">MutexGuard</span><span class="op">&lt;</span>(<span class="ident">CandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">lock</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">MutexGuard</span><span class="op">&lt;</span>(<span class="ident">CandidateList</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">mutex</span>.<span class="ident">lock</span>())
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CandidateList</span> {
     <span class="doccomment">/// The maximum value over which we drop candidates</span>
     <span class="ident">cut</span>: <span class="ident">f64</span>,
     <span class="doccomment">/// The queue of candidates to evaluate.</span>
-    <span class="ident">queue</span>: <span class="ident">IntervalHeap</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">queue</span>: <span class="ident">IntervalHeap</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The number of leaf encountered.</span>
     <span class="ident">n_leaf</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The number of candidate encountered.</span>
@@ -276,7 +276,7 @@
     <span class="ident">n_dropped</span>: <span class="ident">usize</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">CandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">CandidateList</span> {
     <span class="doccomment">/// Create an empty candidate list.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">CandidateList</span> {
@@ -289,7 +289,7 @@
     }
 
     <span class="doccomment">/// Inserts a candidate to process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="ident">Candidate</span>) {
         <span class="self">self</span>.<span class="ident">n_candidate</span> <span class="op">+=</span> <span class="number">1</span>;
         <span class="kw">if</span> <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">cut</span> {
             <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>();
@@ -319,7 +319,7 @@
     }
 
     <span class="doccomment">/// Returns a candidate to process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">pop_min</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">x</span>) <span class="op">=</span> <span class="ident">candidate</span> {
             <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;candidate {}, depth {}, bound {:.4e}ns, cut {:.4e}ns, queue {}, leaves {}&quot;</span>,
@@ -330,7 +330,7 @@
     }
 
     <span class="doccomment">/// Drops a candiate.</span>
-    <span class="kw">fn</span> <span class="ident">drop_candidate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="kw-2">&amp;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">drop_candidate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="kw-2">&amp;</span><span class="ident">Candidate</span>) {
         <span class="macro">info</span><span class="macro">!</span>(
             <span class="string">&quot;dropping candidate: {:.4e}ns &gt;= {:.4e}ns.&quot;</span>,
             <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>(),

@@ -346,14 +346,14 @@
 
     <span class="doccomment">/// Runs a kernel and returns the number of cycles it takes to execute in cycles.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cuda_kernel</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">module</span>.<span class="ident">kernel</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>);
+        <span class="kw">let</span> <span class="ident">cuda_kernel</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">module</span>.<span class="ident">kernel</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>());
         <span class="self">self</span>.<span class="ident">gen_args</span>(<span class="ident">args</span>).<span class="ident">execute</span>(<span class="kw-2">&amp;</span><span class="ident">cuda_kernel</span>, <span class="self">self</span>.<span class="ident">executor</span>)
     }
 
     <span class="doccomment">/// Runs a kernel and returns the number of cycles it takes to execute in nanoseconds,</span>
     <span class="doccomment">/// measured using cuda event rather than hardware counters.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evaluate_real</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>, <span class="ident">num_samples</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cuda_kernel</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">module</span>.<span class="ident">kernel</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>);
+        <span class="kw">let</span> <span class="ident">cuda_kernel</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">module</span>.<span class="ident">kernel</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>());
         <span class="self">self</span>.<span class="ident">gen_args</span>(<span class="ident">args</span>)
             .<span class="ident">time_in_real_conds</span>(<span class="kw-2">&amp;</span><span class="ident">cuda_kernel</span>, <span class="ident">num_samples</span>, <span class="self">self</span>.<span class="ident">executor</span>)
     }
@@ -361,7 +361,7 @@
     <span class="doccomment">/// Instruments the kernel with the given performance counters.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;real_gpu&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">instrument</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>, <span class="ident">counters</span>: <span class="kw-2">&amp;</span><span class="ident">PerfCounterSet</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cuda_kernel</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">module</span>.<span class="ident">kernel</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>);
+        <span class="kw">let</span> <span class="ident">cuda_kernel</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">module</span>.<span class="ident">kernel</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>());
         <span class="self">self</span>.<span class="ident">gen_args</span>(<span class="ident">args</span>)
             .<span class="ident">instrument</span>(<span class="kw-2">&amp;</span><span class="ident">cuda_kernel</span>, <span class="ident">counters</span>, <span class="self">self</span>.<span class="ident">executor</span>)
     }
@@ -370,7 +370,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_thunk</span>(<span class="self">self</span>, <span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Thunk</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">gen_args</span>(<span class="ident">args</span>);
         <span class="ident">Thunk</span> {
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
+            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">name</span>().<span class="ident">to_string</span>(),
             <span class="ident">module</span>: <span class="self">self</span>.<span class="ident">module</span>,
             <span class="ident">executor</span>: <span class="self">self</span>.<span class="ident">executor</span>,
             <span class="ident">ptx</span>: <span class="self">self</span>.<span class="ident">ptx</span>,

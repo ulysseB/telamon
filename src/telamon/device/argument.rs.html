@@ -192,7 +192,7 @@
     <span class="kw">fn</span> <span class="ident">raw_ptr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_void</span>;
 
     <span class="doccomment">/// Returns an operand holding the argument value as a constant.</span>
-    <span class="kw">fn</span> <span class="ident">as_operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">L</span><span class="op">&gt;</span>
+    <span class="kw">fn</span> <span class="ident">as_operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="self">Self</span>: <span class="ident">Sized</span>;
 
@@ -226,7 +226,7 @@
                 <span class="self">self</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_void</span>
             }
 
-            <span class="kw">fn</span> <span class="ident">as_operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+            <span class="kw">fn</span> <span class="ident">as_operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
                 <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_float</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Ratio</span>::<span class="ident">from_float</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="macro">size_bits</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>))
             }
 
@@ -265,7 +265,7 @@
                 <span class="self">self</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_void</span>
             }
 
-            <span class="kw">fn</span> <span class="ident">as_operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+            <span class="kw">fn</span> <span class="ident">as_operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
                 <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>((<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">into</span>(), <span class="macro">size_bits</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>))
             }
 

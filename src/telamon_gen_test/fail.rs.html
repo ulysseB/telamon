@@ -11,10 +11,14 @@
 <span id="11">11</span>
 <span id="12">12</span>
 <span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Tests that failed at some point.</span>
 
 <span class="kw">mod</span> <span class="ident">fail0</span> {
+    <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">generated_file</span>;
+
     <span class="macro">define_ir</span><span class="macro">!</span> {
         <span class="kw">struct</span> <span class="ident">set_a</span>;
         <span class="kw">type</span> <span class="ident">subset_a</span>[<span class="ident">subset_b</span> <span class="ident">reverse</span> <span class="ident">set_a</span>]: <span class="ident">set_a</span>;

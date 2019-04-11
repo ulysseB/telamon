@@ -475,6 +475,7 @@
 <span id="475">475</span>
 <span id="476">476</span>
 <span id="477">477</span>
+<span id="478">478</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="doccomment">//! Kernel also defines a function generate_dump that is used to dump the list of actions taken for</span>
@@ -482,6 +483,7 @@
 <span class="doccomment">//! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in</span>
 <span class="doccomment">//! tests</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">statistics</span>;
 <span class="kw">use</span> <span class="ident">bincode</span>;
@@ -609,10 +611,9 @@
     <span class="doccomment">/// signature created by `build_signature`.</span>
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>,
+        <span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Signature</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>;
-
+    ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&gt;</span>;
     <span class="doccomment">/// Computes the expected output.</span>
     <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">ExpectedOutput</span>;
 
@@ -635,7 +636,7 @@
     {
         <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">ctx</span>) <span class="op">=</span>
             <span class="ident">KernelBuilder</span>::<span class="ident">new</span>().<span class="ident">build</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>.<span class="ident">clone</span>(), <span class="ident">ctx</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">ctx</span>).<span class="ident">remove</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="ident">signature</span>.<span class="ident">into</span>(), <span class="ident">ctx</span>).<span class="ident">remove</span>(<span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
         <span class="kw">let</span> <span class="ident">ordering</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>();
         <span class="kw">loop</span> {
@@ -670,7 +671,7 @@
         <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">ctx</span>) <span class="op">=</span>
             <span class="ident">KernelBuilder</span>::<span class="ident">new</span>().<span class="ident">build</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">ctx</span>);
         <span class="kw">let</span> <span class="ident">expected_output</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">get_expected_output</span>(<span class="ident">ctx</span>);
-        <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">ctx</span>).<span class="ident">remove</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="ident">signature</span>.<span class="ident">into</span>(), <span class="ident">ctx</span>).<span class="ident">remove</span>(<span class="number">0</span>);
 
         <span class="kw">let</span> <span class="ident">implem</span> <span class="op">=</span> <span class="ident">action_list</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">candidate</span>, <span class="op">|</span><span class="ident">cand</span>, <span class="ident">action</span><span class="op">|</span> {
             <span class="ident">cand</span>.<span class="ident">apply_decision</span>(<span class="ident">ctx</span>, <span class="ident">action</span>.<span class="ident">clone</span>())
@@ -704,7 +705,7 @@
         <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">context</span>) <span class="op">=</span>
             <span class="ident">KernelBuilder</span>::<span class="ident">new</span>().<span class="ident">build</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">expected_output</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">get_expected_output</span>(<span class="ident">context</span>);
-        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="ident">signature</span>.<span class="ident">into</span>(), <span class="ident">context</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">num_deadends</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">num_runs</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">while</span> <span class="ident">num_runs</span> <span class="op">&lt;</span> <span class="ident">num_tests</span> {
@@ -757,7 +758,7 @@
         <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">context</span>) <span class="op">=</span> <span class="ident">KernelBuilder</span>::<span class="ident">new</span>()
             .<span class="ident">mem_init</span>(<span class="ident">mem_init</span>)
             .<span class="ident">build</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">context</span>);
-        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="ident">signature</span>.<span class="ident">into</span>(), <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">Vec</span>::<span class="ident">new</span>());
         <span class="kw">let</span> <span class="ident">num_tested</span> <span class="op">=</span> <span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">stabilizer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">stabilizer</span>();
@@ -823,7 +824,8 @@
         <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">context</span>) <span class="op">=</span> <span class="ident">KernelBuilder</span>::<span class="ident">new</span>()
             .<span class="ident">mem_init</span>(<span class="ident">mem_init</span>)
             .<span class="ident">build</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">context</span>);
-        <span class="kw">let</span> <span class="ident">search_space</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">signature</span>);
+        <span class="kw">let</span> <span class="ident">search_space</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>), <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">expected</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">get_expected_output</span>(<span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">best</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(
             <span class="ident">explorer</span>::<span class="ident">find_best_ex</span>(
@@ -852,7 +854,7 @@
         <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">context</span>) <span class="op">=</span> <span class="ident">KernelBuilder</span>::<span class="ident">new</span>()
             .<span class="ident">mem_init</span>(<span class="ident">MemInit</span>::<span class="ident">Uninit</span>)
             .<span class="ident">build</span>::<span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">context</span>);
-        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="ident">signature</span>.<span class="ident">into</span>(), <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">num_deadends</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_samples</span>)
             .<span class="ident">into_par_iter</span>()
             .<span class="ident">filter</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -870,10 +872,10 @@
 }
 
 <span class="doccomment">/// Descend along a path in the search tree and stores the bounds encountered on the way.</span>
-<span class="kw">fn</span> <span class="ident">descend_check_bounds</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">candidates</span>: <span class="kw-2">&amp;</span>[<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>],
+<span class="kw">fn</span> <span class="ident">descend_check_bounds</span>(
+    <span class="ident">candidates</span>: <span class="kw-2">&amp;</span>[<span class="ident">Candidate</span>],
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
-) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Bound</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Bound</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">candidates</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();

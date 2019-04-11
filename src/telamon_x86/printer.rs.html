@@ -623,12 +623,12 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">return_string</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">function</span>.<span class="ident">device_code_args</span>().<span class="ident">count</span>() <span class="op">==</span> <span class="number">0</span> {
             <span class="macro">format</span><span class="macro">!</span>(
                 <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/signature_no_arg.c.template&quot;</span>),
-                <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>,
+                <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>(),
             )
         } <span class="kw">else</span> {
             <span class="macro">format</span><span class="macro">!</span>(
                 <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/signature.c.template&quot;</span>),
-                <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>,
+                <span class="ident">name</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">name</span>(),
                 <span class="ident">params</span> <span class="op">=</span> <span class="ident">param_decls</span>
             )
         };
@@ -854,7 +854,7 @@
         <span class="kw">if</span> <span class="ident">func</span>.<span class="ident">device_code_args</span>().<span class="ident">count</span>() <span class="op">==</span> <span class="number">0</span> {
             <span class="macro">format</span><span class="macro">!</span>(
                 <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/host_no_arg.c.template&quot;</span>),
-                <span class="ident">fun_name</span> <span class="op">=</span> <span class="ident">func</span>.<span class="ident">name</span>,
+                <span class="ident">fun_name</span> <span class="op">=</span> <span class="ident">func</span>.<span class="ident">name</span>(),
                 <span class="ident">fun_str</span> <span class="op">=</span> <span class="ident">fun_str</span>,
                 <span class="ident">gen_threads</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">thread_gen</span>(<span class="ident">func</span>),
                 <span class="ident">dim_decl</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">build_thread_id_struct</span>(<span class="ident">func</span>),
@@ -864,7 +864,7 @@
             <span class="kw">let</span> <span class="ident">fun_params</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params_call</span>(<span class="ident">func</span>);
             <span class="macro">format</span><span class="macro">!</span>(
                 <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/host.c.template&quot;</span>),
-                <span class="ident">fun_name</span> <span class="op">=</span> <span class="ident">func</span>.<span class="ident">name</span>,
+                <span class="ident">fun_name</span> <span class="op">=</span> <span class="ident">func</span>.<span class="ident">name</span>(),
                 <span class="ident">fun_str</span> <span class="op">=</span> <span class="ident">fun_str</span>,
                 <span class="ident">fun_params_cast</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fun_params_cast</span>(<span class="ident">func</span>),
                 <span class="ident">fun_params</span> <span class="op">=</span> <span class="ident">fun_params</span>,
