@@ -1,4 +1,6 @@
 //! MPPA evaluation context.
+#[cfg(not(feature = "real_mppa"))]
+use crate::fake_telajax as telajax;
 use crate::printer::MppaPrinter;
 use crate::{mppa, Namer};
 use crossbeam;
@@ -13,8 +15,6 @@ use std::time::Instant;
 use std::{self, fmt};
 #[cfg(feature = "real_mppa")]
 use telajax;
-#[cfg(not(feature = "real_mppa"))]
-use crate::fake_telajax as telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::{
     self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,
@@ -253,7 +253,7 @@ impl device::Context for Context {
         buf.copy_from_slice(vec_u8.as_slice());
         let res = u32::from_le_bytes(buf);
         self.writeback_slots.push(out_mem).unwrap();
-        Ok(res as f64)
+        Ok(f64::from(res))
     }
 
     fn async_eval<'c, 'd>(
@@ -371,6 +371,6 @@ impl<'a> KernelEvaluator for Code<'a> {
         let t0 = Instant::now();
         self.executor.execute_kernel(&mut self.kernel).unwrap();
         let d = t0.elapsed();
-        Some(d.subsec_nanos() as f64 + d.as_secs() as f64 * 1_000_000_000.)
+        Some(f64::from(d.subsec_nanos()) + d.as_secs() as f64 * 1_000_000_000.)
     }
 }

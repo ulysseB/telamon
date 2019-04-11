@@ -5,10 +5,10 @@
 // - blocking async transfers
 // - events + retiming
 mod context;
-mod mppa;
-mod printer;
 #[cfg(not(feature = "real_mppa"))]
 mod fake_telajax;
+mod mppa;
+mod printer;
 
 pub use crate::context::Context;
 pub use crate::mppa::Mppa;
