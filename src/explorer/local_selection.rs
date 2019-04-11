@@ -31,10 +31,7 @@ pub enum RolloutError {
 impl<'a> Rollout<'a> {
     /// Repeatedly perform rollout steps on the `candidate` until it is fully specified,
     /// backtracking when deadends are reached.  Returns `None` if the whole subtree is dead.
-    pub fn descend_backtrack<'c>(
-        &self,
-        candidate: Candidate<'c>,
-    ) -> Option<Candidate<'c>> {
+    pub fn descend_backtrack(&self, candidate: Candidate) -> Option<Candidate> {
         let choice = choice::list(self.choice_order, &candidate.space).next();
         if let Some(choice) = choice {
             let mut children = choice
@@ -80,7 +77,7 @@ impl<'a> Rollout<'a> {
 
     /// Perform one rollout step: select a set of actions according to the choice ordering, apply
     /// them, and select among the resulting candidates according to the rollout policy.
-    fn step<'c>(&self, candidate: &Candidate<'c>) -> Result<Candidate<'c>, RolloutError> {
+    fn step<'c>(&self, candidate: &Candidate) -> Result<Candidate, RolloutError> {
         if let Some(choice) = choice::list(self.choice_order, &candidate.space).next() {
             let mut children = candidate.apply_choice(self.context, choice);
             if let Some(idx) = self.node_order.pick_candidate(&children, self.cut) {
@@ -95,7 +92,7 @@ impl<'a> Rollout<'a> {
 
     /// Repeatedly perform rollout steps on the `candidate` until it is fully specified or a
     /// deadend is reached, in which case `None` is returned.
-    pub fn descend<'c>(&self, mut candidate: Candidate<'c>) -> Option<Candidate<'c>> {
+    pub fn descend<'c>(&self, mut candidate: Candidate) -> Option<Candidate> {
         loop {
             match self.step(&candidate) {
                 Ok(next) => candidate = next,
@@ -108,11 +105,11 @@ impl<'a> Rollout<'a> {
     /// Identical to `descend`, except that all intermediate candidates (including the initial
     /// candidate) are appended to the back of the `path`.  This makes it easier to backtrack or
     /// investigate the tree locally after a dead-end.
-    pub fn descend_with_path<'c>(
+    pub fn descend_with_path(
         &self,
-        mut candidate: Candidate<'c>,
-        path: &mut Vec<Candidate<'c>>,
-    ) -> Option<Candidate<'c>> {
+        mut candidate: Candidate,
+        path: &mut Vec<Candidate>,
+    ) -> Option<Candidate> {
         loop {
             match self.step(&candidate) {
                 Ok(next) => {
@@ -131,13 +128,13 @@ impl<'a> Rollout<'a> {
 
 /// A recursive function that takes a candidate and expands it until we have a completely specified
 /// candidate that we can pass to the evaluator, or we find a dead-end
-pub fn descend<'a>(
+pub fn descend(
     choice_order: &ChoiceOrdering,
     node_order: NewNodeOrder,
     context: &dyn Context,
-    candidate: Candidate<'a>,
+    candidate: Candidate,
     cut: f64,
-) -> Option<Candidate<'a>> {
+) -> Option<Candidate> {
     Rollout {
         choice_order,
         node_order: &node_order,
@@ -150,11 +147,7 @@ pub fn descend<'a>(
 impl NewNodeOrder {
     /// Called in montecarlo_descend, dispatch the choice of the next candidate according to our
     /// configuration
-    pub fn pick_candidate<'a>(
-        self,
-        new_nodes: &[Candidate<'a>],
-        cut: f64,
-    ) -> Option<usize> {
+    pub fn pick_candidate(self, new_nodes: &[Candidate], cut: f64) -> Option<usize> {
         let items = new_nodes.iter().map(|c| c.bound.value()).enumerate();
         self.pick_index(items, cut)
     }

@@ -265,7 +265,7 @@ impl CudaPrinter {
             sm_major = gpu.sm_major,
             sm_minor = gpu.sm_minor,
             addr_size = gpu.addr_size,
-            name = function.name,
+            name = function.name(),
             params = param_decls,
             num_thread = function.num_threads(),
             body = body
@@ -276,6 +276,9 @@ impl CudaPrinter {
         let block_sizes = Self::host_3sizes(fun.block_dims().iter());
         let thread_sizes = Self::host_3sizes(fun.thread_dims().iter().rev());
         let extern_param_names = fun
+            .space()
+            .ir_instance()
+            .signature()
             .params
             .iter()
             .map(|x| &x.name as &str)
@@ -314,6 +317,9 @@ impl CudaPrinter {
             .collect_vec()
             .join(", ");
         let extern_params = fun
+            .space()
+            .ir_instance()
+            .signature()
             .params
             .iter()
             .map(|p| format!("{} {}", Self::host_type(p.t), p.name))
@@ -322,7 +328,7 @@ impl CudaPrinter {
         let res = write!(
             out,
             include_str!("template/host.c"),
-            name = fun.name,
+            name = fun.name(),
             ptx_code = self.function(fun, gpu).replace("\n", "\\n\\\n"),
             extern_params = extern_params,
             extern_param_names = extern_param_names,

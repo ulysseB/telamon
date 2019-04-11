@@ -1,19 +1,22 @@
-use crate::ir;
+use serde::{Deserialize, Serialize};
 use std;
+use std::sync::Arc;
 
 use utils::*;
 
+use crate::ir;
+
 /// A fully specified size.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Size<'a> {
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Size {
     factor: u32,
-    params: Vec<&'a ir::Parameter>,
+    params: Vec<Arc<ir::Parameter>>,
     max_val: u32,
 }
 
-impl<'a> Size<'a> {
+impl Size {
     /// Create a new fully specified size.
-    pub fn new(factor: u32, params: Vec<&'a ir::Parameter>, max_val: u32) -> Self {
+    pub fn new(factor: u32, params: Vec<Arc<ir::Parameter>>, max_val: u32) -> Self {
         Size {
             factor,
             params,
@@ -31,7 +34,7 @@ impl<'a> Size<'a> {
     }
 
     /// Creates a new size equal to a parameter.
-    pub fn new_param(param: &'a ir::Parameter, max_val: u32) -> Size {
+    pub fn new_param(param: Arc<ir::Parameter>, max_val: u32) -> Size {
         Size {
             params: vec![param],
             max_val,
@@ -54,7 +57,7 @@ impl<'a> Size<'a> {
     }
 }
 
-impl<'a> Default for Size<'a> {
+impl Default for Size {
     fn default() -> Self {
         Size {
             factor: 1,
@@ -64,9 +67,9 @@ impl<'a> Default for Size<'a> {
     }
 }
 
-impl<'a, T> std::ops::MulAssign<T> for Size<'a>
+impl<T> std::ops::MulAssign<T> for Size
 where
-    T: std::borrow::Borrow<Size<'a>>,
+    T: std::borrow::Borrow<Size>,
 {
     fn mul_assign(&mut self, rhs: T) {
         let rhs = rhs.borrow();
@@ -78,17 +81,17 @@ where
 
 /// A size whose exact value is not yet decided. The value of `size` is
 /// `product(size.factors())/product(size.divisors())`.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct PartialSize<'a> {
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PartialSize {
     static_factor: u32,
-    param_factors: Vec<&'a ir::Parameter>,
+    param_factors: Vec<Arc<ir::Parameter>>,
     dim_factors: VecSet<ir::DimId>,
     divisors: VecSet<ir::DimId>,
 }
 
-impl<'a> PartialSize<'a> {
+impl PartialSize {
     /// Creates a new 'PartialSize'.
-    pub fn new(factor: u32, params: Vec<&'a ir::Parameter>) -> Self {
+    pub fn new(factor: u32, params: Vec<Arc<ir::Parameter>>) -> Self {
         assert!(factor != 0);
         PartialSize {
             static_factor: factor,
@@ -131,7 +134,7 @@ impl<'a> PartialSize<'a> {
     }
 
     /// Returns the factors composing the size.
-    pub fn factors(&self) -> (u32, &[&'a ir::Parameter], &[ir::DimId]) {
+    pub fn factors(&self) -> (u32, &[Arc<ir::Parameter>], &[ir::DimId]) {
         (self.static_factor, &self.param_factors, &self.dim_factors)
     }
 
@@ -141,7 +144,7 @@ impl<'a> PartialSize<'a> {
     }
 }
 
-impl<'a> Default for PartialSize<'a> {
+impl Default for PartialSize {
     fn default() -> Self {
         PartialSize {
             static_factor: 1,
@@ -152,8 +155,8 @@ impl<'a> Default for PartialSize<'a> {
     }
 }
 
-impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
-    fn mul_assign(&mut self, rhs: &'b PartialSize<'a>) {
+impl<'a> std::ops::MulAssign<&'a PartialSize> for PartialSize {
+    fn mul_assign(&mut self, rhs: &'a PartialSize) {
         self.static_factor *= rhs.static_factor;
         self.param_factors.extend(rhs.param_factors.iter().cloned());
         self.dim_factors = self.dim_factors.union(&rhs.dim_factors);
@@ -162,22 +165,19 @@ impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
     }
 }
 
-impl<'a, 'b> std::ops::Mul<&'b PartialSize<'a>> for PartialSize<'a> {
+impl<'a> std::ops::Mul<&'a PartialSize> for PartialSize {
     type Output = Self;
 
-    fn mul(mut self, rhs: &PartialSize<'a>) -> Self {
+    fn mul(mut self, rhs: &PartialSize) -> Self {
         self *= rhs;
         self
     }
 }
 
-impl<'a, 'b> std::iter::Product<&'b PartialSize<'a>> for PartialSize<'a>
-where
-    'a: 'b,
-{
+impl<'a> std::iter::Product<&'a PartialSize> for PartialSize {
     fn product<I>(iter: I) -> Self
     where
-        I: Iterator<Item = &'b PartialSize<'a>>,
+        I: Iterator<Item = &'a PartialSize>,
     {
         let mut static_factor = 1;
         let mut param_factors = vec![];
@@ -202,8 +202,8 @@ where
     }
 }
 
-impl<'a> From<Size<'a>> for PartialSize<'a> {
-    fn from(size: Size<'a>) -> PartialSize<'a> {
+impl From<Size> for PartialSize {
+    fn from(size: Size) -> PartialSize {
         PartialSize::new(size.factor, size.params)
     }
 }

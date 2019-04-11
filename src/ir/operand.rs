@@ -6,9 +6,11 @@ use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use utils::{unwrap, FnvHashMap};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoweringMap {
     /// Memory ID to use for the temporary array
     mem_id: ir::MemId,
@@ -80,7 +82,7 @@ impl LoweringMap {
 
 /// Indicates how dimensions can be mapped. The `L` type indicates how
 /// to lower mapped dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DimMapScope<L> {
     /// The dimensions are mapped within registers, without producing syncthreads.
     Local,
@@ -96,8 +98,8 @@ pub enum DimMapScope<L> {
 }
 
 /// Represents an instruction operand.
-#[derive(Clone, Debug)]
-pub enum Operand<'a, L = LoweringMap> {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Operand<L = LoweringMap> {
     /// An integer constant, on a given number of bits.
     Int(BigInt, u16),
     /// A float constant, on a given number of bits.
@@ -108,7 +110,7 @@ pub enum Operand<'a, L = LoweringMap> {
     /// The current index in a loop.
     Index(ir::DimId),
     /// A parameter of the function.
-    Param(&'a Parameter),
+    Param(Arc<Parameter>),
     /// The address of a memory block.
     Addr(ir::MemId),
     /// The value of the current instruction at a previous iteration.
@@ -119,17 +121,17 @@ pub enum Operand<'a, L = LoweringMap> {
     Variable(ir::VarId, Type),
 }
 
-impl<'a, L> Operand<'a, L> {
+impl<L> Operand<L> {
     /// Returns the type of the `Operand`.
     pub fn t(&self) -> Type {
-        match *self {
-            Int(_, n_bit) => Type::I(n_bit),
-            Float(_, n_bit) => Type::F(n_bit),
-            Addr(mem) => ir::Type::PtrTo(mem),
+        match self {
+            Int(_, n_bit) => Type::I(*n_bit),
+            Float(_, n_bit) => Type::F(*n_bit),
+            Addr(mem) => ir::Type::PtrTo(*mem),
             Index(..) => Type::I(32),
             Param(p) => p.t,
-            Variable(_, t) => t,
-            Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => t,
+            Variable(_, t) => *t,
+            Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => *t,
         }
     }
 
@@ -215,8 +217,8 @@ impl<'a, L> Operand<'a, L> {
     }
 }
 
-impl<'a> Operand<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> Operand<'a> {
+impl Operand<()> {
+    pub fn freeze(self, cnt: &mut ir::Counter) -> Operand {
         match self {
             Int(val, len) => Int(val, len),
             Float(val, len) => Float(val, len),
@@ -240,7 +242,7 @@ impl<'a> Operand<'a, ()> {
     }
 }
 
-impl<'a, L> fmt::Display for Operand<'a, L> {
+impl<L> fmt::Display for Operand<L> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Int(val, len) => write!(fmt, "{}u{}", val, len),

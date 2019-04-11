@@ -1,4 +1,6 @@
 //! Builds code for micro benchmarks.
+use std::sync::Arc;
+
 use crate::characterize::Table;
 use crate::{Context, Gpu, Kernel, PerfCounterSet};
 use itertools::Itertools;
@@ -42,12 +44,12 @@ pub fn bind_array<'a, T: 'a>(name: &str, len: usize, context: &mut Context<'a>) 
 }
 
 /// Generates a kernel with two nested empty loops.
-pub fn two_empty_loops<'a>(
-    base: &'a Signature,
-    device: &'a dyn Device,
+pub fn two_empty_loops(
+    base: Arc<Signature>,
+    device: Arc<dyn Device>,
     outer: &DimSize,
     inner: &DimSize,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(base, device);
     let outer_size = outer.to_ir_size(&builder);
     let inner_size = inner.to_ir_size(&builder);
@@ -59,13 +61,13 @@ pub fn two_empty_loops<'a>(
 }
 
 /// Generates a kernel with chained adds in a loop.
-pub fn loop_chained_adds<'a>(
-    base: &'a Signature,
-    device: &'a dyn Device,
+pub fn loop_chained_adds(
+    base: Arc<Signature>,
+    device: Arc<dyn Device>,
     loop_size: &DimSize,
     chained: u32,
     out: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(base, device);
     let init = builder.mov(&0f32);
     let loop_size = loop_size.to_ir_size(&builder);
@@ -82,8 +84,7 @@ pub fn loop_chained_adds<'a>(
 
 /// A function that produce a single instruction using the first argument on one of its
 /// operands. The second argument may be used for other operands.
-pub type InstGenerator =
-    dyn Fn(&dyn AutoOperand<'static>, &&str, &mut Builder) -> ir::InstId;
+pub type InstGenerator = dyn Fn(&dyn AutoOperand, &&str, &mut Builder) -> ir::InstId;
 
 /// Generates a single thread with a loop containing chained instructions.
 ///
@@ -94,14 +95,14 @@ pub type InstGenerator =
 /// * `arg`: a value that my be used as an operand by instruction.
 /// * `out`: an array to store the computation result.
 pub fn inst_chain<'a, T>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     inst_gen: &InstGenerator,
     n_iter: &DimSize,
     n_chained: u32,
     arg: &str,
     out: &str,
-) -> SearchSpace<'a>
+) -> SearchSpace
 where
     T: ScalarArgument + Zero,
 {
@@ -122,13 +123,13 @@ where
 
 /// Generates a function that initializes an array with addresses pointing to the same
 /// array, `stride` cells further.
-pub fn init_stride_array<'a>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+pub fn init_stride_array(
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     array: &str,
     n: u32,
     stride: i32,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let byte_stride = stride * 8;
     let mut builder = Builder::new(signature, device);
     let size = builder.cst_size(n);
@@ -157,15 +158,15 @@ pub fn init_stride_array<'a>(
 
 /// Generates a function that performs chained loads.
 #[allow(clippy::too_many_arguments)]
-pub fn load_chain<'a>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+pub fn load_chain(
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     n_threads: u32,
     n_iter: &DimSize,
     n_chained: u32,
     array: &str,
     out: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&array);
     let loop_size = n_iter.to_ir_size(&builder);
@@ -192,14 +193,14 @@ pub fn load_chain<'a>(
 }
 
 /// Generates chained loads from shared memory.
-pub fn shared_load_chain<'a>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+pub fn shared_load_chain(
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     n_iter: &DimSize,
     n_chained: u32,
     array_size: u32,
     out: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(signature, device);
     let array_dim_size = builder.cst_size(array_size);
     let array = builder.allocate_shared(4 * array_size);
@@ -230,9 +231,9 @@ pub fn shared_load_chain<'a>(
 
 /// Generates many parallel loads in a single block.
 #[allow(clippy::too_many_arguments)]
-pub fn parallel_load<'a>(
-    signature: &'a Signature,
-    gpu: &'a Gpu,
+pub fn parallel_load(
+    signature: Arc<Signature>,
+    gpu: Arc<Gpu>,
     num_blocks: &DimSize,
     n: &DimSize,
     n_chained: u32,
@@ -241,9 +242,9 @@ pub fn parallel_load<'a>(
     stride: u32,
     array: &str,
     out: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     assert!(stride * 4 <= gpu.l1_cache_line);
-    let mut builder = Builder::new(signature, gpu);
+    let mut builder = Builder::new(signature, Arc::<Gpu>::clone(&gpu));
     let block_size = num_blocks.to_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
@@ -308,9 +309,9 @@ pub fn parallel_load<'a>(
 
 /// Generates many parallel stores.
 #[allow(clippy::too_many_arguments)]
-pub fn parallel_store<'a>(
-    signature: &'a Signature,
-    gpu: &'a Gpu,
+pub fn parallel_store(
+    signature: Arc<Signature>,
+    gpu: Arc<Gpu>,
     num_blocks: &DimSize,
     n: &DimSize,
     n_chained: u32,
@@ -318,9 +319,9 @@ pub fn parallel_store<'a>(
     num_wraps: u32,
     stride: u32,
     array: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     assert!(stride * 4 <= gpu.l1_cache_line);
-    let mut builder = Builder::new(signature, gpu);
+    let mut builder = Builder::new(signature, Arc::<Gpu>::clone(&gpu));
     let block_size = num_blocks.to_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     let loop_size = n.to_ir_size(&builder);
@@ -359,13 +360,13 @@ pub fn parallel_store<'a>(
 }
 
 /// Generates a wrap of syncthreads separated by a single instruction.
-pub fn syncthread<'a>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+pub fn syncthread(
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     n_iter: &DimSize,
     n_chained: u32,
     wrap_size: u32,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(signature, device);
     let loop_size = n_iter.to_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
@@ -388,15 +389,15 @@ pub fn syncthread<'a>(
 
 /// Generates a wrap of syncthreads separated by a single instruction.
 #[allow(clippy::too_many_arguments)]
-pub fn chain_in_syncthread<'a>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+pub fn chain_in_syncthread(
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     n_iter: &DimSize,
     sync_chained: u32,
     add_chained: u32,
     wrap_size: u32,
     out: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(signature, device);
     let loop_size = n_iter.to_ir_size(&builder);
     let sync_unroll_size = builder.cst_size(sync_chained);
@@ -436,13 +437,13 @@ pub fn chain_in_syncthread<'a>(
 }
 
 /// Generates a global memory load in a loop.
-pub fn load_in_loop<'a>(
-    signature: &'a Signature,
-    device: &'a dyn Device,
+pub fn load_in_loop(
+    signature: Arc<Signature>,
+    device: Arc<dyn Device>,
     k_size: &DimSize,
     threads: u32,
     out: &str,
-) -> SearchSpace<'a> {
+) -> SearchSpace {
     let mut builder = Builder::new(signature, device);
     let size_4 = builder.cst_size(4);
     let tmp_mem_size = 4 * 4 * threads;

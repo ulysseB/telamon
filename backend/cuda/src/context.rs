@@ -20,7 +20,7 @@ const JIT_OPT_LEVEL: usize = 2;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
-    gpu_model: Gpu,
+    gpu_model: Arc<Gpu>,
     executor: &'a Executor,
     parameters: FnvHashMap<String, Arc<dyn Argument + 'a>>,
 }
@@ -28,24 +28,20 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Create a new evaluation context. The GPU model if infered.
     pub fn new(executor: &'a Executor) -> Context {
-        Context {
-            gpu_model: Gpu::from_executor(executor),
-            executor,
-            parameters: FnvHashMap::default(),
-        }
+        Self::from_gpu(Gpu::from_executor(executor), executor)
     }
 
     /// Creates a context from the given GPU.
     pub fn from_gpu(gpu: Gpu, executor: &'a Executor) -> Self {
         Context {
-            gpu_model: gpu,
+            gpu_model: Arc::new(gpu),
             executor,
             parameters: FnvHashMap::default(),
         }
     }
 
     /// Returns the GPU description.
-    pub fn gpu(&self) -> &Gpu {
+    pub fn gpu(&self) -> &Arc<Gpu> {
         &self.gpu_model
     }
 
@@ -97,8 +93,8 @@ impl<'a> device::ArgMap<'a> for Context<'a> {
 }
 
 impl<'a> device::Context for Context<'a> {
-    fn device(&self) -> &dyn Device {
-        &self.gpu_model
+    fn device(&self) -> Arc<dyn Device> {
+        Arc::<Gpu>::clone(&self.gpu_model)
     }
 
     fn param_as_size(&self, name: &str) -> Option<u32> {
@@ -123,11 +119,11 @@ impl<'a> device::Context for Context<'a> {
         kernel.evaluate_real(self, num_samples)
     }
 
-    fn async_eval<'b, 'c>(
+    fn async_eval<'c>(
         &self,
         num_workers: usize,
         mode: EvalMode,
-        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'b, 'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'c>) + Sync),
     ) {
         // Setup the evaluator.
         let blocked_time = &atomic::AtomicUsize::new(0);
@@ -172,27 +168,23 @@ impl<'a> device::Context for Context<'a> {
     }
 }
 
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>, Thunk<'b>, AsyncCallback<'a, 'b>);
+type AsyncPayload<'b> = (explorer::Candidate, Thunk<'b>, AsyncCallback<'b>);
 
-pub struct AsyncEvaluator<'a, 'b>
-where
-    'a: 'b,
-{
+pub struct AsyncEvaluator<'b> {
     context: &'b Context<'b>,
-    sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
+    sender: mpsc::SyncSender<AsyncPayload<'b>>,
     ptx_daemon: JITDaemon,
     blocked_time: &'b atomic::AtomicUsize,
 }
 
-impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
+impl<'b, 'c> device::AsyncEvaluator<'c> for AsyncEvaluator<'b>
 where
-    'a: 'b,
     'c: 'b,
 {
     fn add_dyn_kernel(
         &mut self,
-        candidate: explorer::Candidate<'a>,
-        callback: device::AsyncCallback<'a, 'c>,
+        candidate: explorer::Candidate,
+        callback: device::AsyncCallback<'c>,
     ) {
         let thunk = {
             let dev_fun = codegen::Function::build(&candidate.space);

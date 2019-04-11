@@ -24,12 +24,12 @@ pub struct Function<'a> {
     init_induction_levels: Vec<InductionLevel<'a>>,
     variables: Vec<codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
-    space: &'a SearchSpace<'a>,
+    space: &'a SearchSpace,
 }
 
 impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
-    pub fn build(space: &'a SearchSpace<'a>) -> Function<'a> {
+    pub fn build(space: &'a SearchSpace) -> Function<'a> {
         let mut dims = dimension::group_merged_dimensions(space);
         let (induction_vars, init_induction_levels) =
             dimension::register_induction_vars(&mut dims, space);
@@ -138,18 +138,15 @@ impl<'a> Function<'a> {
         self.space
     }
 
+    /// Returns the name of the function.
+    pub fn name(&self) -> &str {
+        self.space.ir_instance().name()
+    }
+
     /// Returns the induction levels computed at the beginning of the kernel. Levels must
     /// be computed in the provided order.
     pub fn init_induction_levels(&self) -> &[InductionLevel] {
         &self.init_induction_levels
-    }
-}
-
-impl<'a> std::ops::Deref for Function<'a> {
-    type Target = ir::Signature;
-
-    fn deref(&self) -> &Self::Target {
-        self.space.ir_instance()
     }
 }
 
@@ -166,14 +163,11 @@ pub enum ParamVal<'a> {
 
 impl<'a> ParamVal<'a> {
     /// Builds the `ParamVal` needed to implement an operand, if any.
-    pub fn from_operand(
-        operand: &'a ir::Operand<'a>,
-        space: &SearchSpace,
-    ) -> Option<Self> {
-        match *operand {
+    pub fn from_operand(operand: &'a ir::Operand, space: &SearchSpace) -> Option<Self> {
+        match operand {
             ir::Operand::Param(p) => {
                 let t = unwrap!(space.ir_instance().device().lower_type(p.t, space));
-                Some(ParamVal::External(p, t))
+                Some(ParamVal::External(&*p, t))
             }
             _ => None,
         }
@@ -230,7 +224,7 @@ pub enum ParamValKey<'a> {
 /// Generates the list of internal memory blocks, and creates the parameters needed to
 /// back them.
 fn register_mem_blocks<'a>(
-    space: &'a SearchSpace<'a>,
+    space: &'a SearchSpace,
     block_dims: &[Dimension<'a>],
 ) -> Vec<MemoryRegion<'a>> {
     let num_thread_blocks = block_dims.iter().fold(None, |pred, block| {
@@ -270,7 +264,7 @@ impl<'a> MemoryRegion<'a> {
     pub fn new(
         block: &'a ir::mem::Block,
         num_threads_groups: &Option<codegen::Size<'a>>,
-        space: &'a SearchSpace<'a>,
+        space: &'a SearchSpace,
     ) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
@@ -367,7 +361,7 @@ impl<'a> MemoryRegion<'a> {
 
 /// An instruction to execute.
 pub struct Instruction<'a> {
-    instruction: &'a ir::Instruction<'a>,
+    instruction: &'a ir::Instruction,
     instantiation_dims: Vec<(ir::DimId, u32)>,
     mem_flag: Option<search_space::InstFlag>,
     t: Option<ir::Type>,
@@ -375,7 +369,7 @@ pub struct Instruction<'a> {
 
 impl<'a> Instruction<'a> {
     /// Creates a new `Instruction`.
-    pub fn new(instruction: &'a ir::Instruction<'a>, space: &SearchSpace) -> Self {
+    pub fn new(instruction: &'a ir::Instruction, space: &SearchSpace) -> Self {
         let instantiation_dims = instruction
             .iteration_dims()
             .iter()
@@ -410,7 +404,7 @@ impl<'a> Instruction<'a> {
     /// Returns the values to pass from the host to implement this instruction.
     pub fn host_values(
         &self,
-        space: &'a SearchSpace<'a>,
+        space: &'a SearchSpace,
     ) -> impl Iterator<Item = ParamVal<'a>> {
         let operands = self.instruction.operator().operands();
         operands

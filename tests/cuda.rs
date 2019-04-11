@@ -15,7 +15,7 @@ fn unrolled_dims() {
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_64 = builder.cst_size(64);
     let d0 = builder.open_dim_ex(size_64, DimKind::UNROLL);
     let i0 = builder.mov(&d0);
@@ -30,7 +30,7 @@ fn block_thread_dims() {
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_64 = builder.cst_size(64);
     let d0 = builder.open_dim_ex(size_64.clone(), DimKind::BLOCK);
     let d1 = builder.open_dim_ex(size_64, DimKind::THREAD);
@@ -50,7 +50,7 @@ fn params() {
         builder.scalar("a", 42);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     builder.mov(&"a");
     gen_best(&context, builder.get());
 }
@@ -77,7 +77,7 @@ fn cache_directive() {
         builder.array::<f32>("a", 1);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let pattern = ir::AccessPattern::Unknown(None);
     builder.ld_ex(
         ir::Type::F(32),
@@ -96,7 +96,7 @@ fn thread_reduction_map() {
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
     let init = builder.mov(&0f32);
@@ -115,7 +115,7 @@ fn inst_order() {
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim(size_32.clone());
@@ -144,7 +144,7 @@ fn induction_var_nested() {
         out = builder.array::<i32>("out", 1);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_1 = builder.cst_size(1);
     let size_4 = builder.cst_size(4);
     let size_5 = builder.cst_size(5);
@@ -179,7 +179,7 @@ fn induction_var_simple() {
         out = builder.array::<i32>("out", 1);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_3 = builder.cst_size(3);
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
@@ -214,7 +214,7 @@ fn global_vector_load() {
         .as_ref()
         .write(&(0..D0_LEN).map(|i| i as i32 + 10).collect_vec()[..]);
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     // Load B from global memory
     let d0_size = builder.cst_size(D0_LEN);
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
@@ -243,7 +243,7 @@ fn size_cast() {
         out = builder.array::<i64>("out", 1);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_3 = builder.cst_size(3);
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
@@ -271,7 +271,7 @@ fn perf_model_0() {
         builder.get()
     };
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
     let n_tiled = n.to_ir_size(&builder);
 
@@ -296,7 +296,7 @@ fn merge_0() {
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
 
     let d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
@@ -325,7 +325,7 @@ fn merge_1() {
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
 
     let d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
@@ -351,7 +351,7 @@ fn dim_map_reduce_0() {
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
 
     let inst0 = builder.mov(&0f32);
@@ -377,7 +377,7 @@ fn dim_map_active() {
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_32 = builder.cst_size(32);
 
     let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
@@ -402,7 +402,7 @@ fn test0() {
     let context = cuda::Context::new(&executor);
     let signature = empty_signature();
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_32 = builder.cst_size(32);
 
     let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);

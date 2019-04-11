@@ -3,7 +3,7 @@ use crate::ir::{self, SetRef};
 use crate::print;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use serde_derive::Serialize;
+use serde::Serialize;
 
 /// Prints the ids of the variables of a `ChoiceInstance`.
 pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {

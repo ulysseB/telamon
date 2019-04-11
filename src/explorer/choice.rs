@@ -95,7 +95,7 @@ where
 
 pub fn list<'a>(
     iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
-    space: &'a SearchSpace<'a>,
+    space: &'a SearchSpace,
 ) -> impl Iterator<Item = Choice> + 'a {
     use crate::explorer::config::ChoiceGroup::*;
 
@@ -160,7 +160,7 @@ pub fn list<'a>(
 /// This function is to be either removed or reimplemented eventually. It is just a replacement for
 /// the previous list implementation (exposes the choices in the same order). Default should
 /// preferably be handled in config file
-pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a {
+pub fn default_list<'a>(space: &'a SearchSpace) -> impl Iterator<Item = Choice> + 'a {
     list(&config::DEFAULT_ORDERING, space)
 }
 

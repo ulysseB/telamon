@@ -2,7 +2,7 @@
 use crate::Device;
 use libc;
 use num::rational::Ratio;
-use std;
+use std::{self, sync::Arc};
 use telamon::ir;
 use telamon_utils::*;
 
@@ -15,15 +15,15 @@ use super::error::TelamonStatus;
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_signature_new(
     name: *const libc::c_char,
-) -> *mut ir::Signature {
+) -> *const ir::Signature {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
-    Box::into_raw(Box::new(ir::Signature::new(name.to_string())))
+    Arc::into_raw(Arc::new(ir::Signature::new(name.to_string())))
 }
 
 /// Deallocates a signature created with `telamon_ir_signature_new`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_signature_free(signature: *mut ir::Signature) {
-    std::mem::drop(Box::from_raw(signature));
+pub unsafe extern "C" fn telamon_ir_signature_free(signature: *const ir::Signature) {
+    std::mem::drop(Arc::from_raw(signature));
 }
 
 /// Returns the parameter at the given position.
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn telamon_ir_signature_param(
     signature: *const ir::Signature,
     index: usize,
 ) -> *const ir::Parameter {
-    &(*signature).params[index]
+    &*(*signature).params[index]
 }
 
 /// Adds a scalar parameter to the function signature.
@@ -79,10 +79,10 @@ pub unsafe extern "C" fn telamon_ir_type_free(t: *mut ir::Type) {
 /// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that
 /// cbindgen generates the bindings.
 #[derive(Clone)]
-pub struct Function(ir::Function<'static, ()>);
+pub struct Function(ir::Function<()>);
 
-impl Into<ir::Function<'static, ()>> for Function {
-    fn into(self) -> ir::Function<'static, ()> {
+impl Into<ir::Function<()>> for Function {
+    fn into(self) -> ir::Function<()> {
         self.0
     }
 }
@@ -95,8 +95,8 @@ pub unsafe extern "C" fn telamon_ir_function_new(
     device: *const Device,
 ) -> *mut Function {
     Box::into_raw(Box::new(Function(ir::Function::new(
-        &*signature,
-        &*(*device).0,
+        Arc::clone(&Arc::from_raw(signature)),
+        Arc::clone(&Arc::from_raw((*device).0)),
     ))))
 }
 
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn telamon_ir_function_add_dimensions(
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen
 /// can generate bindings.
-pub struct Size(ir::Size<'static>);
+pub struct Size(ir::Size);
 
 /// Create a size equal to:
 /// ```
@@ -163,6 +163,8 @@ pub struct Size(ir::Size<'static>);
 /// ```
 /// The size must be freed calling `telamon_ir_size_free` or passed to a function that
 /// takes its ownership.
+// TODO(bclement): Adapt to Arc<Parameters>
+/*
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_size_new(
     const_factor: u32,
@@ -172,11 +174,11 @@ pub unsafe extern "C" fn telamon_ir_size_new(
 ) -> *mut Size {
     let parameters = std::slice::from_raw_parts(param_factors, num_params)
         .iter()
-        .map(|&ptr| &*ptr)
+        .map(|&ptr| Arc::new(*ptr))
         .collect();
     let size = ir::Size::new(const_factor, parameters, max_val);
     Box::into_raw(Box::new(Size(size)))
-}
+}*/
 
 /// Frees a size allocated with `telamon_ir_size_new`.
 #[no_mangle]
@@ -186,7 +188,7 @@ pub unsafe extern "C" fn telamon_ir_size_free(size: *mut Size) {
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::SizeiPartial` so
 /// cbindgen can generate bindings.
-pub struct PartialSize(ir::PartialSize<'static>);
+pub struct PartialSize(ir::PartialSize);
 
 /// Converts an `ir::Size` into an `ir::PartialSize`.
 #[no_mangle]
@@ -218,7 +220,7 @@ pub unsafe extern "C" fn telamon_ir_size_mul(
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that
 /// cbindgen can generate bindings.
-pub struct Operand(ir::Operand<'static, ()>);
+pub struct Operand(ir::Operand<()>);
 
 /// Create a constant integer operand. The provided type must be an integer type.
 /// Returns `null` if an error is encountered.
@@ -249,13 +251,16 @@ pub unsafe extern "C" fn telamon_ir_operand_new_float(
 
 /// Creates an operand that fetches the value of a parameter. The created operand holds
 /// a reference to `parameter`.
+// TODO(bclement): Adapt to Arc<Parameter>
+/*
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_parameter(
     parameter: *const ir::Parameter,
 ) -> *mut Operand {
-    let operand = ir::Operand::Param(&*parameter);
+    let operand = ir::Operand::Param(Arc::new(*parameter));
     Box::into_raw(Box::new(Operand(operand)))
 }
+*/
 
 /// Creates an operand that returns the current index on a dimension.
 #[no_mangle]
@@ -331,7 +336,7 @@ unsafe fn dim_map_from_arrays(
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that
 /// cbindgen can generate bindings.
-pub struct Operator(ir::Operator<'static, ()>);
+pub struct Operator(ir::Operator<()>);
 
 /// Creates a `mov` operator. Takes ownership of `operand`.
 #[no_mangle]
@@ -467,7 +472,7 @@ unsafe fn tensor_access(
     strided_dims: *const ir::DimId,
     strides: *const PartialSize,
     num_strided_dims: usize,
-) -> Result<(ir::Operand<'static, ()>, ir::AccessPattern<'static>), ir::Error> {
+) -> Result<(ir::Operand<()>, ir::AccessPattern), ir::Error> {
     let base_address = Box::from_raw(base_address).0;
     let ptr_type = base_address.t();
     let strided_dims = std::slice::from_raw_parts(strided_dims, num_strided_dims);

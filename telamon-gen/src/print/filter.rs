@@ -7,7 +7,7 @@ use crate::print::value_set;
 use log::trace;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote;
-use serde_derive::Serialize;
+use serde::Serialize;
 use utils::unwrap;
 
 /// Ast for a filtering funtion.

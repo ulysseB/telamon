@@ -4,6 +4,9 @@ use crate::ir;
 use itertools::Itertools;
 use linked_list;
 use linked_list::LinkedList;
+use serde::de::{self, Deserialize, Deserializer, SeqAccess};
+use serde::ser::{Serialize, SerializeSeq, Serializer};
+
 use utils::*;
 
 /// Represents a mapping between dimenions.
@@ -12,6 +15,49 @@ use utils::*;
 // a `Vec` instead.
 pub struct DimMap {
     map: LinkedList<(ir::DimId, ir::DimId)>,
+}
+
+impl Serialize for DimMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.map.len()))?;
+        for e in &self.map {
+            seq.serialize_element(e)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for DimMap {
+    fn deserialize<D>(deserializer: D) -> Result<DimMap, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct DimMapVisitor;
+
+        impl<'de> de::Visitor<'de> for DimMapVisitor {
+            type Value = DimMap;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a sequence of DimId pairs")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<DimMap, V::Error>
+            where
+                V: SeqAccess<'de>,
+            {
+                let mut map = LinkedList::new();
+                while let Some(elt) = seq.next_element()? {
+                    map.push_back(elt);
+                }
+                Ok(DimMap { map })
+            }
+        }
+
+        deserializer.deserialize_seq(DimMapVisitor)
+    }
 }
 
 // TODO(cleanup): Send should be derived for LinkedList.

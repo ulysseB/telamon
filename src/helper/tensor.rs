@@ -6,6 +6,7 @@ use crate::search_space::InstFlag;
 use ::ndarray::{self, ArrayD};
 use itertools::Itertools;
 use std;
+use std::sync::Arc;
 use utils::*;
 
 /// A dimension size, before tiling.
@@ -18,8 +19,12 @@ pub struct DimSize<'a> {
 
 impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
-    pub fn to_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
-        let params = self.params.iter().map(|p| builder.find_param(p)).collect();
+    pub fn to_ir_size(&self, builder: &Builder) -> ir::Size {
+        let params = self
+            .params
+            .iter()
+            .map(|p| Arc::clone(builder.find_param(p)))
+            .collect();
         ir::Size::new(self.factor, params, self.max_size)
     }
 
@@ -247,12 +252,12 @@ impl VirtualTensor {
     }
 
     /// Creates an operand that yeilds the values of the tensor in the given loop nest.
-    pub fn dim_map<'a>(
+    pub fn dim_map(
         &self,
         dims: &[&LogicalDim],
         scope: ir::DimMapScope<()>,
-        builder: &mut Builder<'a>,
-    ) -> ir::Operand<'a, ()> {
+        builder: &mut Builder,
+    ) -> ir::Operand<()> {
         let mapping = self.dims.iter().zip_eq(dims.iter().cloned()).collect_vec();
         builder.dim_map(self.inst, &mapping, scope)
     }

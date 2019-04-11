@@ -1,13 +1,14 @@
 //! Defines operators.
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{self, fmt};
 
 use utils::*;
 
 /// The rounding mode of an arithmetic operation.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[repr(C)]
 pub enum Rounding {
     /// No rounding occurs.
@@ -47,7 +48,7 @@ impl Rounding {
 }
 
 /// Represents binary arithmetic operators.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(C)]
 pub enum BinOp {
     /// Adds two operands.
@@ -107,7 +108,7 @@ impl BinOp {
 }
 
 /// Arithmetic operators with a single operand.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[repr(C)]
 pub enum UnaryOp {
     /// Simply copy the input.
@@ -136,30 +137,30 @@ impl UnaryOp {
 }
 
 /// The operation performed by an instruction.
-#[derive(Clone, Debug)]
-pub enum Operator<'a, L = LoweringMap> {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Operator<L = LoweringMap> {
     /// A binary arithmetic operator.
-    BinOp(BinOp, Operand<'a, L>, Operand<'a, L>, Rounding),
+    BinOp(BinOp, Operand<L>, Operand<L>, Rounding),
     /// Unary arithmetic operator.
-    UnaryOp(UnaryOp, Operand<'a, L>),
+    UnaryOp(UnaryOp, Operand<L>),
     /// Performs a multiplication with the given return type.
-    Mul(Operand<'a, L>, Operand<'a, L>, Rounding, Type),
+    Mul(Operand<L>, Operand<L>, Rounding, Type),
     /// Performs s multiplication between the first two operands and adds the
     /// result to the third.
-    Mad(Operand<'a, L>, Operand<'a, L>, Operand<'a, L>, Rounding),
+    Mad(Operand<L>, Operand<L>, Operand<L>, Rounding),
     /// Loads a value of the given type from the given address.
-    Ld(Type, Operand<'a, L>, AccessPattern<'a>),
+    Ld(Type, Operand<L>, AccessPattern),
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
-    St(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
+    St(Operand<L>, Operand<L>, bool, AccessPattern),
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
-    TmpSt(Operand<'a, L>, ir::MemId),
+    TmpSt(Operand<L>, ir::MemId),
 }
 
-impl<'a, L> Operator<'a, L> {
+impl<L> Operator<L> {
     /// Ensures the types of the operands are valid.
     pub fn check(
         &self,
@@ -237,7 +238,7 @@ impl<'a, L> Operator<'a, L> {
     }
 
     /// Retruns the list of operands.
-    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
+    pub fn operands(&self) -> Vec<&Operand<L>> {
         match self {
             BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
                 vec![lhs, rhs]
@@ -249,7 +250,7 @@ impl<'a, L> Operator<'a, L> {
     }
 
     /// Retruns the list of mutable references to operands.
-    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a, L>> {
+    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<L>> {
         match self {
             BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
                 vec![lhs, rhs]
@@ -302,9 +303,9 @@ impl<'a, L> Operator<'a, L> {
         self.mem_access_pattern().and_then(|p| p.mem_block())
     }
 
-    pub fn map_operands<T, F>(self, mut f: F) -> Operator<'a, T>
+    pub fn map_operands<T, F>(self, mut f: F) -> Operator<T>
     where
-        F: FnMut(Operand<'a, L>) -> Operand<'a, T>,
+        F: FnMut(Operand<L>) -> Operand<T>,
     {
         match self {
             BinOp(op, oper1, oper2, rounding) => {
@@ -342,13 +343,13 @@ impl<'a, L> Operator<'a, L> {
     }
 }
 
-impl<'a> Operator<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> Operator<'a> {
+impl Operator<()> {
+    pub fn freeze(self, cnt: &mut ir::Counter) -> Operator {
         self.map_operands(|oper| oper.freeze(cnt))
     }
 }
 
-impl<'a, L> std::fmt::Display for Operator<'a, L> {
+impl<L> std::fmt::Display for Operator<L> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             BinOp(op, lhs, rhs, rnd) => write!(fmt, "{}[{}]({}, {})", op, rnd, lhs, rhs),

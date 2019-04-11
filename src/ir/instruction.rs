@@ -31,9 +31,9 @@ impl std::fmt::Display for InstId {
 }
 
 /// Represents an instruction.
-#[derive(Clone, Debug)]
-pub struct Instruction<'a, L = LoweringMap> {
-    operator: Operator<'a, L>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Instruction<L = LoweringMap> {
+    operator: Operator<L>,
     id: InstId,
     iter_dims: FnvHashSet<ir::DimId>,
     variable: Option<ir::VarId>,
@@ -41,10 +41,10 @@ pub struct Instruction<'a, L = LoweringMap> {
     used_vars: VecSet<ir::VarId>,
 }
 
-impl<'a, L> Instruction<'a, L> {
+impl<L> Instruction<L> {
     /// Creates a new instruction and type-check the operands.
     pub fn new(
-        operator: Operator<'a, L>,
+        operator: Operator<L>,
         id: InstId,
         iter_dims: FnvHashSet<ir::DimId>,
         fun: &ir::Function<L>,
@@ -81,7 +81,7 @@ impl<'a, L> Instruction<'a, L> {
     }
 
     /// Returns an iterator over the operands of this instruction.
-    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
+    pub fn operands(&self) -> Vec<&Operand<L>> {
         self.operator.operands()
     }
 
@@ -91,7 +91,7 @@ impl<'a, L> Instruction<'a, L> {
     }
 
     /// Returns the operator of the instruction.
-    pub fn operator(&self) -> &Operator<'_, L> {
+    pub fn operator(&self) -> &Operator<L> {
         &self.operator
     }
 
@@ -108,10 +108,10 @@ impl<'a, L> Instruction<'a, L> {
     /// Applies the lowering of a layout to the instruction.
     pub fn lower_layout(
         &mut self,
-        ld_idx: Operand<'a, L>,
-        ld_pattern: ir::AccessPattern<'a>,
-        st_idx: Operand<'a, L>,
-        st_pattern: ir::AccessPattern<'a>,
+        ld_idx: Operand<L>,
+        ld_pattern: ir::AccessPattern,
+        st_idx: Operand<L>,
+        st_pattern: ir::AccessPattern,
     ) where
         L: Clone,
     {
@@ -141,7 +141,7 @@ impl<'a, L> Instruction<'a, L> {
     }
 
     /// Returns 'self' if it is a memory instruction.
-    pub fn as_mem_inst(&self) -> Option<&Instruction<'_, L>> {
+    pub fn as_mem_inst(&self) -> Option<&Instruction<L>> {
         if self.operator.is_mem_access() {
             Some(self)
         } else {
@@ -192,8 +192,8 @@ impl<'a, L> Instruction<'a, L> {
     }
 }
 
-impl<'a> Instruction<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> Instruction<'a> {
+impl Instruction<()> {
+    pub fn freeze(self, cnt: &mut ir::Counter) -> Instruction {
         Instruction {
             operator: self.operator.freeze(cnt),
             id: self.id,
@@ -205,7 +205,7 @@ impl<'a> Instruction<'a, ()> {
     }
 }
 
-impl<'a> Instruction<'a> {
+impl Instruction {
     /// Lowers the `DimMap` of an operand into an access to a temporary memory.
     pub fn lower_dim_map(
         &mut self,
@@ -225,7 +225,7 @@ impl<'a> Instruction<'a> {
     }
 }
 
-impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
+impl<L> Statement<L> for Instruction<L> {
     fn stmt_id(&self) -> StmtId {
         self.id.into()
     }
@@ -234,7 +234,7 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
         &self.defined_vars
     }
 
-    fn as_inst(&self) -> Option<&Instruction<'a, L>> {
+    fn as_inst(&self) -> Option<&Instruction<L>> {
         Some(self)
     }
 
@@ -247,7 +247,7 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
     }
 }
 
-impl<'a, L> fmt::Display for Instruction<'a, L> {
+impl<L> fmt::Display for Instruction<L> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}:  {}", self.id, self.operator)
     }

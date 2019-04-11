@@ -26,7 +26,7 @@ impl fmt::Display for VarId {
 }
 
 /// A variable produced by the code.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Variable {
     id: VarId,
     t: ir::Type,
@@ -42,7 +42,7 @@ pub struct Variable {
 /// This is usefull to limit the size of the search space by removing useless decisions.
 /// For example, we don't want to store in memory the operand of a store. Also, we don't
 /// want to store in RAM a value we just loaded from RAM.
-#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryLevel {
     /// The variable must be stored in registers and the producer and consumer must not be
     /// separated by synchronisations.
@@ -131,7 +131,7 @@ impl Variable {
 }
 
 /// Specifies how is a `Variable` defined.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum VarDef {
     /// Takes the variable produced by an instruction.
     Inst(ir::InstId),

@@ -31,7 +31,7 @@ pub unsafe trait ScalarArgument:
     fn raw_ptr(&self) -> *const libc::c_void;
 
     /// Returns an operand holding the argument value as a constant.
-    fn as_operand<L>(&self) -> ir::Operand<'static, L>
+    fn as_operand<L>(&self) -> ir::Operand<L>
     where
         Self: Sized;
 
@@ -65,7 +65,7 @@ macro_rules! float_scalar_argument {
                 self as *const $ty as *const libc::c_void
             }
 
-            fn as_operand<L>(&self) -> ir::Operand<'static, L> {
+            fn as_operand<L>(&self) -> ir::Operand<L> {
                 ir::Operand::new_float(unwrap!(Ratio::from_float(*self)), size_bits!($ty))
             }
 
@@ -104,7 +104,7 @@ macro_rules! int_scalar_argument {
                 self as *const $ty as *const libc::c_void
             }
 
-            fn as_operand<L>(&self) -> ir::Operand<'static, L> {
+            fn as_operand<L>(&self) -> ir::Operand<L> {
                 ir::Operand::new_int((*self).into(), size_bits!($ty))
             }
 

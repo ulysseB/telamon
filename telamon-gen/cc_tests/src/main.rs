@@ -1,13 +1,9 @@
 #![allow(dead_code, unused_imports, clippy::all)]
-extern crate itertools;
+
+// Keep the extern crate here to automatically import the `generated_file` macro into all scopes.
+// Could be cleaned up at some point.
 #[macro_use]
 extern crate utils;
-#[macro_use]
-extern crate log;
-extern crate env_logger;
-extern crate num;
-#[macro_use]
-extern crate serde_derive;
 
 fn main() {
     panic!("use `cargo test` to run tests")

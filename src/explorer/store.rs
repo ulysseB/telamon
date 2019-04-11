@@ -6,10 +6,10 @@ use serde::Serialize;
 
 /// A Trait defining a structure containing the candidates, meant to explore the
 /// search space
-pub trait Store<'a>: Sync {
+pub trait Store: Sync {
     /// Transmits the information needed to update the store after a `Candidate` is
     /// evaluated.
-    type PayLoad: 'a + Send;
+    type PayLoad: Send;
     /// The type of events this store can emit during search.
     type Event: Send + Serialize;
     /// Updates the value that will be used to prune the search space
@@ -26,7 +26,7 @@ pub trait Store<'a>: Sync {
         eval: f64,
     );
     /// Retrieve a Candidate for evaluation, returns `None` if no candidate remains.
-    fn explore(&self, context: &dyn Context) -> Option<(Candidate<'a>, Self::PayLoad)>;
+    fn explore(&self, context: &dyn Context) -> Option<(Candidate, Self::PayLoad)>;
     /// Displays statistics about the candidate store.
     fn print_stats(&self) {}
 }

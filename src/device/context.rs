@@ -24,25 +24,26 @@ pub trait KernelEvaluator: std::fmt::Display {
     fn evaluate(&mut self) -> Option<f64>;
 }
 
-pub trait AsyncCallbackFn<'a> {
-    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn KernelEvaluator);
+pub trait AsyncCallbackFn {
+    fn call(self: Box<Self>, candidate: Candidate, kernel: &mut dyn KernelEvaluator);
 }
 
-impl<'a, F> AsyncCallbackFn<'a> for F
+impl<F> AsyncCallbackFn for F
 where
-    F: FnOnce(Candidate<'a>, &mut dyn KernelEvaluator),
+    F: FnOnce(Candidate, &mut dyn KernelEvaluator),
 {
-    fn call(self: Box<Self>, candidate: Candidate<'a>, kernel: &mut dyn KernelEvaluator) {
+    fn call(self: Box<Self>, candidate: Candidate, kernel: &mut dyn KernelEvaluator) {
         (*self)(candidate, kernel)
     }
 }
 
-pub type AsyncCallback<'a, 'b> = Box<dyn AsyncCallbackFn<'a> + Send + 'b>;
+/// A callback that is called after evaluating a kernel.
+pub type AsyncCallback<'b> = Box<dyn AsyncCallbackFn + Send + 'b>;
 
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
-    fn device(&self) -> &dyn Device;
+    fn device(&self) -> Arc<dyn Device>;
     /// Returns the execution time of a fully specified implementation in nanoseconds.
     ///
     /// This function should be called multiple times to obtain accurate execution time.
@@ -54,11 +55,11 @@ pub trait Context: Sync {
     /// Calls the `inner` closure in parallel, and gives it a pointer to an `AsyncEvaluator`
     /// to evaluate candidates in the context. `skip_bad_bounds` indicates than candidates
     /// whose bound is aboive the best candidate should be skiped.
-    fn async_eval<'a, 'b>(
+    fn async_eval<'b>(
         &self,
         num_workers: usize,
         mode: EvalMode,
-        inner: &(dyn Fn(&mut dyn AsyncEvaluator<'a, 'b>) + Sync),
+        inner: &(dyn Fn(&mut dyn AsyncEvaluator<'b>) + Sync),
     );
 
     /// Returns a parameter interpreted as a size, if possible.
@@ -121,22 +122,18 @@ pub trait ArgMapExt<'a>: ArgMap<'a> {
 impl<'a, T: ?Sized> ArgMapExt<'a> for T where T: ArgMap<'a> {}
 
 /// An evaluation context that runs kernels asynchronously on the target device.
-pub trait AsyncEvaluator<'a, 'b> {
+pub trait AsyncEvaluator<'b> {
     /// Add a kernel to evaluate.
-    fn add_dyn_kernel(
-        &mut self,
-        candidate: Candidate<'a>,
-        callback: AsyncCallback<'a, 'b>,
-    );
+    fn add_dyn_kernel(&mut self, candidate: Candidate, callback: AsyncCallback<'b>);
 }
 
-impl<'a, 'b, 'c> dyn AsyncEvaluator<'a, 'b> + 'c {
+impl<'b, 'c> dyn AsyncEvaluator<'b> + 'c {
     /// Helper to add a kernel to an evaluator trait object.  Using `add_dyn_kernel` directly trips
     /// up type inference and requires explicitly typing closure arguments; using `add_kernel`
     /// instead allows a nicer syntax with closures.
-    pub fn add_kernel<F>(&mut self, candidate: Candidate<'a>, callback: F)
+    pub fn add_kernel<F>(&mut self, candidate: Candidate, callback: F)
     where
-        F: FnOnce(Candidate<'a>, &mut dyn KernelEvaluator) + Send + 'b,
+        F: FnOnce(Candidate, &mut dyn KernelEvaluator) + Send + 'b,
     {
         self.add_dyn_kernel(candidate, Box::new(callback))
     }

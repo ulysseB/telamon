@@ -6,6 +6,7 @@ use crate::codegen;
 use crate::device::Context;
 use crate::ir;
 use log::debug;
+use std::sync::Arc;
 
 mod dim_map;
 mod operand;
@@ -18,19 +19,18 @@ pub use self::choices::{
 };
 
 use self::choices::{apply_action, init_domain, DomainDiff};
-use std::sync::Arc;
 
 /// A partially specified implementation.
 #[derive(Clone)]
-pub struct SearchSpace<'a> {
-    ir_instance: Arc<ir::Function<'a>>,
+pub struct SearchSpace {
+    ir_instance: Arc<ir::Function>,
     domain: DomainStore,
 }
 
-impl<'a> SearchSpace<'a> {
+impl SearchSpace {
     /// Creates a new `SearchSpace` for the given `ir_instance`.
     pub fn new(
-        ir_instance: ir::Function<'a, ()>,
+        ir_instance: ir::Function<()>,
         mut actions: Vec<Action>,
     ) -> Result<Self, ()> {
         // Pre-allocate IDs for future lowerings.
@@ -55,7 +55,7 @@ impl<'a> SearchSpace<'a> {
     }
 
     /// Returns the underlying ir instance.
-    pub fn ir_instance(&self) -> &ir::Function<'a> {
+    pub fn ir_instance(&self) -> &ir::Function {
         &self.ir_instance
     }
 

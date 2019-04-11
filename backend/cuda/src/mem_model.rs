@@ -596,6 +596,7 @@ mod tests {
     use super::*;
     use crate::{Context, Executor, Gpu};
     use env_logger;
+    use std::sync::Arc;
     use telamon::device::Device;
     use telamon::model::size::Range;
     use telamon::search_space::Order;
@@ -604,11 +605,11 @@ mod tests {
     /// Generates function with a load in two thread dimensions, with non-coalesced
     /// accessed on the first one.
     fn gen_function<'a>(
-        signature: &'a ir::Signature,
+        signature: Arc<ir::Signature>,
         gpu: &'a Gpu,
         d0_d1_order: Order,
-    ) -> (SearchSpace<'a>, ir::InstId, FnvHashMap<ir::DimId, Range>) {
-        let mut builder = helper::Builder::new(&signature, gpu);
+    ) -> (SearchSpace, ir::InstId, FnvHashMap<ir::DimId, Range>) {
+        let mut builder = helper::Builder::new(signature, Arc::new(gpu.clone()));
         let t = ir::Type::F(32);
         let size = builder.cst_size(gpu.wrap_size);
         let addr_base = builder.cast(&0i64, gpu.pointer_type(MemSpace::GLOBAL));
@@ -646,7 +647,7 @@ mod tests {
         let ctx = Context::new(&executor);
         let gpu = Gpu::from_executor(&executor);
         let base = gen_signature();
-        let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
+        let (space, inst, size_map) = gen_function(base.into(), &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map, &ctx);
         assert_eq!(inst_info.l1_coalescing, 1.0 / f64::from(gpu.wrap_size));
@@ -662,7 +663,7 @@ mod tests {
         let ctx = Context::new(&executor);
         let gpu = Gpu::from_executor(&executor);
         let base = gen_signature();
-        let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
+        let (space, inst, size_map) = gen_function(base.into(), &gpu, Order::INNER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map, &ctx);
         assert_eq!(inst_info.l1_coalescing, 1.0);

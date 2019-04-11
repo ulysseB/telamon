@@ -30,10 +30,10 @@ impl std::fmt::Display for DimId {
 }
 
 /// Represents an iteration dimension.
-#[derive(Clone, Debug)]
-pub struct Dimension<'a, L = ir::LoweringMap> {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Dimension<L = ir::LoweringMap> {
     id: DimId,
-    size: ir::PartialSize<'a>,
+    size: ir::PartialSize,
     possible_sizes: VecSet<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
@@ -45,9 +45,9 @@ pub struct Dimension<'a, L = ir::LoweringMap> {
     freeze_marker: std::marker::PhantomData<L>,
 }
 
-impl<'a> Dimension<'a, ()> {
+impl Dimension<()> {
     /// Sets the dimension as frozen.
-    pub fn freeze(self) -> Dimension<'a> {
+    pub fn freeze(self) -> Dimension {
         Dimension {
             id: self.id,
             is_thread_dim: self.is_thread_dim,
@@ -64,11 +64,11 @@ impl<'a> Dimension<'a, ()> {
     }
 }
 
-impl<'a, L> Dimension<'a, L> {
+impl<L> Dimension<L> {
     /// Creates a new dimension.
     pub fn new(
         id: DimId,
-        size: ir::PartialSize<'a>,
+        size: ir::PartialSize,
         logical_dim: Option<LogicalDimId>,
     ) -> Result<Self, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
@@ -132,7 +132,7 @@ impl<'a, L> Dimension<'a, L> {
     }
 
     /// Retruns the size of the dimension.
-    pub fn size(&self) -> &ir::PartialSize<'a> {
+    pub fn size(&self) -> &ir::PartialSize {
         &self.size
     }
 
@@ -214,12 +214,12 @@ lazy_static! {
     static ref NO_VALUES: VecSet<ir::VarId> = VecSet::default();
 }
 
-impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
+impl<L> Statement<L> for Dimension<L> {
     fn stmt_id(&self) -> ir::StmtId {
         self.id.into()
     }
 
-    fn as_dim(&self) -> Option<&Dimension<'a, L>> {
+    fn as_dim(&self) -> Option<&Dimension<L>> {
         Some(self)
     }
 
@@ -244,16 +244,16 @@ impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
 pub struct LogicalDimId(pub u32);
 
 /// A logic dimension composed of multiple `Dimension`s.
-#[derive(Clone, Debug)]
-pub struct LogicalDim<'a> {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LogicalDim {
     id: LogicalDimId,
     static_dims: Vec<DimId>,
     nonstatic_dim: Option<DimId>,
     possible_tilings: VecSet<u32>,
-    total_size: ir::Size<'a>,
+    total_size: ir::Size,
 }
 
-impl<'a> LogicalDim<'a> {
+impl LogicalDim {
     /// Creates a new logical dimension, composed only of static dimensions.
     pub fn new_static(
         id: LogicalDimId,
@@ -276,7 +276,7 @@ impl<'a> LogicalDim<'a> {
         dynamic_dim: DimId,
         static_dims: Vec<DimId>,
         possible_tilings: VecSet<u32>,
-        total_size: ir::Size<'a>,
+        total_size: ir::Size,
     ) -> Self {
         LogicalDim {
             id,
@@ -319,13 +319,15 @@ impl<'a> LogicalDim<'a> {
 
     /// Returns the size of the logical dimension, i.e. the product of the sizes of its
     /// dimensions.
-    pub fn total_size(&self) -> &ir::Size<'a> {
+    pub fn total_size(&self) -> &ir::Size {
         &self.total_size
     }
 }
 
 /// Uniquely identifies a pair of mapped dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
 pub struct DimMappingId(pub u16);
 
 impl From<DimMappingId> for usize {
@@ -335,7 +337,7 @@ impl From<DimMappingId> for usize {
 }
 
 /// Specifies that two dimensions should be mapped together.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DimMapping {
     id: DimMappingId,
     dims: [DimId; 2],

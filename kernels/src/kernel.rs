@@ -4,6 +4,7 @@
 //! implementation. generate_dump is only used in binary src/bin/kernel_dump.rs and not directly in
 //! tests
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use crate::statistics;
 use bincode;
@@ -131,10 +132,9 @@ pub trait Kernel<'a>: Sized + Sync {
     /// signature created by `build_signature`.
     fn build_body<'b>(
         &self,
-        signature: &'b ir::Signature,
+        signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
-    ) -> Vec<Candidate<'b>>;
-
+    ) -> Vec<Candidate>;
     /// Computes the expected output.
     fn get_expected_output(&self, _: &dyn device::Context) -> Self::ExpectedOutput;
 
@@ -157,7 +157,7 @@ pub trait Kernel<'a>: Sized + Sync {
     {
         let (signature, kernel, ctx) =
             KernelBuilder::new().build::<Self, AM>(params.clone(), ctx);
-        let mut candidate = kernel.build_body(&signature, ctx).remove(0);
+        let mut candidate = kernel.build_body(signature.into(), ctx).remove(0);
         let order = explorer::config::NewNodeOrder::WeightedRandom;
         let ordering = explorer::config::ChoiceOrdering::default();
         loop {
@@ -192,7 +192,7 @@ pub trait Kernel<'a>: Sized + Sync {
         let (signature, kernel, ctx) =
             KernelBuilder::new().build::<Self, AM>(params, ctx);
         let expected_output = kernel.get_expected_output(ctx);
-        let candidate = kernel.build_body(&signature, ctx).remove(0);
+        let candidate = kernel.build_body(signature.into(), ctx).remove(0);
 
         let implem = action_list.iter().fold(candidate, |cand, action| {
             cand.apply_decision(ctx, action.clone())
@@ -226,7 +226,7 @@ pub trait Kernel<'a>: Sized + Sync {
         let (signature, kernel, context) =
             KernelBuilder::new().build::<Self, AM>(params, context);
         let expected_output = kernel.get_expected_output(context);
-        let candidates = kernel.build_body(&signature, context);
+        let candidates = kernel.build_body(signature.into(), context);
         let mut num_deadends = 0;
         let mut num_runs = 0;
         while num_runs < num_tests {
@@ -279,7 +279,7 @@ pub trait Kernel<'a>: Sized + Sync {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(mem_init)
             .build::<Self, AM>(params, context);
-        let candidates = kernel.build_body(&signature, context);
+        let candidates = kernel.build_body(signature.into(), context);
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
         let stabilizer = &context.stabilizer();
@@ -345,7 +345,8 @@ pub trait Kernel<'a>: Sized + Sync {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(mem_init)
             .build::<Self, AM>(params, context);
-        let search_space = kernel.build_body(&signature, context);
+        let signature = Arc::new(signature);
+        let search_space = kernel.build_body(Arc::clone(&signature), context);
         let expected = kernel.get_expected_output(context);
         let best = unwrap!(
             explorer::find_best_ex(
@@ -374,7 +375,7 @@ pub trait Kernel<'a>: Sized + Sync {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(MemInit::Uninit)
             .build::<Self, AM>(params, context);
-        let candidates = kernel.build_body(&signature, context);
+        let candidates = kernel.build_body(signature.into(), context);
         let num_deadends = (0..num_samples)
             .into_par_iter()
             .filter(|_| {
@@ -392,10 +393,10 @@ pub trait Kernel<'a>: Sized + Sync {
 }
 
 /// Descend along a path in the search tree and stores the bounds encountered on the way.
-fn descend_check_bounds<'a>(
-    candidates: &[Candidate<'a>],
+fn descend_check_bounds(
+    candidates: &[Candidate],
     context: &dyn device::Context,
-) -> Option<(Candidate<'a>, Vec<Bound>)> {
+) -> Option<(Candidate, Vec<Bound>)> {
     let order = explorer::config::NewNodeOrder::WeightedRandom;
     let mut candidates = std::borrow::Cow::Borrowed(candidates);
     let mut bounds = Vec::new();

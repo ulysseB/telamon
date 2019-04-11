@@ -19,7 +19,7 @@ use utils::*;
 
 /// Holds the specifications of a target.
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub trait Device: Sync {
+pub trait Device: Send + Sync + 'static {
     /// Prints the code corresponding to a device `Function`.
     fn print(&self, function: &Function, out: &mut dyn Write);
     /// Indicates if a `Type` can be implemented on the device.

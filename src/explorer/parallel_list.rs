@@ -11,7 +11,7 @@ use std;
 use std::f64;
 use utils::unwrap;
 
-impl<'a> Store<'a> for ParallelCandidateList<'a> {
+impl Store for ParallelCandidateList {
     type PayLoad = ();
 
     type Event = ();
@@ -28,7 +28,7 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
     ) {
     }
 
-    fn explore(&self, context: &dyn Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, context: &dyn Context) -> Option<(Candidate, Self::PayLoad)> {
         loop {
             if let Some(candidate) = self.pop() {
                 let choice_opt = choice::default_list(&candidate.space).next();
@@ -45,12 +45,12 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
 }
 
 /// A `CandidateList` that can be accessed by multiple threads.
-pub struct ParallelCandidateList<'a> {
-    mutex: std::sync::Mutex<(CandidateList<'a>, usize)>,
+pub struct ParallelCandidateList {
+    mutex: std::sync::Mutex<(CandidateList, usize)>,
     wakeup: std::sync::Condvar,
 }
 
-impl<'a> ParallelCandidateList<'a> {
+impl ParallelCandidateList {
     /// Creates a new `ParallelCandidateList` that can be accessed by num_worker threads.
     pub fn new(num_worker: usize) -> Self {
         ParallelCandidateList {
@@ -60,7 +60,7 @@ impl<'a> ParallelCandidateList<'a> {
     }
 
     /// Insert multiple candidates to process.
-    pub fn insert_many(&self, candidates: Vec<Candidate<'a>>) {
+    pub fn insert_many(&self, candidates: Vec<Candidate>) {
         let mut lock = self.lock();
         for candidate in candidates {
             lock.0.insert(candidate);
@@ -69,7 +69,7 @@ impl<'a> ParallelCandidateList<'a> {
     }
 
     /// Returns a candidate to process or `None` if the queue has been entirely processed.
-    pub fn pop(&self) -> Option<Candidate<'a>> {
+    pub fn pop(&self) -> Option<Candidate> {
         let mut lock = self.lock();
         loop {
             if let Some(candidate) = lock.0.pop() {
@@ -87,16 +87,16 @@ impl<'a> ParallelCandidateList<'a> {
     }
 
     /// Acquire the lock to the candidate list
-    fn lock(&self) -> std::sync::MutexGuard<(CandidateList<'a>, usize)> {
+    fn lock(&self) -> std::sync::MutexGuard<(CandidateList, usize)> {
         unwrap!(self.mutex.lock())
     }
 }
 
-pub struct CandidateList<'a> {
+pub struct CandidateList {
     /// The maximum value over which we drop candidates
     cut: f64,
     /// The queue of candidates to evaluate.
-    queue: IntervalHeap<Candidate<'a>>,
+    queue: IntervalHeap<Candidate>,
     /// The number of leaf encountered.
     n_leaf: usize,
     /// The number of candidate encountered.
@@ -105,7 +105,7 @@ pub struct CandidateList<'a> {
     n_dropped: usize,
 }
 
-impl<'a> CandidateList<'a> {
+impl CandidateList {
     /// Create an empty candidate list.
     pub fn new() -> Self {
         CandidateList {
@@ -118,7 +118,7 @@ impl<'a> CandidateList<'a> {
     }
 
     /// Inserts a candidate to process.
-    pub fn insert(&mut self, candidate: Candidate<'a>) {
+    pub fn insert(&mut self, candidate: Candidate) {
         self.n_candidate += 1;
         if candidate.bound.value() < self.cut {
             let bound = candidate.bound.value();
@@ -148,7 +148,7 @@ impl<'a> CandidateList<'a> {
     }
 
     /// Returns a candidate to process.
-    pub fn pop(&mut self) -> Option<Candidate<'a>> {
+    pub fn pop(&mut self) -> Option<Candidate> {
         let candidate = self.queue.pop_min();
         if let Some(ref x) = candidate {
             warn!("candidate {}, depth {}, bound {:.4e}ns, cut {:.4e}ns, queue {}, leaves {}",
@@ -159,7 +159,7 @@ impl<'a> CandidateList<'a> {
     }
 
     /// Drops a candiate.
-    fn drop_candidate(&mut self, candidate: &Candidate<'a>) {
+    fn drop_candidate(&mut self, candidate: &Candidate) {
         info!(
             "dropping candidate: {:.4e}ns >= {:.4e}ns.",
             candidate.bound.value(),

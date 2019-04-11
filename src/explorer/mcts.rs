@@ -85,7 +85,7 @@ pub enum CauseOfDeath {
 }
 
 /// The internal structure of a node.  This should only be accessed through `Node` getters.
-struct NodeInner<'c, N, E> {
+struct NodeInner<N, E> {
     /// Node identifier.  Unique in a single tree.
     id: NodeId,
 
@@ -96,11 +96,11 @@ struct NodeInner<'c, N, E> {
     ///
     /// This is directly a pointer to the parent node and edge index in order to avoid an
     /// additional indirection through the `Edge` when following a path upwards.
-    parent: Option<(WeakNode<'c, N, E>, EdgeIndex)>,
+    parent: Option<(WeakNode<N, E>, EdgeIndex)>,
 
     /// Child edges.  Edges have a backward pointer to the node and additional metadata such as the
     /// action it correspond to.
-    children: Vec<Edge<'c, N, E>>,
+    children: Vec<Edge<N, E>>,
 
     /// Bound from the performance model.  If None, the node was dead due to constraint propagation
     /// and was never live.
@@ -120,7 +120,7 @@ struct NodeInner<'c, N, E> {
     /// An optional candidate can be stored in the node for later retrieval.  When a node is killed
     /// the candidate is immediately cleared to free memory.
     /// TODO(bclement): Move to data.
-    candidate: RwLock<Option<Box<SearchSpace<'c>>>>,
+    candidate: RwLock<Option<Box<SearchSpace>>>,
 
     /// Additional algorithm-specific data associated with the node.
     #[allow(dead_code)]
@@ -129,11 +129,11 @@ struct NodeInner<'c, N, E> {
 
 /// Represents a node in the search tree.  This is represented by a reference-counted pointer to an
 /// internal structure; multiple clones point to the same in-memory structure.
-pub struct Node<'c, N, E> {
-    inner: Arc<NodeInner<'c, N, E>>,
+pub struct Node<N, E> {
+    inner: Arc<NodeInner<N, E>>,
 }
 
-impl<'c, N, E> Clone for Node<'c, N, E> {
+impl<N, E> Clone for Node<N, E> {
     fn clone(&self) -> Self {
         Node {
             inner: Arc::clone(&self.inner),
@@ -141,13 +141,13 @@ impl<'c, N, E> Clone for Node<'c, N, E> {
     }
 }
 
-impl<'c, N, E> PartialEq for Node<'c, N, E> {
-    fn eq(&self, other: &Node<'c, N, E>) -> bool {
+impl<N, E> PartialEq for Node<N, E> {
+    fn eq(&self, other: &Node<N, E>) -> bool {
         Arc::ptr_eq(&self.inner, &other.inner)
     }
 }
 
-impl<'c, N, E> Node<'c, N, E> {
+impl<N, E> Node<N, E> {
     /// The node identifier.  Node identifiers are unique for nodes in the same tree.
     pub fn id(&self) -> NodeId {
         self.inner.id
@@ -212,12 +212,12 @@ impl<'c, N, E> Node<'c, N, E> {
     }
 
     /// List the child edges.
-    fn edges(&self) -> &[Edge<'c, N, E>] {
+    fn edges(&self) -> &[Edge<N, E>] {
         &self.inner.children[..]
     }
 
     /// Create a new weak pointer to the node.
-    fn downgrade(&self) -> WeakNode<'c, N, E> {
+    fn downgrade(&self) -> WeakNode<N, E> {
         WeakNode {
             inner: Arc::downgrade(&self.inner),
         }
@@ -235,7 +235,7 @@ impl<'c, N, E> Node<'c, N, E> {
     }
 
     /// Take the candidate if there is one.
-    fn take_candidate(&self) -> Option<SearchSpace<'c>> {
+    fn take_candidate(&self) -> Option<SearchSpace> {
         self.inner
             .candidate
             .write()
@@ -245,14 +245,14 @@ impl<'c, N, E> Node<'c, N, E> {
     }
 
     /// Store a candidate in the node.
-    fn store_candidate(&self, candidate: SearchSpace<'c>) {
+    fn store_candidate(&self, candidate: SearchSpace) {
         *self.inner.candidate.write().expect("candidate: poisoned") =
             Some(Box::new(candidate));
     }
 }
 
-impl<'c, N, E> ops::Index<EdgeIndex> for Node<'c, N, E> {
-    type Output = Edge<'c, N, E>;
+impl<N, E> ops::Index<EdgeIndex> for Node<N, E> {
+    type Output = Edge<N, E>;
 
     fn index(&self, index: EdgeIndex) -> &Self::Output {
         &self.inner.children[index.0 as usize]
@@ -260,21 +260,21 @@ impl<'c, N, E> ops::Index<EdgeIndex> for Node<'c, N, E> {
 }
 
 /// Non-owning reference to a node.  The node can be accessed through `upgrade`.
-pub struct WeakNode<'c, N, E> {
-    inner: Weak<NodeInner<'c, N, E>>,
+pub struct WeakNode<N, E> {
+    inner: Weak<NodeInner<N, E>>,
 }
 
-impl<'c, N, E> WeakNode<'c, N, E> {
+impl<N, E> WeakNode<N, E> {
     /// Attempts to upgrade to a `Node`.  Returns `None` if the node has since been dropped.
-    fn upgrade(&self) -> Option<Node<'c, N, E>> {
+    fn upgrade(&self) -> Option<Node<N, E>> {
         Weak::upgrade(&self.inner).map(|inner| Node { inner })
     }
 }
 
 /// The internal structure of an edge.  This should only be accessed through `Edge` getters.
-struct EdgeInner<'c, N, E> {
+struct EdgeInner<N, E> {
     /// The node pointed to by the edge.
-    node: RwLock<Option<Node<'c, N, E>>>,
+    node: RwLock<Option<Node<N, E>>>,
 
     /// Edge index across the parent's children
     index: EdgeIndex,
@@ -287,11 +287,11 @@ struct EdgeInner<'c, N, E> {
 }
 
 /// An edge in the search tree, which can contain additional data.
-pub struct Edge<'c, N, E> {
-    inner: Arc<EdgeInner<'c, N, E>>,
+pub struct Edge<N, E> {
+    inner: Arc<EdgeInner<N, E>>,
 }
 
-impl<'c, N, E> Clone for Edge<'c, N, E> {
+impl<N, E> Clone for Edge<N, E> {
     fn clone(&self) -> Self {
         Edge {
             inner: Arc::clone(&self.inner),
@@ -299,18 +299,18 @@ impl<'c, N, E> Clone for Edge<'c, N, E> {
     }
 }
 
-impl<'c, N, E> PartialEq for Edge<'c, N, E> {
-    fn eq(&self, other: &Edge<'c, N, E>) -> bool {
+impl<N, E> PartialEq for Edge<N, E> {
+    fn eq(&self, other: &Edge<N, E>) -> bool {
         Arc::ptr_eq(&self.inner, &other.inner)
     }
 }
 
-impl<'c, N, E> Edge<'c, N, E> {
+impl<N, E> Edge<N, E> {
     /// Call a function on the destination node if there is one, and returns the option-wrapped
     /// result.
     pub fn try_with_node<F, T>(&self, func: F) -> Option<T>
     where
-        F: FnOnce(&Node<'c, N, E>) -> T,
+        F: FnOnce(&Node<N, E>) -> T,
     {
         self.inner
             .node
@@ -358,18 +358,18 @@ impl<'a> Env<'a> {
     ///
     /// This includes all actions, even those that may be removed by further propagation.  Hence,
     /// the resulting vector is empty only when the candidate is a fully-specified implementation.
-    pub fn list_actions(&self, candidate: &SearchSpace<'_>) -> Vec<Action> {
+    pub fn list_actions(&self, candidate: &SearchSpace) -> Vec<Action> {
         choice::list(self.choice_ordering, candidate)
             .next()
             .unwrap_or_default()
     }
 
     /// Apply an action to an existing candidate, consuming the existing candidate.
-    pub fn apply_action<'c>(
+    pub fn apply_action(
         &self,
-        mut candidate: SearchSpace<'c>,
+        mut candidate: SearchSpace,
         action: Action,
-    ) -> Option<SearchSpace<'c>> {
+    ) -> Option<SearchSpace> {
         if let Ok(()) = match action {
             Action::Action(action) => candidate.apply_decisions(vec![action]),
             Action::LowerLayout {
@@ -385,7 +385,7 @@ impl<'a> Env<'a> {
     }
 
     /// Compute the performance model bound for a candidate.
-    pub fn bound<'c>(&self, candidate: &SearchSpace<'c>) -> Bound {
+    pub fn bound(&self, candidate: &SearchSpace) -> Bound {
         bound(candidate, self.context)
     }
 }
@@ -470,13 +470,13 @@ pub enum Message {
 }
 
 /// A path in the tree.
-pub struct Trace<'c, N, E> {
+pub struct Trace<N, E> {
     /// List of edges taken.  For each edge, we also record the policy that was used to select it,
     /// so that it can be used appropriately for backpropagation.
-    path: Vec<(Policy, WeakNode<'c, N, E>, EdgeIndex)>,
+    path: Vec<(Policy, WeakNode<N, E>, EdgeIndex)>,
     /// The final node reached at the end of the trace.  This is provided for convenience and
     /// should always be the node pointed to by the last edge in the `path`.
-    node: Node<'c, N, E>,
+    node: Node<N, E>,
 }
 
 /// Helper structure to manipulate a tree.
@@ -513,11 +513,11 @@ impl<'a> Tree<'a> {
     ///
     /// If parent is not provided, this will create a root node which must have an associated
     /// candidate.
-    pub fn node<'c, N, E>(
+    pub fn node<N, E>(
         &self,
-        parent: Option<(&Node<'c, N, E>, EdgeIndex)>,
-        candidate: Option<&SearchSpace<'c>>,
-    ) -> Node<'c, N, E>
+        parent: Option<(&Node<N, E>, EdgeIndex)>,
+        candidate: Option<&SearchSpace>,
+    ) -> Node<N, E>
     where
         N: Default,
         E: Default,
@@ -580,22 +580,22 @@ impl<'a> Tree<'a> {
 }
 
 /// A cursor which can be moved in the tree and remembers its trajectory.
-pub struct NodeCursor<'a, 'c, N, E> {
+pub struct NodeCursor<'a, N, E> {
     events: RefCell<Vec<Timed<Event>>>,
     cut: f64,
     cut_epoch: usize,
-    path: Vec<(Policy, WeakNode<'c, N, E>, EdgeIndex)>,
-    node: Node<'c, N, E>,
+    path: Vec<(Policy, WeakNode<N, E>, EdgeIndex)>,
+    node: Node<N, E>,
     tree: Tree<'a>,
     helper: WalkHelper<'a>,
 }
 
-impl<'a, 'c, N, E> NodeCursor<'a, 'c, N, E>
+impl<'a, N, E> NodeCursor<'a, N, E>
 where
     N: Debug + Default,
     E: Debug + Default,
 {
-    fn check_stop(mut self) -> Result<Self, Error<'a, 'c, N, E>> {
+    fn check_stop(mut self) -> Result<Self, Error<'a, N, E>> {
         if self.helper.stop.load(Ordering::Relaxed) {
             Err(Error::Aborted)
         } else {
@@ -620,7 +620,7 @@ where
 
     /// Apply the current cut to the given node and returns whether it is now dead.  This function
     /// only returns false when the node is still live.
-    fn cut_node<F>(&self, node: &Node<'c, N, E>, event_fn: F) -> bool
+    fn cut_node<F>(&self, node: &Node<N, E>, event_fn: F) -> bool
     where
         F: FnOnce(CauseOfDeath) -> Event,
     {
@@ -647,9 +647,8 @@ where
     /// be live, but the candidate is needed to compute the bound).
     pub fn live_children_iter(
         &'_ self,
-    ) -> impl Iterator<
-        Item = Result<(&'_ Edge<'c, N, E>, Node<'c, N, E>), &'_ Edge<'c, N, E>>,
-    > + '_ {
+    ) -> impl Iterator<Item = Result<(&'_ Edge<N, E>, Node<N, E>), &'_ Edge<N, E>>> + '_
+    {
         self.node
             .edges()
             .iter()
@@ -682,8 +681,8 @@ where
     /// the caller must manually call `apply_action` to get the candidate.
     pub fn live_children_iter_with_candidates<'b>(
         &'b self,
-        candidate: &'b SearchSpace<'c>,
-    ) -> impl Iterator<Item = (&'b Edge<'c, N, E>, Node<'c, N, E>, Option<SearchSpace<'c>>)> + 'b
+        candidate: &'b SearchSpace,
+    ) -> impl Iterator<Item = (&'b Edge<N, E>, Node<N, E>, Option<SearchSpace>)> + 'b
     {
         self.live_children_iter().filter_map(move |result| {
             result
@@ -733,7 +732,7 @@ where
     }
 
     /// Kill the given node.
-    fn kill_node<F>(&self, node: &Node<'c, N, E>, cause: CauseOfDeath, event_fn: F)
+    fn kill_node<F>(&self, node: &Node<N, E>, cause: CauseOfDeath, event_fn: F)
     where
         F: FnOnce(CauseOfDeath) -> Event,
     {
@@ -759,8 +758,8 @@ where
 
     pub fn evaluate(
         self,
-        candidate: SearchSpace<'c>,
-    ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Self> {
+        candidate: SearchSpace,
+    ) -> Result<(SearchSpace, Trace<N, E>), Self> {
         if self.cut() {
             Err(self)
         } else {
@@ -789,9 +788,9 @@ where
 
     /// Make a checkpoint of the current pointed-to node then call `func`.  If `func` fails,
     /// restore the resulting cursor to the checkpointed state.
-    fn checkpoint<F, T>(self, func: F) -> Result<Result<T, Error<'a, 'c, N, E>>, Self>
+    fn checkpoint<F, T>(self, func: F) -> Result<Result<T, Error<'a, N, E>>, Self>
     where
-        F: FnOnce(Self) -> Result<Result<T, Error<'a, 'c, N, E>>, Self>,
+        F: FnOnce(Self) -> Result<Result<T, Error<'a, N, E>>, Self>,
     {
         let path_len = self.path.len();
         let checkpoint = self.node.clone();
@@ -829,7 +828,7 @@ where
         F: FnOnce(
             &Self,
         )
-            -> Option<(Policy, Selector<EdgeIndex>, EdgeIndex, Node<'c, N, E>, T)>,
+            -> Option<(Policy, Selector<EdgeIndex>, EdgeIndex, Node<N, E>, T)>,
     {
         let start_time = self.tree.epoch.elapsed();
         if let Some((policy, selector, eindex, node, value)) = func(&self) {
@@ -845,7 +844,7 @@ where
     /// Expand the currently pointed-to node and returns the resulting candidate.
     ///
     /// Returns `None` if the pointed-to node is either dead or already expanded.
-    pub fn expand(&self) -> Option<SearchSpace<'c>> {
+    pub fn expand(&self) -> Option<SearchSpace> {
         if self.cut() || self.node.is_expanded() {
             return None;
         }
@@ -891,14 +890,14 @@ where
 }
 
 /// Errors which we can encounter during a descent
-enum Error<'a, 'c, N, E> {
+enum Error<'a, N, E> {
     /// A dead-end was encountered
-    DeadEnd(NodeCursor<'a, 'c, N, E>),
+    DeadEnd(NodeCursor<'a, N, E>),
     /// The search was aborted e.g. due to a timeout
     Aborted,
 }
 
-impl<'a, 'c, N, E> Debug for Error<'a, 'c, N, E> {
+impl<'a, N, E> Debug for Error<'a, N, E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::DeadEnd(_cursor) => write!(f, "DeadEnd(NodeCursor {{ .. }})"),
@@ -907,7 +906,7 @@ impl<'a, 'c, N, E> Debug for Error<'a, 'c, N, E> {
     }
 }
 
-impl<'a, 'c, N, E> Display for Error<'a, 'c, N, E> {
+impl<'a, N, E> Display for Error<'a, N, E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::DeadEnd(cursor) => write!(f, "dead end at node {}", cursor.node.id()),
@@ -916,18 +915,18 @@ impl<'a, 'c, N, E> Display for Error<'a, 'c, N, E> {
     }
 }
 
-impl<'a, 'c, N, E> std::error::Error for Error<'a, 'c, N, E> {}
+impl<'a, N, E> std::error::Error for Error<'a, N, E> {}
 
-pub trait TreePolicy<'c, N: 'c, E: 'c>: Send + Sync {
+pub trait TreePolicy<N, E>: Send + Sync {
     fn pick_child(
         &'_ self,
         cut: f64,
-        children: &NodeView<'_, 'c, N, E>,
+        children: &NodeView<'_, N, E>,
     ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)>;
 
     fn backpropagate(
         &'_ self,
-        _parent: &'_ Node<'c, N, E>,
+        _parent: &'_ Node<N, E>,
         _index: EdgeIndex,
         _eval: Option<f64>,
     ) {
@@ -943,20 +942,20 @@ struct WalkHelper<'a> {
 }
 
 /// Helper structure to walk the tree following a specific policy.
-struct PolicyWalker<'a, 'c, N, E> {
-    policy: &'a dyn TreePolicy<'c, N, E>,
+struct PolicyWalker<'a, N, E> {
+    policy: &'a dyn TreePolicy<N, E>,
 }
 
-impl<'a, 'c, N, E> PolicyWalker<'a, 'c, N, E>
+impl<'a, N, E> PolicyWalker<'a, N, E>
 where
-    N: 'c + Send + Sync + Debug + Default,
-    E: 'c + Send + Sync + Debug + Default,
+    N: Send + Sync + Debug + Default,
+    E: Send + Sync + Debug + Default,
 {
     fn walk(
         &self,
-        mut cursor: NodeCursor<'a, 'c, N, E>,
-        candidate: SearchSpace<'c>,
-    ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Error<'a, 'c, N, E>> {
+        mut cursor: NodeCursor<'a, N, E>,
+        candidate: SearchSpace,
+    ) -> Result<(SearchSpace, Trace<N, E>), Error<'a, N, E>> {
         // If we point to an implementation, we are done.  We mark it as dead to avoid evaluating
         // it again later.
         if cursor.node.is_implementation() {
@@ -1021,24 +1020,24 @@ where
 }
 
 /// Helper structure to walk the tree using a MCTS algorithm.
-struct MctsWalker<'a, 'c, N, E> {
+struct MctsWalker<'a, N, E> {
     /// The walker to use to perform rollouts.
-    default_walker: PolicyWalker<'a, 'c, N, E>,
+    default_walker: PolicyWalker<'a, N, E>,
     /// The policy to use in the explicit tree where statistics are available.
-    tree_policy: &'a dyn TreePolicy<'c, N, E>,
+    tree_policy: &'a dyn TreePolicy<N, E>,
 }
 
-impl<'a, 'c, N, E> MctsWalker<'a, 'c, N, E>
+impl<'a, N, E> MctsWalker<'a, N, E>
 where
-    N: 'c + Send + Sync + Debug + Default,
-    E: 'c + Send + Sync + Debug + Default,
+    N: Send + Sync + Debug + Default,
+    E: Send + Sync + Debug + Default,
 {
     /// Evaluate the underlying node
     fn evaluate(
         &self,
-        cursor: NodeCursor<'a, 'c, N, E>,
-        candidate: SearchSpace<'c>,
-    ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Error<'a, 'c, N, E>> {
+        cursor: NodeCursor<'a, N, E>,
+        candidate: SearchSpace,
+    ) -> Result<(SearchSpace, Trace<N, E>), Error<'a, N, E>> {
         self.default_walker.walk(cursor, candidate)
     }
 
@@ -1047,8 +1046,8 @@ where
     /// should be evaluated instead).
     fn select_intree(
         &self,
-        mut cursor: NodeCursor<'a, 'c, N, E>,
-    ) -> Result<(SearchSpace<'c>, Trace<'c, N, E>), Error<'a, 'c, N, E>> {
+        mut cursor: NodeCursor<'a, N, E>,
+    ) -> Result<(SearchSpace, Trace<N, E>), Error<'a, N, E>> {
         assert!(cursor.node.is_expanded(), "not in the explicit tree");
         assert!(
             !cursor.node.is_implementation(),
@@ -1158,12 +1157,12 @@ where
 }
 
 /// Wrapper to interact with the `Store` trait.
-pub struct MctsStore<'a, 'c, N, E> {
-    root: Node<'c, N, E>,
+pub struct MctsStore<'a, N, E> {
+    root: Node<N, E>,
 
-    default_policy: Box<dyn TreePolicy<'c, N, E>>,
+    default_policy: Box<dyn TreePolicy<N, E>>,
 
-    tree_policy: Box<dyn TreePolicy<'c, N, E>>,
+    tree_policy: Box<dyn TreePolicy<N, E>>,
 
     /// Best evaluation found so far
     cut: RwLock<f64>,
@@ -1186,17 +1185,17 @@ pub struct MctsStore<'a, 'c, N, E> {
     epoch: std::time::Instant,
 }
 
-impl<'a, 'c, N, E> MctsStore<'a, 'c, N, E>
+impl<'a, N, E> MctsStore<'a, N, E>
 where
     N: Send + Sync + Debug + Default,
     E: Send + Sync + Debug + Default,
 {
     pub fn new(
-        space: SearchSpace<'c>,
+        space: SearchSpace,
         context: &dyn Context,
         config: &'a BanditConfig,
-        tree_policy: Box<dyn TreePolicy<'c, N, E>>,
-        default_policy: Box<dyn TreePolicy<'c, N, E>>,
+        tree_policy: Box<dyn TreePolicy<N, E>>,
+        default_policy: Box<dyn TreePolicy<N, E>>,
         logger: mpsc::SyncSender<LogMessage<Message>>,
     ) -> Self {
         let epoch = std::time::Instant::now();
@@ -1225,7 +1224,7 @@ where
         }
     }
 
-    fn cursor<'b>(&'b self, context: &'b dyn Context) -> NodeCursor<'b, 'c, N, E> {
+    fn cursor<'b>(&'b self, context: &'b dyn Context) -> NodeCursor<'b, N, E> {
         NodeCursor {
             events: Vec::new().into(),
             cut: *self.cut.read().expect("cut: poisoned"),
@@ -1247,7 +1246,7 @@ where
         }
     }
 
-    fn walker(&self) -> MctsWalker<'_, 'c, N, E> {
+    fn walker(&self) -> MctsWalker<'_, N, E> {
         MctsWalker {
             default_walker: PolicyWalker {
                 policy: self.default_policy.as_ref(),
@@ -1257,12 +1256,12 @@ where
     }
 }
 
-impl<'a, 'c, N: 'c, E: 'c> Store<'c> for MctsStore<'a, 'c, N, E>
+impl<'a, N, E> Store for MctsStore<'a, N, E>
 where
     N: Send + Sync + Debug + Default,
     E: Send + Sync + Debug + Default,
 {
-    type PayLoad = Trace<'c, N, E>;
+    type PayLoad = Trace<N, E>;
 
     type Event = Message;
 
@@ -1306,7 +1305,7 @@ where
             .expect("sending message");
     }
 
-    fn explore(&self, context: &dyn Context) -> Option<(Candidate<'c>, Self::PayLoad)> {
+    fn explore(&self, context: &dyn Context) -> Option<(Candidate, Self::PayLoad)> {
         loop {
             let cursor = self.cursor(context);
             let walker = self.walker();
@@ -1395,11 +1394,11 @@ impl NewNodeOrder {
     }
 }
 
-impl<'c, N: 'c, E: 'c> TreePolicy<'c, N, E> for NewNodeOrder {
+impl<N, E> TreePolicy<N, E> for NewNodeOrder {
     fn pick_child(
         &'_ self,
         cut: f64,
-        children: &NodeView<'_, 'c, N, E>,
+        children: &NodeView<'_, N, E>,
     ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
         self.into_selector(
             cut,
@@ -1512,23 +1511,23 @@ impl From<EdgeViewIndex> for usize {
     }
 }
 
-type ChildView<'a, 'c, N, E> = (&'a Edge<'c, N, E>, Node<'c, N, E>);
+type ChildView<'a, N, E> = (&'a Edge<N, E>, Node<N, E>);
 
 /// A locally frozen view on a node, where only some children may be present.  This typically only
 /// contains the children satisfying a certain condition, such as live children or (un)expanded
 /// children.
-pub struct NodeView<'a, 'c, N, E> {
+pub struct NodeView<'a, N, E> {
     #[allow(dead_code)]
-    parent: &'a Node<'c, N, E>,
-    edges: &'a [ChildView<'a, 'c, N, E>],
+    parent: &'a Node<N, E>,
+    edges: &'a [ChildView<'a, N, E>],
 }
 
-impl<'a, 'c, N, E> NodeView<'a, 'c, N, E> {
-    fn new(parent: &'a Node<'c, N, E>, edges: &'a [ChildView<'a, 'c, N, E>]) -> Self {
+impl<'a, N, E> NodeView<'a, N, E> {
+    fn new(parent: &'a Node<N, E>, edges: &'a [ChildView<'a, N, E>]) -> Self {
         NodeView { parent, edges }
     }
 
-    fn iter(&'_ self) -> ChildViewIter<'_, 'a, 'c, N, E> {
+    fn iter(&'_ self) -> ChildViewIter<'_, 'a, N, E> {
         ChildViewIter {
             iter: self.edges.iter().enumerate(),
         }
@@ -1545,20 +1544,20 @@ impl<'a, 'c, N, E> NodeView<'a, 'c, N, E> {
     }
 }
 
-impl<'a, 'c, N, E> ops::Index<EdgeViewIndex> for NodeView<'a, 'c, N, E> {
-    type Output = (&'a Edge<'c, N, E>, Node<'c, N, E>);
+impl<'a, N, E> ops::Index<EdgeViewIndex> for NodeView<'a, N, E> {
+    type Output = (&'a Edge<N, E>, Node<N, E>);
 
     fn index(&self, index: EdgeViewIndex) -> &Self::Output {
         &self.edges[usize::from(index)]
     }
 }
 
-pub struct ChildViewIter<'a, 'b, 'c, N, E> {
-    iter: iter::Enumerate<slice::Iter<'a, (&'b Edge<'c, N, E>, Node<'c, N, E>)>>,
+pub struct ChildViewIter<'a, 'b, N, E> {
+    iter: iter::Enumerate<slice::Iter<'a, (&'b Edge<N, E>, Node<N, E>)>>,
 }
 
-impl<'a, 'b, 'c, N, E> Iterator for ChildViewIter<'a, 'b, 'c, N, E> {
-    type Item = (EdgeViewIndex, &'a &'b Edge<'c, N, E>, &'a Node<'c, N, E>);
+impl<'a, 'b, N, E> Iterator for ChildViewIter<'a, 'b, N, E> {
+    type Item = (EdgeViewIndex, &'a &'b Edge<N, E>, &'a Node<N, E>);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
@@ -1644,11 +1643,11 @@ impl<T: Clone> Selector<T> {
     }
 }
 
-impl<'c, N: 'c> TreePolicy<'c, N, UCTStats> for UCTPolicy {
+impl<N> TreePolicy<N, UCTStats> for UCTPolicy {
     fn pick_child(
         &'_ self,
         cut: f64,
-        children: &NodeView<'_, 'c, N, UCTStats>,
+        children: &NodeView<'_, N, UCTStats>,
     ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
         let stats = children
             .iter()
@@ -1708,7 +1707,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, UCTStats> for UCTPolicy {
 
     fn backpropagate(
         &'_ self,
-        parent: &'_ Node<'c, N, UCTStats>,
+        parent: &'_ Node<N, UCTStats>,
         index: EdgeIndex,
         eval: Option<f64>,
     ) {
@@ -1842,11 +1841,11 @@ impl TAGPolicy {
     }
 }
 
-impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
+impl<N> TreePolicy<N, TAGStats> for TAGPolicy {
     fn pick_child(
         &'_ self,
         cut: f64,
-        children: &NodeView<'_, 'c, N, TAGStats>,
+        children: &NodeView<'_, N, TAGStats>,
     ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
         // Ignore cut children.  Also, we compute the number of visits beforehand to ensure that it
         // doesn't get changed by concurrent accesses.
@@ -1941,7 +1940,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, TAGStats> for TAGPolicy {
 
     fn backpropagate(
         &'_ self,
-        parent: &'_ Node<'c, N, TAGStats>,
+        parent: &'_ Node<N, TAGStats>,
         index: EdgeIndex,
         eval: Option<f64>,
     ) {
@@ -2048,11 +2047,11 @@ impl<'a> IntoIterator for &'a Evaluations {
 
 pub struct RoundRobinPolicy;
 
-impl<'c, N: 'c> TreePolicy<'c, N, CommonStats> for RoundRobinPolicy {
+impl<N> TreePolicy<N, CommonStats> for RoundRobinPolicy {
     fn pick_child(
         &'_ self,
         _cut: f64,
-        view: &NodeView<'_, 'c, N, CommonStats>,
+        view: &NodeView<'_, N, CommonStats>,
     ) -> Option<(EdgeViewIndex, Selector<EdgeIndex>)> {
         Selector::try_maximum(
             view.iter()
@@ -2068,7 +2067,7 @@ impl<'c, N: 'c> TreePolicy<'c, N, CommonStats> for RoundRobinPolicy {
 
     fn backpropagate(
         &self,
-        _parent: &Node<'c, N, CommonStats>,
+        _parent: &Node<N, CommonStats>,
         _index: EdgeIndex,
         _eval: Option<f64>,
     ) {

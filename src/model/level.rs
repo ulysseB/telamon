@@ -95,7 +95,7 @@ pub fn sum_pressure(
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure =
         HwPressure::min(nest.iter().map(|d| &local_info.dim_overhead[d].0))
-            .unwrap_or_else(|| HwPressure::zero(ctx.device()));
+            .unwrap_or_else(|| HwPressure::zero(&*ctx.device()));
     if nest.is_empty() {
         let min_num_threads = match bound_level {
             BottleneckLevel::Global => local_info.parallelism.min_num_threads,

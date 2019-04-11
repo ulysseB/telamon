@@ -15,7 +15,7 @@ fn empty() {
     let signature = empty_signature();
     gen_best(
         &context,
-        helper::Builder::new(&signature, context.device()).get(),
+        helper::Builder::new(signature.into(), context.device()).get(),
     );
 }
 
@@ -30,7 +30,7 @@ fn two_add() {
         builder.get()
     };
     gen_best(&context, {
-        let mut builder = helper::Builder::new(&signature, context.device());
+        let mut builder = helper::Builder::new(signature.into(), context.device());
         builder.add(&"a", &2);
         builder.add(&std::f32::consts::PI, &1.0f32);
         builder.get()
@@ -43,11 +43,11 @@ fn inst_dim_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let dim0 = builder.open_dim(Size::new_const(64));
     let inst0 = builder.mov(&0i32);
     let pattern = ir::AccessPattern::Unknown(None);
-    let addr = builder.cast(&0i64, pattern.pointer_type(context.device()));
+    let addr = builder.cast(&0i64, pattern.pointer_type(&*context.device()));
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
     let dim1 = builder.open_dim(Size::new_const(64));
@@ -84,7 +84,7 @@ fn inst_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let src = builder.mov(&1f32);
     let var = builder.get_inst_variable(src);
     let dst = builder.mov(&var);
@@ -102,7 +102,7 @@ fn dim_map_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let src_dim = builder.open_dim(ir::Size::new_const(16));
     let src = builder.mov(&1f32);
@@ -142,7 +142,7 @@ fn last_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let dim = builder.open_dim(ir::Size::new_const(16));
     let src = builder.mov(&1f32);
@@ -168,7 +168,7 @@ fn nested_thread_dims() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let size4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size4.clone(), DimKind::THREAD);
     let d1 = builder.open_dim_ex(size4.clone(), DimKind::THREAD);
@@ -203,7 +203,7 @@ fn max_thread_on_addinst() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     builder.open_dim_ex(Size::new_const(1024), DimKind::THREAD);
     let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
@@ -221,7 +221,7 @@ fn max_thread_on_setkind() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim(Size::new_const(1024));
     let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
@@ -245,7 +245,7 @@ fn block_dims() {
         n = builder.max_size("n", 64);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim(Size::new_const(4));
     let inst = builder.mov(&0i32);
     let s1 = n.to_ir_size(&builder);
@@ -282,7 +282,7 @@ fn vector_dims() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let base_addr = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
     let d0 = builder.open_dim(Size::new_const(4));
     // Test with one vectorizable instruction
@@ -322,7 +322,7 @@ fn unroll_dims() {
         n = builder.max_size("n", 64);
         builder.get()
     };
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim(Size::new_const(64));
     let d1 = builder.open_dim(Size::new_const(4096));
     let s2 = n.to_ir_size(&builder);
@@ -341,7 +341,7 @@ fn reduce_dim_invariants() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let init = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
     let d0 = builder.open_dim(Size::new_const(4));
     let pattern = ir::AccessPattern::Unknown(None);
@@ -378,7 +378,7 @@ fn rename_thread() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d_n_1 = &builder.open_dim_ex(Size::new_const(8), DimKind::THREAD);
     builder.mov(&0i32);
     builder.mov(d_n_1);
@@ -391,7 +391,7 @@ fn dim_merge() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     builder.mov(&0i32);
     let d1 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
@@ -405,7 +405,7 @@ fn loop_fusion() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0);
@@ -423,7 +423,7 @@ fn unrolled_loop_unfused_simple() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0);
@@ -441,7 +441,7 @@ fn temporary_memory_gen_simple() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0);
@@ -459,7 +459,7 @@ fn unrolled_loop_unfused_reduction() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
     builder.open_mapped_dim(&d0);
@@ -478,7 +478,7 @@ fn two_thread_dim_map() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     // Generate a variable in each thread.
     let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
     let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
@@ -500,7 +500,7 @@ fn double_dim_map() {
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
     // Load from a and b.
     let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
     let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
@@ -527,7 +527,7 @@ fn multi_dim_to_same_vector_level() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
 
     builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);
     builder.open_dim_ex(ir::Size::new_const(4), DimKind::INNER_VECTOR);
@@ -548,7 +548,7 @@ fn two_level_vectorization() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
     let signature = empty_signature();
-    let mut builder = helper::Builder::new(&signature, context.device());
+    let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let inner_vec = builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);
     let outer_vec = builder.open_dim_ex(ir::Size::new_const(2), DimKind::OUTER_VECTOR);

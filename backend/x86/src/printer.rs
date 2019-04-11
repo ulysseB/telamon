@@ -94,12 +94,12 @@ impl X86printer {
         let mut return_string = if function.device_code_args().count() == 0 {
             format!(
                 include_str!("template/signature_no_arg.c.template"),
-                name = function.name,
+                name = function.name(),
             )
         } else {
             format!(
                 include_str!("template/signature.c.template"),
-                name = function.name,
+                name = function.name(),
                 params = param_decls
             )
         };
@@ -325,7 +325,7 @@ impl X86printer {
         if func.device_code_args().count() == 0 {
             format!(
                 include_str!("template/host_no_arg.c.template"),
-                fun_name = func.name,
+                fun_name = func.name(),
                 fun_str = fun_str,
                 gen_threads = self.thread_gen(func),
                 dim_decl = self.build_thread_id_struct(func),
@@ -335,7 +335,7 @@ impl X86printer {
             let fun_params = self.params_call(func);
             format!(
                 include_str!("template/host.c.template"),
-                fun_name = func.name,
+                fun_name = func.name(),
                 fun_str = fun_str,
                 fun_params_cast = self.fun_params_cast(func),
                 fun_params = fun_params,
