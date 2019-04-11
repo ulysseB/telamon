@@ -7,6 +7,8 @@
 mod context;
 mod mppa;
 mod printer;
+#[cfg(not(feature = "real_mppa"))]
+mod fake_telajax;
 
 pub use crate::context::Context;
 pub use crate::mppa::Mppa;

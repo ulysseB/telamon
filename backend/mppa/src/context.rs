@@ -11,7 +11,10 @@ use std::sync::{
 };
 use std::time::Instant;
 use std::{self, fmt};
+#[cfg(feature = "real_mppa")]
 use telajax;
+#[cfg(not(feature = "real_mppa"))]
+use crate::fake_telajax as telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::{
     self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,
@@ -358,7 +361,7 @@ struct Code<'a> {
 
 impl<'a> fmt::Display for Code<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "<mppa kernel>");
+        write!(fmt, "<mppa kernel>")
     }
 }
 
@@ -368,6 +371,6 @@ impl<'a> KernelEvaluator for Code<'a> {
         let t0 = Instant::now();
         self.executor.execute_kernel(&mut self.kernel).unwrap();
         let d = t0.elapsed();
-        Some(d.subsec_nanos() as f64 + d.secs() as f64 * 1_000_000_000.)
+        Some(d.subsec_nanos() as f64 + d.as_secs() as f64 * 1_000_000_000.)
     }
 }
