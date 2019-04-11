@@ -11,7 +11,10 @@ use std::sync::{
 };
 use std::time::Instant;
 use std::{self, fmt};
+#[cfg(feature = "real_mppa")]
 use telajax;
+#[cfg(not(feature = "real_mppa"))]
+use crate::fake_telajax as telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::{
     self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,

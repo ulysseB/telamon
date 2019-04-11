@@ -27,7 +27,7 @@ before_script:
 jobs:
   include:
     - stage: test
-      script: CUDA_HOME=/usr/local/cuda-10.1 cargo check --all --exclude telajax --exclude telamon-mppa --all-targets --tests --benches
+      script: CUDA_HOME=/usr/local/cuda-10.1 cargo check --all --exclude telajax --all-targets --tests --benches
     - script: cargo test
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
