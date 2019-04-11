@@ -1,17 +1,13 @@
-use std::{
-    ffi::CStr,
-    result::Result,
-    sync::RwLock,
-};
+use std::{ffi::CStr, result::Result, sync::RwLock};
 
 static DEVICE: Device = Device {};
 
-pub struct Buffer<T:Copy> {
+pub struct Buffer<T: Copy> {
     pub len: usize,
-    data: RwLock<Vec<T>>
+    data: RwLock<Vec<T>>,
 }
 
-impl<T:Copy> Buffer<T> {
+impl<T: Copy> Buffer<T> {
     pub fn new(_: &'static Device, len: usize) -> Self {
         Buffer {
             len,
@@ -40,11 +36,7 @@ impl Device {
         &DEVICE
     }
 
-    pub fn build_wrapper(
-        &self,
-        _: &CStr,
-        _: &CStr,
-    ) -> Result<Wrapper, ()> {
+    pub fn build_wrapper(&self, _: &CStr, _: &CStr) -> Result<Wrapper, ()> {
         Ok(Wrapper {})
     }
 
@@ -64,8 +56,7 @@ impl Device {
     }
 }
 
-pub struct Mem {
-}
+pub struct Mem {}
 
 impl Mem {
     pub fn get_mem_size() -> usize {
@@ -73,19 +64,14 @@ impl Mem {
     }
 }
 
-pub struct Kernel {
-}
+pub struct Kernel {}
 
 impl Kernel {
     pub fn set_num_clusters(&mut self, _: usize) -> Result<(), ()> {
         Ok(())
     }
 
-    pub fn set_args(
-        &mut self,
-        _: &[usize],
-        _: &[*const libc::c_void],
-    ) -> Result<(), ()> {
+    pub fn set_args(&mut self, _: &[usize], _: &[*const libc::c_void]) -> Result<(), ()> {
         Ok(())
     }
 }

@@ -147,7 +147,7 @@ impl MppaPrinter {
             }
         }
         // INIT
-        let ind_levels = function.init_induction_levels().into_iter().chain(
+        let ind_levels = function.init_induction_levels().iter().chain(
             function
                 .block_dims()
                 .iter()
@@ -222,8 +222,8 @@ impl MppaPrinter {
         for i in 0..n {
             let start = format!("d{}", i);
             let mut vec_str = vec![start];
-            for j in 0..i {
-                vec_str.push(format!("{}", unwrap!(dims[j].size().as_int())));
+            for dim in dims {
+                vec_str.push(format!("{}", unwrap!(dim.size().as_int())));
             }
             vec_ret.push(vec_str.join(" * "));
         }
@@ -247,7 +247,7 @@ impl MppaPrinter {
     /// handles in an array
     fn thread_gen(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
-            return format!(include_str!("template/monothread_init.c.template"));
+            return include_str!("template/monothread_init.c.template").to_string();
         }
         let mut loop_decl = String::new();
         let mut ind_vec = Vec::new();
@@ -381,8 +381,8 @@ impl MppaPrinter {
     }
 
     /// Returns the name of a type.
-    fn type_name(t: &ir::Type) -> &'static str {
-        match *t {
+    fn type_name(t: ir::Type) -> &'static str {
+        match t {
             ir::Type::PtrTo(..) => "void*",
             ir::Type::F(32) => "float",
             ir::Type::F(64) => "double",
@@ -396,8 +396,8 @@ impl MppaPrinter {
     }
 
     /// Returns the name of a type.
-    fn cl_type_name(t: &ir::Type) -> &'static str {
-        match *t {
+    fn cl_type_name(t: ir::Type) -> &'static str {
+        match t {
             ir::Type::PtrTo(..) => "__global void*",
             ir::Type::I(8) => "char",
             ir::Type::I(16) => "short",
@@ -424,7 +424,7 @@ impl MppaPrinter {
             .format_with(", ", |p, f| {
                 f(&format_args!(
                     "{} {}",
-                    Self::cl_type_name(&p.t()),
+                    Self::cl_type_name(p.t()),
                     name_map.name_param(p.key())
                 ))
             })
@@ -498,7 +498,7 @@ impl Printer<Namer> for MppaPrinter {
         match operator {
             ir::UnaryOp::Mov => (),
             ir::UnaryOp::Cast(t) => {
-                unwrap!(write!(self.buffer, "({})", Self::get_type(t.into())))
+                unwrap!(write!(self.buffer, "({})", Self::get_type(t)))
             }
         };
         unwrap!(writeln!(self.buffer, "{};", operand));
@@ -553,7 +553,7 @@ impl Printer<Namer> for MppaPrinter {
             self.buffer,
             "{} = *({}*){} ;",
             result,
-            Self::get_type(return_type.into()),
+            Self::get_type(return_type),
             addr
         ));
     }
@@ -575,7 +575,7 @@ impl Printer<Namer> for MppaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "*({}*){} = {} ;",
-            Self::get_type(val_type.into()),
+            Self::get_type(val_type),
             addr,
             val
         ));
