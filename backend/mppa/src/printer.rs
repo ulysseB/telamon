@@ -222,7 +222,7 @@ impl MppaPrinter {
         for i in 0..n {
             let start = format!("d{}", i);
             let mut vec_str = vec![start];
-            for dim in dims {
+            for dim in dims.iter().take(i) {
                 vec_str.push(format!("{}", unwrap!(dim.size().as_int())));
             }
             vec_ret.push(vec_str.join(" * "));
