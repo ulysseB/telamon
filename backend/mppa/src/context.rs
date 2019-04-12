@@ -95,7 +95,7 @@ impl KernelArg {
 }
 
 pub struct Context {
-    device: mppa::Mppa,
+    device: Arc<mppa::Mppa>,
     executor: &'static telajax::Device,
     parameters: FnvHashMap<String, Arc<Argument>>,
     writeback_slots: ArrayQueue<MppaArray>,
@@ -117,7 +117,7 @@ impl Context {
             writeback_slots.push(MppaArray::new(executor, 4)).unwrap();
         }
         Context {
-            device: mppa::Mppa::default(),
+            device: Arc::new(mppa::Mppa::default()),
             executor,
             parameters: FnvHashMap::default(),
             writeback_slots,
@@ -219,8 +219,8 @@ fn get_type_size(t: ir::Type) -> usize {
 }
 
 impl device::Context for Context {
-    fn device(&self) -> &device::Device {
-        &self.device
+    fn device(&self) -> Arc<dyn device::Device> {
+        Arc::<mppa::Mppa>::clone(&self.device)
     }
 
     fn benchmark(&self, _function: &Function, _num_samples: usize) -> Vec<f64> {
