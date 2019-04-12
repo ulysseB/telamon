@@ -13,3 +13,4 @@ sourcesIndex["telamon_gen_test"] = {"name":"","dirs":[],"files":["fail.rs","ir_g
 sourcesIndex["telamon_kernels"] = {"name":"","dirs":[],"files":["kernel.rs","lib.rs","linalg.rs","statistics.rs"]};
 sourcesIndex["telamon_utils"] = {"name":"","dirs":[],"files":["cache.rs","dag.rs","iterator.rs","lib.rs","multimap.rs","ndarray.rs","tfrecord.rs","unwrap.rs","vec_set.rs"]};
 sourcesIndex["telamon_x86"] = {"name":"","dirs":[],"files":["compile.rs","context.rs","cpu.rs","cpu_argument.rs","lib.rs","printer.rs"]};
+createSourceSidebar();
