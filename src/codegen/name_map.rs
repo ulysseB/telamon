@@ -524,11 +524,11 @@ mod tests {
             self.name(ir::Type::I(0))
         }
 
-        fn get_const_float(_: &Ratio<BigInt>, _: u16) -> String {
+        fn get_const_float(&self, _: &Ratio<BigInt>, _: u16) -> String {
             "1.0".to_owned()
         }
 
-        fn get_const_int(_: &BigInt, _: u16) -> String {
+        fn get_const_int(&self, _: &BigInt, _: u16) -> String {
             "1".to_owned()
         }
     }
