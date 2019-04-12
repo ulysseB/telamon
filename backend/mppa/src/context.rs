@@ -1,6 +1,4 @@
 //! MPPA evaluation context.
-#[cfg(not(feature = "real_mppa"))]
-use crate::fake_telajax as telajax;
 use crate::printer::MppaPrinter;
 use crate::{mppa, Namer};
 use crossbeam;
@@ -13,8 +11,6 @@ use std::sync::{
 };
 use std::time::Instant;
 use std::{self, fmt};
-#[cfg(feature = "real_mppa")]
-use telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::{
     self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,
@@ -24,6 +20,11 @@ use telamon::explorer;
 use telamon::ir;
 use utils::unwrap;
 use utils::*;
+
+#[cfg(not(feature = "real_mppa"))]
+use crate::fake_telajax as telajax;
+#[cfg(feature = "real_mppa")]
+use telajax;
 
 // This atomic id is needed as because of a bug in Kalray OpenCL, we have to give a unique name to
 // every kernel, otherwise we get strange effects (as a kernel run multiple times)
