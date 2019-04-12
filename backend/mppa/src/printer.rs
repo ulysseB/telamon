@@ -100,7 +100,7 @@ impl MppaPrinter {
         // SIGNATURE AND OPEN BRACKET
         let mut return_string = format!(
             include_str!("template/signature.c.template"),
-            name = function.name,
+            name = function.name(),
             params = param_decls
         );
         // INDEX LOADS
@@ -370,7 +370,7 @@ impl MppaPrinter {
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
             build_ptr_struct = self.build_ptr_struct(func, name_map),
-            fun_name = func.name,
+            fun_name = func.name(),
             fun_str = fun_str,
             fun_params_cast = self.fun_params_cast(func),
             fun_params = fun_params,
