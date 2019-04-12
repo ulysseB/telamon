@@ -9,7 +9,6 @@ mod printer;
 
 pub use crate::context::Context;
 pub use crate::cpu::Cpu;
-pub use crate::printer::X86printer;
 
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -19,13 +18,13 @@ use telamon::ir;
 use utils::*;
 
 #[derive(Default)]
-struct Namer {
+pub(crate) struct ValuePrinter {
     num_var: FnvHashMap<ir::Type, usize>,
     num_sizes: usize,
     num_glob_ptr: usize,
 }
 
-impl Namer {
+impl ValuePrinter {
     /// Generate a variable name prefix from a type.
     fn gen_prefix(t: ir::Type) -> &'static str {
         match t {
@@ -43,9 +42,20 @@ impl Namer {
     }
 }
 
-impl codegen::Namer for Namer {
+impl codegen::ValuePrinter for ValuePrinter {
+    fn get_const_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
+        assert!(len <= 64);
+        let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
+        f.to_string()
+    }
+
+    fn get_const_int(&self, val: &BigInt, len: u16) -> String {
+        assert!(len <= 64);
+        format!("{}", unwrap!(val.to_i64()))
+    }
+
     fn name(&mut self, t: ir::Type) -> String {
-        let prefix = Namer::gen_prefix(t);
+        let prefix = ValuePrinter::gen_prefix(t);
         match t {
             ir::Type::PtrTo(..) => {
                 let name = format!("{}{}", prefix, self.num_glob_ptr);
@@ -59,17 +69,6 @@ impl codegen::Namer for Namer {
                 name
             }
         }
-    }
-
-    fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
-        assert!(len <= 64);
-        let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
-        f.to_string()
-    }
-
-    fn name_int(&self, val: &BigInt, len: u16) -> String {
-        assert!(len <= 64);
-        format!("{}", unwrap!(val.to_i64()))
     }
 
     fn name_param(&mut self, p: codegen::ParamValKey) -> String {

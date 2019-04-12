@@ -30,7 +30,7 @@ futures = "0.1.23"
 
 [features]
 mppa = [
-    "telamon-mppa",
+    "telamon-mppa/real_mppa",
 ]
 cuda = [
     "telamon-cuda",

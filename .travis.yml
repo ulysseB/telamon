@@ -27,7 +27,7 @@ before_script:
 jobs:
   include:
     - stage: test
-      script: CUDA_HOME=/usr/local/cuda-10.1 cargo check --all --exclude telajax --exclude telamon-mppa --all-targets --tests --benches
+      script: CUDA_HOME=/usr/local/cuda-10.1 cargo check --all --exclude telajax --all-targets --tests --benches
     - script: cargo test
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
@@ -40,7 +40,7 @@ jobs:
       before_script: rustup component add clippy
     - stage: documentation
       if: branch IN (master, staging)
-      script: CUDA_HOME=/usr/local/cuda-10.1 cargo doc --no-deps --all --exclude telamon-mppa --exclude telajax
+      script: CUDA_HOME=/usr/local/cuda-10.1 cargo doc --no-deps --all --exclude telajax
       deploy:
         provider: pages
         local-dir: target/doc

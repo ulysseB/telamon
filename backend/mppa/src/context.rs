@@ -1,6 +1,6 @@
 //! MPPA evaluation context.
 use crate::printer::MppaPrinter;
-use crate::{mppa, Namer};
+use crate::{mppa, ValuePrinter};
 use crossbeam;
 use crossbeam::queue::ArrayQueue;
 use itertools::Itertools;
@@ -11,7 +11,6 @@ use std::sync::{
 };
 use std::time::Instant;
 use std::{self, fmt};
-use telajax;
 use telamon::codegen::{Function, NameMap, ParamVal};
 use telamon::device::{
     self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,
@@ -21,6 +20,11 @@ use telamon::explorer;
 use telamon::ir;
 use utils::unwrap;
 use utils::*;
+
+#[cfg(not(feature = "real_mppa"))]
+use crate::fake_telajax as telajax;
+#[cfg(feature = "real_mppa")]
+use telajax;
 
 // This atomic id is needed as because of a bug in Kalray OpenCL, we have to give a unique name to
 // every kernel, otherwise we get strange effects (as a kernel run multiple times)
@@ -131,8 +135,8 @@ impl Context {
     /// Compiles and sets the arguments of a kernel.
     fn setup_kernel(&self, fun: &Function) -> (telajax::Kernel, Vec<KernelArg>) {
         let id = ATOMIC_KERNEL_ID.fetch_add(1, Ordering::SeqCst);
-        let mut namer = Namer::default();
-        let mut name_map = NameMap::new(fun, &mut namer);
+        let mut value_printer = ValuePrinter::default();
+        let mut name_map = NameMap::new(fun, &mut value_printer);
         let mut printer = MppaPrinter::default();
 
         let kernel_code = printer.wrapper_function(fun, &mut name_map, id);
@@ -168,7 +172,7 @@ impl Context {
     fn get_wrapper(
         &self,
         fun: &Function,
-        name_map: &mut NameMap<Namer>,
+        name_map: &mut NameMap<ValuePrinter>,
         id: usize,
     ) -> Arc<telajax::Wrapper> {
         let mut printer = MppaPrinter::default();
@@ -188,7 +192,7 @@ impl Context {
     fn process_kernel_argument(
         &self,
         fun: &Function,
-        name_map: &mut NameMap<Namer>,
+        name_map: &mut NameMap<ValuePrinter>,
     ) -> (Vec<usize>, Vec<KernelArg>) {
         fun.device_code_args()
             .map(|p| match p {
@@ -250,7 +254,7 @@ impl device::Context for Context {
         buf.copy_from_slice(vec_u8.as_slice());
         let res = u32::from_le_bytes(buf);
         self.writeback_slots.push(out_mem).unwrap();
-        Ok(res as f64)
+        Ok(f64::from(res))
     }
 
     fn async_eval<'d>(
@@ -360,6 +364,6 @@ impl<'a> KernelEvaluator for Code<'a> {
         let t0 = Instant::now();
         self.executor.execute_kernel(&mut self.kernel).unwrap();
         let d = t0.elapsed();
-        Some(d.subsec_nanos() as f64 + d.as_secs() as f64 * 1_000_000_000.)
+        Some(f64::from(d.subsec_nanos()) + d.as_secs() as f64 * 1_000_000_000.)
     }
 }
