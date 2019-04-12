@@ -11,5 +11,6 @@ ALIASES["telamon_cuda"] = {};
 ALIASES["telamon_gen"] = {};
 ALIASES["telamon_gen_test"] = {};
 ALIASES["telamon_kernels"] = {};
+ALIASES["telamon_mppa"] = {};
 ALIASES["telamon_utils"] = {};
 ALIASES["telamon_x86"] = {};

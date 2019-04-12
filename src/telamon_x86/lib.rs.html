@@ -82,7 +82,6 @@
 <span id="82">82</span>
 <span id="83">83</span>
 <span id="84">84</span>
-<span id="85">85</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines the CPU target.</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">bare_trait_objects</span>)]</span>
@@ -95,7 +94,6 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">context</span>::<span class="ident">Context</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cpu</span>::<span class="ident">Cpu</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">printer</span>::<span class="ident">X86printer</span>;
 
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
@@ -105,13 +103,13 @@
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Namer</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ValuePrinter</span> {
     <span class="ident">num_var</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="ident">num_sizes</span>: <span class="ident">usize</span>,
     <span class="ident">num_glob_ptr</span>: <span class="ident">usize</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">Namer</span> {
+<span class="kw">impl</span> <span class="ident">ValuePrinter</span> {
     <span class="doccomment">/// Generate a variable name prefix from a type.</span>
     <span class="kw">fn</span> <span class="ident">gen_prefix</span>(<span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">match</span> <span class="ident">t</span> {
@@ -129,9 +127,20 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">codegen</span>::<span class="ident">Namer</span> <span class="kw">for</span> <span class="ident">Namer</span> {
+<span class="kw">impl</span> <span class="ident">codegen</span>::<span class="ident">ValuePrinter</span> <span class="kw">for</span> <span class="ident">ValuePrinter</span> {
+    <span class="kw">fn</span> <span class="ident">get_const_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">BigInt</span><span class="op">&gt;</span>, <span class="ident">len</span>: <span class="ident">u16</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">len</span> <span class="op">&lt;=</span> <span class="number">64</span>);
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">numer</span>().<span class="ident">to_f64</span>()) <span class="op">/</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">denom</span>().<span class="ident">to_f64</span>());
+        <span class="ident">f</span>.<span class="ident">to_string</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_const_int</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">BigInt</span>, <span class="ident">len</span>: <span class="ident">u16</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">len</span> <span class="op">&lt;=</span> <span class="number">64</span>);
+        <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">to_i64</span>()))
+    }
+
     <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="ident">Namer</span>::<span class="ident">gen_prefix</span>(<span class="ident">t</span>);
+        <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="ident">ValuePrinter</span>::<span class="ident">gen_prefix</span>(<span class="ident">t</span>);
         <span class="kw">match</span> <span class="ident">t</span> {
             <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(..) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="ident">prefix</span>, <span class="self">self</span>.<span class="ident">num_glob_ptr</span>);
@@ -145,17 +154,6 @@
                 <span class="ident">name</span>
             }
         }
-    }
-
-    <span class="kw">fn</span> <span class="ident">name_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">BigInt</span><span class="op">&gt;</span>, <span class="ident">len</span>: <span class="ident">u16</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">len</span> <span class="op">&lt;=</span> <span class="number">64</span>);
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">numer</span>().<span class="ident">to_f64</span>()) <span class="op">/</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">denom</span>().<span class="ident">to_f64</span>());
-        <span class="ident">f</span>.<span class="ident">to_string</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">name_int</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">BigInt</span>, <span class="ident">len</span>: <span class="ident">u16</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">len</span> <span class="op">&lt;=</span> <span class="number">64</span>);
-        <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">to_i64</span>()))
     }
 
     <span class="kw">fn</span> <span class="ident">name_param</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">p</span>: <span class="ident">codegen</span>::<span class="ident">ParamValKey</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
