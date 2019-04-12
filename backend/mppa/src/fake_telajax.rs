@@ -1,3 +1,7 @@
+//! This module is just a fake implementation that has the advantages of compiling on every
+//! architecture. Hence, we can at least check that the code compiles even if we cannot verify it
+//! functionally.
+
 use std::{ffi::CStr, result::Result, sync::RwLock};
 
 static DEVICE: Device = Device {};
@@ -52,7 +56,7 @@ impl Device {
     }
 
     pub fn execute_kernel(&self, _: &mut Kernel) -> Result<(), ()> {
-        unimplemented!("This fake executor is just here to allow compilation")
+        panic!("This fake executor is just here to allow compilation")
     }
 }
 
