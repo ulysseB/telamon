@@ -166,7 +166,7 @@ impl Device {
                 name.as_ptr(),
                 code.as_ptr(),
                 flags.as_ptr(),
-                &*self.inner as *const _ as *mut _,
+                &*self.inner as *const device_t as *mut device_t,
                 &mut error
             )
         };
@@ -193,8 +193,8 @@ impl Device {
                     code.as_ptr(),
                     cflags.as_ptr(),
                     lflags.as_ptr(),
-                    &wrapper.0 as *const _ as *mut _,
-                    &*self.inner as *const _ as *mut _,
+                    &wrapper.0 as *const wrapper_t as *mut wrapper_t,
+                    &*self.inner as *const device_t as *mut device_t,
                     &mut error
                 )
             };
@@ -212,8 +212,8 @@ impl Device {
         unsafe {
             let err = telajax_call!(
                 telajax_kernel_enqueue,
-                &mut kernel.0 as *mut _,
-                &self.inner as *const _ as *mut _,
+                &mut kernel.0 as *mut kernel_t,
+                &*self.inner as *const device_t as *mut device_t,
                 &mut event.0 as *mut cl_event
             );
             if err != 0 {
@@ -230,8 +230,8 @@ impl Device {
         unsafe {
             let err = telajax_call!(
                 telajax_kernel_enqueue,
-                &mut kernel.0 as *mut _,
-                &*self.inner as *const _ as *mut _,
+                &mut kernel.0 as *mut kernel_t,
+                &*self.inner as *const device_t as *mut device_t,
                 &mut event.0 as *mut cl_event
             );
             if err != 0 {
@@ -249,8 +249,10 @@ impl Device {
     /// Waits until all kernels have completed their execution.
     pub fn wait_all(&self) -> Result<(), opencl::Error> {
         unsafe {
-            let err =
-                telajax_call!(telajax_device_waitall, &*self.inner as *const _ as *mut _);
+            let err = telajax_call!(
+                telajax_device_waitall,
+                &*self.inner as *const device_t as *mut device_t
+            );
             if err == 0 {
                 Ok(())
             } else {
@@ -267,7 +269,7 @@ impl Device {
                 telajax_device_mem_alloc,
                 size,
                 1 << 0,
-                &*self.inner as *const _ as *mut _,
+                &*self.inner as *const device_t as *mut device_t,
                 &mut error
             )
         };
@@ -299,7 +301,7 @@ impl Device {
         unsafe {
             let res = telajax_call!(
                 telajax_device_mem_write,
-                &*self.inner as *const _ as *mut _,
+                &*self.inner as *const device_t as *mut device_t,
                 mem.ptr,
                 data_ptr,
                 size,
@@ -327,7 +329,7 @@ impl Device {
         unsafe {
             let err = telajax_call!(
                 telajax_device_mem_write,
-                &*self.inner as *const _ as *mut _,
+                &*self.inner as *const device_t as *mut device_t,
                 mem.ptr,
                 data_ptr,
                 size,
@@ -368,13 +370,13 @@ impl Device {
             unsafe {
                 let res = telajax_call!(
                     telajax_device_mem_read,
-                    &*self.inner as *const _ as *mut _,
+                    &*self.inner as *const device_t as *mut device_t,
                     mem.ptr,
                     data_ptr,
                     size,
                     wait_n,
                     wait_ptr,
-                    &mut event.0 as *mut _
+                    &mut event.0 as *mut cl_event
                 );
                 if res != 0 {
                     Err(RWError::CLError(res.into()))
@@ -403,7 +405,7 @@ impl Device {
         unsafe {
             let res = telajax_call!(
                 telajax_device_mem_read,
-                &*self.inner as *const _ as *mut _,
+                &*self.inner as *const device_t as *mut device_t,
                 mem.ptr,
                 data_ptr,
                 size,
@@ -471,7 +473,7 @@ impl Drop for Wrapper {
     fn drop(&mut self) {
         unsafe {
             assert_eq!(
-                telajax_call!(telajax_wrapper_release, &mut self.0 as *mut _),
+                telajax_call!(telajax_wrapper_release, &mut self.0 as *mut wrapper_t),
                 0
             );
         }
@@ -500,9 +502,9 @@ impl Kernel {
             if telajax_call!(
                 telajax_kernel_set_args,
                 num_arg,
-                sizes_ptr as *const _ as *mut _,
-                args.as_ptr() as *const _ as *mut _,
-                &mut self.0 as *mut _
+                sizes_ptr as *const usize as *mut usize,
+                args.as_ptr() as *const *const libc::c_void as *mut *mut libc::c_void,
+                &mut self.0 as *mut kernel_t
             ) == 0
             {
                 Ok(())
@@ -523,7 +525,7 @@ impl Kernel {
                 1,
                 [1].as_ptr(),
                 [num].as_ptr(),
-                &mut self.0 as *mut _
+                &mut self.0 as *mut kernel_t
             ) == 0
             {
                 Ok(())
@@ -538,7 +540,7 @@ impl Drop for Kernel {
     fn drop(&mut self) {
         unsafe {
             assert_eq!(
-                telajax_call!(telajax_kernel_release, &mut self.0 as *mut _),
+                telajax_call!(telajax_kernel_release, &mut self.0 as *mut kernel_t),
                 0
             );
         }
@@ -564,7 +566,7 @@ impl Mem {
     }
 
     pub fn raw_ptr(&self) -> *const libc::c_void {
-        &self.ptr as *const _ as *const libc::c_void
+        &self.ptr as *const mem_t as *const libc::c_void
     }
 
     pub fn len(&self) -> usize {
