@@ -249,8 +249,10 @@ impl Device {
     /// Waits until all kernels have completed their execution.
     pub fn wait_all(&self) -> Result<(), opencl::Error> {
         unsafe {
-            let err =
-                telajax_call!(telajax_device_waitall, &*self.inner as *const device_t as *mut device_t);
+            let err = telajax_call!(
+                telajax_device_waitall,
+                &*self.inner as *const device_t as *mut device_t
+            );
             if err == 0 {
                 Ok(())
             } else {
@@ -374,7 +376,7 @@ impl Device {
                     size,
                     wait_n,
                     wait_ptr,
-                    event.0 as *mut event_t
+                    &mut event.0 as *mut cl_event
                 );
                 if res != 0 {
                     Err(RWError::CLError(res.into()))
