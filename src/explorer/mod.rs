@@ -5,7 +5,6 @@ mod monitor;
 mod parallel_list;
 mod store;
 
-pub mod bandit_arm;
 pub mod choice;
 pub mod config;
 pub mod eventlog;
@@ -129,59 +128,6 @@ impl<'a> MctsBuilder<'a> {
     }
 }
 
-struct TreeBuilder<'l> {
-    candidates: Vec<Candidate>,
-    config: &'l Config,
-    bandit_config: &'l BanditConfig,
-    context: &'l dyn Context,
-    check_result_fn: Option<&'l CheckResultFn<'l>>,
-}
-
-impl<'l> TreeBuilder<'l> {
-    fn build<P: bandit_arm::TreePolicy>(self, policy: P) -> Option<Candidate>
-    where
-        P: 'l + Send + Sync,
-        P::EdgeStats: Send + Sync,
-    {
-        let TreeBuilder {
-            candidates,
-            config,
-            bandit_config,
-            context,
-            check_result_fn,
-        } = self;
-
-        crossbeam::scope(|scope| {
-            let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-            unwrap!(scope
-                .builder()
-                .name("Telamon - Logger".to_string())
-                .spawn(|_| (unwrap!(logger::log(config, log_receiver)))));
-
-            let tree = bandit_arm::Tree::new(
-                candidates,
-                bandit_config,
-                policy,
-                log_sender.clone(),
-            );
-
-            unwrap!(scope
-                .builder()
-                .name("Telamon - Search".to_string())
-                .spawn(move |_| launch_search(
-                    config,
-                    tree,
-                    context,
-                    log_sender,
-                    check_result_fn
-                ))
-                .unwrap()
-                .join())
-        })
-        .unwrap()
-    }
-}
-
 /// Same as `find_best`, but allows to specify pre-existing actions and also returns the
 /// actions for the best candidate.
 pub fn find_best_ex(
@@ -191,32 +137,6 @@ pub fn find_best_ex(
     check_result_fn: Option<&CheckResultFn<'_>>,
 ) -> Option<Candidate> {
     match config.algorithm {
-        config::SearchAlgorithm::MultiArmedBandit(ref bandit_config) => {
-            let builder = TreeBuilder {
-                candidates,
-                config,
-                bandit_config,
-                context,
-                check_result_fn,
-            };
-            match &bandit_config.tree_policy {
-                self::config::TreePolicy::UCT(uct_config) => {
-                    builder.build(bandit_arm::UCTPolicy::from(uct_config.clone()))
-                }
-                self::config::TreePolicy::TAG(tag_config) => {
-                    builder.build(bandit_arm::TAGPolicy::from(tag_config.clone()))
-                }
-                self::config::TreePolicy::Bound => {
-                    builder.build(self::config::NewNodeOrder::Bound)
-                }
-                self::config::TreePolicy::WeightedRandom => {
-                    builder.build(self::config::NewNodeOrder::WeightedRandom)
-                }
-                self::config::TreePolicy::RoundRobin => panic!(
-                    "Round-robin policy not supported with legacy 'bandit' implementation.  Use `'mcts'` instead."
-                ),
-            }
-        }
         config::SearchAlgorithm::Mcts(ref bandit_config) => {
             assert!(candidates.len() == 1);
 

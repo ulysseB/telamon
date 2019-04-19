@@ -178,9 +178,6 @@ impl Default for Config {
 pub enum SearchAlgorithm {
     /// Evaluate all the candidates that cannot be pruned.
     BoundOrder,
-    /// Use a multi-armed bandit algorithm.
-    #[serde(rename = "bandit")]
-    MultiArmedBandit(BanditConfig),
     /// Use a MCTS algorithm
     Mcts(BanditConfig),
 }
@@ -191,8 +188,8 @@ impl SearchAlgorithm {
         opts.optopt(
             "a",
             "algorithm",
-            "exploration algorithm: bound_order or bandit",
-            "bound_order:bandit",
+            "exploration algorithm: bound_order or mcts",
+            "bound_order:mcts",
         );
         BanditConfig::setup_args_parser(opts);
     }
