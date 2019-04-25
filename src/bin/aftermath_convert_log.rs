@@ -30,6 +30,14 @@ struct Opt {
         default_value = "eventlog.ost"
     )]
     output: PathBuf,
+
+    #[structopt(long = "exclude-traces")]
+    ///Disables conversion of Message::Trace messages
+    exclude_traces: bool,
+
+    #[structopt(long = "exclude-evaluations")]
+    ///Disables conversion of Message::Evaluation messages
+    exclude_evaluations: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -108,12 +116,14 @@ fn main() -> io::Result<()> {
                         Event::SelectNode(id) => {
                             curr_node_id = id.into();
 
-                            tw.write_candidate_select_action(
-                                thread_id,
-                                curr_node_id,
-                                start,
-                                end,
-                            )?;
+                            if !opt.exclude_traces {
+                                tw.write_candidate_select_action(
+                                    thread_id,
+                                    curr_node_id,
+                                    start,
+                                    end,
+                                )?;
+                            }
 
                             debug!(
                                 "  SelectNode {} [interval: {:?} to {:?}]",
@@ -135,15 +145,17 @@ fn main() -> io::Result<()> {
                                 }
                             }
 
-                            tw.write_candidate_select_child_action(
-                                thread_id as u32,
-                                curr_node_id,
-                                selector,
-                                u16::from(idx),
-                                child_node.id(),
-                                start,
-                                end,
-                            )?;
+                            if !opt.exclude_traces {
+                                tw.write_candidate_select_child_action(
+                                    thread_id as u32,
+                                    curr_node_id,
+                                    selector,
+                                    u16::from(idx),
+                                    child_node.id(),
+                                    start,
+                                    end,
+                                )?;
+                            }
 
                             debug!(
                                 "  SelectChild [idx: {} -> ID: {}, policy: {:?}, interval: {:?} to {:?}]",
@@ -156,12 +168,15 @@ fn main() -> io::Result<()> {
                         // Expansion of the current candidate
                         Event::Expand => {
                             t.get_node(curr_node_id).declare_internal(end);
-                            tw.write_candidate_expand_action(
-                                thread_id as u32,
-                                curr_node_id,
-                                start,
-                                end,
-                            )?;
+
+                            if !opt.exclude_traces {
+                                tw.write_candidate_expand_action(
+                                    thread_id as u32,
+                                    curr_node_id,
+                                    start,
+                                    end,
+                                )?;
+                            }
 
                             debug!("  Expand [interval: {:?} to {:?}]", start, end);
                         }
@@ -171,13 +186,15 @@ fn main() -> io::Result<()> {
                         Event::Kill(cause) => {
                             t.get_node(curr_node_id).declare_deadend(end);
 
-                            tw.write_candidate_kill_action(
-                                thread_id as u32,
-                                curr_node_id,
-                                start,
-                                end,
-                                &cause,
-                            )?;
+                            if !opt.exclude_traces {
+                                tw.write_candidate_kill_action(
+                                    thread_id as u32,
+                                    curr_node_id,
+                                    start,
+                                    end,
+                                    &cause,
+                                )?;
+                            }
 
                             debug!("  Kill [interval: {:?} to {:?}]", start, end);
                         }
@@ -192,13 +209,15 @@ fn main() -> io::Result<()> {
 
                             child.declare_deadend(end);
 
-                            tw.write_candidate_kill_action(
-                                thread_id as u32,
-                                child.id(),
-                                start,
-                                end,
-                                &cause,
-                            )?;
+                            if !opt.exclude_traces {
+                                tw.write_candidate_kill_action(
+                                    thread_id as u32,
+                                    child.id(),
+                                    start,
+                                    end,
+                                    &cause,
+                                )?;
+                            }
 
                             debug!(
                                 "  KillChild [idx: {} -> ID: {}, interval: {:?} to {:?}]",
@@ -214,12 +233,14 @@ fn main() -> io::Result<()> {
                         Event::Implementation {} => {
                             t.get_node(curr_node_id).declare_implementation(end);
 
-                            tw.write_candidate_mark_implementation_action(
-                                thread_id as u32,
-                                curr_node_id,
-                                start,
-                                end,
-                            )?;
+                            if !opt.exclude_traces {
+                                tw.write_candidate_mark_implementation_action(
+                                    thread_id as u32,
+                                    curr_node_id,
+                                    start,
+                                    end,
+                                )?;
+                            }
 
                             debug!(
                                 "  Implementation [interval: {:?} to {:?}]",
@@ -231,11 +252,13 @@ fn main() -> io::Result<()> {
 
                 // Write trace event only if trace has at least one event
                 if let Some(trace_start_ts) = trace_start {
-                    tw.write_trace_action(
-                        thread_id as u32,
-                        trace_start_ts,
-                        trace_end.unwrap(),
-                    )?;
+                    if !opt.exclude_traces {
+                        tw.write_trace_action(
+                            thread_id as u32,
+                            trace_start_ts,
+                            trace_end.unwrap(),
+                        )?;
+                    }
                 }
             }
 
@@ -249,27 +272,31 @@ fn main() -> io::Result<()> {
                     t.get_node(id.into()).set_score(value.unwrap());
                 }
 
-                tw.write_candidate_evaluate_action(id.into(), result_time, value)?;
+                if !opt.exclude_evaluations {
+                    tw.write_candidate_evaluate_action(id.into(), result_time, value)?;
+                }
             }
         }
     }
 
-    let mut thread_ids_vec = Vec::<u32>::new();
+    if !opt.exclude_traces {
+        let mut thread_ids_vec = Vec::<u32>::new();
 
-    for thr in thread_ids.iter() {
-        thread_ids_vec.push(*thr);
+        for thr in thread_ids.iter() {
+            thread_ids_vec.push(*thr);
+        }
+
+        thread_ids_vec.sort();
+
+        // Write hierarchy of threads represented by a flat Aftermath
+        // hierarchy composed of one virtual root thread with one
+        // child per thread
+        tw.write_hierarchy(&thread_ids_vec)?;
+
+        // Write event mappings associating event collections with
+        // hierarchy nodes
+        tw.write_event_mappings(&thread_ids_vec)?;
     }
-
-    thread_ids_vec.sort();
-
-    // Write hierarchy of threads represented by a flat Aftermath
-    // hierarchy composed of one virtual root thread with one child
-    // per thread
-    tw.write_hierarchy(&thread_ids_vec)?;
-
-    // Write event mappings associating event collections with
-    // hierarchy nodes
-    tw.write_event_mappings(&thread_ids_vec)?;
 
     // Write the reconstructed candidate tree
     tw.write_candidates(&t)?;
