@@ -276,6 +276,33 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">///! Aftermath_convert_log converts a Telamon logfile into a trace</span>
 <span class="doccomment">///! file that can be loaded into the Aftermath trace analysis tool</span>
@@ -309,6 +336,14 @@
         <span class="ident">default_value</span> <span class="op">=</span> <span class="string">&quot;eventlog.ost&quot;</span>
     )]</span>
     <span class="ident">output</span>: <span class="ident">PathBuf</span>,
+
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;exclude-traces&quot;</span>)]</span>
+    <span class="doccomment">///Disables conversion of Message::Trace messages</span>
+    <span class="ident">exclude_traces</span>: <span class="ident">bool</span>,
+
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;exclude-evaluations&quot;</span>)]</span>
+    <span class="doccomment">///Disables conversion of Message::Evaluation messages</span>
+    <span class="ident">exclude_evaluations</span>: <span class="ident">bool</span>,
 }
 
 <span class="kw">fn</span> <span class="ident">main</span>() <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
@@ -387,12 +422,14 @@
                         <span class="ident">Event</span>::<span class="ident">SelectNode</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> {
                             <span class="ident">curr_node_id</span> <span class="op">=</span> <span class="ident">id</span>.<span class="ident">into</span>();
 
-                            <span class="ident">tw</span>.<span class="ident">write_candidate_select_action</span>(
-                                <span class="ident">thread_id</span>,
-                                <span class="ident">curr_node_id</span>,
-                                <span class="ident">start</span>,
-                                <span class="ident">end</span>,
-                            )<span class="question-mark">?</span>;
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                                <span class="ident">tw</span>.<span class="ident">write_candidate_select_action</span>(
+                                    <span class="ident">thread_id</span>,
+                                    <span class="ident">curr_node_id</span>,
+                                    <span class="ident">start</span>,
+                                    <span class="ident">end</span>,
+                                )<span class="question-mark">?</span>;
+                            }
 
                             <span class="macro">debug</span><span class="macro">!</span>(
                                 <span class="string">&quot;  SelectNode {} [interval: {:?} to {:?}]&quot;</span>,
@@ -414,15 +451,17 @@
                                 }
                             }
 
-                            <span class="ident">tw</span>.<span class="ident">write_candidate_select_child_action</span>(
-                                <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
-                                <span class="ident">curr_node_id</span>,
-                                <span class="ident">selector</span>,
-                                <span class="ident">u16</span>::<span class="ident">from</span>(<span class="ident">idx</span>),
-                                <span class="ident">child_node</span>.<span class="ident">id</span>(),
-                                <span class="ident">start</span>,
-                                <span class="ident">end</span>,
-                            )<span class="question-mark">?</span>;
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                                <span class="ident">tw</span>.<span class="ident">write_candidate_select_child_action</span>(
+                                    <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
+                                    <span class="ident">curr_node_id</span>,
+                                    <span class="ident">selector</span>,
+                                    <span class="ident">u16</span>::<span class="ident">from</span>(<span class="ident">idx</span>),
+                                    <span class="ident">child_node</span>.<span class="ident">id</span>(),
+                                    <span class="ident">start</span>,
+                                    <span class="ident">end</span>,
+                                )<span class="question-mark">?</span>;
+                            }
 
                             <span class="macro">debug</span><span class="macro">!</span>(
                                 <span class="string">&quot;  SelectChild [idx: {} -&gt; ID: {}, policy: {:?}, interval: {:?} to {:?}]&quot;</span>,
@@ -435,12 +474,15 @@
                         <span class="comment">// Expansion of the current candidate</span>
                         <span class="ident">Event</span>::<span class="ident">Expand</span> <span class="op">=&gt;</span> {
                             <span class="ident">t</span>.<span class="ident">get_node</span>(<span class="ident">curr_node_id</span>).<span class="ident">declare_internal</span>(<span class="ident">end</span>);
-                            <span class="ident">tw</span>.<span class="ident">write_candidate_expand_action</span>(
-                                <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
-                                <span class="ident">curr_node_id</span>,
-                                <span class="ident">start</span>,
-                                <span class="ident">end</span>,
-                            )<span class="question-mark">?</span>;
+
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                                <span class="ident">tw</span>.<span class="ident">write_candidate_expand_action</span>(
+                                    <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
+                                    <span class="ident">curr_node_id</span>,
+                                    <span class="ident">start</span>,
+                                    <span class="ident">end</span>,
+                                )<span class="question-mark">?</span>;
+                            }
 
                             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;  Expand [interval: {:?} to {:?}]&quot;</span>, <span class="ident">start</span>, <span class="ident">end</span>);
                         }
@@ -450,13 +492,15 @@
                         <span class="ident">Event</span>::<span class="ident">Kill</span>(<span class="ident">cause</span>) <span class="op">=&gt;</span> {
                             <span class="ident">t</span>.<span class="ident">get_node</span>(<span class="ident">curr_node_id</span>).<span class="ident">declare_deadend</span>(<span class="ident">end</span>);
 
-                            <span class="ident">tw</span>.<span class="ident">write_candidate_kill_action</span>(
-                                <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
-                                <span class="ident">curr_node_id</span>,
-                                <span class="ident">start</span>,
-                                <span class="ident">end</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">cause</span>,
-                            )<span class="question-mark">?</span>;
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                                <span class="ident">tw</span>.<span class="ident">write_candidate_kill_action</span>(
+                                    <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
+                                    <span class="ident">curr_node_id</span>,
+                                    <span class="ident">start</span>,
+                                    <span class="ident">end</span>,
+                                    <span class="kw-2">&amp;</span><span class="ident">cause</span>,
+                                )<span class="question-mark">?</span>;
+                            }
 
                             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;  Kill [interval: {:?} to {:?}]&quot;</span>, <span class="ident">start</span>, <span class="ident">end</span>);
                         }
@@ -471,13 +515,15 @@
 
                             <span class="ident">child</span>.<span class="ident">declare_deadend</span>(<span class="ident">end</span>);
 
-                            <span class="ident">tw</span>.<span class="ident">write_candidate_kill_action</span>(
-                                <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
-                                <span class="ident">child</span>.<span class="ident">id</span>(),
-                                <span class="ident">start</span>,
-                                <span class="ident">end</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">cause</span>,
-                            )<span class="question-mark">?</span>;
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                                <span class="ident">tw</span>.<span class="ident">write_candidate_kill_action</span>(
+                                    <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
+                                    <span class="ident">child</span>.<span class="ident">id</span>(),
+                                    <span class="ident">start</span>,
+                                    <span class="ident">end</span>,
+                                    <span class="kw-2">&amp;</span><span class="ident">cause</span>,
+                                )<span class="question-mark">?</span>;
+                            }
 
                             <span class="macro">debug</span><span class="macro">!</span>(
                                 <span class="string">&quot;  KillChild [idx: {} -&gt; ID: {}, interval: {:?} to {:?}]&quot;</span>,
@@ -493,12 +539,14 @@
                         <span class="ident">Event</span>::<span class="ident">Implementation</span> {} <span class="op">=&gt;</span> {
                             <span class="ident">t</span>.<span class="ident">get_node</span>(<span class="ident">curr_node_id</span>).<span class="ident">declare_implementation</span>(<span class="ident">end</span>);
 
-                            <span class="ident">tw</span>.<span class="ident">write_candidate_mark_implementation_action</span>(
-                                <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
-                                <span class="ident">curr_node_id</span>,
-                                <span class="ident">start</span>,
-                                <span class="ident">end</span>,
-                            )<span class="question-mark">?</span>;
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                                <span class="ident">tw</span>.<span class="ident">write_candidate_mark_implementation_action</span>(
+                                    <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
+                                    <span class="ident">curr_node_id</span>,
+                                    <span class="ident">start</span>,
+                                    <span class="ident">end</span>,
+                                )<span class="question-mark">?</span>;
+                            }
 
                             <span class="macro">debug</span><span class="macro">!</span>(
                                 <span class="string">&quot;  Implementation [interval: {:?} to {:?}]&quot;</span>,
@@ -510,11 +558,13 @@
 
                 <span class="comment">// Write trace event only if trace has at least one event</span>
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">trace_start_ts</span>) <span class="op">=</span> <span class="ident">trace_start</span> {
-                    <span class="ident">tw</span>.<span class="ident">write_trace_action</span>(
-                        <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
-                        <span class="ident">trace_start_ts</span>,
-                        <span class="ident">trace_end</span>.<span class="ident">unwrap</span>(),
-                    )<span class="question-mark">?</span>;
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+                        <span class="ident">tw</span>.<span class="ident">write_trace_action</span>(
+                            <span class="ident">thread_id</span> <span class="kw">as</span> <span class="ident">u32</span>,
+                            <span class="ident">trace_start_ts</span>,
+                            <span class="ident">trace_end</span>.<span class="ident">unwrap</span>(),
+                        )<span class="question-mark">?</span>;
+                    }
                 }
             }
 
@@ -528,27 +578,31 @@
                     <span class="ident">t</span>.<span class="ident">get_node</span>(<span class="ident">id</span>.<span class="ident">into</span>()).<span class="ident">set_score</span>(<span class="ident">value</span>.<span class="ident">unwrap</span>());
                 }
 
-                <span class="ident">tw</span>.<span class="ident">write_candidate_evaluate_action</span>(<span class="ident">id</span>.<span class="ident">into</span>(), <span class="ident">result_time</span>, <span class="ident">value</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_evaluations</span> {
+                    <span class="ident">tw</span>.<span class="ident">write_candidate_evaluate_action</span>(<span class="ident">id</span>.<span class="ident">into</span>(), <span class="ident">result_time</span>, <span class="ident">value</span>)<span class="question-mark">?</span>;
+                }
             }
         }
     }
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">thread_ids_vec</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>::<span class="ident">new</span>();
+    <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">exclude_traces</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">thread_ids_vec</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>::<span class="ident">new</span>();
 
-    <span class="kw">for</span> <span class="ident">thr</span> <span class="kw">in</span> <span class="ident">thread_ids</span>.<span class="ident">iter</span>() {
-        <span class="ident">thread_ids_vec</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">thr</span>);
+        <span class="kw">for</span> <span class="ident">thr</span> <span class="kw">in</span> <span class="ident">thread_ids</span>.<span class="ident">iter</span>() {
+            <span class="ident">thread_ids_vec</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">thr</span>);
+        }
+
+        <span class="ident">thread_ids_vec</span>.<span class="ident">sort</span>();
+
+        <span class="comment">// Write hierarchy of threads represented by a flat Aftermath</span>
+        <span class="comment">// hierarchy composed of one virtual root thread with one</span>
+        <span class="comment">// child per thread</span>
+        <span class="ident">tw</span>.<span class="ident">write_hierarchy</span>(<span class="kw-2">&amp;</span><span class="ident">thread_ids_vec</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// Write event mappings associating event collections with</span>
+        <span class="comment">// hierarchy nodes</span>
+        <span class="ident">tw</span>.<span class="ident">write_event_mappings</span>(<span class="kw-2">&amp;</span><span class="ident">thread_ids_vec</span>)<span class="question-mark">?</span>;
     }
-
-    <span class="ident">thread_ids_vec</span>.<span class="ident">sort</span>();
-
-    <span class="comment">// Write hierarchy of threads represented by a flat Aftermath</span>
-    <span class="comment">// hierarchy composed of one virtual root thread with one child</span>
-    <span class="comment">// per thread</span>
-    <span class="ident">tw</span>.<span class="ident">write_hierarchy</span>(<span class="kw-2">&amp;</span><span class="ident">thread_ids_vec</span>)<span class="question-mark">?</span>;
-
-    <span class="comment">// Write event mappings associating event collections with</span>
-    <span class="comment">// hierarchy nodes</span>
-    <span class="ident">tw</span>.<span class="ident">write_event_mappings</span>(<span class="kw-2">&amp;</span><span class="ident">thread_ids_vec</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Write the reconstructed candidate tree</span>
     <span class="ident">tw</span>.<span class="ident">write_candidates</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>)<span class="question-mark">?</span>;
