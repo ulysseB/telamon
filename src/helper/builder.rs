@@ -106,6 +106,15 @@ impl Builder {
         self.inst(op)
     }
 
+    /// Adds a `Max` instruction to the fuction.
+    pub fn max(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
+        let lhs_op = self.get_op(lhs);
+        let rhs_op = self.get_op(rhs);
+        let rounding = op::Rounding::Exact;
+        let op = ir::BinOp::Max;
+        self.inst(op::BinOp(op, lhs_op, rhs_op, rounding))
+    }
+
     /// Adds a `Div` instruction to the fuction.
     pub fn div(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
         self.binop(ir::BinOp::Div, lhs, rhs)

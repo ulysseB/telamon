@@ -8,6 +8,8 @@
 #include <mppa_power.h>
 #include <mppa_remote.h>
 
+#define telamon_op_max(a, b) ((a) > (b) ? (a) : (b))
+
 #define UTASK_BARRIER_NB (2)
 #define UTASK_SUCCESS (0)
 #define UTASK_ERROR (1)

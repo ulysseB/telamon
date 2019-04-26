@@ -170,6 +170,7 @@ impl CudaPrinter {
             ir::BinOp::Lt => "setp.lt",
             ir::BinOp::Leq => "setp.le",
             ir::BinOp::Equals => "setp.eq",
+            ir::BinOp::Max => "max",
         }
     }
 

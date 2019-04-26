@@ -164,6 +164,26 @@ pub fn div_i64(gpu: &Gpu, executor: &Executor) -> InstDesc {
     inst::<i64>(gpu, executor, &|init, arg, b| b.div(init, arg))
 }
 
+pub fn max_f32(gpu: &Gpu, executor: &Executor) -> InstDesc {
+    info!("Instruction: Max f32");
+    inst::<f32>(gpu, executor, &|init, arg, b| b.max(init, arg))
+}
+
+pub fn max_f64(gpu: &Gpu, executor: &Executor) -> InstDesc {
+    info!("Instruction: Max f64");
+    inst::<f64>(gpu, executor, &|init, arg, b| b.max(init, arg))
+}
+
+pub fn max_i32(gpu: &Gpu, executor: &Executor) -> InstDesc {
+    info!("Instruction: Max i32");
+    inst::<i32>(gpu, executor, &|init, arg, b| b.max(init, arg))
+}
+
+pub fn max_i64(gpu: &Gpu, executor: &Executor) -> InstDesc {
+    info!("Instruction: Max i64");
+    inst::<i64>(gpu, executor, &|init, arg, b| b.max(init, arg))
+}
+
 /// Micro-bench a load instruction.
 ///
 /// * `stride` is the stride between accesses in number of `i64`.

@@ -67,6 +67,8 @@ pub enum BinOp {
     Leq,
     /// Computes `lhs == rhs`.
     Equals,
+    /// Computes max(lhs, rhs)
+    Max,
 }
 
 impl fmt::Display for BinOp {
@@ -87,6 +89,7 @@ impl BinOp {
             BinOp::Lt => "lt",
             BinOp::Leq => "leq",
             BinOp::Equals => "equals",
+            BinOp::Max => "max",
         }
     }
 
@@ -101,7 +104,7 @@ impl BinOp {
     /// Indicates if the result must be rounded when operating on floats.
     fn requires_rounding(self) -> bool {
         match self {
-            BinOp::Lt | BinOp::Leq | BinOp::Equals => false,
+            BinOp::Lt | BinOp::Leq | BinOp::Equals | BinOp::Max => false,
             _ => true,
         }
     }

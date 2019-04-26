@@ -369,21 +369,32 @@ impl InstPrinter for X86printer {
         rhs: &str,
     ) {
         assert_eq!(vector_factors, [1, 1]);
-        let op = match op {
-            ir::BinOp::Add => "+",
-            ir::BinOp::Sub => "-",
-            ir::BinOp::Div => "/",
-            ir::BinOp::And => "&",
-            ir::BinOp::Or => "|",
-            ir::BinOp::Lt => "<",
-            ir::BinOp::Leq => "<=",
-            ir::BinOp::Equals => "==",
+
+        let (op, is_infix_op) = match op {
+            ir::BinOp::Add => ("+", true),
+            ir::BinOp::Sub => ("-", true),
+            ir::BinOp::Div => ("/", true),
+            ir::BinOp::And => ("&", true),
+            ir::BinOp::Or => ("|", true),
+            ir::BinOp::Lt => ("<", true),
+            ir::BinOp::Leq => ("<=", true),
+            ir::BinOp::Equals => ("==", true),
+            ir::BinOp::Max => ("telamon_op_max", false),
         };
-        unwrap!(writeln!(
-            self.buffer,
-            "{} = {} {} {};",
-            result, lhs, op, rhs
-        ));
+
+        if is_infix_op {
+            unwrap!(writeln!(
+                self.buffer,
+                "{} = {} {} {};",
+                result, lhs, op, rhs
+            ));
+        } else {
+            unwrap!(writeln!(
+                self.buffer,
+                "{} = {}({}, {});",
+                result, op, lhs, rhs
+            ));
+        }
     }
 
     fn print_unary_op(
