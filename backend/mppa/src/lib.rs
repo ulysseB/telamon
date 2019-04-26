@@ -15,6 +15,7 @@ pub use crate::mppa::Mppa;
 
 use num::bigint::BigInt;
 use num::rational::Ratio;
+use num::traits::Float;
 use num::ToPrimitive;
 use telamon::{codegen, ir};
 use utils::*;
@@ -61,7 +62,23 @@ impl codegen::ValuePrinter for ValuePrinter {
     fn get_const_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
         assert!(len <= 64);
         let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
-        f.to_string()
+
+        // Print in C99 hexadecimal floating point representation
+        let (mantissa, exponent, sign) = f.integer_decode();
+        let signchar = if sign < 0 { "-" } else { "" };
+
+        // Assume that floats and doubles in the C implementation have
+        // 32 and 64 bits, respectively
+        let floating_suffix = match len {
+            32 => "f",
+            64 => "",
+            _ => panic!("Cannot print floating point value with {} bits", len),
+        };
+
+        format!(
+            "{}0x{:x}p{}{}",
+            signchar, mantissa, exponent, floating_suffix
+        )
     }
 
     fn get_const_int(&self, val: &BigInt, len: u16) -> String {
