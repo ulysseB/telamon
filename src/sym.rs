@@ -6,11 +6,318 @@ use std::iter;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use std::rc::Rc;
 
-use num::{BigUint, Integer, One, ToPrimitive, Zero};
+use num::{BigUint, Integer, Num, One, ToPrimitive, Zero};
 
 use crate::model::size::{Range, ToRange};
 
 pub trait Atom: ToRange + Clone + fmt::Debug + fmt::Display + PartialEq {}
+
+// REDO
+//
+/// A trait representing objects that can perform assignment to a reference-counted pointer.
+trait Assigner<T>: Sized {
+    /// Perfom the assignment.
+    ///
+    /// Calling `assign` should conceptually be identical to `*dst = Rc::new(src)`, but allows
+    /// implementers to perform additional bookkeeping in addition to the assignment.
+    ///
+    /// The default implementation simply creates a new `Rc` and assigns `dst` to it.
+    fn assign(self, dst: &mut Rc<T>, src: T) {
+        *dst = Rc::new(src)
+    }
+
+    fn self_assign(self, dst: &mut T) {}
+}
+
+/// A default implementation of the `Assigner` that does nothing but perform the assignment.
+#[derive(Copy, Clone, Debug)]
+struct DefaultAssigner;
+
+impl<T> Assigner<T> for DefaultAssigner {}
+
+enum DeferredAssignmentInner<'a, T> {
+    Initial(&'a mut Rc<T>),
+    Unique(&'a mut T),
+    Multiple { initial: &'a mut Rc<T>, new: T },
+}
+
+struct DeferredAssignment<'a, T, A = DefaultAssigner>
+where
+    A: Assigner<T>,
+{
+    inner: Option<DeferredAssignmentInner<'a, T>>,
+    assigner: Option<A>,
+}
+
+impl<'a, T, A> DeferredAssignment<'a, T, A>
+where
+    T: Clone,
+    A: Assigner<T>,
+{
+    fn new(rc: &'a mut Rc<T>, assigner: A) -> Self {
+        DeferredAssignment {
+            inner: Some(DeferredAssignmentInner::Initial(rc)),
+            assigner: Some(assigner),
+        }
+    }
+
+    fn as_ref(&self) -> &T {
+        use DeferredAssignmentInner::*;
+        match self.inner.as_ref().unwrap() {
+            Initial(initial) => &**initial,
+            Multiple { new, .. } => new,
+            Unique(new) => new,
+        }
+    }
+
+    fn to_mut(&mut self) -> &mut T {
+        use DeferredAssignmentInner::*;
+        if {
+            if let Initial(_) = self.inner.as_ref().unwrap() {
+                false
+            } else {
+                true
+            }
+        } {
+            let initial = if let Initial(initial) = self.inner.take().unwrap() {
+                initial
+            } else {
+                unreachable!()
+            };
+
+            if Rc::get_mut(initial).is_some() {
+                self.inner = Some(Unique(Rc::get_mut(initial).unwrap()));
+            } else {
+                self.inner = Some(Multiple {
+                    new: (**initial).clone(),
+                    initial,
+                })
+            }
+        }
+
+        match self.inner.as_mut().unwrap() {
+            Initial(_) => unreachable!(),
+            Unique(new) => new,
+            Multiple { new, .. } => new,
+        }
+    }
+}
+
+impl<'a, T, A> Drop for DeferredAssignment<'a, T, A>
+where
+    A: Assigner<T>,
+{
+    fn drop(&mut self) {
+        use DeferredAssignmentInner::*;
+
+        match self.inner.take().unwrap() {
+            Initial(_) => (),
+            Unique(new) => self.assigner.take().unwrap().self_assign(new),
+            Multiple { initial, new } => {
+                self.assigner.take().unwrap().assign(initial, new)
+            }
+        }
+    }
+}
+
+/// This trait should be implemented by symbolic types.
+trait AsNumeric: Clone {
+    /// The corresponding numeric type.
+    type Numeric: Num + Clone;
+
+    /// Returns the numeric value of the symbolic expression if it is known to be constant.
+    ///
+    /// `as_numeric` may return `None` even if the expression is not constant if doing so would
+    /// require additional simplifications.
+    fn as_numeric(&self) -> Option<&Self::Numeric>;
+
+    /// Mutable version of `as_numeric`.
+    ///
+    /// # Notes
+    ///
+    /// `as_numeric_mut` should never return `None` unless `as_numeric` also does.
+    fn as_numeric_mut(&mut self) -> Option<&mut Self::Numeric>;
+}
+
+/// A symbolic expression.
+///
+/// Symbolic expressions are split into two parts, a numeric part and a symbolic part.
+///
+/// This type is used to represent partially exploded expressions.
+///
+/// This is basically a tuple with two elements with some added methods for convenience.
+#[derive(Debug, Copy, Clone)]
+struct Expr<N, E> {
+    numeric: N,
+    symbolic: E,
+}
+
+type ExprRef<'a, N, E> = Expr<&'a N, &'a E>;
+
+type ExprMut<'a, N, E> = Expr<&'a mut N, &'a mut E>;
+
+impl<'a, N, E> ExprRef<'a, N, E>
+where
+    N: Clone,
+    E: Clone,
+{
+    /// Converts this reference to an actual expression by cloning each components.
+    fn to_expr(self) -> Expr<N, E> {
+        Expr {
+            numeric: self.numeric.clone(),
+            symbolic: self.symbolic.clone(),
+        }
+    }
+}
+
+impl<N, E> Expr<N, E> {
+    /// Get a mutable reference to the underlying expression.
+    fn as_mut(&mut self) -> ExprMut<N, E> {
+        Expr {
+            numeric: &mut self.numeric,
+            symbolic: &mut self.symbolic,
+        }
+    }
+}
+
+/// A trait to design operators on a symbolic expression.
+trait Op<N, S>: Copy {
+    /// The type of expressions built using this operator.
+    type Expr;
+}
+
+/// A trait for operators which have a neutral element, such as `0` for addition or `1` for
+/// multiplication.
+trait Neutral<N, S>: Op<N, S> {
+    /// Returns the neutral element for the operator.
+    fn neutral(self) -> Expr<N, Self::Expr>;
+}
+
+trait Apply<Lhs, Rhs = Lhs>: Copy {
+    type Output;
+
+    fn apply(self, lhs: Lhs, rhs: Rhs) -> Self::Output;
+}
+
+trait ApplyAssign<Lhs, Rhs = Lhs>: Copy {
+    fn apply_assign(self, lhs: &mut Lhs, rhs: Rhs);
+}
+
+#[derive(Debug, Copy, Clone)]
+struct AddOp;
+
+#[derive(Debug, Copy, Clone)]
+struct SubOp;
+
+#[derive(Debug, Copy, Clone)]
+struct MulOp;
+
+#[derive(Debug, Copy, Clone)]
+struct DivOp;
+
+#[derive(Debug, Copy, Clone)]
+struct MinOp;
+
+#[derive(Debug, Copy, Clone)]
+struct MaxOp;
+
+#[derive(Debug, Copy, Clone)]
+struct LcmOp;
+
+pub trait ToMut<T: ?Sized> {
+    fn to_mut(this: &mut Self) -> &mut T;
+}
+
+impl<T: ?Sized> ToMut<T> for T {
+    fn to_mut(this: &mut Self) -> &mut T {
+        this
+    }
+}
+
+trait BinOp<S>:
+    Op<S> + for<'a, 'b> Apply<&'a S::Numeric, &'b S::Numeric, Output = S::Numeric>
+where
+    S: AsNumeric,
+{
+    fn fast_apply_assign<D>(self, _lhs: &mut D, _rhs: &S) -> bool
+    where
+        D: AsRef<S> + ToMut<S>,
+    {
+        false
+    }
+
+    fn apply_num_expr(self, lhs: &S::Numeric, rhs: ExprRef<S::Numeric, Self::Expr>) -> S;
+
+    fn apply_num_other(self, lhs: &S::Numeric, rhs: &S) -> S;
+
+    fn apply_assign_num(self, lhs: ExprMut<S::Numeric, Self::Expr>, rhs: &S::Numeric);
+
+    fn apply_assign_expr(
+        self,
+        lhs: ExprMut<S::Numeric, Self::Expr>,
+        rhs: ExprRef<S::Numeric, Self::Expr>,
+    );
+
+    fn apply_assign_other(self, lhs: ExprMut<S::Numeric, Self::Expr>, rhs: &S);
+
+    fn apply_other_num(self, lhs: &S, rhs: &S::Numeric) -> S;
+
+    fn apply_other_expr(self, lhs: &S, rhs: ExprRef<S::Numeric, Self::Expr>) -> S;
+
+    fn apply_other_other(self, lhs: &S, rhs: &S) -> S;
+}
+
+/// Trait used for deconstructing symbolic expressions.
+trait AsExpr<E> {
+    /// Deconstructs the symbolic expression into its numeric and symbolic part, if it has the
+    /// appropriate constructor.
+    fn as_expr(&self) -> Option<ExprRef<Self::Numeric, E>>;
+
+    /// Mutable version of `as_expr`.
+    ///
+    /// # Notes
+    ///
+    /// `as_expr_mut` should never return `None` unless `as_expr` also does.
+    fn as_expr_mut(&mut self) -> Option<ExprMut<Self::Numeric, E>>;
+}
+
+impl<'a, S, O, D> ApplyAssign<Rc<S>, &'a S> for O
+where
+    O: BinOp<S>,
+    S: AsNumeric + AsExpr<O::Expr>,
+    S::Numeric: Into<S>,
+{
+    fn apply_assign(self, lhs: &mut Rc<S>, rhs: &S) {
+        let mut lhs = DeferredAssignment::new(lhs, BinOpAssigner::new(self, rhs));
+        if self.fast_apply_assign(lhs, rhs) {
+            // Assignment done in the fast path
+        } else if let Some(rhs_num) = rhs.as_numeric() {
+            if let Some(lhs_num) = lhs.as_numeric_mut() {
+                *D::to_mut(lhs) = self.apply(lhs_num, rhs_num).into();
+            } else if let Some(lhs_expr) = lhs.as_expr_mut() {
+                self.apply_assign_num(lhs_expr, rhs_num);
+            } else {
+                *D::to_mut(lhs) = self.apply_other_num(lhs.as_ref(), rhs_num);
+            }
+        } else if let Some(rhs_expr) = rhs.as_expr() {
+            if let Some(lhs_num) = lhs.as_numeric() {
+                *D::to_mut(lhs) = self.apply_num_expr(lhs_num, rhs_expr);
+            } else if let Some(lhs_expr) = lhs.as_expr_mut() {
+                self.apply_assign_expr(lhs_expr, rhs_expr);
+            } else {
+                *D::to_mut(lhs) = self.apply_other_expr(lhs.as_ref(), rhs_expr);
+            }
+        } else if let Some(lhs_num) = lhs.as_numeric() {
+            *D::to_mut(lhs) = self.apply_num_other(lhs_num, rhs);
+        } else if let Some(lhs_expr) = lhs.as_expr_mut() {
+            self.apply_assign_other(lhs_expr, rhs);
+        } else {
+            *D::to_mut(lhs) = self.apply_other_other(lhs.as_ref(), rhs);
+        }
+    }
+}
+
+// END REDO
 
 // implements "T op U" based on top of "T op &U"
 macro_rules! forward_val_val_binop {
