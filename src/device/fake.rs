@@ -113,7 +113,7 @@ impl super::Device for Device {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FxHashMap<ir::DimId, model::size::Range>,
+        _: &FxHashMap<ir::DimId, model::size::SymbolicInt>,
         _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &dyn ir::Statement,
         _: &dyn super::Context,
@@ -151,9 +151,9 @@ impl super::Device for Device {
 
     fn add_block_overhead(
         &self,
-        _: model::size::FactorRange,
-        _: model::size::FactorRange,
-        _: model::size::Range,
+        _: model::size::SymbolicInt,
+        _: model::size::SymbolicInt,
+        _: model::size::SymbolicInt,
         _: &mut HwPressure,
     ) {
     }

@@ -9,7 +9,7 @@ use std::io::Write;
 use telamon::codegen::Function;
 use telamon::device::{self, Device};
 use telamon::ir::{self, Operator, Type};
-use telamon::model::{self, HwPressure};
+use telamon::model::{self, size, HwPressure};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 
 // FIXME: fix performance model
@@ -41,18 +41,20 @@ pub struct InstDesc {
 }
 
 impl InstDesc {
-    fn wasted_ratio(ratio: f64) -> Self {
-        InstDesc {
-            latency: 1.0,
-            issue: ratio,
-            alu: ratio,
-            sync: ratio,
-            mem: ratio,
-            l1_lines_from_l2: 1.0,
-            l2_lines_read: 1.0,
-            l2_lines_stored: 1.0,
-            ram_bw: 1.0,
-        }
+    fn wasted_ratio(ratio: &size::SymbolicFloat) -> HwPressure {
+        HwPressure::new(
+            1f64.into(),
+            vec![
+                ratio.clone(),
+                ratio.clone(),
+                ratio.clone(),
+                ratio.clone(),
+                1f64.into(),
+                1f64.into(),
+                1f64.into(),
+                1f64.into(),
+            ],
+        )
     }
 }
 
@@ -281,10 +283,10 @@ impl Gpu {
     }
 
     /// Returns the overhead induced by all the iterations of a loop.
-    fn dim_pressure(&self, kind: DimKind, size: model::size::Range) -> HwPressure {
+    fn dim_pressure(&self, kind: DimKind, size: &size::SymbolicInt) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(size.min as f64);
+            pressure.repeat_sequential(size);
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
@@ -300,7 +302,7 @@ impl Gpu {
     fn inst_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
+        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
         inst: &ir::Instruction,
         ctx: &dyn device::Context,
     ) -> HwPressure {
@@ -398,12 +400,12 @@ impl Gpu {
         .into()
     }
 
-    /// Computes the ratio `num_wraps*wrap_size/num_threads`. This ratio may be `>1`
-    /// because the hardware creates additionnal threads to fill the wraps.
-    fn waste_ratio(&self, lcm_threads_per_block: u64) -> f64 {
-        let wrap_size = u64::from(self.wrap_size);
-        let n_wraps = (lcm_threads_per_block + wrap_size - 1) / wrap_size;
-        (n_wraps * wrap_size) as f64 / lcm_threads_per_block as f64
+    /// Computes the ratio `num_warps*warp_size/num_threads`. This ratio may be `>1`
+    /// because the hardware creates additionnal threads to fill the warps.
+    fn waste_ratio(&self, threads_per_block: size::SymbolicInt) -> size::SymbolicFloat {
+        let warp_size = size::SymbolicInt::from(self.wrap_size);
+        let n_warps = size::SymbolicInt::div_ceil(&threads_per_block, self.wrap_size);
+        (n_warps * warp_size).to_symbolic_float() / &threads_per_block
     }
 }
 
@@ -525,7 +527,7 @@ impl device::Device for Gpu {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
+        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
         _nesting: &FxHashMap<ir::StmtId, model::Nesting>,
         stmt: &dyn ir::Statement,
         ctx: &dyn device::Context,
@@ -534,7 +536,7 @@ impl device::Device for Gpu {
             self.inst_pressure(space, dim_sizes, inst, ctx)
         } else if let Some(dim) = stmt.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
-            self.dim_pressure(kind, dim_sizes[&dim.id()])
+            self.dim_pressure(kind, &dim_sizes[&dim.id()])
         } else {
             panic!()
         }
@@ -601,20 +603,21 @@ impl device::Device for Gpu {
 
     fn add_block_overhead(
         &self,
-        max_active_threads: model::size::FactorRange,
-        max_threads: model::size::FactorRange,
-        predication_factor: model::size::Range,
+        max_active_threads: size::SymbolicInt,
+        max_threads: size::SymbolicInt,
+        predication_factor: size::SymbolicInt,
         pressure: &mut HwPressure,
     ) {
-        let active_ratio = self.waste_ratio(max_active_threads.lcm);
-        pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
+        let active_ratio = self.waste_ratio(max_active_threads);
+        pressure.multiply(&InstDesc::wasted_ratio(&active_ratio));
         // Account for inactive wraps.
-        let total_ratio = self.waste_ratio(max_threads.lcm);
+        let total_ratio = self.waste_ratio(max_threads);
         // TODO(model): might be able to do better since `predication_factor` value is
         // linked to `max_threads` value.
-        let num_skipped = total_ratio * predication_factor.min as f64 - active_ratio;
-        if num_skipped > 0. {
-            pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
+        let num_skipped = total_ratio * &predication_factor - active_ratio;
+        // TODO: should we always do it?
+        if num_skipped.min_value() > 0. {
+            pressure.repeat_and_add_bottlenecks(&num_skipped, &self.skipped_pressure());
         }
     }
 }

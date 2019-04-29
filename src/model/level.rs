@@ -53,17 +53,14 @@ impl Level {
             local_info,
             BottleneckLevel::Thread,
             &dims,
-            &ir::PartialSize::default(),
+            &size::SymbolicInt::one(),
         );
-        let end_latency = dims
-            .iter()
-            .map(|d| {
-                local_info.dim_overhead[d]
-                    .1
-                    .bound(BottleneckLevel::Thread, &thread_rates)
-            })
-            .min()
-            .unwrap_or_else(FastBound::zero);
+        let end_latency = FastBound::min(dims.iter().map(|d| {
+            local_info.dim_overhead[d]
+                .1
+                .bound(BottleneckLevel::Thread, &thread_rates)
+        }))
+        .unwrap_or_else(FastBound::zero);
         let latency = pressure.bound(BottleneckLevel::Thread, &thread_rates);
         // Compute the block-level pressure.
         let only_threads = dims
@@ -91,7 +88,7 @@ pub fn sum_pressure(
     local_info: &LocalInfo,
     bound_level: BottleneckLevel,
     nest: &[ir::DimId],
-    repeat: &ir::PartialSize,
+    repeat: &size::SymbolicInt,
 ) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure =
@@ -99,21 +96,25 @@ pub fn sum_pressure(
             .unwrap_or_else(|| HwPressure::zero(&*ctx.device()));
     if nest.is_empty() {
         let min_num_threads = match bound_level {
-            BottleneckLevel::Global => local_info.parallelism.min_num_threads,
-            BottleneckLevel::Block => local_info.parallelism.min_num_threads_per_blocks,
-            BottleneckLevel::Thread => 1,
+            BottleneckLevel::Global => local_info.parallelism.min_num_threads.clone(),
+            BottleneckLevel::Block => {
+                local_info.parallelism.min_num_threads_per_blocks.clone()
+            }
+            BottleneckLevel::Thread => 1u32.into(),
         };
         let mut init_pressure = local_info.thread_overhead.clone();
         if bound_level <= BottleneckLevel::Block {
-            let num_threads = size::FactorRange::new_fixed(min_num_threads);
             ctx.device().add_block_overhead(
-                num_threads,
-                num_threads,
-                size::Range::ONE,
+                min_num_threads.clone(),
+                min_num_threads.clone(),
+                size::SymbolicInt::one(),
                 &mut init_pressure,
             );
         }
-        pressure.repeat_and_add_bottlenecks(min_num_threads as f64, &init_pressure);
+        pressure.repeat_and_add_bottlenecks(
+            &min_num_threads.to_symbolic_float(),
+            &init_pressure,
+        );
     }
     // Get the list of inner dimensions and inner dimensions on wich the pressure is summed.
     let inner_dim_sets = nest
@@ -145,8 +146,8 @@ pub fn sum_pressure(
         // Compute the pressure of a single instance and the number of instances.
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&stmt].outer_dims)
-            .map(|&d| space.ir_instance().dim(d).size())
-            .product::<ir::PartialSize>()
+            .map(|d| &local_info.dim_sizes[d])
+            .product::<size::SymbolicInt>()
             * repeat;
         let mut stmt_pressure = if let ir::StmtId::Dim(dim) = stmt {
             let kind = space.domain().get_dim_kind(dim);
@@ -158,14 +159,13 @@ pub fn sum_pressure(
         } else {
             local_info.hw_pressure[&stmt].clone()
         };
-        // From parallel levels, we must take into account the thread dimensions that re
+        // From parallel levels, we must take into account the thread dimensions that are
         // not mapped to a dimension outside of the block. Predicated instructions require
         // special care as they are only active on the dimensions they are nested on. Other
         // threads just skip the instruction.
         if bound_level <= BottleneckLevel::Block {
             let unmapped_threads = &nesting.num_unmapped_threads;
-            let max_threads = nesting.max_threads_per_block.clone() * unmapped_threads;
-            let max_threads = size::factors(&max_threads, space, ctx);
+            let max_threads = &nesting.max_threads_per_block * unmapped_threads;
             let (max_active_threads, predication_factor);
             let is_predicated = space
                 .ir_instance()
@@ -174,13 +174,12 @@ pub fn sum_pressure(
                 .map(|i| i.has_side_effects())
                 .unwrap_or(false);
             if is_predicated {
-                max_active_threads =
-                    size::factors(&nesting.max_threads_per_block, space, ctx);
-                predication_factor = size::bounds(unmapped_threads, space, ctx);
+                max_active_threads = nesting.max_threads_per_block.clone();
+                predication_factor = unmapped_threads.clone();
             } else {
                 num_instances *= unmapped_threads;
-                predication_factor = size::Range::ONE;
-                max_active_threads = max_threads;
+                predication_factor = size::SymbolicInt::one();
+                max_active_threads = max_threads.clone();
             }
             ctx.device().add_block_overhead(
                 max_active_threads,
@@ -189,8 +188,10 @@ pub fn sum_pressure(
                 &mut stmt_pressure,
             );
         }
-        let num_instances = size::bounds(&num_instances, space, ctx).min;
-        pressure.repeat_and_add_bottlenecks(num_instances as f64, &stmt_pressure);
+        pressure.repeat_and_add_bottlenecks(
+            &num_instances.to_symbolic_float(),
+            &stmt_pressure,
+        );
     }
     pressure
 }
@@ -220,8 +221,8 @@ fn block_bound(
     // Repeat the pressure by the number of iterations of the level and compute the bound.
     let n_iters = dims
         .iter()
-        .map(|&d| space.ir_instance().dim(d).size())
-        .product::<ir::PartialSize>();
+        .map(|d| &info.dim_sizes[d])
+        .product::<size::SymbolicInt>();
     let pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims, &n_iters);
     pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
@@ -403,16 +404,17 @@ fn list_dim_maps(space: &SearchSpace) -> Vec<DimMap> {
 
 /// Indicates how a the sequential dimensions of a level should be repeated in the latency
 /// graph.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct RepeatLevel {
     /// The ID of the level to repeat.
     pub level_id: usize,
     /// The number of iterations of the level.
-    pub iterations: u64,
+    pub iterations: size::SymbolicInt,
 }
 
 impl RepeatLevel {
-    pub fn new(
+    fn new(
+        local_info: &LocalInfo,
         space: &SearchSpace,
         ctx: &dyn Context,
         level_id: usize,
@@ -425,10 +427,9 @@ impl RepeatLevel {
                 let kind = space.domain().get_dim_kind(d);
                 (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
             })
-            .map(|&d| space.ir_instance().dim(d).size())
-            .product::<ir::PartialSize>();
-        let iterations = size::bounds(&iterations, space, ctx).min;
-        if iterations <= 1 {
+            .map(|d| &local_info.dim_sizes[d])
+            .product::<size::SymbolicInt>();
+        if iterations.range().min <= 1 {
             None
         } else {
             Some(RepeatLevel {
@@ -482,7 +483,7 @@ impl LevelDag {
                 continue;
             }
             let node_id = dag.gen_node_id(local_info, &level.dims, dep_map_size);
-            let repeat = RepeatLevel::new(space, ctx, level_id, level);
+            let repeat = RepeatLevel::new(local_info, space, ctx, level_id, level);
             dag.nodes[node_id].0.extend(repeat);
         }
         for dim_map in dim_maps {

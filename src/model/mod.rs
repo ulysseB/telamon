@@ -102,8 +102,8 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
     debug!("block latency: {}", block_latency.value());
     // Scale the latency to the block level.
     let block_parallelism = u64::from(context.device().block_parallelism(space));
-    let min_num_blocks = local_info.parallelism.min_num_blocks;
-    let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
+    let min_num_blocks = &local_info.parallelism.min_num_blocks;
+    let lcm_num_blocks = &local_info.parallelism.lcm_num_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(
@@ -112,7 +112,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         &local_info,
         BottleneckLevel::Global,
         &[],
-        &ir::PartialSize::default(),
+        &size::SymbolicInt::one(),
     );
     trace!(
         "global pressure {}",
@@ -125,7 +125,8 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         "full block lat: {}",
         unwrap!(levels[0].repeated_latency.as_ref()).value()
     );
-    let bound = cmp::max(latency, throughput_bound);
+    let mut bound = latency;
+    bound.max_assign(throughput_bound);
     bound.explain(&*context.device(), &levels, code_points.dag.nodes())
 }
 
@@ -284,7 +285,7 @@ fn repeat_level(
 ) {
     // Since we handle separately the first and last iteration, we need at least the
     // first and the last to be present.
-    assert!(action.iterations >= 2);
+    assert!(action.iterations.range().min >= 2);
     let level_id = action.level_id;
     let entry_point = code_points.ids[&CodePoint::LevelEntry(action.level_id)];
     let exit_point = code_points.ids[&CodePoint::LevelExit(action.level_id)];
@@ -304,14 +305,16 @@ fn repeat_level(
         // First add the dependency without considering data dependencies from the
         // first and to the last iteration. This reduce the size of the bound
         // explanation when such dependencies are not needed
-        let iter_lat = cycle_lat.clone().iterate(action.iterations, level_id);
+        let iter_lat = cycle_lat.clone().iterate(&action.iterations, level_id);
         let latency = FastBound::zero().chain(entry_point, iter_lat);
         level_dag.add_dependency(to_map, pred, exit_point, &latency);
     }
     for &pred in &predecessors {
         // Then add the bound taking into account data dependencies.
         let init_lat = unwrap!(latency_to_exit[pred].clone());
-        let iter_lat = cycle_lat.clone().iterate(action.iterations - 2, level_id);
+        let iter_lat = cycle_lat
+            .clone()
+            .iterate(&(&action.iterations - 2u32), level_id);
         let latency = init_lat.chain(entry_point, iter_lat);
         level_dag.add_dependency(to_map, pred, entry_point, &latency);
     }
@@ -319,18 +322,23 @@ fn repeat_level(
     for &(point, ref lat) in &levels[action.level_id].back_edges {
         let latencies = level_dag.dependencies(from_map).latency_to(point);
         for &pred in &predecessors {
-            let init_lat_0 = unwrap!(latencies[pred].clone()).chain(point, lat.clone());
-            let init_lat_1 = unwrap!(latency_to_exit[pred].clone())
-                .chain(entry_point, unwrap!(latencies[entry_point].clone()));
-            let init_lat = cmp::max(init_lat_0, init_lat_1);
-            let latency = init_lat
-                .clone()
-                .chain(point, lat.clone().iterate(action.iterations - 2, level_id));
+            let mut init_lat = unwrap!(latencies[pred].clone()).chain(point, lat.clone());
+            init_lat.max_assign(
+                unwrap!(latency_to_exit[pred].clone())
+                    .chain(entry_point, unwrap!(latencies[entry_point].clone())),
+            );
+            let latency = init_lat.clone().chain(
+                point,
+                lat.clone().iterate(&(&action.iterations - 2u32), level_id),
+            );
             level_dag.add_dependency(to_map, pred, point, &latency);
-            if action.iterations >= 3 {
+            if action.iterations.range().min >= 3 {
                 let exit_lat = unwrap!(latency_to_exit[point].clone());
                 let latency = init_lat
-                    .chain(point, lat.clone().iterate(action.iterations - 3, level_id))
+                    .chain(
+                        point,
+                        lat.clone().iterate(&(&action.iterations - 3u32), level_id),
+                    )
                     .chain(point, exit_lat);
                 level_dag.add_dependency(to_map, pred, entry_point, &latency);
             }

@@ -31,10 +31,7 @@ impl DependencyMap {
                 entry.insert(latency);
             }
             hash_map::Entry::Occupied(mut entry) => {
-                let old = entry.get_mut();
-                if latency.is_better_than(old) {
-                    *old = latency;
-                }
+                entry.get_mut().max_assign(latency);
             }
         }
     }
@@ -56,12 +53,9 @@ impl DependencyMap {
                 for (&pred, lat_to_i) in &self.deps[i] {
                     let new_lat = lat_to_i.clone().chain(i, lat_to_dest.clone());
                     let old_lat = &mut latencies[pred];
-                    if old_lat
-                        .as_ref()
-                        .map(|x| new_lat.is_better_than(x))
-                        .unwrap_or(true)
-                    {
-                        *old_lat = Some(new_lat);
+                    match old_lat {
+                        None => *old_lat = Some(new_lat),
+                        Some(old) => old.max_assign(new_lat),
                     }
                 }
             }

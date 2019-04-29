@@ -103,9 +103,9 @@ impl device::Device for Cpu {
 
     fn add_block_overhead(
         &self,
-        _: model::size::FactorRange,
-        _: model::size::FactorRange,
-        _: model::size::Range,
+        _: model::size::SymbolicInt,
+        _: model::size::SymbolicInt,
+        _: model::size::SymbolicInt,
         _: &mut HwPressure,
     ) {
     }
@@ -117,7 +117,7 @@ impl device::Device for Cpu {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FxHashMap<ir::DimId, model::size::Range>,
+        _: &FxHashMap<ir::DimId, model::size::SymbolicInt>,
         _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &dyn ir::Statement,
         _: &dyn device::Context,

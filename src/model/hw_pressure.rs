@@ -1,7 +1,10 @@
 //! Pressure on the hardware execution units.
 use crate::device::Device;
 use crate::ir;
-use crate::model::{CodePoint, Level};
+use crate::model::{
+    size::{self, SymbolicFloat},
+    CodePoint, Level,
+};
 use crate::search_space::{DimKind, Domain};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -11,9 +14,9 @@ use std::{cmp, fmt, iter};
 use utils::*;
 
 /// A lower bound on the execution time.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct ExplainedBound<ORIGIN> {
-    value: f64,
+    value: SymbolicFloat,
     size: usize,
     origin: ORIGIN,
 }
@@ -24,42 +27,28 @@ pub type FastBound = ExplainedBound<Rc<FastOrigin>>;
 
 /// A lower bound on the execution time, with a detailed explanation of the origin of the
 /// bound.
-pub type Bound = ExplainedBound<Origin>;
-
-impl<ORIGIN> ExplainedBound<ORIGIN> {
-    /// Returns the bound value.
-    pub fn value(&self) -> f64 {
-        self.value
-    }
-
-    /// Indicates if the bound should be used instead of another.
-    pub fn is_better_than(&self, other: &ExplainedBound<ORIGIN>) -> bool {
-        const F: f64 = 1.0 + 1.0e-6;
-        if self.value > F * other.value {
-            true
-        } else if F * self.value < other.value {
-            false
-        } else {
-            self.size < other.size
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Bound {
+    value: f64,
+    size: usize,
+    origin: Origin,
 }
 
-impl<T> cmp::Eq for ExplainedBound<T> {}
+impl cmp::Eq for Bound {}
 
-impl<T> cmp::PartialEq for ExplainedBound<T> {
+impl cmp::PartialEq for Bound {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }
 }
 
-impl<T> cmp::Ord for ExplainedBound<T> {
+impl cmp::Ord for Bound {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         unwrap!(self.partial_cmp(other))
     }
 }
 
-impl<T> cmp::PartialOrd for ExplainedBound<T> {
+impl cmp::PartialOrd for Bound {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.value.partial_cmp(&other.value)
     }
@@ -68,12 +57,16 @@ impl<T> cmp::PartialOrd for ExplainedBound<T> {
 impl FastBound {
     /// An instantaneous dependency.
     pub fn zero() -> Self {
-        FastBound::new(0f64, FastOrigin::Latency)
+        FastBound::new(0f64.into(), FastOrigin::Latency)
+    }
+
+    pub(super) fn value(&self) -> &SymbolicFloat {
+        &self.value
     }
 
     /// Creates a new latency with the given origin.
-    fn new(value: f64, origin: FastOrigin) -> Self {
-        assert!(!value.is_nan());
+    fn new(value: SymbolicFloat, origin: FastOrigin) -> Self {
+        // TODO: assert!(!value.is_nan());
         FastBound {
             value,
             origin: Rc::new(origin),
@@ -82,14 +75,14 @@ impl FastBound {
     }
 
     /// Repeat the bound by iteration on a given loop level.
-    pub fn iterate(self, iterations: u64, level: usize) -> Self {
+    pub fn iterate(self, iterations: &size::SymbolicInt, level: usize) -> Self {
         let origin = FastOrigin::Loop {
-            iterations,
+            iterations: iterations.range().min, // TODO: be more precise?
             level,
             inner: self.origin,
         };
         FastBound {
-            value: self.value * iterations as f64,
+            value: self.value * iterations,
             origin: Rc::new(origin),
             size: self.size + 1,
         }
@@ -97,7 +90,7 @@ impl FastBound {
 
     /// Chains two bounds. `self` and `other` must be a latencies to and from `mid_point`.
     pub fn chain(self, mid_point: usize, other: Self) -> Self {
-        let value = self.value + other.value;
+        let value = &self.value + &other.value;
         let size = self.size + other.size;
         let origin = Rc::new(FastOrigin::Chain {
             before: self,
@@ -125,7 +118,7 @@ impl FastBound {
             .simplify()
             .1;
         Bound {
-            value: self.value,
+            value: self.value.min_value(), // TODO:?
             origin,
             size: self.size,
         }
@@ -137,18 +130,88 @@ impl FastBound {
     /// * `iterations` - the number of times the computation bounded by `self` is repeated.
     /// * `max_par` -  the maximum number of independent jobs that can be built to compute
     ///   `iterations` times the computation bounded by self.
-    pub fn scale(self, hw_parallelism: u64, iterations: u64, max_par: u64) -> Self {
-        let num_waves = div_ceil(max_par, hw_parallelism) as f64;
-        let factor = num_waves * iterations as f64 / max_par as f64;
+    pub fn scale(
+        self,
+        hw_parallelism: u64,
+        iterations: &size::SymbolicInt,
+        max_par: &size::SymbolicInt,
+    ) -> Self {
+        assert!(hw_parallelism < u64::from(u32::max_value()));
+
+        let num_waves = size::SymbolicInt::div_ceil(max_par, hw_parallelism as u32);
+        let factor = (num_waves * iterations).to_symbolic_float() / max_par;
         let origin = Rc::new(FastOrigin::Scale {
             inner: self.origin,
-            factor,
+            factor: factor.min_value(), // TODO: improve
         });
         FastBound {
-            value: self.value * factor,
+            value: self.value * &factor,
             origin,
             size: self.size + 1,
         }
+    }
+
+    pub fn max_assign(&mut self, other: FastBound) {
+        self.value.max_assign(&other.value);
+        // TODO
+        /*
+        if other.is_better_than(self) {
+            *self = other;
+        }
+        */
+    }
+
+    pub fn min_assign(&mut self, other: FastBound) {
+        self.value.min_assign(&other.value);
+        // TODO
+        /*
+        if self.is_better_than(&other) {
+            *self = other;
+        }
+        */
+    }
+
+    pub fn min<I>(mut iter: I) -> Option<Self>
+    where
+        I: Iterator<Item = Self>,
+    {
+        if let Some(mut result) = iter.next() {
+            for elem in iter {
+                result.min_assign(elem);
+            }
+            Some(result)
+        } else {
+            None
+        }
+    }
+
+    pub fn max<I>(mut iter: I) -> Option<Self>
+    where
+        I: Iterator<Item = Self>,
+    {
+        if let Some(mut result) = iter.next() {
+            for elem in iter {
+                result.max_assign(elem);
+            }
+            Some(result)
+        } else {
+            None
+        }
+    }
+
+    /// Indicates if the bound should be used instead of another.
+    fn is_better_than(&self, other: &FastBound) -> bool {
+        unimplemented!()
+        /*
+        const F: f64 = 1.0 + 1.0e-6;
+        if self.value > F * other.value {
+            true
+        } else if F * self.value < other.value {
+            false
+        } else {
+            self.size < other.size
+        }
+        */
     }
 }
 
@@ -160,6 +223,11 @@ impl Bound {
             origin: Origin::HardwareEvaluation,
             size: 1,
         }
+    }
+
+    /// Returns the bound value.
+    pub fn value(&self) -> f64 {
+        self.value
     }
 }
 
@@ -379,12 +447,12 @@ impl Origin {
                 } else if trim_after && after.value == 0f64 {
                     (trim_preds, before_origin, true)
                 } else {
-                    let before = ExplainedBound {
+                    let before = Bound {
                         value: before.value,
                         origin: before_origin,
                         size: before.size,
                     };
-                    let after = ExplainedBound {
+                    let after = Bound {
                         value: after.value,
                         origin: after_origin,
                         size: before.size,
@@ -449,72 +517,86 @@ fn display_inline_chain(bound: &Bound, f: &mut fmt::Formatter) -> fmt::Result {
 /// The pressure on the hardware induced by a computation.
 #[derive(Clone, Debug)]
 pub struct HwPressure {
-    latency: f64,
-    bottlenecks: Vec<f64>,
+    latency: SymbolicFloat,
+    bottlenecks: Vec<SymbolicFloat>,
 }
 
 impl HwPressure {
     /// Creates a new `Pressure`
-    pub fn new(latency: f64, bottlenecks: Vec<f64>) -> Self {
+    pub fn new<T, II>(latency: T, bottlenecks: II) -> Self
+    where
+        T: Into<SymbolicFloat>,
+        II: IntoIterator<Item = T>,
+    {
         HwPressure {
-            latency,
-            bottlenecks,
+            latency: latency.into(),
+            bottlenecks: bottlenecks.into_iter().map(T::into).collect(),
         }
     }
 
     /// Creates a null `Pressure` for the given device.
     pub fn zero(device: &dyn Device) -> Self {
-        HwPressure::new(0f64, device.bottlenecks().iter().map(|_| 0f64).collect())
+        HwPressure::new(0f64, device.bottlenecks().iter().map(|_| 0f64))
     }
 
     /// Derive a bound on the execution time from the pressure on the hardware.
     pub fn bound(&self, level: BottleneckLevel, rates: &HwPressure) -> FastBound {
-        let latency = FastBound::new(self.latency / rates.latency, FastOrigin::Latency);
-        let bound = self
-            .bottlenecks
-            .iter()
-            .zip_eq(&rates.bottlenecks)
-            .enumerate()
-            .map(|(id, (&value, &rate))| {
-                FastBound::new(value / rate, FastOrigin::Bottleneck(id, level))
-            })
-            .chain(iter::once(latency))
-            .max();
+        let latency = FastBound::new(
+            &self.latency / unwrap!(rates.latency.as_f64()),
+            FastOrigin::Latency,
+        );
+        let bound = FastBound::max(
+            self.bottlenecks
+                .iter()
+                .zip_eq(&rates.bottlenecks)
+                .enumerate()
+                .map(|(id, (value, rate))| {
+                    FastBound::new(
+                        value / unwrap!(rate.as_f64()),
+                        FastOrigin::Bottleneck(id, level),
+                    )
+                })
+                .chain(iter::once(latency)),
+        );
         unwrap!(bound)
     }
 
     /// Adds the pressure of another computation, performed in parallel.
     pub fn add_parallel(&mut self, other: &HwPressure) {
-        self.latency = f64::max(self.latency, other.latency);
-        for (&other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
+        self.latency.max_assign(&other.latency);
+        for (other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
             *b += other;
         }
     }
 
     /// Adds the pressure of another computation, performed sequentially.
     pub fn add_sequential(&mut self, other: &HwPressure) {
-        self.latency += other.latency;
-        for (&other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
+        self.latency += &other.latency;
+        for (other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
             *b += other;
         }
     }
 
     /// Computes the pressure obtained by duplicating this one in parallel.
-    pub fn repeat_parallel(&mut self, factor: f64) {
+    pub fn repeat_parallel(&mut self, factor: &size::SymbolicInt) {
         for b in &mut self.bottlenecks {
             *b *= factor;
         }
     }
 
     /// Adds the pressure of another computation, repeated in parallel. Ignores the latency.
-    pub fn repeat_and_add_bottlenecks(&mut self, factor: f64, other: &HwPressure) {
-        for (&other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
+    pub fn repeat_and_add_bottlenecks(
+        &mut self,
+        factor: &SymbolicFloat,
+        other: &HwPressure,
+    ) {
+        for (other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
             *b += other * factor;
         }
     }
 
     /// Computes the pressure obtained by repeating this one sequentially.
-    pub fn repeat_sequential(&mut self, factor: f64) {
+    pub fn repeat_sequential(&mut self, factor: &size::SymbolicInt) {
         self.latency *= factor;
         for b in &mut self.bottlenecks {
             *b *= factor;
@@ -523,9 +605,9 @@ impl HwPressure {
 
     /// Take the minimum of `self` and `other` for each bottleneck.
     pub fn minimize(&mut self, other: &HwPressure) {
-        self.latency = f64::min(self.latency, other.latency);
-        for (&other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
-            *b = f64::min(*b, other);
+        self.latency.min_assign(&other.latency);
+        for (other, b) in other.bottlenecks.iter().zip_eq(&mut self.bottlenecks) {
+            b.min_assign(other);
         }
     }
 
@@ -544,15 +626,15 @@ impl HwPressure {
 
     /// Returns the pressure on a bottleneck.
     #[cfg(test)]
-    pub fn get_bottleneck(&self, index: usize) -> f64 {
-        self.bottlenecks[index]
+    pub fn get_bottleneck(&self, index: usize) -> &SymbolicFloat {
+        &self.bottlenecks[index]
     }
 
     /// Pointwise multiplication of the pressure on each resource.
     pub fn multiply(&mut self, other: &HwPressure) {
-        self.latency *= other.latency;
-        for (b, &other_b) in self.bottlenecks.iter_mut().zip_eq(&other.bottlenecks) {
-            *b *= other_b;
+        self.latency *= &other.latency;
+        for (b, other) in self.bottlenecks.iter_mut().zip_eq(&other.bottlenecks) {
+            *b *= other;
         }
     }
 
