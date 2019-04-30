@@ -6,7 +6,7 @@ use crossbeam::queue::ArrayQueue;
 use itertools::Itertools;
 use libc;
 use std::sync::{
-    atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
+    atomic::{AtomicUsize, Ordering},
     mpsc, Arc,
 };
 use std::time::Instant;
@@ -28,7 +28,7 @@ use telajax;
 
 // This atomic id is needed as because of a bug in Kalray OpenCL, we have to give a unique name to
 // every kernel, otherwise we get strange effects (as a kernel run multiple times)
-static ATOMIC_KERNEL_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+static ATOMIC_KERNEL_ID: AtomicUsize = AtomicUsize::new(0);
 const EXECUTION_QUEUE_SIZE: usize = 32;
 
 pub trait Argument: Sync + Send {
