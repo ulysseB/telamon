@@ -28,10 +28,10 @@ const CUT: f64 = 1e8;
 fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
-    let small_malmul = linalg::MatMulP::new(128, 128, 128);
-    let big_malmul = linalg::MatMulP::new(256, 256, 256);
-    accuracy::<linalg::MatMul<f32>>(&small_malmul, "matmul_128", &executor);
-    accuracy::<linalg::MatMul<f32>>(&big_malmul, "matmul_256", &executor);
+    let small_malmul = linalg::FusedMMP::new(128, 128, 128);
+    let big_malmul = linalg::FusedMMP::new(256, 256, 256);
+    accuracy::<linalg::FusedMM<f32>>(&small_malmul, "matmul_128", &executor);
+    accuracy::<linalg::FusedMM<f32>>(&big_malmul, "matmul_256", &executor);
 }
 
 fn accuracy<'a, K>(params: &K::Parameters, name: &'a str, executor: &'a cuda::Executor)

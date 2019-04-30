@@ -293,16 +293,8 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
     }
 }
 
-/// Computes `C = A.B`.
-pub struct MatMul<'a, S: Scalar> {
-    pub params: MatMulP,
-    a: Tensor<'a, S>,
-    b: Tensor<'a, S>,
-    c: Tensor<'a, S>,
-}
-
 #[derive(Clone, Deserialize, Serialize)]
-pub struct MatMulP {
+pub struct FusedMMP {
     pub m: i32,
     pub n: i32,
     pub k: i32,
@@ -313,11 +305,12 @@ pub struct MatMulP {
     pub m_tiling: Option<helper::TilingPattern>,
     pub n_tiling: Option<helper::TilingPattern>,
     pub k_tiling: Option<helper::TilingPattern>,
+    pub activation_fun: Option<ActivationFunction>,
 }
 
-impl MatMulP {
+impl FusedMMP {
     pub fn new(m: i32, n: i32, k: i32) -> Self {
-        MatMulP {
+        FusedMMP {
             m,
             n,
             k,
@@ -328,6 +321,7 @@ impl MatMulP {
             m_tiling: None,
             n_tiling: None,
             k_tiling: None,
+            activation_fun: None,
         }
     }
 
@@ -346,6 +340,14 @@ impl MatMulP {
         self
     }
 
+    pub fn activation_fun<F>(mut self, fun: F) -> Self
+    where
+        F: Into<Option<ActivationFunction>>,
+    {
+        self.activation_fun = fun.into();
+        self
+    }
+
     /// Inline the sizes in the generated code.
     pub fn static_sizes(mut self) -> Self {
         self.generic = false;
@@ -353,15 +355,33 @@ impl MatMulP {
     }
 }
 
-impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
-    type Parameters = MatMulP;
+/// Computes `C = A.B` and applies an activation function to each
+/// element of C.
+pub struct FusedMM<'a, S: Scalar> {
+    pub params: FusedMMP,
+    a: Tensor<'a, S>,
+    b: Tensor<'a, S>,
+    c: Tensor<'a, S>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub enum ActivationFunction {
+    /// Linear rectifier (i.e., max(0, v))
+    ReLU,
+
+    /// Sigmoid activation function (i.e., 1 / (1 + exp(v))
+    Sigmoid,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
+    type Parameters = FusedMMP;
     type ExpectedOutput = Array2<S>;
 
     fn name() -> &'static str {
-        "matmul"
+        "fused_mm"
     }
 
-    fn build_signature<AM>(params: MatMulP, builder: &mut SignatureBuilder<AM>) -> Self
+    fn build_signature<AM>(params: FusedMMP, builder: &mut SignatureBuilder<AM>) -> Self
     where
         AM: device::ArgMap<'a> + device::Context,
     {
@@ -377,7 +397,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             .doif(params.transpose_b, |b| b.transpose(0, 1))
             .finish(builder);
         let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
-        MatMul { params, a, b, c }
+        FusedMM { params, a, b, c }
     }
 
     fn build_body<'b>(
@@ -388,11 +408,13 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
         let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
         let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32]);
+
         let mut builder = helper::Builder::new(signature, ctx.device());
 
         let ld_a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
         let ld_b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
 
+        // Matrix multiplication
         let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
         let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
         let acc_init = builder.mov(&0f32);
@@ -402,55 +424,37 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
         let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
         let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+
         builder.close_dim(&acc_dim_k);
 
-        let acc = VirtualTensor::new(acc, vec![acc_dim_m, acc_dim_n]);
-        let st_c = acc.store(&self.c, &mut builder);
+        let (res, res_dim_m, res_dim_n) =
+            if let Some(activation_fun) = &self.params.activation_fun {
+                // Activation function specified -> create new set of
+                // nested dimensions hosting instructions for the
+                // activaton function
+                let act_dim_m = builder.open_mapped_dim(&acc_dim_m);
+                let act_dim_n = builder.open_mapped_dim(&acc_dim_n);
 
-        // Order for correctness.
-        builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
-        // Arbitrary constrains to reduce the search space
-        //builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
-        //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));
-        //builder.action(Action::InstFlag(st_c.inst(), InstFlag::NO_CACHE));
+                let act = match activation_fun {
+                    ActivationFunction::ReLU => builder.max(&S::zero(), &acc),
+                    ActivationFunction::Sigmoid => {
+                        let exp = builder.exp(&acc);
+                        let add = builder.add(&S::one(), &exp);
+                        builder.div(&S::one(), &add)
+                    }
+                };
 
-        //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
-        //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
-        /*builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
-          builder.action(Action::DimKind(unroll_dim_0_m, DimKind::UNROLL));
-          builder.order(unroll_dim_0_n.into(), unroll_dim_0_m.into(), Order::OUTER);
-          builder.order(unroll_dim_1_n.into(), unroll_dim_1_m.into(), Order::INNER);
+                (act, act_dim_m, act_dim_n)
+            } else {
+                // No activation function -> just use original result
+                // from matrix multiplication with the original
+                // dimensions
+                (acc, acc_dim_m, acc_dim_n)
+            };
 
-          builder.action(Action::DimKind(k0_dim, DimKind::LOOP));
-          builder.order(ld_k0_dim.into(), k0_dim.into(), Order::MERGED);
-          builder.action(Action::DimKind(a_ld_thread_dim_0, DimKind::THREAD_Y));
-          builder.action(Action::DimKind(a_ld_thread_dim_1, DimKind::THREAD_X));
-          builder.action(Action::DimKind(a_ld_unroll_dim, DimKind::UNROLL));
-          builder.action(Action::DimKind(b_ld_unroll_dim, DimKind::VECTOR));
-          builder.order(a_ld_thread_dim_1.into(), b_ld_thread_dim_1.into(), Order::MERGED);
-          builder.order(a_ld_thread_dim_0.into(), b_ld_thread_dim_0.into(), Order::MERGED);
+        let res_vt = VirtualTensor::new(res, vec![res_dim_m, res_dim_n]);
+        res_vt.store(&self.c, &mut builder);
 
-          builder.action(Action::DimKind(k1_dim, DimKind::UNROLL));
-          builder.action(Action::DimKind(unroll_dim_2_n, DimKind::VECTOR));
-
-          let mut space = builder.get();
-          let mem_0 = ir::mem::InternalId(0);
-          let (d23, d24, d25) = (ir::DimId {id: 23}, ir::DimId {id: 24}, ir::DimId {id: 25});
-          let (d26, d27, d28) = (ir::DimId {id: 26}, ir::DimId {id: 27}, ir::DimId {id: 28});
-          assert!(space.lower_layout(mem_0, vec![d23, d24, d25], vec![d26, d27, d28]).is_ok());
-          let mem_1 = ir::mem::InternalId(1);
-          let (d29, d30, d31) = (ir::DimId {id: 29}, ir::DimId {id: 30}, ir::DimId {id: 31});
-          let (d32, d33, d34) = (ir::DimId {id: 32}, ir::DimId {id: 33}, ir::DimId {id: 34});
-          assert!(space.lower_layout(mem_1, vec![d29, d30, d31], vec![d32, d33, d34]).is_ok());
-          let actions = vec![
-          Action::DimKind(d25, DimKind::VECTOR),
-          Action::DimKind(d28, DimKind::VECTOR),
-          Action::DimKind(d31, DimKind::VECTOR),
-          Action::DimKind(d34, DimKind::VECTOR),
-          Action::Order(d27.into(), d32.into(), Order::MERGED),
-          Action::Order(d32.into(), k1_dim.into(), Order::MERGED),
-          ];
-        assert!(space.apply_decisions(actions).is_ok());*/
         vec![build_candidate(builder.get(), ctx)]
     }
 
@@ -459,7 +463,22 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let b_shape = (self.params.k as usize, self.params.n as usize);
         let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
         let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
-        a.dot(&b)
+        let mut res = a.dot(&b);
+
+        match self.params.activation_fun {
+            Some(ActivationFunction::ReLU) => {
+                res.mapv_inplace(|c| c.max(S::zero()));
+            }
+
+            Some(ActivationFunction::Sigmoid) => {
+                let one = S::one();
+                res.mapv_inplace(|c| one / (one + S::exp(c)));
+            }
+
+            None => {}
+        };
+
+        res
     }
 
     fn check_result(
@@ -470,7 +489,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let c_shape = (self.params.m as usize, self.params.n as usize);
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
         if let Err(invalid) = check_output(&c, expected) {
-            Err(format!("Invalid gemm output: {}", invalid))
+            Err(format!("Invalid fused_mm output: {}", invalid))
         } else {
             Ok(())
         }
