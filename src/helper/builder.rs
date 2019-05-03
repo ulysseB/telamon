@@ -126,6 +126,13 @@ impl Builder {
         self.inst(op::UnaryOp(ir::UnaryOp::Mov, arg_op))
     }
 
+    /// Adds an `Exp` instruction to the function.
+    pub fn exp(&mut self, arg: &dyn AutoOperand) -> InstId {
+        let arg_op = self.get_op(arg);
+        let t = arg_op.t();
+        self.inst(op::UnaryOp(ir::UnaryOp::Exp(t), arg_op))
+    }
+
     /// Adds a coherent load from global memory instruction to the function.
     pub fn ld(
         &mut self,

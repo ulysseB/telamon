@@ -408,12 +408,19 @@ impl InstPrinter for X86printer {
         assert_eq!(vector_factors, [1, 1]);
         unwrap!(write!(self.buffer, "{} = ", result));
         match operator {
-            ir::UnaryOp::Mov => (),
-            ir::UnaryOp::Cast(t) => {
-                unwrap!(write!(self.buffer, "({})", Self::get_type(t)))
+            ir::UnaryOp::Mov => {
+                unwrap!(writeln!(self.buffer, "{};", operand));
             }
+
+            ir::UnaryOp::Cast(t) => {
+                unwrap!(write!(self.buffer, "({}){};", Self::get_type(t), operand));
+            }
+
+            ir::UnaryOp::Exp(t) => match t {
+                ir::Type::F(32) => unwrap!(write!(self.buffer, "expf({});", operand)),
+                _ => panic!("Exp not implemented for type {}", t),
+            },
         };
-        unwrap!(writeln!(self.buffer, "{};", operand));
     }
 
     fn print_mul(

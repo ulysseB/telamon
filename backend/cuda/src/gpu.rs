@@ -149,6 +149,7 @@ pub struct Gpu {
     pub max_f64_inst: InstDesc,
     pub max_i32_inst: InstDesc,
     pub max_i64_inst: InstDesc,
+    pub exp_f32_inst: InstDesc,
     pub syncthread_inst: InstDesc,
 
     /// Overhead for entring the loop.
@@ -224,6 +225,7 @@ impl Gpu {
             max_f64_inst: InstDesc::default(),
             max_i32_inst: InstDesc::default(),
             max_i64_inst: InstDesc::default(),
+            exp_f32_inst: InstDesc::default(),
             syncthread_inst: InstDesc::default(),
             loop_init_overhead: InstDesc::default(),
             loop_iter_overhead: InstDesc::default(),
@@ -356,6 +358,9 @@ impl Gpu {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.store_desc(&mem_info, flag).into()
+            }
+            (&UnaryOp(ir::UnaryOp::Exp(..), ..), Some(Type::F(32))) => {
+                self.exp_f32_inst.into()
             }
             // TODO(model): Instruction description for mov and cast.
             (&UnaryOp(..), _) => HwPressure::zero(self),

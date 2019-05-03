@@ -403,8 +403,34 @@ impl InstPrinter for CudaPrinter {
         operand: &str,
     ) {
         assert_eq!(vector_factors, [1, 1]);
-        let operator = match operator {
-            ir::UnaryOp::Mov => std::borrow::Cow::from("mov"),
+        let t_str = Self::get_type(operand_type);
+
+        match operator {
+            ir::UnaryOp::Mov => unwrap!(writeln!(
+                self.buffer,
+                "  mov.{} {}, {};",
+                t_str, result, operand
+            )),
+            ir::UnaryOp::Exp(..) => {
+                // The expression exp(x) needs to be decomposed into
+                // 2^(log2(e)*x).
+                //
+                // Only implemented for f32, since other types require
+                // significant software emulation
+                match operand_type {
+                    ir::Type::F(32) => {
+                        unwrap!(writeln!(
+                            self.buffer,
+                            "mul.{t} {reg}, 0f3fb8aa3b, {operand}; // 0f3fb8aa3b = log2(e)\n
+                             ex2.approx.{t} {reg}, {reg};",
+                            t = t_str,
+                            reg = result,
+                            operand = operand
+                        ));
+                    }
+                    _ => panic!("No implementation of exp for type {}", operand_type),
+                }
+            }
             ir::UnaryOp::Cast(cast_type) => {
                 let rounding = match (cast_type, operand_type) {
                     (ir::Type::F(_), ir::Type::I(_))
@@ -415,16 +441,17 @@ impl InstPrinter for CudaPrinter {
                     _ => ir::op::Rounding::Exact,
                 };
                 let rounding = Self::rounding(rounding);
-                let op = format!("cvt{}.{}", rounding, Self::get_type(cast_type));
-                std::borrow::Cow::from(op)
+                unwrap!(writeln!(
+                    self.buffer,
+                    "cvt{}.{}.{} {}, {};",
+                    rounding,
+                    Self::get_type(cast_type),
+                    t_str,
+                    result,
+                    operand
+                ));
             }
         };
-        let t = Self::get_type(operand_type);
-        unwrap!(writeln!(
-            self.buffer,
-            "  {}.{} {}, {};",
-            operator, t, result, operand
-        ));
     }
 
     /// Print result = op1 * op2

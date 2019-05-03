@@ -92,6 +92,7 @@ pub fn functional_desc(executor: &Executor) -> Gpu {
         max_f64_inst: EMPTY_INST_DESC,
         max_i32_inst: EMPTY_INST_DESC,
         max_i64_inst: EMPTY_INST_DESC,
+        exp_f32_inst: EMPTY_INST_DESC,
         syncthread_inst: EMPTY_INST_DESC,
         loop_init_overhead: EMPTY_INST_DESC,
         loop_iter_overhead: EMPTY_INST_DESC,
@@ -324,6 +325,7 @@ pub fn performance_desc(executor: &Executor, gpu: &mut Gpu) {
     gpu.max_f64_inst = instruction::max_f64(gpu, executor);
     gpu.max_i32_inst = instruction::max_i32(gpu, executor);
     gpu.max_i64_inst = instruction::max_i64(gpu, executor);
+    gpu.exp_f32_inst = instruction::exp_f32(gpu, executor);
     gpu.mul_wide_inst = gpu.mul_i32_inst; // TODO(model): benchmark mul wide.
                                           // Compute memory accesses overhead.
     gpu.load_l2_latency = instruction::load_l2(gpu, executor);

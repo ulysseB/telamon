@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <math.h>
 #include <utask.h>
 #include <mppa_async.h>
 #include <mppa_power.h>

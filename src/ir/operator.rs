@@ -118,11 +118,14 @@ pub enum UnaryOp {
     Mov,
     /// Casts the input to another type.
     Cast(ir::Type),
+    /// Calculates exp(x)
+    Exp(ir::Type),
 }
 
 impl fmt::Display for UnaryOp {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            UnaryOp::Exp(..) => fmt.write_str("exp"),
             UnaryOp::Mov => fmt.write_str("mov"),
             UnaryOp::Cast(t) => write!(fmt, "cast({})", t),
         }
@@ -133,7 +136,7 @@ impl UnaryOp {
     /// Gives the return type of the operand given its input type.
     fn t(self, op_type: ir::Type) -> ir::Type {
         match self {
-            UnaryOp::Mov => op_type,
+            UnaryOp::Mov | UnaryOp::Exp(..) => op_type,
             UnaryOp::Cast(t) => t,
         }
     }
