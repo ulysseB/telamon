@@ -75,6 +75,7 @@ impl FastBound {
     }
 
     /// Repeat the bound by iteration on a given loop level.
+    // TODO: iterations: SymbolicFloat
     pub fn iterate(self, iterations: &size::SymbolicInt, level: usize) -> Self {
         let origin = FastOrigin::Loop {
             iterations: iterations.range().min, // TODO: be more precise?
@@ -133,12 +134,16 @@ impl FastBound {
     pub fn scale(
         self,
         hw_parallelism: u64,
+        // TODO(sym): SymbolicFloat
         iterations: &size::SymbolicInt,
         max_par: &size::SymbolicInt,
     ) -> Self {
         assert!(hw_parallelism < u64::from(u32::max_value()));
 
+        // TODO(sym): let num_waves = Float::div_ceil(max_par, hw_parallelism as u32)
         let num_waves = size::SymbolicInt::div_ceil(max_par, hw_parallelism as u32);
+        // TODO(sym): let factor = num_waves * iterations / max_par.to_symbolic_float()
+        // -> div_ceil_inv_magic(max_par, hw_parallelism) * iterations
         let factor = (num_waves * iterations).to_symbolic_float() / max_par;
         let origin = Rc::new(FastOrigin::Scale {
             inner: self.origin,

@@ -27,3 +27,4 @@ pub mod search_space;
 
 pub mod memo;
 pub mod sym;
+pub mod sym3;

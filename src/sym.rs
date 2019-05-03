@@ -14,6 +14,7 @@ pub trait Atom: ToRange + Clone + fmt::Debug + fmt::Display + PartialEq {}
 
 // REDO
 //
+/*
 /// A trait representing objects that can perform assignment to a reference-counted pointer.
 trait Assigner<T>: Sized {
     /// Perfom the assignment.
@@ -113,9 +114,7 @@ where
         match self.inner.take().unwrap() {
             Initial(_) => (),
             Unique(new) => self.assigner.take().unwrap().self_assign(new),
-            Multiple { initial, new } => {
-                self.assigner.take().unwrap().assign(initial, new)
-            }
+            Multiple { initial, new } => self.assigner.take().unwrap().assign(initial, new),
         }
     }
 }
@@ -203,6 +202,45 @@ trait ApplyAssign<Lhs, Rhs = Lhs>: Copy {
     fn apply_assign(self, lhs: &mut Lhs, rhs: Rhs);
 }
 
+impl<'a, O, Lhs, Rhs> ApplyAssign<Option<Lhs>, &'a Option<Rhs>> for O
+where
+    O: ApplyAssign<Lhs, &'a Rhs>,
+    Rhs: Clone + Into<Lhs>,
+{
+    fn apply_assign(self, lhs: &mut Option<Lhs>, rhs: &'a Option<Rhs>) {
+        match (lhs, rhs) {
+            (Some(_), None) => {}
+            (Some(lhs), Some(rhs)) => self.apply_assign(lhs, rhs),
+            (None, Some(rhs)) => *lhs = Some(rhs.clone().into()),
+            (None, None) => {}
+        }
+    }
+}
+
+impl<'a, O, Lhs, Rhs> ApplyAssign<Rc<Lhs>, &'a Rc<Rhs>> for O
+where
+    O: ApplyAssign<Lhs, &'a Rhs>,
+    Lhs: Clone,
+{
+    fn apply_assign(self, lhs: &mut Rc<Lhs>, rhs: &'a Rc<Rhs>) {
+        self.apply_assign(Rc::make_mut(lhs), &**rhs)
+    }
+}
+
+// S = RangeMemo<HashMemo<RawS>>
+// Expr<N, Option<Rc<S>>>
+
+impl<N, M, O, Lhs, Rhs> ApplyAssign<Expr<N, Lhs>, Expr<M, Rhs>> for O
+where
+    O: ApplyAssign<N, M>,
+    O: ApplyAssign<Lhs, Rhs>,
+{
+    fn apply_assign(self, lhs: &mut Expr<N, Lhs>, rhs: Expr<M, Rhs>) {
+        self.apply_assign(&mut lhs.numeric, rhs.numeric);
+        self.apply_assign(&mut lhs.symbolic, rhs.symbolic);
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 struct AddOp;
 
@@ -234,11 +272,33 @@ impl<T: ?Sized> ToMut<T> for T {
     }
 }
 
-trait BinOp<S>:
-    Op<S> + for<'a, 'b> Apply<&'a S::Numeric, &'b S::Numeric, Output = S::Numeric>
-where
-    S: AsNumeric,
-{
+// Op: BinOp<N, S> -> ApplyAssign<S>
+//
+// AddOp: ApplyAssign<RangeMemo<Diff>>
+// -> AddOp: ApplyAssign<RcMemo<RangeMemo<Diff>>>
+// (also ApplyAssign<Rc<RangeMemo<Diff>>> etc.)
+// (in particular ApplyAssign<N, RcMemo<RangeMemo<Diff>>>)
+//
+// AddOp: Binop<N, Rc<AnyOp>>
+//  N, &RangeMemo<Diff> -> (N, RangeMemo<Diff>)
+//  N, Rc<AnyOp> -> (N, RangeMemo<Diff>)
+//  mut RangeMemo<Diff>, N -> (N, RangeMemo<Diff>) [[ auto? not for min/max :( ]]
+//  mut RangeMemo<Diff>, RangeMemo<Diff> -> RangeMemo<Diff> [[ auto? not for min/max :( ]]
+//  mut RangeMemo<Diff>, Rc<AnyOp> -> RangeMemo<Diff>
+//  Rc<AnyOp>, N -> (N, RangeMemo<Diff>)
+//  Rc<AnyOp>, RangeMemo<Diff> -> (0, RangeMemo<Diff>)
+//  Rc<AnyOp>, Rc<AnyOp> -> (0, RangeMemo<Diff>)
+//
+//[no save]
+//  -> AddOp: ApplyAssign<Expr<N, Rc<AnyOp>>>
+//
+//  -> AddOp: ApplyAssign<Expr<N, RcMemo<Expr<N, Rc<AnyOp>>>>>
+//  [ need FastPathApplyAssign ]
+//
+//
+// Op: ApplyAssign<S, S> -> Op: ApplyAssign<Rc<S>, Rc<S>>
+
+trait BinOp<N, S>: Op<N, S> + for<'a, 'b> Apply<&'a N, &'b N, Output = N> {
     fn fast_apply_assign<D>(self, _lhs: &mut D, _rhs: &S) -> bool
     where
         D: AsRef<S> + ToMut<S>,
@@ -246,77 +306,135 @@ where
         false
     }
 
-    fn apply_num_expr(self, lhs: &S::Numeric, rhs: ExprRef<S::Numeric, Self::Expr>) -> S;
+    fn apply_num_expr(self, lhs: &N, rhs: ExprRef<N, Self::Expr>) -> Expr<N, Self::Expr>;
 
-    fn apply_num_other(self, lhs: &S::Numeric, rhs: &S) -> S;
+    fn apply_num_other(self, lhs: &N, rhs: &S) -> Expr<N, Self::Expr>;
 
-    fn apply_assign_num(self, lhs: ExprMut<S::Numeric, Self::Expr>, rhs: &S::Numeric);
+    fn apply_assign_num(self, lhs: ExprMut<N, Self::Expr>, rhs: &N);
 
-    fn apply_assign_expr(
-        self,
-        lhs: ExprMut<S::Numeric, Self::Expr>,
-        rhs: ExprRef<S::Numeric, Self::Expr>,
-    );
+    fn apply_assign_expr(self, lhs: ExprMut<N, Self::Expr>, rhs: ExprRef<N, Self::Expr>);
 
-    fn apply_assign_other(self, lhs: ExprMut<S::Numeric, Self::Expr>, rhs: &S);
+    fn apply_assign_other(self, lhs: ExprMut<N, Self::Expr>, rhs: &S);
 
-    fn apply_other_num(self, lhs: &S, rhs: &S::Numeric) -> S;
+    fn apply_other_num(self, lhs: &S, rhs: &N) -> Expr<N, Self::Expr>;
 
-    fn apply_other_expr(self, lhs: &S, rhs: ExprRef<S::Numeric, Self::Expr>) -> S;
+    fn apply_other_expr(self, lhs: &S, rhs: ExprRef<N, Self::Expr>) -> Expr<N, Self::Expr>;
 
-    fn apply_other_other(self, lhs: &S, rhs: &S) -> S;
+    fn apply_other_other(self, lhs: &S, rhs: &S) -> Expr<N, Self::Expr>;
 }
 
 /// Trait used for deconstructing symbolic expressions.
 trait AsExpr<E> {
     /// Deconstructs the symbolic expression into its numeric and symbolic part, if it has the
     /// appropriate constructor.
-    fn as_expr(&self) -> Option<ExprRef<Self::Numeric, E>>;
+    fn as_expr(&self) -> Option<&E>;
 
     /// Mutable version of `as_expr`.
     ///
     /// # Notes
     ///
     /// `as_expr_mut` should never return `None` unless `as_expr` also does.
-    fn as_expr_mut(&mut self) -> Option<ExprMut<Self::Numeric, E>>;
+    fn as_expr_mut(&mut self) -> Option<&mut E>;
 }
 
-impl<'a, S, O, D> ApplyAssign<Rc<S>, &'a S> for O
+impl<S, E> AsExpr<E> for Rc<S>
 where
-    O: BinOp<S>,
-    S: AsNumeric + AsExpr<O::Expr>,
-    S::Numeric: Into<S>,
+    S: AsExpr<E> + Clone,
 {
-    fn apply_assign(self, lhs: &mut Rc<S>, rhs: &S) {
+    fn as_expr(&self) -> Option<&E> {
+        self.as_expr()
+    }
+
+    fn as_expr_mut(&mut self) -> Option<&mut E> {
+        if self.as_expr().is_some() {
+            Rc::make_mut(self).as_expr_mut()
+        } else {
+            None
+        }
+    }
+}
+
+impl<S, E> AsExpr<E> for Option<S>
+where
+    S: AsExpr<E>,
+{
+    fn as_expr(&self) -> Option<&E> {
+        self.as_ref().and_then(S::as_expr)
+    }
+
+    fn as_expr_mut(&mut self) -> Option<&mut E> {
+        self.as_mut().and_then(S::as_expr_mut)
+    }
+}
+
+impl<N, S> Expr<N, S> {
+    fn new_numeric(numeric: N) -> Self
+    where
+        S: Default,
+    {
+        Expr {
+            numeric,
+            symbolic: S::default(),
+        }
+    }
+
+    fn as_expr<E>(&self) -> Option<ExprRef<N, E>>
+    where
+        S: AsExpr<E>,
+    {
+        self.symbolic.as_expr().map(|symbolic| Expr {
+            numeric: &self.numeric,
+            symbolic,
+        })
+    }
+
+    fn as_expr_mut<E>(&mut self) -> Option<ExprMut<N, E>>
+    where
+        S: AsExpr<E>,
+    {
+        self.symbolic.as_expr_mut().map({
+            let numeric = &mut self.numeric;
+            move |symbolic| Expr { numeric, symbolic }
+        })
+    }
+}
+
+// BinOp<N, S> => ApplyAssign<DeferredAssignment<S>
+impl<'a, N, S, O> ApplyAssign<Expr<N, Option<Rc<S>>>, &'a Expr<N, Option<Rc<S>>>> for O
+where
+    O: BinOp<N, Expr<N, Option<Rc<S>>>>,
+    S: AsExpr<O::Expr> + Clone,
+{
+    fn apply_assign(self, lhs: &mut Expr<N, Option<Rc<S>>>, rhs: &Expr<N, Option<Rc<S>>>) {
         let mut lhs = DeferredAssignment::new(lhs, BinOpAssigner::new(self, rhs));
         if self.fast_apply_assign(lhs, rhs) {
             // Assignment done in the fast path
         } else if let Some(rhs_num) = rhs.as_numeric() {
             if let Some(lhs_num) = lhs.as_numeric_mut() {
-                *D::to_mut(lhs) = self.apply(lhs_num, rhs_num).into();
+                *lhs.to_mut() = Expr::new_numeric(self.apply(lhs_num, rhs_num))
             } else if let Some(lhs_expr) = lhs.as_expr_mut() {
                 self.apply_assign_num(lhs_expr, rhs_num);
             } else {
-                *D::to_mut(lhs) = self.apply_other_num(lhs.as_ref(), rhs_num);
+                *lhs.to_mut() = self.apply_other_num(lhs.as_ref(), rhs_num);
             }
         } else if let Some(rhs_expr) = rhs.as_expr() {
             if let Some(lhs_num) = lhs.as_numeric() {
-                *D::to_mut(lhs) = self.apply_num_expr(lhs_num, rhs_expr);
+                *lhs.to_mut() = self.apply_num_expr(lhs_num, rhs_expr);
             } else if let Some(lhs_expr) = lhs.as_expr_mut() {
                 self.apply_assign_expr(lhs_expr, rhs_expr);
             } else {
-                *D::to_mut(lhs) = self.apply_other_expr(lhs.as_ref(), rhs_expr);
+                *lhs.to_mut() = self.apply_other_expr(lhs.as_ref(), rhs_expr);
             }
         } else if let Some(lhs_num) = lhs.as_numeric() {
-            *D::to_mut(lhs) = self.apply_num_other(lhs_num, rhs);
+            *lhs.to_mut() = self.apply_num_other(lhs_num, rhs);
         } else if let Some(lhs_expr) = lhs.as_expr_mut() {
             self.apply_assign_other(lhs_expr, rhs);
         } else {
-            *D::to_mut(lhs) = self.apply_other_other(lhs.as_ref(), rhs);
+            *lhs.to_mut() = self.apply_other_other(lhs.as_ref(), rhs);
         }
     }
 }
-
+*/
 // END REDO
 
 // implements "T op U" based on top of "T op &U"

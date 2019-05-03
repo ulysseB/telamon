@@ -239,6 +239,7 @@ fn add_indvar_pressure(
                 unwrap!(dim_overhead.get_mut(&dim))
                     .0
                     .add_parallel(&overhead);
+                // TODO(sym): size.to_float() - 1
                 overhead.repeat_parallel(&(size - 1u32));
                 unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
             }
@@ -384,6 +385,7 @@ impl Nesting {
 #[derive(Debug)]
 pub struct Parallelism {
     /// Minimal number of blocks.
+    // TODO(sym): Float
     pub min_num_blocks: size::SymbolicInt,
     /// Minimal number of threads per blocks.
     pub min_num_threads_per_blocks: size::SymbolicInt,
@@ -413,6 +415,7 @@ impl Parallelism {
 impl Default for Parallelism {
     fn default() -> Self {
         Parallelism {
+            // TODO(sym): float
             min_num_blocks: 1u32.into(),
             min_num_threads_per_blocks: 1u32.into(),
             min_num_threads: 1u32.into(),
@@ -452,6 +455,7 @@ fn parallelism(
 
             Parallelism {
                 min_num_threads: &min_size_blocks * &size_thread_dims,
+                // TODO(sym): min_size_blocks.to_float()
                 min_num_blocks: min_size_blocks,
                 min_num_threads_per_blocks: size_thread_dims.clone(),
                 lcm_num_blocks: max_size_blocks,

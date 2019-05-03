@@ -104,6 +104,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
     let block_parallelism = u64::from(context.device().block_parallelism(space));
     let min_num_blocks = &local_info.parallelism.min_num_blocks;
     let lcm_num_blocks = &local_info.parallelism.lcm_num_blocks;
+    // TODO: min_num_blocks need to be float.
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(
@@ -312,6 +313,8 @@ fn repeat_level(
     for &pred in &predecessors {
         // Then add the bound taking into account data dependencies.
         let init_lat = unwrap!(latency_to_exit[pred].clone());
+        // TODO(sym): action.iterations.to_float() - 2
+        // ... bad for the bound?
         let iter_lat = cycle_lat
             .clone()
             .iterate(&(&action.iterations - 2u32), level_id);
@@ -327,6 +330,7 @@ fn repeat_level(
                 unwrap!(latency_to_exit[pred].clone())
                     .chain(entry_point, unwrap!(latencies[entry_point].clone())),
             );
+            // TODO(sym): action.iterations.to_float() - 2
             let latency = init_lat.clone().chain(
                 point,
                 lat.clone().iterate(&(&action.iterations - 2u32), level_id),
@@ -334,6 +338,7 @@ fn repeat_level(
             level_dag.add_dependency(to_map, pred, point, &latency);
             if action.iterations.range().min >= 3 {
                 let exit_lat = unwrap!(latency_to_exit[point].clone());
+                // TODO(sym): action.iterations.to_float() - 3
                 let latency = init_lat
                     .chain(
                         point,

@@ -403,6 +403,9 @@ impl Gpu {
     /// Computes the ratio `num_warps*warp_size/num_threads`. This ratio may be `>1`
     /// because the hardware creates additionnal threads to fill the warps.
     fn waste_ratio(&self, threads_per_block: size::SymbolicInt) -> size::SymbolicFloat {
+        // TODO(sym): let n_warps = Float::div_ceil(threads_per_block, warp_size)
+        // TODO(sym): (n_warps * Float::constant(warp_size)) / threads_per-block.to_float()
+        // -> div_ceil_inv_magic(threads_per_block, warp_size) * n_warps
         let warp_size = size::SymbolicInt::from(self.wrap_size);
         let n_warps = size::SymbolicInt::div_ceil(&threads_per_block, self.wrap_size);
         (n_warps * warp_size).to_symbolic_float() / &threads_per_block
