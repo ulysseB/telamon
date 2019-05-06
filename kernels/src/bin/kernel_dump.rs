@@ -26,8 +26,22 @@ fn main() {
     kernel_dump!(linalg::Gesummv<f32>, gesummv, 100, (1 << 4, 1 << 4, true));
     kernel_dump!(
         linalg::FusedMM<f32>,
-        matmul,
+        fused_mm_identity,
         100,
         linalg::FusedMMP::new(16, 16, 16)
+    );
+    kernel_dump!(
+        linalg::FusedMM<f32>,
+        fused_mm_relu,
+        100,
+        linalg::FusedMMP::new(16, 16, 16)
+            .activation_fun(linalg::ActivationFunction::ReLU)
+    );
+    kernel_dump!(
+        linalg::FusedMM<f32>,
+        fused_mm_sigmoid,
+        100,
+        linalg::FusedMMP::new(16, 16, 16)
+            .activation_fun(linalg::ActivationFunction::Sigmoid)
     );
 }
