@@ -517,4 +517,52 @@ impl InstPrinter for X86printer {
         assert!(vector_dims[1].is_empty());
         value_printer.name_inst(inst).into()
     }
+
+    /// Prints a standard loop as a C for loop
+    fn standard_loop(
+        &mut self,
+        fun: &Function,
+        dim: &Dimension,
+        cfgs: &[Cfg],
+        namer: &mut NameMap<Self::ValuePrinter>,
+    ) {
+        let idx = namer.name_index(dim.id()).to_string();
+        let mut ind_var_vec = vec![];
+        let ind_levels = dim.induction_levels();
+        for level in ind_levels.iter() {
+            let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
+            let ind_var = namer.name_induction_var(level.ind_var, dim_id);
+            let base_components = level.base.components().map(|v| namer.name(v));
+            match base_components.collect_vec()[..] {
+                [ref base] => self.print_move(level.t(), &ind_var, &base),
+                [ref lhs, ref rhs] => self.print_add_int(level.t(), &ind_var, lhs, rhs),
+                _ => panic!(),
+            };
+            ind_var_vec.push(ind_var.into_owned());
+        }
+
+        let size = namer.name_size(dim.size(), Type::I(32)).to_string();
+
+        unwrap!(writeln!(
+            self.buffer,
+            "/* Loop for dimension {dim_id} */\nfor({idx} = 0; {idx} < {dim_size}; {idx}++) {{",
+            dim_id = dim.id(),
+            idx = idx,
+            dim_size = size
+        ));
+
+        self.cfg_vec(fun, cfgs, namer);
+        for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
+            if let Some((_, ref increment)) = level.increment {
+                let step = namer.name_size(increment, level.t());
+                self.print_add_int(level.t(), &ind_var, &ind_var, &step);
+            };
+        }
+
+        unwrap!(writeln!(
+            self.buffer,
+            "}} /* End Loop for dimension {} */",
+            dim_id = dim.id()
+        ));
+    }
 }
