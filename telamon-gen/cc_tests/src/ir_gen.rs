@@ -71,6 +71,12 @@ macro_rules! define_ir {
     (@id_def struct $name:ident, $x:tt) => {
         #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, ::serde::Serialize, ::serde::Deserialize)]
         pub struct Id(pub usize);
+
+        impl ::std::fmt::Display for Id {
+            fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                write!(fmt, "{:?}", self)
+            }
+        }
     };
     (@id_def type $name:ident, $super:ident) => { pub use super::$super::Id as Id; };
     (@id_def type $name:ident, @) => { compile_error!("type sets must have a superset"); };

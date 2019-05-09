@@ -19,3 +19,22 @@ impl From<Action> for Choice {
         }
     }
 }
+
+impl std::fmt::Display for Choice {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            {{~#each choices}}
+            Choice::{{to_type_name name}}({{>choice.arg_names}}) => {
+                fmt.write_str("{{to_type_name name}}(")?;
+                {{~#each arguments}}
+                write!(fmt, "{}", {{this.[0]}})?;
+                {{~#unless @last}}
+                fmt.write_str(", ")?;
+                {{~/unless}}
+                {{~/each}}
+                fmt.write_str(")")
+            },
+            {{~/each}}
+        }
+    }
+}

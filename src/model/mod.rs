@@ -114,7 +114,10 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         &[],
         &ir::PartialSize::default(),
     );
-    trace!("global pressure {:?}", global_pressure);
+    trace!(
+        "global pressure {}",
+        global_pressure.display(&*context.device())
+    );
     let device_rates = context.device().total_rates();
     let throughput_bound = global_pressure.bound(BottleneckLevel::Global, &device_rates);
     // Return the biggest bound.

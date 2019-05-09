@@ -7,6 +7,14 @@ use quote::quote;
 /// Defines the `NumericSet` type.
 pub fn get() -> TokenStream {
     quote! {
+        /// A small set (up to 16 values) represented using a bitset.  The actual values are stored
+        /// separately in an `universe` (a vector of values), which needs to be provided separately
+        /// for most meaningful uses of the `NumericSet`.
+        ///
+        /// This strategy avoids duplicating the set of actual values for each instance of the
+        /// `NumericSet`; in particular, this allows us to have a single universe vector shared
+        /// across all instances of a Telamon function, but each have a separate `NumericSet` which
+        /// can be influenced by the choices and constraints.
         #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
         #[repr(C)]
         pub struct NumericSet {
@@ -16,6 +24,31 @@ pub fn get() -> TokenStream {
         impl std::fmt::Debug for NumericSet {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 write!(f, "NS{{{}}}", self.list().map(|bit| bit.enabled_values).format(", "))
+            }
+        }
+
+        /// Helper struct for printing numeric sets with `format!` and `{}`.
+        ///
+        /// Numeric sets represent values using a compact bitset representation which is ill-suited
+        /// for display since it doesn't know the actual values represented by the set.  This
+        /// struct embeds the universe, which allows it to implement the [`Display`] trait in a
+        /// satisfactory way.
+        ///
+        /// [`Display`]: std::fmt::Display
+        pub struct Display<'a> {
+            numeric_set: &'a NumericSet,
+            universe: &'a [u32],
+        }
+
+        impl<'a> std::fmt::Debug for Display<'a> {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+                std::fmt::Debug::fmt(self.numeric_set, fmt)
+            }
+        }
+
+        impl<'a> std::fmt::Display for Display<'a> {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(fmt, "{{{}}}", self.numeric_set.list_values(self.universe).format(", "))
             }
         }
 
@@ -59,6 +92,14 @@ pub fn get() -> TokenStream {
             fn complement(&self, universe: &[u32]) -> Self {
                 let mask = NumericSet::all(universe);
                 NumericSet { enabled_values: !self.enabled_values & mask.enabled_values }
+            }
+
+            /// Returns an object that implements [`Display`] for printing numeric sets with the
+            /// corresponding universe values.
+            ///
+            /// [`Display`]: std::fmt::Display
+            pub fn display<'a>(&'a self, universe: &'a [u32]) -> Display<'a> {
+                Display { numeric_set: self, universe }
             }
 
             /// Returns the greatest common divisor of possible values.

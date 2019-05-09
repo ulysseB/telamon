@@ -405,6 +405,10 @@ impl Builder {
             .into_iter()
             .flat_map(|(dim, size)| {
                 let mut size: ir::PartialSize = size.into();
+                // `dimensions()` returns the dimensions from inner-most to outer-most, but we want
+                // them from outer-most to inner-most for display.  Note that we don't otherwise
+                // depend on the order of the increments; they are only used as a DimId ->
+                // PartialSize mapping.
                 self.function
                     .logical_dim(dim.id())
                     .dimensions()
@@ -413,6 +417,9 @@ impl Builder {
                         size *= self.function.dim(dim).size();
                         (dim, increment)
                     })
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
             })
             .collect()
     }

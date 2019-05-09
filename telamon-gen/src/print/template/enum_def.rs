@@ -115,3 +115,18 @@ impl std::fmt::Debug for {type_name} {{
         }}
     }}
 }}
+
+impl std::fmt::Display for {type_name} {{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
+        let mut values = vec![];
+        {printers}
+        f.write_str("{{")?;
+        if !values.is_empty() {{
+            write!(f, "{{}}", values[0])?;
+            for value in &values[1..] {{
+                write!(f, ", {{}}", value)?;
+            }}
+        }}
+        f.write_str("}}")
+    }}
+}}

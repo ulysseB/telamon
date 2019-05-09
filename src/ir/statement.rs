@@ -26,6 +26,15 @@ impl fmt::Debug for StmtId {
     }
 }
 
+impl fmt::Display for StmtId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StmtId::Inst(inst_id) => fmt::Display::fmt(inst_id, f),
+            StmtId::Dim(dim_id) => fmt::Display::fmt(dim_id, f),
+        }
+    }
+}
+
 impl From<ir::InstId> for StmtId {
     fn from(id: ir::InstId) -> Self {
         StmtId::Inst(id)

@@ -4,7 +4,7 @@ use std::{self, fmt};
 use crate::codegen::{
     self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar,
 };
-use crate::ir;
+use crate::ir::{self, IrDisplay};
 use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
 use utils::unwrap;
 use utils::*;
@@ -147,6 +147,26 @@ impl<'a> Function<'a> {
     /// be computed in the provided order.
     pub fn init_induction_levels(&self) -> &[InductionLevel] {
         &self.init_induction_levels
+    }
+}
+
+impl<'a> fmt::Display for Function<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            fmt,
+            "BLOCKS[{}]({}) THREADS[{}]({})",
+            self.block_dims.iter().map(|d| d.size()).format(", "),
+            self.block_dims
+                .iter()
+                .map(|d| d.dim_ids().format(" = "))
+                .format(", "),
+            self.thread_dims.iter().map(|d| d.size()).format(", "),
+            self.thread_dims
+                .iter()
+                .map(|d| d.dim_ids().format(" = "))
+                .format(", "),
+        )?;
+        write!(fmt, "{}", self.cfg().display(self.space.ir_instance()))
     }
 }
 
@@ -420,6 +440,11 @@ impl<'a> Instruction<'a> {
     /// Returns the operator computed by the instruction.
     pub fn operator(&self) -> &ir::Operator {
         self.instruction.operator()
+    }
+
+    /// Returns the IR instruction from which this codegen instruction was created.
+    pub fn ir_instruction(&self) -> &ir::Instruction {
+        self.instruction
     }
 
     /// Returns the dimensions on which to instantiate the instruction.

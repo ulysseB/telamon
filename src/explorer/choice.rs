@@ -38,6 +38,23 @@ impl fmt::Debug for ActionEx {
     }
 }
 
+impl ir::IrDisplay for ActionEx {
+    fn fmt(&self, fmt: &mut fmt::Formatter, function: &ir::Function) -> fmt::Result {
+        match self {
+            ActionEx::Action(action) => write!(fmt, "{}", action.display(function)),
+            ActionEx::LowerLayout {
+                mem,
+                st_dims,
+                ld_dims,
+            } => write!(
+                fmt,
+                "LowerLayout {{ mem: {:?}, st_dims: {:?}, ld_dims: {:?} }}",
+                mem, st_dims, ld_dims
+            ),
+        }
+    }
+}
+
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;

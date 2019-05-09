@@ -343,6 +343,43 @@ impl<L> Operator<L> {
     }
 }
 
+impl<L> ir::IrDisplay<L> for Operator<L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter, function: &ir::Function<L>) -> fmt::Result {
+        match self {
+            BinOp(op, lhs, rhs, _rnd) => write!(
+                fmt,
+                "{}({}, {})",
+                op,
+                lhs.display(function),
+                rhs.display(function)
+            ),
+            UnaryOp(op, arg) => write!(fmt, "{}({})", op, arg.display(function)),
+            Mul(lhs, rhs, _rnd, _t) => write!(
+                fmt,
+                "mul({}, {})",
+                lhs.display(function),
+                rhs.display(function)
+            ),
+            Mad(arg0, arg1, arg2, _rnd) => write!(
+                fmt,
+                "mad({}, {}, {})",
+                arg0.display(function),
+                arg1.display(function),
+                arg2.display(function)
+            ),
+            Ld(_t, arg, _ap) => write!(fmt, "load({})", arg.display(function)),
+            St(dst, src, _side_effects, _ap) => write!(
+                fmt,
+                "store({}, {})",
+                dst.display(function),
+                src.display(function)
+            ),
+            TmpLd(_t, mem) => write!(fmt, "load({})", mem),
+            TmpSt(src, mem) => write!(fmt, "store({}, {})", mem, src.display(function)),
+        }
+    }
+}
+
 impl Operator<()> {
     pub fn freeze(self, cnt: &mut ir::Counter) -> Operator {
         self.map_operands(|oper| oper.freeze(cnt))

@@ -13,7 +13,7 @@ pub struct DimId(pub u32);
 
 impl fmt::Debug for DimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "${}", self.0)
+        write!(f, "%{}", self.0)
     }
 }
 
@@ -23,9 +23,9 @@ impl Into<usize> for DimId {
     }
 }
 
-impl std::fmt::Display for DimId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.0.fmt(f)
+impl fmt::Display for DimId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -207,6 +207,12 @@ impl<L> Dimension<L> {
     }
 }
 
+impl<L> fmt::Display for Dimension<L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}: range({})", self.id, self.size)
+    }
+}
+
 lazy_static! {
     // This empty set is necessary because `Statement` must return references the the sets of
     // variables it uses and defines but does not contains any. Thus, instead of creating fields with
@@ -242,6 +248,12 @@ impl<L> Statement<L> for Dimension<L> {
 )]
 #[repr(transparent)]
 pub struct LogicalDimId(pub u32);
+
+impl fmt::Display for LogicalDimId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "~{}", self.0)
+    }
+}
 
 /// A logic dimension composed of multiple `Dimension`s.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -321,6 +333,29 @@ impl LogicalDim {
     /// dimensions.
     pub fn total_size(&self) -> &ir::Size {
         &self.total_size
+    }
+}
+
+impl fmt::Display for LogicalDim {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "?{}: [", self.id)?;
+
+        if let Some(nonstatic_dim) = self.nonstatic_dim {
+            write!(fmt, "{:?}", nonstatic_dim)?;
+        }
+
+        let mut static_dims = self.static_dims.iter().cloned();
+        if let Some(static_dim) = static_dims.next() {
+            if self.nonstatic_dim.is_some() {
+                write!(fmt, ", ")?;
+            }
+            write!(fmt, "{:?}", static_dim)?;
+            for static_dim in static_dims {
+                write!(fmt, ", {:?}", static_dim)?;
+            }
+        }
+
+        write!(fmt, "] in range({}) {{ .. }}", self.total_size)
     }
 }
 
