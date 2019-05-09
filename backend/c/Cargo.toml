@@ -1,0 +1,12 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>", "Nicolas Tollenaere <nicolas.tollenaere@inria.fr>", "Andi Drebes <andi@drebesium.org>"]
+name = "telamon-c"
+version = "1.0.0"
+edition = "2018"
+
+[dependencies]
+telamon = {path = "../../"}
+utils = {package = "telamon-utils", path = "../../telamon-utils"}
+itertools = "0.8"
+num = "0.2"
+fxhash = "0.2"

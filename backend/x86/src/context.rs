@@ -1,9 +1,9 @@
+///! Defines the CPU evaluation context.
 use crate::compile;
 use crate::cpu::Cpu;
 use crate::cpu_argument::{ArgLock, Argument, CpuArray};
-use crate::printer::X86printer;
-///! Defines the CPU evaluation context.
-use telamon::codegen::ParamVal;
+use telamon::codegen::{ParamVal, NameMap};
+use telamon_c::{printer::CPrinter, ValuePrinter};
 
 use telamon::codegen;
 use telamon::device::{
@@ -112,15 +112,20 @@ impl device::Context for Context {
 
     /// Evaluation in sequential mode
     fn evaluate(&self, func: &codegen::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let mut printer = X86printer::default();
-        let fun_str = printer.wrapper_function(func);
+        let mut value_printer = ValuePrinter::default();
+        let mut name_map = NameMap::new(func, &mut value_printer);
+        let mut printer = CPrinter::default();
+
+        let fun_str = printer.wrapper_function(func, &mut name_map);
         function_evaluate(&fun_str, &self.gen_args(func))
     }
 
     /// returns a vec containing num_sample runs of function_evaluate
     fn benchmark(&self, func: &codegen::Function, num_samples: usize) -> Vec<f64> {
-        let mut printer = X86printer::default();
-        let fun_str = printer.wrapper_function(func);
+        let mut value_printer = ValuePrinter::default();
+        let mut name_map = NameMap::new(func, &mut value_printer);
+        let mut printer = CPrinter::default();
+        let fun_str = printer.wrapper_function(func, &mut name_map);
         let args = self.gen_args(func);
         let mut res = vec![];
         for _ in 0..num_samples {
@@ -270,9 +275,11 @@ where
         let (fun_str, code_args);
         {
             let dev_fun = codegen::Function::build(&candidate.space);
+            let mut value_printer = ValuePrinter::default();
+            let mut name_map = NameMap::new(&dev_fun, &mut value_printer);
             code_args = self.context.gen_args(&dev_fun);
-            let mut printer = X86printer::default();
-            fun_str = printer.wrapper_function(&dev_fun);
+            let mut printer = CPrinter::default();
+            fun_str = printer.wrapper_function(&dev_fun, &mut name_map);
         }
         unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));
     }

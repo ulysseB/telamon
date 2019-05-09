@@ -6,6 +6,17 @@
 
 #define telamon_op_max(a, b) ((a) > (b) ? (a) : (b))
 
+/* Synchronizes at the barrier b, just like pthread_barrier_wait, but
+ * returns 0 on success for all threads instead of
+ * PTHREAD_BARRIER_SERIAL_THREAD for one abritrary thread and 0 for
+ * the remaining threads. */
+static int check_pthread_barrier_wait(pthread_barrier_t* b)
+{{
+  int res = pthread_barrier_wait(b);
+
+  return !(res == 0 || res == PTHREAD_BARRIER_SERIAL_THREAD);
+}}
+
 typedef struct thread_dim_id {{
 pthread_barrier_t * barrier;
 {dim_decl} }} thread_dim_id_t;
@@ -18,16 +29,16 @@ typedef struct thread_args {{
 {fun_str}
 
 
-void execute(thread_dim_id_t tid, void** args) {{
+void execute(thread_dim_id_t* tid, void** args) {{
   {fun_params_cast};
-  {fun_name}(tid, {fun_params});
+  {fun_name}(tid{fun_params_comma} {fun_params});
 }}
 
 
 
 void * exec_wrap(void * args) {{
   thread_arg_t thr_args = *(thread_arg_t *) args;
-  execute(thr_args.tid,  thr_args.args);
+  execute(&thr_args.tid,  thr_args.args);
   return NULL;
 }}
 

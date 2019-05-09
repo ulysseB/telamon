@@ -15,6 +15,7 @@ libc = "0.2.40"
 log = "0.4"
 num = "0.2"
 telamon = {path = "../../"}
+telamon-c = {path = "../c"}
 telajax = {path = "../../telajax", optional = true}
 utils = {package = "telamon-utils", path = "../../telamon-utils"}
 

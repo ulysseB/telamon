@@ -6,21 +6,20 @@ use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use utils::unwrap;
-// TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]
-pub(crate) struct X86printer {
-    buffer: String,
+pub struct CPrinter {
+    pub buffer: String,
 }
 
-impl X86printer {
+impl CPrinter {
     /// Declares all parameters of the function with the appropriate type
-    fn param_decl(
+    pub fn param_decl(
         &mut self,
         param: &ParamVal,
-        value_printer: &NameMap<ValuePrinter>,
+        name_map: &NameMap<ValuePrinter>,
     ) -> String {
-        let name = value_printer.name_param(param.key());
+        let name = name_map.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
                 format!("{} {}", Self::get_type(*par_type), name)
@@ -33,14 +32,14 @@ impl X86printer {
     }
 
     /// Declared all variables that have been required from the value_printer
-    fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
+    pub fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
         let value_printer = name_map.value_printer();
         let print_decl = |(&t, &n)| {
             if let Type::PtrTo(..) = t {
                 unreachable!("Type PtrTo are never inserted in this map");
             }
             let prefix = ValuePrinter::gen_prefix(t);
-            let mut s = format!("{} ", Self::get_type(t));
+            let mut s = format!("{} ", ValuePrinter::get_string(t));
             s.push_str(
                 &(0..n)
                     .map(|i| format!("{}{}", prefix, i))
@@ -71,18 +70,18 @@ impl X86printer {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(
+    pub fn decl_par_indexes(
         &mut self,
         function: &Function,
-        value_printer: &mut NameMap<ValuePrinter>,
+        name_map: &NameMap<ValuePrinter>,
     ) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
         // Compute thread indexes.
         for (ind, dim) in function.thread_dims().iter().enumerate() {
             decls.push(format!(
-                "{} = tid.t{};\n",
-                value_printer.name_index(dim.id()),
+                "{} = tid->t{};\n",
+                name_map.name_index(dim.id()),
                 ind
             ));
         }
@@ -90,27 +89,29 @@ impl X86printer {
     }
 
     /// Prints a `Function`.
-    pub fn function(&mut self, function: &Function) -> String {
-        let mut value_printer = ValuePrinter::default();
-        let name_map = &mut NameMap::new(function, &mut value_printer);
+    pub fn function<'a: 'b, 'b>(
+        &mut self,
+        function: &'b Function<'a>,
+        name_map: &mut NameMap<'b, '_, ValuePrinter>,
+    ) -> String {
         let param_decls = function
             .device_code_args()
             .map(|v| self.param_decl(v, name_map))
             .collect_vec()
             .join(",\n  ");
+
         // SIGNATURE AND OPEN BRACKET
-        let mut return_string = if function.device_code_args().count() == 0 {
-            format!(
-                include_str!("template/signature_no_arg.c.template"),
-                name = function.name(),
-            )
-        } else {
-            format!(
-                include_str!("template/signature.c.template"),
-                name = function.name(),
-                params = param_decls
-            )
-        };
+        let mut return_string = format!(
+            include_str!("template/signature.c.template"),
+            name = function.name(),
+            comma = if function.device_code_args().count() == 0 {
+                ""
+            } else {
+                ","
+            },
+            params = param_decls
+        );
+
         // INDEX LOADS
         let idx_loads = self.decl_par_indexes(function, name_map);
         unwrap!(writeln!(self.buffer, "{}", idx_loads));
@@ -176,7 +177,7 @@ impl X86printer {
 
     /// Function takes parameters as an array of void* pointers
     /// This function converts back these pointers into their original types
-    fn fun_params_cast(&mut self, function: &Function) -> String {
+    pub fn fun_params_cast(&mut self, function: &Function) -> String {
         function
             .device_code_args()
             .enumerate()
@@ -204,7 +205,7 @@ impl X86printer {
     }
 
     /// Declares the variables that will be used in C function call
-    fn params_call(&mut self, function: &Function) -> String {
+    pub fn params_call(&mut self, function: &Function) -> String {
         function
             .device_code_args()
             .enumerate()
@@ -214,9 +215,10 @@ impl X86printer {
             .join(", ")
     }
 
-    /// Build the right call for a nested loop on dimensions with linearized accesses
-    /// that is, for a 3 dimensions arrays a[2][5][3] returns d0 + d1 * 3 + d2 * 5
-    fn build_index_call(&mut self, func: &Function) -> String {
+    /// Build the right call for a nested loop on dimensions with
+    /// linearized accesses that is, for a 3 dimensions arrays
+    /// a[2][5][3] returns d0 + d1 * 3 + d2 * 5
+    pub fn build_index_call(&mut self, func: &Function) -> String {
         let mut vec_ret = vec![];
         let dims = func.thread_dims();
         let n = dims.len();
@@ -231,9 +233,9 @@ impl X86printer {
         vec_ret.join(" + ")
     }
 
-    /// Helper for building a structure containing as many thread id (one id per dim)
-    /// as required.
-    fn build_thread_id_struct(&mut self, func: &Function) -> String {
+    /// Helper for building a structure containing as many thread id
+    /// (one id per dim) as required.
+    pub fn build_thread_id_struct(&mut self, func: &Function) -> String {
         let mut ret = String::new();
         if func.num_threads() == 1 {
             return String::from("int t0;\n");
@@ -244,8 +246,9 @@ impl X86printer {
         ret
     }
 
-    /// Prints code that generates the required number of threads, stores the handles in an array
-    fn thread_gen(&mut self, func: &Function) -> String {
+    /// Prints code that generates the required number of threads,
+    /// stores the handles in an array
+    pub fn thread_gen(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
             return include_str!("template/monothread_init.c.template").to_string();
         }
@@ -286,7 +289,7 @@ impl X86printer {
     }
 
     /// Prints code that joins all previously generated threads
-    fn thread_join(&mut self, func: &Function) -> String {
+    pub fn thread_join(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
             return String::new();
         }
@@ -314,33 +317,31 @@ impl X86printer {
     }
 
     /// wrap the kernel call into a function with a fixed interface
-    pub fn wrapper_function(&mut self, func: &Function) -> String {
-        let fun_str = self.function(func);
-        if func.device_code_args().count() == 0 {
-            format!(
-                include_str!("template/host_no_arg.c.template"),
-                fun_name = func.name(),
-                fun_str = fun_str,
-                gen_threads = self.thread_gen(func),
-                dim_decl = self.build_thread_id_struct(func),
-                thread_join = self.thread_join(func),
-            )
-        } else {
-            let fun_params = self.params_call(func);
-            format!(
-                include_str!("template/host.c.template"),
-                fun_name = func.name(),
-                fun_str = fun_str,
-                fun_params_cast = self.fun_params_cast(func),
-                fun_params = fun_params,
-                gen_threads = self.thread_gen(func),
-                dim_decl = self.build_thread_id_struct(func),
-                thread_join = self.thread_join(func),
-            )
-        }
+    pub fn wrapper_function<'a: 'b, 'b>(
+        &mut self,
+        func: &'b Function<'a>,
+        name_map: &mut NameMap<'b, '_, ValuePrinter>,
+    ) -> String {
+        let fun_str = self.function(func, name_map);
+        let fun_params = self.params_call(func);
+        format!(
+            include_str!("template/host.c.template"),
+            fun_name = func.name(),
+            fun_str = fun_str,
+            fun_params_cast = self.fun_params_cast(func),
+            fun_params_comma = if func.device_code_args().count() == 0 {
+                ""
+            } else {
+                ","
+            },
+            fun_params = fun_params,
+            gen_threads = self.thread_gen(func),
+            dim_decl = self.build_thread_id_struct(func),
+            thread_join = self.thread_join(func),
+        )
     }
 
-    fn get_type(t: Type) -> String {
+    pub fn get_type(t: Type) -> String {
         match t {
             Type::PtrTo(..) => String::from("intptr_t"),
             Type::F(32) => String::from("float"),
@@ -355,7 +356,7 @@ impl X86printer {
     }
 }
 
-impl InstPrinter for X86printer {
+impl InstPrinter for CPrinter {
     type ValuePrinter = ValuePrinter;
 
     fn print_binop(
@@ -513,27 +514,27 @@ impl InstPrinter for X86printer {
     }
 
     fn print_sync(&mut self) {
-        unwrap!(writeln!(self.buffer, "pthread_barrier_wait(tid.barrier);"));
+        unwrap!(writeln!(self.buffer, "if (check_pthread_barrier_wait(tid->barrier)) {{printf(\"barrier error\\n\"); return;}}\n"));
     }
 
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         op: &ir::Operand,
-        value_printer: &'a NameMap<ValuePrinter>,
+        name_map: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
-        value_printer.name_op(op)
+        name_map.name_op(op)
     }
 
     fn name_inst<'a>(
         vector_dims: &[Vec<Dimension>; 2],
         inst: ir::InstId,
-        value_printer: &'a NameMap<ValuePrinter>,
+        name_map: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
-        value_printer.name_inst(inst).into()
+        name_map.name_inst(inst).into()
     }
 
     /// Prints a standard loop as a C for loop

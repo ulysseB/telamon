@@ -1,15 +1,16 @@
 //! Describes CUDA-enabled GPUs.
-use telamon::codegen::Function;
+use telamon::codegen::{Function, NameMap};
 use telamon::device;
 use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
+use telamon_c::ValuePrinter;
 
 use fxhash::FxHashMap;
 use itertools::*;
 use std::io::Write;
 
-use crate::printer::X86printer;
+use telamon_c::printer::CPrinter;
 
 /// Represents CUDA GPUs.
 #[derive(Clone)]
@@ -28,8 +29,10 @@ impl Cpu {
 
 impl device::Device for Cpu {
     fn print(&self, fun: &Function, out: &mut dyn Write) {
-        let mut printer = X86printer::default();
-        write!(out, "{}", printer.wrapper_function(fun)).unwrap();
+        let mut value_printer = ValuePrinter::default();
+        let mut name_map = NameMap::new(fun, &mut value_printer);
+        let mut printer = CPrinter::default();
+        write!(out, "{}", printer.wrapper_function(fun, &mut name_map)).unwrap();
         write!(
             out,
             "{}",

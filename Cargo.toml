@@ -80,6 +80,7 @@ mppa = ["telajax"]
 
 [workspace]
 members = [
+    "backend/c",
     "backend/cuda",
     "backend/x86",
     "backend/mppa",
