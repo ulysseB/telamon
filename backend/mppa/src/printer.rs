@@ -255,29 +255,21 @@ impl MppaPrinter {
         }
         let mut loop_decl = String::new();
         let mut ind_vec = Vec::new();
-        let mut jmp_stack = Vec::new();
+        let mut loop_nesting = 0;
+
         for (ind, dim) in func.thread_dims().iter().enumerate() {
             ind_vec.push(format!("d{}", ind));
             unwrap!(writeln!(
                 loop_decl,
-                include_str!("template/loop_init.c.template"),
-                ind = ind,
-                loop_type = "THREAD_INIT"
-            ));
-            let loop_jmp = format!(
-                include_str!("template/loop_jump.c.template"),
+                "for(d{ind} = 0; d{ind} < {size}; d{ind}++) {{",
                 ind = ind,
                 size = unwrap!(dim.size().as_int()),
-                loop_type = "THREAD_INIT"
-            );
-            jmp_stack.push(loop_jmp);
+            ));
+            loop_nesting += 1;
         }
         let ind_dec_inter = ind_vec.join(", ");
         let ind_var_decl = format!("int {};", ind_dec_inter);
-        let mut loop_jmp = String::new();
-        while let Some(j_str) = jmp_stack.pop() {
-            loop_jmp.push_str(&j_str);
-        }
+        let loop_ends = "}\n".repeat(loop_nesting);
         let mut tid_struct = String::new();
         for (ind, _) in func.thread_dims().iter().enumerate() {
             tid_struct.push_str(&format!(
@@ -293,7 +285,7 @@ impl MppaPrinter {
             ind_var_decl = ind_var_decl,
             loop_init = loop_decl,
             tid_struct = tid_struct,
-            loop_jump = loop_jmp
+            loop_jump = loop_ends
         )
     }
 
@@ -303,31 +295,25 @@ impl MppaPrinter {
             return String::new();
         }
         let mut loop_decl = String::new();
-        let mut jmp_stack = Vec::new();
+        let mut loop_nesting = 0;
+
         for (ind, dim) in func.thread_dims().iter().enumerate() {
             unwrap!(writeln!(
                 loop_decl,
-                include_str!("template/loop_init.c.template"),
-                ind = ind,
-                loop_type = "JOIN"
-            ));
-            let loop_jmp = format!(
-                include_str!("template/loop_jump.c.template"),
+                "for(d{ind} = 0; d{ind} < {size}; d{ind}++) {{",
                 ind = ind,
                 size = unwrap!(dim.size().as_int()),
-                loop_type = "JOIN"
-            );
-            jmp_stack.push(loop_jmp);
+            ));
+            loop_nesting += 1;
         }
-        let mut loop_jmp = String::new();
-        while let Some(j_str) = jmp_stack.pop() {
-            loop_jmp.push_str(&j_str);
-        }
+
+        let loop_ends = "}\n".repeat(loop_nesting);
+
         format!(
             include_str!("template/join_thread.c.template"),
             ind = self.build_index_call(func),
             loop_init = loop_decl,
-            loop_jump = loop_jmp
+            loop_jump = loop_ends
         )
     }
 
