@@ -430,7 +430,9 @@ impl VariableNames {
             .iter()
             .zip_eq(&self.names.dims)
             .map(|(index, size)| match index {
-                VarNameIndex::FromDim(dim) => dim_indexes.get(dim).cloned().unwrap_or(0),
+                VarNameIndex::FromDim(dim) => {
+                    dim_indexes.get(dim).cloned().unwrap_or(size - 1)
+                }
                 VarNameIndex::Last => size - 1,
             })
             .collect_vec();
@@ -553,7 +555,7 @@ mod tests {
         let name_1_3 = root_names.get_name(&mk_index(&[(dim0, 1), (dim1, 3)]));
         let name_2_4 = root_names.get_name(&mk_index(&[(dim0, 2), (dim1, 4)]));
         assert!(name_1_3 != name_2_4);
-        let name_2_0 = root_names.get_name(&mk_index(&[(dim0, 2), (dim1, 0)]));
+        let name_2_0 = root_names.get_name(&mk_index(&[(dim0, 2), (dim1, 4)]));
         let name_2 = root_names.get_name(&mk_index(&[(dim0, 2)]));
         assert_eq!(name_2_0, name_2);
 
