@@ -3,7 +3,9 @@ use std::sync::Arc;
 use std::{self, fmt};
 
 use crate::device::Device;
-use crate::ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
+use crate::ir::{
+    self, Dimension, InstId, Instruction, IrDisplay, Operator, Statement, StmtId,
+};
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
 use crate::search_space::MemSpace;
 use itertools::Itertools;
@@ -725,5 +727,26 @@ impl Function {
     pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         let to_lower = self.body.mem_blocks.not_merged(&self.body.dims[lhs], rhs);
         self.body.layouts_to_lower.extend(to_lower);
+    }
+}
+
+impl fmt::Display for Function {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(fmt, "Instructions:")?;
+        for inst in self.body.insts.iter() {
+            writeln!(fmt, "  {}", inst.display(self))?
+        }
+
+        writeln!(fmt, "Logical dimensions:")?;
+        for logical_dim in &self.body.logical_dims {
+            writeln!(fmt, "  {}", logical_dim)?;
+        }
+
+        writeln!(fmt, "Extra dimensions:")?;
+        for dim in self.body.dims.iter().filter(|d| d.logical_dim().is_none()) {
+            writeln!(fmt, "  {}", dim)?;
+        }
+
+        Ok(())
     }
 }

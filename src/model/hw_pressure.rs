@@ -555,4 +555,61 @@ impl HwPressure {
             *b *= other_b;
         }
     }
+
+    /// Returns an object that implements [`Display`] for printing the hardware pressure in the
+    /// corresponding device.
+    ///
+    /// [`Display`]: std::fmt::Display
+    pub fn display<'a>(&'a self, device: &'a dyn Device) -> DisplayHwPressure<'a> {
+        DisplayHwPressure {
+            hw_pressure: self,
+            device,
+        }
+    }
+}
+
+/// Helper struct for printing the hardware pressure with `format!` and `{}`.
+///
+/// The hardware pressure stores bottleneck information in a vector, but doesn't need to know about
+/// the name of each bottleneck; that information is stored on the device.  This struct embeds a
+/// reference to the [`Device`] to be able to print bottleneck names and rates.
+///
+/// [`Device`]: crate::device::Device
+pub struct DisplayHwPressure<'a> {
+    hw_pressure: &'a HwPressure,
+    device: &'a dyn Device,
+}
+
+impl<'a> fmt::Debug for DisplayHwPressure<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.hw_pressure, fmt)
+    }
+}
+
+impl<'a> fmt::Display for DisplayHwPressure<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let names = self.device.bottlenecks();
+        let rates = self.device.total_rates();
+        write!(
+            fmt,
+            "latency {} ({:.2e}ns)",
+            self.hw_pressure.latency,
+            self.hw_pressure.latency / rates.latency
+        )?;
+
+        let mut pairs = self
+            .hw_pressure
+            .bottlenecks
+            .iter()
+            .zip(&rates.bottlenecks)
+            .enumerate()
+            .map(|(id, (val, rate))| (names[id], val, val / rate));
+        if let Some((name, val, ratio)) = pairs.next() {
+            write!(fmt, ", with usage {} on {} ({:.2e}ns)", val, name, ratio)?;
+        }
+        for (name, val, ratio) in pairs {
+            write!(fmt, ", {} on {} ({:.2e}ns)", val, name, ratio)?;
+        }
+        Ok(())
+    }
 }

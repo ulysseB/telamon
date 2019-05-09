@@ -2,6 +2,7 @@ use crate::ir;
 use crate::search_space::{NumSet, SearchSpace};
 use num;
 use std;
+use std::fmt;
 use utils::unwrap;
 
 /// The size of an iteration dimension. The size is of the form:
@@ -85,6 +86,30 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
         self.dividend.extend(rhs.dividend.iter().cloned());
         self.divisor *= rhs.divisor;
         self.simplify();
+    }
+}
+
+impl<'a> fmt::Display for Size<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut pre = false;
+        if self.factor != 1 {
+            write!(fmt, "{}", self.factor)?;
+            pre = true;
+        }
+
+        for p in &self.dividend {
+            if pre {
+                write!(fmt, "*")?;
+            }
+            write!(fmt, "{}", p)?;
+            pre = true;
+        }
+
+        if self.divisor != 1 {
+            write!(fmt, "/{}", self.divisor)?;
+        }
+
+        Ok(())
     }
 }
 

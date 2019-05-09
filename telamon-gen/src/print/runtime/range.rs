@@ -5,6 +5,8 @@ use quote::quote;
 /// Returns the tokens defining `Range` and `HalfRange`.
 pub fn get() -> TokenStream {
     quote! {
+        use std::fmt;
+
         /// Abstracts integer choices by a range.
         #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Ord, PartialOrd)]
         #[repr(C)]
@@ -125,6 +127,18 @@ pub fn get() -> TokenStream {
             }
         }
 
+        impl fmt::Display for Range {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                if self.max == std::u32::MAX {
+                    write!(fmt, "{}..", self.min)
+                } else if self.min > self.max {
+                    write!(fmt, "{{}}")
+                } else {
+                    write!(fmt, "{}..={}", self.min, self.max)
+                }
+            }
+        }
+
         /// Abstracts integer choices by a range, but only store `min`.
         #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Ord, PartialOrd)]
         #[repr(C)]
@@ -217,6 +231,12 @@ pub fn get() -> TokenStream {
 
             fn new_eq<D: NumSet>(_: &(), eq: D, eq_universe: &D::Universe) -> Self {
                 HalfRange { min: eq.min_value(eq_universe) }
+            }
+        }
+
+        impl fmt::Display for HalfRange {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                write!(fmt, "{}..", self.min)
             }
         }
     }

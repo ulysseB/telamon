@@ -1,4 +1,7 @@
+use std::fmt;
+
 use crate::ir;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use utils::*;
 
@@ -69,5 +72,15 @@ impl InductionVar<()> {
             dims: self.dims,
             base: self.base.freeze(cnt),
         }
+    }
+}
+impl<L> ir::IrDisplay<L> for InductionVar<L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter, function: &ir::Function<L>) -> fmt::Result {
+        write!(
+            fmt,
+            "{}[{}]",
+            self.base.display(function),
+            self.dims.iter().map(|(id, _)| id).format(", ")
+        )
     }
 }
