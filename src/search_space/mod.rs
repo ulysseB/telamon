@@ -2,6 +2,8 @@
 use std::io::{self, Write};
 use std::path::Path;
 
+use itertools::Itertools;
+
 use crate::codegen;
 use crate::device::Context;
 use crate::ir;
@@ -14,8 +16,8 @@ use utils::generated_file;
 generated_file!(choices);
 
 pub use self::choices::{
-    Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace, NumSet,
-    Order, ThreadMapping,
+    Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace, NumDomain,
+    NumSet, NumericSet, Order, ThreadMapping,
 };
 
 use self::choices::{apply_action, init_domain, DomainDiff};
@@ -110,6 +112,123 @@ impl SearchSpace {
         );
 
         Ok(())
+    }
+
+    fn apply_if_possible(&mut self, actions: Vec<Action>) {
+        let mut space = self.clone();
+        if space.apply_decisions(actions.clone()).is_err() {
+            for action in actions {
+                space = self.clone();
+                if space.apply_decisions(vec![action]).is_ok() {
+                    *self = space;
+                }
+            }
+        } else {
+            *self = space;
+        }
+    }
+
+    pub fn prioritized(mut self) -> Self {
+        // 1. Fix cache ordering
+        self.apply_if_possible(
+            self.ir_instance
+                .mem_insts()
+                .filter(|instruction| {
+                    self.domain
+                        .get_inst_flag(instruction.id())
+                        .is(InstFlag::NO_CACHE)
+                        .is_maybe()
+                })
+                .map(|instruction| Action::InstFlag(instruction.id(), InstFlag::NO_CACHE))
+                .collect(),
+        );
+
+        // 2. Order dimensions in each logical dimension to match the stride order
+        self.apply_if_possible(
+            self.ir_instance
+                .logical_dims()
+                .flat_map(|ldim| {
+                    ldim.dimensions()
+                        .tuple_windows()
+                        .filter(|&(inner, outer)| {
+                            self.domain
+                                .get_order(inner.into(), outer.into())
+                                .is(Order::INNER)
+                                .is_maybe()
+                        })
+                        .map(|(inner, outer)| {
+                            Action::Order(inner.into(), outer.into(), Order::INNER)
+                        })
+                })
+                .collect(),
+        );
+
+        // 3. Vectorize innermost logical dimensions
+        self.apply_if_possible(
+            self.ir_instance
+                .logical_dims()
+                .flat_map(|ldim| {
+                    ldim.dimensions().next().and_then(|dim_id| {
+                        if self
+                            .domain
+                            .get_dim_kind(dim_id)
+                            .is(DimKind::INNER_VECTOR)
+                            .is_maybe()
+                        {
+                            Some(Action::DimKind(dim_id, DimKind::INNER_VECTOR))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect(),
+        );
+
+        // 4. Vectorize by a factor 4
+        self.apply_if_possible(
+            self.ir_instance
+                .dims()
+                .flat_map(|dim| {
+                    dim.possible_sizes().and_then(|possible_sizes| {
+                        let four = NumericSet::new_eq(possible_sizes, 4, &());
+                        if self
+                            .domain
+                            .get_dim_kind(dim.id())
+                            .is(DimKind::INNER_VECTOR)
+                            .is_true()
+                            && self.domain.get_size(dim.id()).is(four).is_maybe()
+                        {
+                            Some(Action::Size(dim.id(), four))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect(),
+        );
+
+        // 5. Do not block the inner logical dimensions
+        self.apply_if_possible(
+            self.ir_instance
+                .logical_dims()
+                .flat_map(|ldim| {
+                    ldim.dimensions()
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .rev()
+                        .skip(1)
+                        .filter(|&dim_id| {
+                            self.domain
+                                .get_dim_kind(dim_id)
+                                .is(DimKind::BLOCK)
+                                .is_maybe()
+                        })
+                        .map(|dim_id| Action::DimKind(dim_id, !DimKind::BLOCK))
+                })
+                .collect(),
+        );
+
+        self
     }
 }
 
