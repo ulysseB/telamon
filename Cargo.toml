@@ -89,4 +89,8 @@ members = [
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
+    "telamon-debugger",
 ]
+
+[profile.release]
+lto = false

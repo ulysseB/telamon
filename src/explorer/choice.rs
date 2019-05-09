@@ -10,14 +10,14 @@ use serde::{Deserialize, Serialize};
 use utils::unwrap;
 
 /// Either a regular action or a manually applied action.
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub enum ActionEx {
-    Action(Action),
     LowerLayout {
         mem: ir::MemId,
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     },
+    Action(Action),
 }
 
 impl fmt::Debug for ActionEx {
@@ -215,6 +215,7 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
         .filter(|&(lhs, rhs)| lhs != rhs)
         .filter(|&(lhs, rhs)| !space.domain().get_order(lhs, rhs).is_constrained())
         .collect_vec();
+    assert!(pairs.is_empty());
     for (lhs, rhs) in pairs {
         let order = space.domain().get_order(lhs, rhs);
         if order.is_constrained() {
