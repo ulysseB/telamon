@@ -3,7 +3,6 @@
 use crate::explorer::choice::ActionEx as Action;
 use crate::explorer::mcts::{EdgeIndex, NodeId};
 use crate::model::Bound;
-use core::ops::Deref;
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
@@ -84,19 +83,6 @@ pub struct CandidateNode {
     inner: Rc<RefCell<CandidateNodeInner>>,
 }
 
-/// Proxy for bound, capturing bound from CandidateNode::bound()
-pub struct BoundGuard<'a> {
-    guard: Ref<'a, CandidateNodeInner>,
-}
-
-impl<'b> Deref for BoundGuard<'b> {
-    type Target = Option<Bound>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.guard.bound
-    }
-}
-
 /// A node in the re-created tree representing a candidate
 impl CandidateNode {
     /// Returns the time at which the node was discovered
@@ -128,10 +114,8 @@ impl CandidateNode {
     }
 
     /// Returns the bound from the performance model for this candidate
-    pub fn bound(&self) -> BoundGuard {
-        BoundGuard {
-            guard: self.inner.borrow(),
-        }
+    pub fn bound(&self) -> Ref<Option<Bound>> {
+        Ref::map(self.inner.borrow(), |inner| &inner.bound)
     }
 
     /// Returns the score from the evaluation of this candidate
