@@ -376,7 +376,7 @@
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{
-    <span class="ident">atomic</span>::{<span class="ident">AtomicUsize</span>, <span class="ident">Ordering</span>, <span class="ident">ATOMIC_USIZE_INIT</span>},
+    <span class="ident">atomic</span>::{<span class="ident">AtomicUsize</span>, <span class="ident">Ordering</span>},
     <span class="ident">mpsc</span>, <span class="ident">Arc</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>;
@@ -398,7 +398,7 @@
 
 <span class="comment">// This atomic id is needed as because of a bug in Kalray OpenCL, we have to give a unique name to</span>
 <span class="comment">// every kernel, otherwise we get strange effects (as a kernel run multiple times)</span>
-<span class="kw">static</span> <span class="ident">ATOMIC_KERNEL_ID</span>: <span class="ident">AtomicUsize</span> <span class="op">=</span> <span class="ident">ATOMIC_USIZE_INIT</span>;
+<span class="kw">static</span> <span class="ident">ATOMIC_KERNEL_ID</span>: <span class="ident">AtomicUsize</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
 <span class="kw">const</span> <span class="ident">EXECUTION_QUEUE_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Argument</span>: <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Send</span> {
