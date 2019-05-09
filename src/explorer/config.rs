@@ -10,8 +10,6 @@ use std::path::{Path, PathBuf};
 use std::{self, error, fmt, str::FromStr};
 
 use config;
-use getopts;
-use itertools::Itertools;
 use num_cpus;
 use serde::{Deserialize, Serialize};
 use utils::{tfrecord, unwrap};
@@ -69,24 +67,6 @@ impl Config {
         config_parser
     }
 
-    /// Reads the configuration from the "Settings.toml" file and from the command line.
-    pub fn read() -> Self {
-        let arg_parser = Self::setup_args_parser();
-        let args = std::env::args().collect_vec();
-        let arg_matches = arg_parser.parse(&args[1..]).unwrap_or_else(|err| {
-            println!("{} Use '--help' to display a list of valid options.", err);
-            std::process::exit(-1);
-        });
-        if arg_matches.opt_present("h") {
-            let brief = arg_parser.short_usage(&args[0]);
-            println!("{}", arg_parser.usage(&brief));
-            std::process::exit(0);
-        }
-        let mut config_parser = Self::create_parser();
-        Self::parse_arguments(&arg_matches, &mut config_parser);
-        unwrap!(config_parser.try_into::<Self>())
-    }
-
     /// Extract the configuration from the configuration file, if any.
     pub fn read_from_file() -> Self {
         unwrap!(Self::create_parser().try_into::<Self>())
@@ -98,36 +78,6 @@ impl Config {
         let mut parser = Self::create_parser();
         unwrap!(parser.merge(config::File::from_str(json, config::FileFormat::Json)));
         unwrap!(parser.try_into::<Self>())
-    }
-
-    /// Sets up the parser of command line arguments.
-    fn setup_args_parser() -> getopts::Options {
-        let mut opts = getopts::Options::new();
-        opts.optflag("h", "help", "Print the help menu.");
-        opts.optopt(
-            "j",
-            "jobs",
-            "number of explorer working in parallel",
-            "N_THREAD",
-        );
-        opts.optopt("f", "log_file", "name of watcher file", "string");
-        SearchAlgorithm::setup_args_parser(&mut opts);
-        opts
-    }
-
-    /// Overwrite the configuration with the parameters from the command line.
-    fn parse_arguments(arguments: &getopts::Matches, config: &mut config::Config) {
-        if let Some(num_workers) = arguments.opt_str("j") {
-            let num_workers: i64 = num_workers.parse().unwrap_or_else(|_| {
-                println!("Could not parse the number of workers.");
-                std::process::exit(-1)
-            });
-            unwrap!(config.set("num_workers", num_workers));
-        }
-        if let Some(log_file) = arguments.opt_str("f") {
-            unwrap!(config.set("log_file", log_file));
-        }
-        SearchAlgorithm::parse_arguments(arguments, config);
     }
 
     pub fn output_path<P: AsRef<Path>>(&self, path: P) -> io::Result<PathBuf> {
@@ -180,27 +130,6 @@ pub enum SearchAlgorithm {
     BoundOrder,
     /// Use a MCTS algorithm
     Mcts(BanditConfig),
-}
-
-impl SearchAlgorithm {
-    /// Sets up the options that can be passed on the command line.
-    fn setup_args_parser(opts: &mut getopts::Options) {
-        opts.optopt(
-            "a",
-            "algorithm",
-            "exploration algorithm: bound_order or mcts",
-            "bound_order:mcts",
-        );
-        BanditConfig::setup_args_parser(opts);
-    }
-
-    /// Overwrite the configuration with the parameters from the command line.
-    fn parse_arguments(arguments: &getopts::Matches, config: &mut config::Config) {
-        if let Some(algo) = arguments.opt_str("a") {
-            unwrap!(config.set("algorithm", algo));
-        }
-        BanditConfig::parse_arguments(arguments, config);
-    }
 }
 
 impl Default for SearchAlgorithm {
@@ -359,26 +288,6 @@ pub enum ValueReduction {
 pub enum Normalization {
     /// Normalize the exploration term according to the current global best.
     GlobalBest,
-}
-
-impl BanditConfig {
-    /// Sets up the options that can be passed on the command line.
-    fn setup_args_parser(opts: &mut getopts::Options) {
-        opts.optopt(
-            "s",
-            "default_node_selection",
-            "selection algorithm for nodes without evaluations: \
-             api, random, bound, weighted_random",
-            "api|random|bound|weighted_random",
-        );
-    }
-
-    /// Overwrite the configuration with the parameters from the command line.
-    fn parse_arguments(arguments: &getopts::Matches, config: &mut config::Config) {
-        if let Some(algo) = arguments.opt_str("s") {
-            unwrap!(config.set("new_nodes_order", algo));
-        }
-    }
 }
 
 impl Default for BanditConfig {
