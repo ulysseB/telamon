@@ -252,6 +252,23 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{
@@ -260,6 +277,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">fmt</span>};
 
+<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Uniquely identifies an instruction.</span>
@@ -505,6 +523,22 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;{:?}:  {}&quot;</span>, <span class="self">self</span>.<span class="ident">id</span>, <span class="self">self</span>.<span class="ident">operator</span>)
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="ident">ir</span>::<span class="ident">IrDisplay</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="macro">write</span><span class="macro">!</span>(
+            <span class="ident">fmt</span>,
+            <span class="string">&quot;{:?}[{}]: {}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">id</span>,
+            <span class="self">self</span>.<span class="ident">iteration_dims</span>()
+                .<span class="ident">iter</span>()
+                .<span class="ident">sorted</span>()
+                .<span class="ident">into_iter</span>()
+                .<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>),
+            <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">display</span>(<span class="ident">function</span>)
+        )
     }
 }
 </pre></div>

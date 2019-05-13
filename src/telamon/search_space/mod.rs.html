@@ -287,8 +287,8 @@
         <span class="comment">// Dump the &quot;control flow graph&quot;</span>
         <span class="macro">write</span><span class="macro">!</span>(
             <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>::<span class="ident">create</span>(<span class="ident">path</span>.<span class="ident">as_ref</span>().<span class="ident">with_extension</span>(<span class="string">&quot;cfg&quot;</span>))<span class="question-mark">?</span>,
-            <span class="string">&quot;{:#?}&quot;</span>,
-            <span class="ident">code</span>.<span class="ident">cfg</span>()
+            <span class="string">&quot;{}&quot;</span>,
+            <span class="ident">code</span>,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Dump the source code</span>
