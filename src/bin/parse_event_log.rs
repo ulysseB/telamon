@@ -1,13 +1,83 @@
 /// This allows dumping a CSV of all the evaluations that were performed during a run, as well as a
 /// graphviz (.dot) graph recapitulating the run.
+///
+/// NOTE: This applies to the old log format, which is was less precise and does not contain
+/// precise run details, such as actions not taken, or timings.  This file is kept for historical
+/// reasons so that we still have a way to parse those old log files.
 use std::collections::HashMap;
 
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
-use telamon::explorer::{bandit_arm::TreeEvent, choice::ActionEx, eventlog::EventLog};
+use telamon::explorer::{choice::ActionEx, eventlog::EventLog};
 
+use rpds::List;
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+
+#[derive(Serialize, Deserialize)]
+pub enum DeadEndSource {
+    /// Dead-end encountered in the tree
+    Tree {
+        /// List of actions defining the dead-end candidate
+        actions: List<ActionEx>,
+    },
+    /// Dead-end encountered in the rollout phase
+    Rollout {
+        /// List of actions defining the dead-end candidate
+        actions: List<ActionEx>,
+        /// Depth in the tree.  The remaining actions were selected during rollout.
+        depth: usize,
+        /// Performance model bound
+        bound: f64,
+        /// Current cut value
+        cut: f64,
+    },
+}
+
+/// The possible tree events.
+/// WARNING:  Changing the enums *will break* any pre-existing eventlog files.  Adding new cases
+/// *at the end only* is safe.
+#[derive(Serialize, Deserialize)]
+pub enum TreeEvent {
+    Evaluation {
+        actions: List<ActionEx>,
+        score: f64,
+    },
+
+    /// A fully-specified implementation was found and evaluated
+    EvaluationV2 {
+        /// List of actions defining the implementation
+        actions: List<ActionEx>,
+        /// Depth in the tree.  The remaining actions were selected during rollout.
+        depth: usize,
+        /// Execution time
+        score: f64,
+        /// Performance model lower bound
+        bound: f64,
+        /// Cut value when the implementation was found.  This is the best implementation at the
+        /// time the descent started from the root, as threads only synchronize the cut at the
+        /// root.
+        cut: f64,
+        /// Time at which the implementation was found
+        discovery_time: f64,
+        /// Time at which the evaluation finished.  Note that evaluations are performed by a
+        /// specific thread, not the one that found the implementation.
+        evaluation_end_time: f64,
+        /// ID of the thread that found this implementation
+        thread: String,
+    },
+
+    /// A dead-end was reached
+    DeadEnd {
+        /// Source of this deadend
+        source: DeadEndSource,
+        /// Time at which the deadend was found after the start of the program
+        discovery_time: f64,
+        /// ID of the thread that found the deadend
+        thread: String,
+    },
+}
 
 struct Edge {
     action: ActionEx,
