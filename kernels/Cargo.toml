@@ -17,6 +17,7 @@ rayon = "1.0.1"
 rand = "0.5.5"
 rpds = { version = "0.5.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.22"
 cuda-sys = { optional = true, version = "0.1.0" }
 
 telamon = { path = "../" }

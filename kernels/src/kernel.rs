@@ -7,7 +7,6 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use crate::statistics;
-use bincode;
 use itertools::Itertools;
 use log::*;
 use num_cpus;
@@ -172,9 +171,7 @@ pub trait Kernel<'a>: Sized + Sync {
             }
         }
         let to_serialize = (params, candidate.actions);
-        let dump = bincode::serialize(&to_serialize).unwrap();
-        sink.write_all(&dump).unwrap();
-        sink.flush().unwrap();
+        serde_json::to_writer(sink, &to_serialize).unwrap();
     }
 
     /// Takes a path to a log and execute it. Caller is responsible for making sure that the log
@@ -184,10 +181,11 @@ pub trait Kernel<'a>: Sized + Sync {
         AM: device::Context + device::ArgMap<'a>,
     {
         // Retrieve decisions from dump
-        let mut cand_bytes = Vec::new();
-        dump.read_to_end(&mut cand_bytes).unwrap();
+        let mut json = String::new();
+        dump.read_to_string(&mut json).unwrap();
+
         let (params, action_list): (Self::Parameters, List<ActionEx>) =
-            bincode::deserialize(&cand_bytes).unwrap();
+            serde_json::from_str(&json).unwrap();
 
         let (signature, kernel, ctx) =
             KernelBuilder::new().build::<Self, AM>(params, ctx);

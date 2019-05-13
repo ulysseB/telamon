@@ -19,8 +19,12 @@ utils = {package = "telamon-utils", path = "../../telamon-utils"}
 
 [dev-dependencies]
 bincode = "1.0"
+env_logger = "0.5.9"
+rpds = { version = "0.5.0", features = ["serde"] }
 serde = "1.0"
 serde_json = "1.0.22"
+structopt = "0.2"
+telamon-kernels = {path = "../../kernels"}
 
 [features]
 real_mppa = ["telajax"]

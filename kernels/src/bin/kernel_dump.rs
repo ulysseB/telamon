@@ -7,7 +7,7 @@ macro_rules! kernel_dump {
     ($kernel:ty, $num_tests:expr, $params:expr) => {
         let _ = env_logger::try_init();
         let mut context = x86::Context::default();
-        let path = format!("kernel_dump/x86/{}.dump", <$kernel>::name());
+        let path = format!("kernel_dump/x86/{}.json", <$kernel>::name());
         if !Path::new(&path).exists() {
             let mut file = fs::File::create(path).unwrap();
             <$kernel>::generate_dump($params, &mut context, &mut file);
