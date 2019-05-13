@@ -3,6 +3,7 @@ use std::fmt;
 
 use self::Operand::*;
 use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
+use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
@@ -250,11 +251,65 @@ impl<L> fmt::Display for Operand<L> {
             Inst(id, _t, dim_map, _scope) => write!(fmt, "{:?} [{}]", id, dim_map),
             Index(id) => write!(fmt, "{}", id),
             Param(param) => write!(fmt, "{}", param),
-            Addr(id) => write!(fmt, "({})", id),
+            Addr(id) => write!(fmt, "{}", id),
             Reduce(id, _t, dim_map, dims) => {
                 write!(fmt, "reduce({:?}, {:?}) [{}]", id, dims, dim_map)
             }
             InductionVar(_id, _t) => write!(fmt, "ind"),
+            Variable(var, t) => write!(fmt, "({}){}", t, var),
+        }
+    }
+}
+
+impl<L> ir::IrDisplay<L> for Operand<L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter, fun: &ir::Function<L>) -> fmt::Result {
+        match self {
+            Int(val, len) => write!(fmt, "{}u{}", val, len),
+            Float(val, len) => write!(fmt, "{}f{}", val, len),
+            Inst(id, _t, dim_map, _scope) => {
+                let source_dims = fun
+                    .inst(*id)
+                    .iteration_dims()
+                    .iter()
+                    .sorted()
+                    .collect::<Vec<_>>();
+                let mapping = dim_map.iter().cloned().collect::<FnvHashMap<_, _>>();
+
+                write!(
+                    fmt,
+                    "{:?}[{}]",
+                    id,
+                    source_dims
+                        .into_iter()
+                        .map(|id| mapping.get(id).unwrap_or(id))
+                        .format(", ")
+                )
+            }
+            Index(id) => write!(fmt, "{}", id),
+            Param(param) => write!(fmt, "{}", param),
+            Addr(id) => write!(fmt, "{}", id),
+            Reduce(id, _t, dim_map, dims) => {
+                let source_dims = fun
+                    .inst(*id)
+                    .iteration_dims()
+                    .iter()
+                    .sorted()
+                    .collect::<Vec<_>>();
+                let mapping = dim_map.iter().cloned().collect::<FnvHashMap<_, _>>();
+                write!(
+                    fmt,
+                    "reduce({:?}[{}], {:?})",
+                    id,
+                    source_dims
+                        .into_iter()
+                        .map(|id| mapping.get(id).unwrap_or(id))
+                        .format(", "),
+                    dims
+                )
+            }
+            InductionVar(id, _t) => {
+                write!(fmt, "{}", fun.induction_var(*id).display(fun))
+            }
             Variable(var, t) => write!(fmt, "({}){}", t, var),
         }
     }

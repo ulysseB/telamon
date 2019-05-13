@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std;
+use std::fmt;
 use std::sync::Arc;
 
 use utils::*;
@@ -64,6 +65,27 @@ impl Default for Size {
             params: Vec::new(),
             max_val: 1,
         }
+    }
+}
+
+impl fmt::Display for Size {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut params = self.params.iter();
+        if self.factor != 1 {
+            write!(fmt, "{}", self.factor)?;
+        } else if let Some(param) = params.next() {
+            write!(fmt, "{}", param)?;
+        }
+
+        for param in params {
+            write!(fmt, "*{}", param.name)?;
+        }
+
+        if !self.params.is_empty() {
+            write!(fmt, " [<= {}]", self.max_val)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -152,6 +174,42 @@ impl Default for PartialSize {
             dim_factors: VecSet::default(),
             divisors: VecSet::default(),
         }
+    }
+}
+
+impl fmt::Display for PartialSize {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use itertools::Itertools;
+
+        if self.static_factor != 1 {
+            write!(fmt, "{}", self.static_factor)?;
+            if !self.param_factors.is_empty() || !self.dim_factors.is_empty() {
+                write!(fmt, "*")?;
+            }
+        }
+
+        write!(
+            fmt,
+            "{}",
+            self.param_factors
+                .iter()
+                .map(|p| p.name.clone())
+                .chain(self.dim_factors.iter().map(|d| format!("{:?}", d)))
+                .format("*")
+        )?;
+
+        if !self.divisors.is_empty() {
+            write!(
+                fmt,
+                "/{}",
+                self.divisors
+                    .iter()
+                    .map(|d| format!("{:?}", *d))
+                    .format("/")
+            )?;
+        }
+
+        Ok(())
     }
 }
 

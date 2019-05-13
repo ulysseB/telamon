@@ -15,8 +15,8 @@ mod variable;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std;
 use std::marker::PhantomData;
+use std::{self, fmt};
 use utils::unwrap;
 
 pub use self::access_pattern::{AccessPattern, Stride};
@@ -387,6 +387,56 @@ impl Counter {
         let next = DimMappingId(self.next_dim_mapping as u16);
         self.next_dim_mapping += 1;
         next
+    }
+}
+
+/// Helper struct for printing objects implementing [`IrDisplay`] with `format!` and `{}`.
+pub struct Display<'a, T: ?Sized, L = LoweringMap> {
+    obj: &'a T,
+    function: &'a Function<L>,
+}
+
+impl<T, L> fmt::Debug for Display<'_, T, L>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.obj, fmt)
+    }
+}
+
+impl<T, L> fmt::Display for Display<'_, T, L>
+where
+    T: IrDisplay<L>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        IrDisplay::fmt(self.obj, fmt, self.function)
+    }
+}
+
+/// A trait for displaying objects which need a [`Function`] to be displayed.
+///
+/// Various internal representations are using IDs to reference objects and need a [`Function`]
+/// instance to be pretty-printed accurately.  They can implement [`IrDisplay`] instead of
+/// [`Display`], allowing them to rely on a [`Function`] instance when being printed.
+///
+/// [`Display`]: std::fmt::Display
+pub trait IrDisplay<L = LoweringMap> {
+    /// Formats the value in the given function using the given formatter.
+    fn fmt(&self, fmt: &mut fmt::Formatter, function: &Function<L>) -> fmt::Result;
+
+    /// Returns an object implementing [`Display`] for printing using `format!` and `{}`.
+    ///
+    /// The object contains a reference to the [`Function`] and calls to `IrDisplay::fmt` with the
+    /// given function.
+    fn display<'a: 'c, 'b: 'c, 'c>(
+        &'a self,
+        function: &'b Function<L>,
+    ) -> Display<'c, Self, L> {
+        Display {
+            obj: self,
+            function,
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::codegen::{Dimension, InductionLevel, Instruction};
 use crate::ir;
 use crate::search_space::*;
-use itertools::{self, Itertools};
+use itertools::Itertools;
 use log::debug;
 use std::{self, fmt};
 use utils::unwrap;
@@ -201,6 +201,140 @@ impl<'a> Cfg<'a> {
             Cfg::Threads(..) => true,
             Cfg::Instruction(..) => false,
         }
+    }
+}
+
+/// A struct to indent on new lines when writing formatting traits.
+///
+/// This is inspired from the [`PadAdapter`] from the standard library, but without using private
+/// [`std::fmt::Formatter`] APIs.
+///
+/// [`PadAdapter`]: https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/fmt/builders.rs
+struct IndentAdapter<'a> {
+    fmt: &'a mut (dyn fmt::Write + 'a),
+    on_newline: bool,
+}
+
+impl<'a> IndentAdapter<'a> {
+    /// Create a new [`IndentAdapter`].std
+    ///
+    /// # Notes
+    ///
+    /// This assumes that the adapter is created after a newline; indentation will be added to the
+    /// first formatted value.
+    fn new<'b: 'a>(fmt: &'a mut fmt::Formatter<'b>) -> Self {
+        IndentAdapter {
+            fmt,
+            on_newline: true,
+        }
+    }
+}
+
+impl fmt::Write for IndentAdapter<'_> {
+    fn write_str(&mut self, mut s: &str) -> fmt::Result {
+        while !s.is_empty() {
+            if self.on_newline {
+                self.fmt.write_str("  ")?;
+            }
+
+            let split = match s.find('\n') {
+                Some(pos) => {
+                    self.on_newline = true;
+                    pos + 1
+                }
+                None => {
+                    self.on_newline = false;
+                    s.len()
+                }
+            };
+
+            self.fmt.write_str(&s[..split])?;
+            s = &s[split..];
+        }
+
+        Ok(())
+    }
+}
+
+impl ir::IrDisplay for Cfg<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter, fun: &ir::Function) -> fmt::Result {
+        use fmt::Write;
+
+        match self {
+            Cfg::Root(inners) => {
+                for inner in inners {
+                    writeln!(fmt, "{}", inner.display(fun))?;
+                }
+            }
+            Cfg::Loop(dim, inners) => {
+                writeln!(
+                    fmt,
+                    "{:?}[{}]({:?}) {{",
+                    dim.kind(),
+                    dim.size(),
+                    dim.dim_ids().format(" = ")
+                )?;
+                for inner in inners {
+                    writeln!(IndentAdapter::new(fmt), "{}", inner.display(fun))?;
+                }
+                write!(fmt, "}}")?;
+            }
+            Cfg::Instruction([outer, inner], inst) => {
+                if !outer.is_empty() {
+                    assert!(
+                        outer.iter().all(|d| d.kind() == DimKind::OUTER_VECTOR),
+                        "Expected OUTER_VECTOR but found {:?}",
+                        outer.iter().map(Dimension::kind).format(", "),
+                    );
+                    write!(fmt, "v")?;
+                    for d in &*outer {
+                        write!(
+                            fmt,
+                            "{}({})",
+                            d.size().as_int().unwrap(),
+                            d.dim_ids().format(" = ")
+                        )?;
+                    }
+                }
+
+                if !inner.is_empty() {
+                    assert!(
+                        inner.iter().all(|d| d.kind() == DimKind::INNER_VECTOR),
+                        "Expected INNER_VECTOR but found {:?}",
+                        inner.iter().map(Dimension::kind).format(", "),
+                    );
+                    write!(fmt, "v")?;
+                    for d in &*inner {
+                        write!(
+                            fmt,
+                            "{}({})",
+                            d.size().as_int().unwrap(),
+                            d.dim_ids().format(" = ")
+                        )?;
+                    }
+                }
+
+                write!(fmt, "{}", inst.ir_instruction().display(fun))?;
+            }
+            Cfg::Threads(dims, _, inners) => {
+                writeln!(
+                    fmt,
+                    "THREAD[{}] {{",
+                    dims.iter()
+                        .map(|d| match d {
+                            None => "_".to_string(),
+                            Some(d) => format!("{:?}", d),
+                        })
+                        .format(", ")
+                )?;
+                for inner in inners {
+                    writeln!(IndentAdapter::new(fmt), "{}", inner.display(fun))?;
+                }
+                write!(fmt, "}}")?;
+            }
+        }
+
+        Ok(())
     }
 }
 

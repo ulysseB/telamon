@@ -5,6 +5,7 @@ use crate::ir::{
 use serde::{Deserialize, Serialize};
 use std::{self, fmt};
 
+use itertools::Itertools;
 use utils::*;
 
 /// Uniquely identifies an instruction.
@@ -250,5 +251,21 @@ impl<L> Statement<L> for Instruction<L> {
 impl<L> fmt::Display for Instruction<L> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}:  {}", self.id, self.operator)
+    }
+}
+
+impl<L> ir::IrDisplay<L> for Instruction<L> {
+    fn fmt(&self, fmt: &mut fmt::Formatter, function: &ir::Function<L>) -> fmt::Result {
+        write!(
+            fmt,
+            "{:?}[{}]: {}",
+            self.id,
+            self.iteration_dims()
+                .iter()
+                .sorted()
+                .into_iter()
+                .format(", "),
+            self.operator.display(function)
+        )
     }
 }

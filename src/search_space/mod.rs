@@ -99,8 +99,8 @@ impl SearchSpace {
         // Dump the "control flow graph"
         write!(
             std::fs::File::create(path.as_ref().with_extension("cfg"))?,
-            "{:#?}",
-            code.cfg()
+            "{}",
+            code,
         )?;
 
         // Dump the source code
