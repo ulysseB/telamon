@@ -265,17 +265,157 @@
 <span id="265">265</span>
 <span id="266">266</span>
 <span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">/// This allows dumping a CSV of all the evaluations that were performed during a run, as well as a</span>
 <span class="doccomment">/// graphviz (.dot) graph recapitulating the run.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// NOTE: This applies to the old log format, which is was less precise and does not contain</span>
+<span class="doccomment">/// precise run details, such as actions not taken, or timings.  This file is kept for historical</span>
+<span class="doccomment">/// reasons so that we still have a way to parse those old log files.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::<span class="ident">PathBuf</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">bandit_arm</span>::<span class="ident">TreeEvent</span>, <span class="ident">choice</span>::<span class="ident">ActionEx</span>, <span class="ident">eventlog</span>::<span class="ident">EventLog</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">choice</span>::<span class="ident">ActionEx</span>, <span class="ident">eventlog</span>::<span class="ident">EventLog</span>};
 
+<span class="kw">use</span> <span class="ident">rpds</span>::<span class="ident">List</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">structopt</span>::<span class="ident">StructOpt</span>;
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DeadEndSource</span> {
+    <span class="doccomment">/// Dead-end encountered in the tree</span>
+    <span class="ident">Tree</span> {
+        <span class="doccomment">/// List of actions defining the dead-end candidate</span>
+        <span class="ident">actions</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span>,
+    },
+    <span class="doccomment">/// Dead-end encountered in the rollout phase</span>
+    <span class="ident">Rollout</span> {
+        <span class="doccomment">/// List of actions defining the dead-end candidate</span>
+        <span class="ident">actions</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span>,
+        <span class="doccomment">/// Depth in the tree.  The remaining actions were selected during rollout.</span>
+        <span class="ident">depth</span>: <span class="ident">usize</span>,
+        <span class="doccomment">/// Performance model bound</span>
+        <span class="ident">bound</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// Current cut value</span>
+        <span class="ident">cut</span>: <span class="ident">f64</span>,
+    },
+}
+
+<span class="doccomment">/// The possible tree events.</span>
+<span class="doccomment">/// WARNING:  Changing the enums *will break* any pre-existing eventlog files.  Adding new cases</span>
+<span class="doccomment">/// *at the end only* is safe.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeEvent</span> {
+    <span class="ident">Evaluation</span> {
+        <span class="ident">actions</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span>,
+        <span class="ident">score</span>: <span class="ident">f64</span>,
+    },
+
+    <span class="doccomment">/// A fully-specified implementation was found and evaluated</span>
+    <span class="ident">EvaluationV2</span> {
+        <span class="doccomment">/// List of actions defining the implementation</span>
+        <span class="ident">actions</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span>,
+        <span class="doccomment">/// Depth in the tree.  The remaining actions were selected during rollout.</span>
+        <span class="ident">depth</span>: <span class="ident">usize</span>,
+        <span class="doccomment">/// Execution time</span>
+        <span class="ident">score</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// Performance model lower bound</span>
+        <span class="ident">bound</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// Cut value when the implementation was found.  This is the best implementation at the</span>
+        <span class="doccomment">/// time the descent started from the root, as threads only synchronize the cut at the</span>
+        <span class="doccomment">/// root.</span>
+        <span class="ident">cut</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// Time at which the implementation was found</span>
+        <span class="ident">discovery_time</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// Time at which the evaluation finished.  Note that evaluations are performed by a</span>
+        <span class="doccomment">/// specific thread, not the one that found the implementation.</span>
+        <span class="ident">evaluation_end_time</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// ID of the thread that found this implementation</span>
+        <span class="ident">thread</span>: <span class="ident">String</span>,
+    },
+
+    <span class="doccomment">/// A dead-end was reached</span>
+    <span class="ident">DeadEnd</span> {
+        <span class="doccomment">/// Source of this deadend</span>
+        <span class="ident">source</span>: <span class="ident">DeadEndSource</span>,
+        <span class="doccomment">/// Time at which the deadend was found after the start of the program</span>
+        <span class="ident">discovery_time</span>: <span class="ident">f64</span>,
+        <span class="doccomment">/// ID of the thread that found the deadend</span>
+        <span class="ident">thread</span>: <span class="ident">String</span>,
+    },
+}
 
 <span class="kw">struct</span> <span class="ident">Edge</span> {
     <span class="ident">action</span>: <span class="ident">ActionEx</span>,
