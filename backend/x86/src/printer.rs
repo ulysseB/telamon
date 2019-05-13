@@ -251,29 +251,21 @@ impl X86printer {
         }
         let mut loop_decl = String::new();
         let mut ind_vec = Vec::new();
-        let mut jmp_stack = Vec::new();
+        let mut loop_nesting = 0;
+
         for (ind, dim) in func.thread_dims().iter().enumerate() {
             ind_vec.push(format!("d{}", ind));
             unwrap!(writeln!(
                 loop_decl,
-                include_str!("template/loop_init.c.template"),
-                ind = ind,
-                loop_type = "THREAD_INIT"
-            ));
-            let loop_jmp = format!(
-                include_str!("template/loop_jump.c.template"),
+                "for(d{ind} = 0; d{ind} < {size}; d{ind}++) {{",
                 ind = ind,
                 size = unwrap!(dim.size().as_int()),
-                loop_type = "THREAD_INIT"
-            );
-            jmp_stack.push(loop_jmp);
+            ));
+            loop_nesting += 1;
         }
         let ind_dec_inter = ind_vec.join(", ");
         let ind_var_decl = format!("int {};", ind_dec_inter);
-        let mut loop_jmp = String::new();
-        while let Some(j_str) = jmp_stack.pop() {
-            loop_jmp.push_str(&j_str);
-        }
+        let loop_ends = "}\n".repeat(loop_nesting);
         let mut tid_struct = String::new();
         for (ind, _) in func.thread_dims().iter().enumerate() {
             tid_struct.push_str(&format!(
@@ -289,7 +281,7 @@ impl X86printer {
             ind_var_decl = ind_var_decl,
             loop_init = loop_decl,
             tid_struct = tid_struct,
-            loop_jump = loop_jmp
+            loop_jump = loop_ends
         )
     }
 
@@ -299,31 +291,25 @@ impl X86printer {
             return String::new();
         }
         let mut loop_decl = String::new();
-        let mut jmp_stack = Vec::new();
+        let mut loop_nesting = 0;
+
         for (ind, dim) in func.thread_dims().iter().enumerate() {
             unwrap!(writeln!(
                 loop_decl,
-                include_str!("template/loop_init.c.template"),
-                ind = ind,
-                loop_type = "JOIN"
-            ));
-            let loop_jmp = format!(
-                include_str!("template/loop_jump.c.template"),
+                "for(d{ind} = 0; d{ind} < {size}; d{ind}++) {{",
                 ind = ind,
                 size = unwrap!(dim.size().as_int()),
-                loop_type = "JOIN"
-            );
-            jmp_stack.push(loop_jmp);
+            ));
+            loop_nesting += 1;
         }
-        let mut loop_jmp = String::new();
-        while let Some(j_str) = jmp_stack.pop() {
-            loop_jmp.push_str(&j_str);
-        }
+
+        let loop_ends = "}\n".repeat(loop_nesting);
+
         format!(
             include_str!("template/join_thread.c.template"),
             ind = self.build_index_call(func),
             loop_init = loop_decl,
-            loop_jump = loop_jmp
+            loop_jump = loop_ends
         )
     }
 
@@ -530,5 +516,53 @@ impl InstPrinter for X86printer {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
         value_printer.name_inst(inst).into()
+    }
+
+    /// Prints a standard loop as a C for loop
+    fn standard_loop(
+        &mut self,
+        fun: &Function,
+        dim: &Dimension,
+        cfgs: &[Cfg],
+        namer: &mut NameMap<Self::ValuePrinter>,
+    ) {
+        let idx = namer.name_index(dim.id()).to_string();
+        let mut ind_var_vec = vec![];
+        let ind_levels = dim.induction_levels();
+        for level in ind_levels.iter() {
+            let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
+            let ind_var = namer.name_induction_var(level.ind_var, dim_id);
+            let base_components = level.base.components().map(|v| namer.name(v));
+            match base_components.collect_vec()[..] {
+                [ref base] => self.print_move(level.t(), &ind_var, &base),
+                [ref lhs, ref rhs] => self.print_add_int(level.t(), &ind_var, lhs, rhs),
+                _ => panic!(),
+            };
+            ind_var_vec.push(ind_var.into_owned());
+        }
+
+        let size = namer.name_size(dim.size(), Type::I(32)).to_string();
+
+        unwrap!(writeln!(
+            self.buffer,
+            "/* Loop for dimension {dim_id} */\nfor({idx} = 0; {idx} < {dim_size}; {idx}++) {{",
+            dim_id = dim.id(),
+            idx = idx,
+            dim_size = size
+        ));
+
+        self.cfg_vec(fun, cfgs, namer);
+        for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
+            if let Some((_, ref increment)) = level.increment {
+                let step = namer.name_size(increment, level.t());
+                self.print_add_int(level.t(), &ind_var, &ind_var, &step);
+            };
+        }
+
+        unwrap!(writeln!(
+            self.buffer,
+            "}} /* End Loop for dimension {} */",
+            dim_id = dim.id()
+        ));
     }
 }
