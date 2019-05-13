@@ -7,7 +7,7 @@ macro_rules! test_dump {
         fn $name() {
             let _ = env_logger::try_init();
             let mut context = x86::Context::default();
-            let path = format!("kernel_dump/x86/{}.dump", stringify!($name));
+            let path = format!("kernel_dump/x86/{}.json", stringify!($name));
             let mut file = std::fs::File::open(&path).unwrap();
             <$kernel>::execute_dump(&mut context, &mut file);
         }
