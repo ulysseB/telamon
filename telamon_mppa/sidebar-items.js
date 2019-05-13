@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Context",""],["Mppa","Describes a MPPA chip."],["ValuePrinter",""]]});
+initSidebarItems({"mod":[["printer",""]],"struct":[["Context",""],["Mppa","Describes a MPPA chip."],["ValuePrinter",""]]});
