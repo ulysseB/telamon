@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::ir::{self, dim, InstId, Type};
 
+use fxhash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use utils::*;
 

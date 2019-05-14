@@ -2,6 +2,7 @@
 use crate::codegen;
 use crate::ir;
 use crate::search_space::*;
+use fxhash::FxHashMap;
 use indexmap::IndexMap;
 use utils::*;
 

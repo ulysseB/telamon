@@ -3,13 +3,14 @@ use std::fmt;
 
 use self::Operand::*;
 use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use utils::{unwrap, FxHashMap};
+use utils::unwrap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoweringMap {

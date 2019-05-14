@@ -1,5 +1,6 @@
 //! Filter on choices.
 use crate::ir::{self, Adaptable, SetRef};
+use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use std;
 use std::collections::BTreeSet;

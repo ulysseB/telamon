@@ -5,9 +5,9 @@ use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
 
+use fxhash::FxHashMap;
 use itertools::*;
 use std::io::Write;
-use utils::*;
 
 use crate::printer::X86printer;
 

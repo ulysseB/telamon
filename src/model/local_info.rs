@@ -3,6 +3,7 @@ use crate::device::{Context, Device};
 use crate::ir::{self, Statement};
 use crate::model::{size, HwPressure};
 use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::integer::lcm;
 

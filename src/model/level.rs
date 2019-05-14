@@ -13,6 +13,7 @@ use crate::model::{
     size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo,
 };
 use crate::search_space::{DimKind, Domain, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::{self, Itertools};
 use std;
 use std::cmp::Ordering;

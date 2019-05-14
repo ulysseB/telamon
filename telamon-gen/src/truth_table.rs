@@ -1,5 +1,6 @@
 //! Truth tables.
 use crate::ir;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use log::debug;
 use std;

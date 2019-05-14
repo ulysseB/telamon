@@ -20,6 +20,7 @@ libc = "0.2.40"
 
 [dependencies]
 env_logger = "0.5.9"
+fxhash = "0.2"
 handlebars = "0.28.0"
 itertools = "0.8"
 lalrpop-util = "0.14"

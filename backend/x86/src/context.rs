@@ -13,6 +13,7 @@ use telamon::explorer;
 use telamon::ir;
 
 use crossbeam;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use libc;
 use log::debug;

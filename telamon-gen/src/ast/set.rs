@@ -13,10 +13,11 @@ use crate::ast::{
 };
 
 use crate::lexer::Spanned;
+use fxhash::FxHashMap;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use log::trace;
-use utils::{FxHashMap, RcStr};
+use utils::RcStr;
 
 #[derive(Debug, Clone)]
 pub struct SetDef {

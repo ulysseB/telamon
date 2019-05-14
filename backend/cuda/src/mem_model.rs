@@ -1,6 +1,7 @@
 //! Memory accesses analysis.
 use crate::Gpu;
 use binary_heap_plus::BinaryHeap;
+use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use log::trace;
 use num::Integer;

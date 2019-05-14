@@ -3,10 +3,10 @@
 use crate::explorer::choice::ActionEx as Action;
 use crate::explorer::mcts::{EdgeIndex, NodeId};
 use crate::model::Bound;
+use fxhash::FxHashMap;
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
-use utils::FxHashMap;
 
 /// Outgoing Edge to a child annotated with the action for the
 /// child. If `child` is None, the child node corresponding to the

@@ -11,13 +11,14 @@ mod trigger;
 
 use crate::ir;
 use crate::print;
+use fxhash::{FxHashMap, FxHashSet};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
-use utils::{FxHashMap, FxHashSet, RcStr};
+use utils::RcStr;
 
 pub use crate::constraint::dedup_inputs;
 pub use crate::constraint::Constraint as TypedConstraint;

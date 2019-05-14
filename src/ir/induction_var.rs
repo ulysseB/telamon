@@ -1,9 +1,9 @@
 use std::fmt;
 
 use crate::ir;
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use utils::*;
 
 /// Unique identifier for `InductionVar`
 #[derive(

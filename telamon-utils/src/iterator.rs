@@ -1,5 +1,5 @@
 //! Extension of the iterator library.
-use crate::FxHashMap;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use linked_list;
 use std;

@@ -1,5 +1,5 @@
 use crate::ir;
-use utils::*;
+use fxhash::FxHashMap;
 
 /// Represent a transformation to apply to a rule to fir it in a new context.
 #[derive(Default)]

@@ -2,6 +2,7 @@
 use crate::ir;
 use crate::model::Level;
 use crate::search_space::{Domain, Order, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use std::cmp::Ordering;
 

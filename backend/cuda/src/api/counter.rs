@@ -1,6 +1,7 @@
 //! Allows the execution of kernels on the GPU.
 use crate::api::wrapper::*;
 use crate::api::Argument;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use std::ffi::CString;
 use std::fmt;

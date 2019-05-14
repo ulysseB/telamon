@@ -1,5 +1,6 @@
 //! Describe decisions that must be specified.
 use crate::ir::{self, Adaptable};
+use fxhash::FxHashMap;
 use itertools::{Either, Itertools};
 use serde::Serialize;
 use std;

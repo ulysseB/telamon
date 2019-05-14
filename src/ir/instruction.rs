@@ -5,6 +5,7 @@ use crate::ir::{
 use serde::{Deserialize, Serialize};
 use std::{self, fmt};
 
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use utils::*;
 

@@ -6,7 +6,7 @@ use crate::codegen::{
 };
 use crate::ir::{self, IrDisplay};
 use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
-use utils::unwrap;
+use fxhash::FxHashSet;
 use utils::*;
 
 use itertools::Itertools;

@@ -8,6 +8,7 @@ use crate::ir::{
 };
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
 use crate::search_space::MemSpace;
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use log::debug;
 use serde::{Deserialize, Serialize};

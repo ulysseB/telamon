@@ -1,5 +1,6 @@
 //! Filter generation.
 use crate::ir::{self, Adaptable};
+use fxhash::FxHashMap;
 use utils::*;
 
 /// Merge flat filters that can be merged in the given list.

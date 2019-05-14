@@ -1,11 +1,10 @@
 //! Defines operators.
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
+use fxhash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{self, fmt};
-
-use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]

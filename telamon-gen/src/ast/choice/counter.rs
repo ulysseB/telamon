@@ -9,9 +9,10 @@ use crate::ast::{
 };
 use crate::ir::{self, Adaptable};
 use crate::lexer::Spanned;
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use log::trace;
-use utils::{FxHashSet, RcStr};
+use utils::RcStr;
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {

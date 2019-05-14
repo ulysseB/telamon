@@ -1,5 +1,5 @@
-use super::*;
 /// Directed acyclic graph.
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use std;
 use std::cmp::{self, Ordering};

@@ -7,6 +7,7 @@ mod value;
 // Re-export commonly used items.
 use crate::print::ast::Context;
 use crate::print::value::{Value, ValueIdent};
+use fxhash::{FxHashMap, FxHashSet};
 use lazy_static::lazy_static;
 use log::debug;
 use serde::Serialize;

@@ -2,6 +2,7 @@
 use crate::ir;
 use crate::ir::SetRef;
 use crate::print;
+use fxhash::FxHashMap;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;

@@ -27,6 +27,7 @@ pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 
+use fxhash::FxHashMap;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;

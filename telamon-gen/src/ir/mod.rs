@@ -1,6 +1,8 @@
 //! The constraint description for the ir.
 use std;
 
+use fxhash::FxHashMap;
+use fxhash::FxHashSet;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use utils::*;

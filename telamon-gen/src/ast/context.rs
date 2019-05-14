@@ -4,7 +4,7 @@ use crate::ast::error::{Hint, TypeError};
 use crate::ast::SetRef;
 
 use crate::lexer::Spanned;
-use utils::FxHashMap;
+use fxhash::FxHashMap;
 
 /// CheckContext is a type system.
 #[derive(Debug, Default)]

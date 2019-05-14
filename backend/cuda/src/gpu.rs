@@ -3,6 +3,7 @@
 use crate::characterize;
 use crate::mem_model::{self, MemInfo};
 use crate::{printer::CudaPrinter, Executor};
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use telamon::codegen::Function;
@@ -10,7 +11,6 @@ use telamon::device::{self, Device};
 use telamon::ir::{self, Operator, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use utils::*;
 
 // FIXME: fix performance model
 // - l1_lines constraint for stores ?

@@ -5,7 +5,7 @@ authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
 edition = "2018"
 
 [dependencies]
-fxhash = "0.2.1"
+fxhash = "0.2"
 itertools = "0.8"
 linked-list = "0.0.3"
 linked-hash-map = "0.5"

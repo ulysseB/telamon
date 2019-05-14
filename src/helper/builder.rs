@@ -4,6 +4,7 @@ use crate::helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use crate::ir::{self, op, Parameter, Type};
 use crate::ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use log::debug;
 use std::borrow::Borrow;

@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::ir;
 
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use utils::*;
 

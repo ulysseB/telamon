@@ -10,9 +10,10 @@ use crate::ast::{
 use crate::ir;
 use crate::lexer::Spanned;
 
+use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use log::trace;
-use utils::{FxHashMap, FxHashSet, RcStr};
+use utils::RcStr;
 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]

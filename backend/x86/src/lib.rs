@@ -10,6 +10,7 @@ mod printer;
 pub use crate::context::Context;
 pub use crate::cpu::Cpu;
 
+use fxhash::FxHashMap;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::Float;

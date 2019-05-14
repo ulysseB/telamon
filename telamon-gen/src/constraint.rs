@@ -2,6 +2,7 @@
 use crate::flat_filter::FlatFilter;
 use crate::ir::SetRef;
 use crate::ir::{self, Adaptable};
+use fxhash::FxHashMap;
 use std;
 use utils::*;
 

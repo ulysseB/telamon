@@ -14,8 +14,8 @@ use crate::codegen::Function;
 use crate::ir;
 use crate::model::{self, HwPressure, Nesting};
 use crate::search_space::*;
+use fxhash::FxHashMap;
 use std::io::Write;
-use utils::*;
 
 /// Holds the specifications of a target.
 #[allow(clippy::trivially_copy_pass_by_ref)]

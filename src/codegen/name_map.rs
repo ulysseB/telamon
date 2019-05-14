@@ -2,6 +2,7 @@ use crate::codegen::{
     self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
 };
 use crate::ir::{self, dim, DimMap, InstId, Type};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;

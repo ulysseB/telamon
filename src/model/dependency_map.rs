@@ -1,9 +1,8 @@
 //! Holds the latency between each node and its dependencies.
 use crate::model::FastBound;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use std::collections::hash_map;
-
-use utils::*;
 
 /// Holds the latency between each node and its dependencies. Nodes must be sorted.
 #[derive(Clone, Debug)]

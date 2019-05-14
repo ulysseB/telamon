@@ -32,6 +32,7 @@ macro_rules! define_ir {
     (@stack [$([$kind:tt $name:ident, $param:tt,
                $super:tt, $super_param:tt, $reverse:tt],)*],) => {
         mod ir {
+            use fxhash::FxHashMap;
             #[allow(unused_imports)]
             use utils::*;
 

@@ -16,7 +16,6 @@ pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
 pub use self::vec_set::VecSet;
 use fxhash::FxBuildHasher;
-pub use fxhash::{FxHashMap, FxHashSet};
 use num::Integer;
 use serde::Serialize;
 

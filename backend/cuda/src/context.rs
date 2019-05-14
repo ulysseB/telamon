@@ -3,6 +3,7 @@ use crate::kernel::Thunk;
 use crate::{Executor, Gpu, JITDaemon, Kernel};
 ///! Defines the CUDA evaluation context.
 use crossbeam;
+use fxhash::FxHashMap;
 use log::{debug, info};
 use std::f64;
 use std::fmt;
