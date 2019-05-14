@@ -21,6 +21,7 @@ use telamon::explorer::{
     choice::{self, ActionEx as Action},
     find_best_ex, Candidate,
 };
+use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::search_space::{Choice, SearchSpace};
 use telamon_cuda;
