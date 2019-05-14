@@ -66,7 +66,7 @@ pub fn dedup_inputs(
     let mut new_input_defs;
     // Assign new positions.
     {
-        let mut input_map = FnvHashMap::default();
+        let mut input_map = FxHashMap::default();
         for (old_pos, input) in inputs.iter().enumerate() {
             let next_pos = input_map.len();
             let new_pos = *input_map.entry(input).or_insert(next_pos);
@@ -97,7 +97,7 @@ fn gen_flat_filter(
         .iter()
         .enumerate()
         .map(|(i, set)| (ir::Variable::Forall(i), set.clone()))
-        .collect::<FnvHashMap<_, _>>();
+        .collect::<FxHashMap<_, _>>();
     let (foralls, all_set_constraints, mut conditions, _) = ir::ChoiceCondition::new(
         ir_desc,
         constraint.inputs.clone(),

@@ -76,7 +76,7 @@ impl FlatFilter {
             return false;
         }
         let mut merged = false;
-        let input_map: FnvHashMap<_, _> = self
+        let input_map: FxHashMap<_, _> = self
             .inputs
             .iter()
             .enumerate()

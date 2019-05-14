@@ -17,7 +17,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
-use utils::{FnvHashMap, FnvHashSet, RcStr};
+use utils::{FxHashMap, FxHashSet, RcStr};
 
 pub use crate::constraint::dedup_inputs;
 pub use crate::constraint::Constraint as TypedConstraint;
@@ -237,7 +237,7 @@ impl PartialEq for VarDef {
 /// Maps variables to their set and position.
 #[derive(Default)]
 pub struct VarMap {
-    map: FnvHashMap<RcStr, (ir::Variable, ir::Set)>,
+    map: FxHashMap<RcStr, (ir::Variable, ir::Set)>,
     next_arg_id: usize,
     next_forall_id: usize,
 }
@@ -301,7 +301,7 @@ impl VarMap {
     }
 
     /// Returns the maping of variables to sets.
-    fn env(&self) -> FnvHashMap<ir::Variable, ir::Set> {
+    fn env(&self) -> FxHashMap<ir::Variable, ir::Set> {
         self.map.values().cloned().collect()
     }
 }
@@ -451,7 +451,7 @@ impl ChoiceInstance {
 }
 
 /// Returns the variable present in a piece of code.
-fn get_code_vars(code: &str) -> FnvHashSet<String> {
+fn get_code_vars(code: &str) -> FxHashSet<String> {
     lazy_static! {
         static ref VAR_PATTERN: Regex = Regex::new(r"\$[a-zA-Z_][a-zA-Z_0-9]*").unwrap();
     }
@@ -554,7 +554,7 @@ struct EnumStatements {
     /// The values the enum can take, with the atached documentation.
     values: IndexMap<RcStr, Option<String>>,
     /// Aliases mapped to the corresponding documentation and value set.
-    aliases: IndexMap<RcStr, (Option<String>, FnvHashSet<RcStr>)>,
+    aliases: IndexMap<RcStr, (Option<String>, FxHashSet<RcStr>)>,
     /// Symmetry information.
     symmetry: Option<Symmetry>,
     /// Constraints on a value.

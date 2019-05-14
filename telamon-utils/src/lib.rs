@@ -15,12 +15,12 @@ pub use self::dag::Dag;
 pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
 pub use self::vec_set::VecSet;
-use fnv::FnvBuildHasher;
-pub use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::FxBuildHasher;
+pub use fxhash::{FxHashMap, FxHashSet};
 use num::Integer;
 use serde::Serialize;
 
-pub type FnvMultiHashMap<K, V> = self::multimap::MultiHashMap<K, V, FnvBuildHasher>;
+pub type FxMultiHashMap<K, V> = self::multimap::MultiHashMap<K, V, FxBuildHasher>;
 
 /// A reference counted string, compatible with `&str`.
 #[derive(Default, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Debug)]

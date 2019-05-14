@@ -164,7 +164,7 @@ impl<L> Operator<L> {
     /// Ensures the types of the operands are valid.
     pub fn check(
         &self,
-        iter_dims: &FnvHashSet<ir::DimId>,
+        iter_dims: &FxHashSet<ir::DimId>,
         fun: &ir::Function<L>,
     ) -> Result<(), ir::Error> {
         self.t()

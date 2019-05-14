@@ -248,7 +248,7 @@ impl IrDesc {
                     .map(|(i, set)| (Variable::Forall(i), set)),
             )
             .map(|(v, set)| (v, set_constraints.find_set(v).unwrap_or(set).clone()))
-            .collect::<FnvHashMap<_, _>>();
+            .collect::<FxHashMap<_, _>>();
         // If the changed choice is symmetric, the inverse filter should also be called.
         if self.get_choice(&changed.choice).arguments().is_symmetric() {
             let vars = vec![changed.vars[1], changed.vars[0]];
@@ -281,7 +281,7 @@ impl IrDesc {
         filtered: RcStr,
         id: usize,
         changed: &ChoiceInstance,
-        env: FnvHashMap<Variable, Set>,
+        env: FxHashMap<Variable, Set>,
         num_foralls: usize,
     ) -> OnChangeAction {
         // TODO(cc_perf): no need to iterate on the full domain for symmetric choices.
@@ -333,7 +333,7 @@ impl IrDesc {
     /// context, but from the point of view of the given choice instance.
     pub fn adapt_env(
         &self,
-        vars: FnvHashMap<Variable, Set>,
+        vars: FxHashMap<Variable, Set>,
         choice_instance: &ChoiceInstance,
     ) -> (Vec<Set>, SetConstraints, Adaptator) {
         let (mut arg_foralls, other_foralls, set_constraints, adaptator) =
@@ -347,7 +347,7 @@ impl IrDesc {
     /// in a different list than the foralls issued from foralls in the original environment.
     pub fn adapt_env_ext(
         &self,
-        mut vars: FnvHashMap<Variable, Set>,
+        mut vars: FxHashMap<Variable, Set>,
         choice_instance: &ChoiceInstance,
     ) -> (Vec<Set>, Vec<Set>, SetConstraints, Adaptator) {
         let mut arg_foralls = Vec::new();
@@ -507,7 +507,7 @@ pub struct Enum {
     name: RcStr,
     doc: Option<RcStr>,
     values: IndexMap<RcStr, Option<String>>,
-    aliases: IndexMap<RcStr, (FnvHashSet<RcStr>, Option<String>)>,
+    aliases: IndexMap<RcStr, (FxHashSet<RcStr>, Option<String>)>,
     inverse: Option<Vec<(RcStr, RcStr)>>,
 }
 
@@ -542,7 +542,7 @@ impl Enum {
     pub fn add_alias(
         &mut self,
         name: RcStr,
-        vals: FnvHashSet<RcStr>,
+        vals: FxHashSet<RcStr>,
         doc: Option<String>,
     ) {
         assert!(!self.values.contains_key(&name));
@@ -550,7 +550,7 @@ impl Enum {
     }
 
     /// Lists the aliases.
-    pub fn aliases(&self) -> &IndexMap<RcStr, (FnvHashSet<RcStr>, Option<String>)> {
+    pub fn aliases(&self) -> &IndexMap<RcStr, (FxHashSet<RcStr>, Option<String>)> {
         &self.aliases
     }
 
@@ -565,8 +565,8 @@ impl Enum {
     }
 
     /// Replaces aliases by the corresponding values.
-    pub fn expand<IT: IntoIterator<Item = RcStr>>(&self, set: IT) -> FnvHashSet<RcStr> {
-        let mut new_set = FnvHashSet::default();
+    pub fn expand<IT: IntoIterator<Item = RcStr>>(&self, set: IT) -> FxHashSet<RcStr> {
+        let mut new_set = FxHashSet::default();
         for alias in set {
             if let Some(&(ref alias_set, _)) = self.aliases.get(&alias) {
                 new_set.extend(alias_set.iter().cloned());
@@ -620,10 +620,10 @@ pub mod test {
     pub struct EvalContext<'a> {
         pub ir_desc: &'a IrDesc,
         pub enum_: &'a Enum,
-        pub var_sets: FnvHashMap<Variable, Set>,
+        pub var_sets: FxHashMap<Variable, Set>,
         pub inputs_def: &'a [ChoiceInstance],
         pub input_values: Vec<ValueSet>,
-        pub static_conds: FnvHashMap<&'a StaticCond, bool>,
+        pub static_conds: FxHashMap<&'a StaticCond, bool>,
     }
 
     impl<'a> EvalContext<'a> {
@@ -735,7 +735,7 @@ pub mod test {
                             EvalContext {
                                 ir_desc: ir_desc,
                                 enum_: enum_,
-                                var_sets: FnvHashMap::default(),
+                                var_sets: FxHashMap::default(),
                                 inputs_def: inputs_def,
                                 input_values: input_values,
                                 static_conds: static_conds

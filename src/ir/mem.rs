@@ -85,7 +85,7 @@ impl Block {
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct BlockMap {
     blocks: ir::SparseVec<MemId, Block>,
-    layouts: FnvHashSet<MemId>,
+    layouts: FxHashSet<MemId>,
 }
 
 impl BlockMap {

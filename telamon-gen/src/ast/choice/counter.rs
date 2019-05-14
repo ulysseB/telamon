@@ -11,7 +11,7 @@ use crate::ir::{self, Adaptable};
 use crate::lexer::Spanned;
 use itertools::Itertools;
 use log::trace;
-use utils::{FnvHashSet, RcStr};
+use utils::{FxHashSet, RcStr};
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
@@ -139,7 +139,7 @@ impl CounterDef {
             }] => {
                 let incr = lhs.type_check(&ir_desc, var_map);
                 // Ensure all forall values are usefull.
-                let mut foralls = FnvHashSet::default();
+                let mut foralls = FxHashSet::default();
                 for &v in &incr.vars {
                     if let ir::Variable::Forall(i) = v {
                         foralls.insert(i);

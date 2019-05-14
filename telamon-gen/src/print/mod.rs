@@ -380,9 +380,8 @@ where
 
     // We need an index map to map back from the predecessors into their indices.
     let mut node_data: Vec<_> = (0..nodes.len()).map(NodeData::new).map(Some).collect();
-    let index_map: FnvHashMap<_, _> = FnvHashMap::from_iter(
-        nodes.iter().enumerate().map(|(index, node)| (node, index)),
-    );
+    let index_map: FxHashMap<_, _> =
+        FxHashMap::from_iter(nodes.iter().enumerate().map(|(index, node)| (node, index)));
     if index_map.len() != nodes.len() {
         panic!("duplicate nodes found");
     }
@@ -682,7 +681,7 @@ impl Display for ir::Enum {
 /// Prints the inverse function if needed.
 fn inverse(enum_: &ir::Enum, f: &mut Formatter) -> fmt::Result {
     if let Some(mapping) = enum_.inverse_mapping() {
-        let mut values: FnvHashSet<_> = enum_.values().keys().collect();
+        let mut values: FxHashSet<_> = enum_.values().keys().collect();
         let mut low = Vec::new();
         let mut high = Vec::new();
         for &(ref lhs, ref rhs) in mapping {

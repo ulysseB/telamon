@@ -6,7 +6,7 @@ use crate::model::Bound;
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
-use utils::FnvHashMap;
+use utils::FxHashMap;
 
 /// Outgoing Edge to a child annotated with the action for the
 /// child. If `child` is None, the child node corresponding to the
@@ -304,7 +304,7 @@ pub struct CandidateTree {
     root: Option<Weak<RefCell<CandidateNodeInner>>>,
 
     /// Mapping node ID -> Candidate nodes
-    nodes: FnvHashMap<NodeId, Rc<RefCell<CandidateNodeInner>>>,
+    nodes: FxHashMap<NodeId, Rc<RefCell<CandidateNodeInner>>>,
 }
 
 impl CandidateTree {

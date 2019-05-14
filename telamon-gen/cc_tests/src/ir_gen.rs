@@ -48,7 +48,7 @@ macro_rules! define_ir {
             #[derive(Default, Clone)]
             pub struct Function {
                 next_id: usize,
-                $($name: FnvHashMap<define_ir!(@full_id $name, $param),
+                $($name: FxHashMap<define_ir!(@full_id $name, $param),
                                  ::std::rc::Rc<$name::Obj>>,)*
             }
 

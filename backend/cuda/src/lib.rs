@@ -36,7 +36,7 @@ use utils::*;
 
 #[derive(Default)]
 pub(crate) struct ValuePrinter {
-    num_var: FnvHashMap<ir::Type, usize>,
+    num_var: FxHashMap<ir::Type, usize>,
     num_sizes: usize,
 }
 

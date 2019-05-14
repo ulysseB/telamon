@@ -164,7 +164,7 @@ impl<L> Function<L> {
         &mut self,
         id: InstId,
         op: Operator<L>,
-        iter_dims: FnvHashSet<ir::DimId>,
+        iter_dims: FxHashSet<ir::DimId>,
     ) -> Result<ir::Instruction<L>, ir::Error> {
         // Create and check the instruction.
         let inst = ir::Instruction::new(op, id, iter_dims, self)?;
@@ -477,7 +477,7 @@ impl Function<()> {
     pub fn add_inst(
         &mut self,
         op: Operator<()>,
-        iter_dims: FnvHashSet<ir::DimId>,
+        iter_dims: FxHashSet<ir::DimId>,
     ) -> Result<InstId, ir::Error> {
         // Create dimension mappings for the operands.
         // TODO(cleanup): the operands should list `DimMapping` rather that pairs of

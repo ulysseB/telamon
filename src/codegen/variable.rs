@@ -9,7 +9,7 @@ use utils::*;
 pub struct Variable<'a> {
     variable: &'a ir::Variable,
     t: ir::Type,
-    instantiation_dims: FnvHashMap<ir::DimId, usize>,
+    instantiation_dims: FxHashMap<ir::DimId, usize>,
     alias: Option<Alias>,
 }
 
@@ -43,8 +43,8 @@ impl<'a> Variable<'a> {
 /// Indicates how a variable aliases with another.
 pub struct Alias {
     other_variable: ir::VarId,
-    dim_mapping: FnvHashMap<ir::DimId, Option<ir::DimId>>,
-    reverse_mapping: FnvHashMap<ir::DimId, ir::DimId>,
+    dim_mapping: FxHashMap<ir::DimId, Option<ir::DimId>>,
+    reverse_mapping: FxHashMap<ir::DimId, ir::DimId>,
 }
 
 impl Alias {
@@ -56,7 +56,7 @@ impl Alias {
     /// Specifies the mapping of dimensions from `other_variable` to the alias. A mapping
     /// to `None` indicates the alias takes the last instance of the variable on the
     /// dimension.
-    pub fn dim_mapping(&self) -> &FnvHashMap<ir::DimId, Option<ir::DimId>> {
+    pub fn dim_mapping(&self) -> &FxHashMap<ir::DimId, Option<ir::DimId>> {
         &self.dim_mapping
     }
 
@@ -92,7 +92,7 @@ impl Alias {
     fn find_instantiation_dims(
         &self,
         space: &SearchSpace,
-    ) -> FnvHashMap<ir::DimId, usize> {
+    ) -> FxHashMap<ir::DimId, usize> {
         self.dim_mapping
             .iter()
             .flat_map(|(&lhs, &rhs)| rhs.map(|rhs| (lhs, rhs)))
@@ -109,7 +109,7 @@ impl Alias {
 }
 
 /// Generates variables aliases.
-fn generate_aliases(space: &SearchSpace) -> FnvHashMap<ir::VarId, Option<Alias>> {
+fn generate_aliases(space: &SearchSpace) -> FxHashMap<ir::VarId, Option<Alias>> {
     space
         .ir_instance()
         .variables()
@@ -128,7 +128,7 @@ fn generate_aliases(space: &SearchSpace) -> FnvHashMap<ir::VarId, Option<Alias>>
 
 /// Sort variables by aliasing order.
 fn sort_variables<'a>(
-    mut aliases: FnvHashMap<ir::VarId, Option<Alias>>,
+    mut aliases: FxHashMap<ir::VarId, Option<Alias>>,
     space: &'a SearchSpace,
 ) -> impl Iterator<Item = (&'a ir::Variable, Option<Alias>)> {
     space.ir_instance().variables().flat_map(move |var| {
@@ -202,7 +202,7 @@ mod tests {
 
     use super::*;
 
-    fn mk_map<K, V>(content: &[(K, V)]) -> FnvHashMap<K, V>
+    fn mk_map<K, V>(content: &[(K, V)]) -> FxHashMap<K, V>
     where
         K: Copy + Eq + std::hash::Hash,
         V: Copy,

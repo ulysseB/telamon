@@ -81,8 +81,8 @@ impl device::Device for Mppa {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FnvHashMap<ir::DimId, model::size::Range>,
-        _: &FnvHashMap<ir::StmtId, model::Nesting>,
+        _: &FxHashMap<ir::DimId, model::size::Range>,
+        _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &ir::Statement,
         _: &device::Context,
     ) -> model::HwPressure {

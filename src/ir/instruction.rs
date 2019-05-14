@@ -36,7 +36,7 @@ impl std::fmt::Display for InstId {
 pub struct Instruction<L = LoweringMap> {
     operator: Operator<L>,
     id: InstId,
-    iter_dims: FnvHashSet<ir::DimId>,
+    iter_dims: FxHashSet<ir::DimId>,
     variable: Option<ir::VarId>,
     defined_vars: VecSet<ir::VarId>,
     used_vars: VecSet<ir::VarId>,
@@ -47,7 +47,7 @@ impl<L> Instruction<L> {
     pub fn new(
         operator: Operator<L>,
         id: InstId,
-        iter_dims: FnvHashSet<ir::DimId>,
+        iter_dims: FxHashSet<ir::DimId>,
         fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, fun)?;
@@ -171,7 +171,7 @@ impl<L> Instruction<L> {
     }
 
     /// The list of dimensions the instruction must be nested in.
-    pub fn iteration_dims(&self) -> &FnvHashSet<ir::DimId> {
+    pub fn iteration_dims(&self) -> &FxHashSet<ir::DimId> {
         &self.iter_dims
     }
 

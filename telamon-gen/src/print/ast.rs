@@ -71,7 +71,7 @@ impl<'a> Serialize for Variable<'a> {
 #[derive(Clone)]
 pub struct Context<'a> {
     pub ir_desc: &'a ir::IrDesc,
-    vars: FnvHashMap<ir::Variable, (Variable<'a>, &'a ir::Set)>,
+    vars: FxHashMap<ir::Variable, (Variable<'a>, &'a ir::Set)>,
     inputs: Vec<print::ValueIdent>,
 }
 
@@ -86,7 +86,7 @@ impl<'a> Context<'a> {
     where
         IT: IntoIterator<Item = &'a ir::Set>,
     {
-        let mut vars = FnvHashMap::default();
+        let mut vars = FxHashMap::default();
         for (id, (name, set)) in choice.arguments().iter().enumerate() {
             vars.insert(ir::Variable::Arg(id), (Variable::with_name(name), set));
         }
@@ -112,7 +112,7 @@ impl<'a> Context<'a> {
         args: &[(Variable<'a>, &'a ir::Set)],
         foralls: &'a [ir::Set],
     ) -> Self {
-        let mut vars = FnvHashMap::default();
+        let mut vars = FxHashMap::default();
         for (id, var_def) in args.iter().enumerate() {
             vars.insert(ir::Variable::Arg(id), var_def.clone());
         }

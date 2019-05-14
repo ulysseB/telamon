@@ -561,7 +561,7 @@ impl ChoiceCondition {
         mut inputs: Vec<ir::ChoiceInstance>,
         self_id: usize,
         conditions: &[ir::Condition],
-        env: FnvHashMap<ir::Variable, ir::Set>,
+        env: FxHashMap<ir::Variable, ir::Set>,
     ) -> (Vec<ir::Set>, ir::SetConstraints, Self, ir::Adaptator) {
         // Create the new evironement.
         let (foralls, set_constraints, mut adaptator) =

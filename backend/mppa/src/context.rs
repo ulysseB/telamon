@@ -101,7 +101,7 @@ impl KernelArg {
 pub struct Context {
     device: Arc<mppa::Mppa>,
     executor: &'static telajax::Device,
-    parameters: FnvHashMap<String, Arc<Argument>>,
+    parameters: FxHashMap<String, Arc<Argument>>,
     writeback_slots: ArrayQueue<MppaArray>,
 }
 
@@ -123,7 +123,7 @@ impl Context {
         Context {
             device: Arc::new(mppa::Mppa::default()),
             executor,
-            parameters: FnvHashMap::default(),
+            parameters: FxHashMap::default(),
             writeback_slots,
         }
     }
