@@ -3,6 +3,7 @@
 use crate::characterize;
 use crate::mem_model::{self, MemInfo};
 use crate::{printer::CudaPrinter, Executor};
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use telamon::codegen::Function;
@@ -10,7 +11,6 @@ use telamon::device::{self, Device};
 use telamon::ir::{self, Operator, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use utils::*;
 
 // FIXME: fix performance model
 // - l1_lines constraint for stores ?
@@ -300,7 +300,7 @@ impl Gpu {
     fn inst_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
+        dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
         inst: &ir::Instruction,
         ctx: &dyn device::Context,
     ) -> HwPressure {
@@ -525,8 +525,8 @@ impl device::Device for Gpu {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
-        _nesting: &FnvHashMap<ir::StmtId, model::Nesting>,
+        dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
+        _nesting: &FxHashMap<ir::StmtId, model::Nesting>,
         stmt: &dyn ir::Statement,
         ctx: &dyn device::Context,
     ) -> model::HwPressure {

@@ -13,6 +13,7 @@ use crate::model::{
     size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo,
 };
 use crate::search_space::{DimKind, Domain, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::{self, Itertools};
 use std;
 use std::cmp::Ordering;
@@ -441,7 +442,7 @@ impl RepeatLevel {
 /// Exposes the levels application order.
 #[derive(Debug)]
 pub struct LevelDag {
-    node_ids: FnvHashMap<VecSet<ir::DimId>, usize>,
+    node_ids: FxHashMap<VecSet<ir::DimId>, usize>,
     nodes: Vec<(Vec<RepeatLevel>, Vec<DimMap>, DependencyMap)>,
 }
 
@@ -452,7 +453,7 @@ pub struct DagNodeId(usize);
 impl LevelDag {
     /// Creates and empty `LevelDag`, with only the root node.
     fn new(space: &SearchSpace, dep_map_size: usize) -> Self {
-        let mut node_ids = FnvHashMap::default();
+        let mut node_ids = FxHashMap::default();
         let all_dims = space
             .ir_instance()
             .dims()

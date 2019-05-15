@@ -1,5 +1,6 @@
 //! Truth tables.
 use crate::ir;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use log::debug;
 use std;
@@ -82,7 +83,7 @@ type RuleConds = (Vec<ir::Condition>, ir::SetConstraints);
 /// The rules that applies to a particular combination of choices.
 #[derive(Debug, PartialEq, Eq)]
 struct Cell {
-    rules: FnvHashMap<RuleConds, Vec<ir::ValueSet>>,
+    rules: FxHashMap<RuleConds, Vec<ir::ValueSet>>,
 }
 
 impl Cell {
@@ -92,7 +93,7 @@ impl Cell {
         inputs: &[ir::ChoiceInstance],
         ir_desc: &ir::IrDesc,
     ) -> Cell {
-        let mut rule_map: FnvHashMap<_, Vec<ir::ValueSet>> = FnvHashMap::default();
+        let mut rule_map: FxHashMap<_, Vec<ir::ValueSet>> = FxHashMap::default();
         for mut rule in rules {
             rule.normalize(inputs, ir_desc);
             match rule_map.entry((rule.conditions, rule.set_constraints)) {

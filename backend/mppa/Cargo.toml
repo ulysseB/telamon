@@ -9,6 +9,7 @@ cc = "1.0"
 
 [dependencies]
 crossbeam = "0.7"
+fxhash = "0.2"
 itertools = "0.8"
 libc = "0.2.40"
 log = "0.4"

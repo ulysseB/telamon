@@ -2,8 +2,8 @@
 use crate::device::Device;
 use crate::ir;
 use crate::search_space::MemSpace;
+use fxhash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
-use utils::*;
 
 /// A stride on a given dimensions.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -22,7 +22,7 @@ pub enum AccessPattern {
     /// dimensions should not overlap.
     Tensor {
         mem_id: Option<ir::MemId>,
-        dims: FnvHashMap<ir::DimId, ir::PartialSize>,
+        dims: FxHashMap<ir::DimId, ir::PartialSize>,
     },
 }
 
@@ -50,7 +50,7 @@ impl AccessPattern {
 
     /// Ensure the access pattern is valid for an instruction nested in the dimensions
     /// given in `iter_dims`.
-    pub fn check(&self, iter_dims: &FnvHashSet<ir::DimId>) -> Result<(), ir::Error> {
+    pub fn check(&self, iter_dims: &FxHashSet<ir::DimId>) -> Result<(), ir::Error> {
         match self {
             AccessPattern::Unknown(..) => Ok(()),
             AccessPattern::Tensor { dims, .. } => {

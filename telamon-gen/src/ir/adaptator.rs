@@ -1,11 +1,11 @@
 use crate::ir;
-use utils::*;
+use fxhash::FxHashMap;
 
 /// Represent a transformation to apply to a rule to fir it in a new context.
 #[derive(Default)]
 pub struct Adaptator {
-    variables: FnvHashMap<ir::Variable, ir::Variable>,
-    inputs: FnvHashMap<usize, (usize, bool)>,
+    variables: FxHashMap<ir::Variable, ir::Variable>,
+    inputs: FxHashMap<usize, (usize, bool)>,
 }
 
 impl Adaptator {

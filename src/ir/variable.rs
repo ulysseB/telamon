@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::ir;
 
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use utils::*;
 
@@ -190,7 +191,7 @@ impl VarDef {
                 VecSet::new(var.dimensions.difference(dims).cloned().collect())
             }
             VarDef::DimMap(var_id, mapping_ids) => {
-                let mapping: FnvHashMap<_, _> = mapping_ids
+                let mapping: FxHashMap<_, _> = mapping_ids
                     .iter()
                     .map(|&id| {
                         let dims = fun.dim_mapping(id).dims();
@@ -220,9 +221,9 @@ impl VarDef {
     pub fn production_inst(
         &self,
         fun: &ir::Function,
-    ) -> (ir::InstId, FnvHashMap<ir::DimId, ir::DimId>) {
+    ) -> (ir::InstId, FxHashMap<ir::DimId, ir::DimId>) {
         match self {
-            VarDef::Inst(inst) => (*inst, FnvHashMap::default()),
+            VarDef::Inst(inst) => (*inst, FxHashMap::default()),
             VarDef::Last(prev, dims) => {
                 let (inst, mut mapping) = fun.variable(*prev).def().production_inst(fun);
                 for dim in dims {

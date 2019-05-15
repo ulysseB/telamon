@@ -14,8 +14,8 @@ use crate::codegen::Function;
 use crate::ir;
 use crate::model::{self, HwPressure, Nesting};
 use crate::search_space::*;
+use fxhash::FxHashMap;
 use std::io::Write;
-use utils::*;
 
 /// Holds the specifications of a target.
 #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -53,8 +53,8 @@ pub trait Device: Send + Sync + 'static {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
-        nesting: &FnvHashMap<ir::StmtId, Nesting>,
+        dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
+        nesting: &FxHashMap<ir::StmtId, Nesting>,
         bb: &dyn ir::Statement,
         ctx: &dyn Context,
     ) -> HwPressure;

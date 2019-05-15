@@ -1,5 +1,5 @@
-use super::*;
 /// Directed acyclic graph.
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use std;
 use std::cmp::{self, Ordering};
@@ -19,7 +19,7 @@ impl<T> Dag<T> {
         C: Fn(&T, &T) -> Option<Ordering>,
     {
         // Compute the set of nodes lesser than other nodes.
-        let mut lesser_than = nodes.iter().map(|_| FnvHashSet::default()).collect_vec();
+        let mut lesser_than = nodes.iter().map(|_| FxHashSet::default()).collect_vec();
         let mut is_duplicate = nodes.iter().map(|_| false).collect_vec();
         for (i, lhs) in nodes.iter().enumerate() {
             for (j, rhs) in nodes[..i].iter().enumerate() {

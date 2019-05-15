@@ -186,7 +186,7 @@ fn inst_dim_order_impact(
 /// added.
 #[derive(Default)]
 struct ActionSet {
-    set: FnvHashMap<ir::ActionArea, ir::Action>,
+    set: FxHashMap<ir::ActionArea, ir::Action>,
 }
 
 impl ActionSet {

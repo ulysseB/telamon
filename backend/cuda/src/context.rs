@@ -3,6 +3,7 @@ use crate::kernel::Thunk;
 use crate::{Executor, Gpu, JITDaemon, Kernel};
 ///! Defines the CUDA evaluation context.
 use crossbeam;
+use fxhash::FxHashMap;
 use log::{debug, info};
 use std::f64;
 use std::fmt;
@@ -22,7 +23,7 @@ const JIT_OPT_LEVEL: usize = 2;
 pub struct Context<'a> {
     gpu_model: Arc<Gpu>,
     executor: &'a Executor,
-    parameters: FnvHashMap<String, Arc<dyn Argument + 'a>>,
+    parameters: FxHashMap<String, Arc<dyn Argument + 'a>>,
 }
 
 impl<'a> Context<'a> {
@@ -36,7 +37,7 @@ impl<'a> Context<'a> {
         Context {
             gpu_model: Arc::new(gpu),
             executor,
-            parameters: FnvHashMap::default(),
+            parameters: FxHashMap::default(),
         }
     }
 

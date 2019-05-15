@@ -5,9 +5,9 @@ use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
 
+use fxhash::FxHashMap;
 use itertools::*;
 use std::io::Write;
-use utils::*;
 
 use crate::printer::X86printer;
 
@@ -117,8 +117,8 @@ impl device::Device for Cpu {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FnvHashMap<ir::DimId, model::size::Range>,
-        _: &FnvHashMap<ir::StmtId, model::Nesting>,
+        _: &FxHashMap<ir::DimId, model::size::Range>,
+        _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &dyn ir::Statement,
         _: &dyn device::Context,
     ) -> model::HwPressure {

@@ -27,6 +27,7 @@ pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 
+use fxhash::FxHashMap;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
@@ -36,7 +37,7 @@ use utils::*;
 
 #[derive(Default)]
 pub(crate) struct ValuePrinter {
-    num_var: FnvHashMap<ir::Type, usize>,
+    num_var: FxHashMap<ir::Type, usize>,
     num_sizes: usize,
 }
 

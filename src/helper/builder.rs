@@ -4,6 +4,7 @@ use crate::helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use crate::ir::{self, op, Parameter, Type};
 use crate::ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use log::debug;
 use std::borrow::Borrow;
@@ -13,7 +14,7 @@ use utils::*;
 /// Helper to build a `Function`.
 pub struct Builder {
     function: Function<()>,
-    open_dims: FnvHashMap<ir::DimId, ir::DimId>,
+    open_dims: FxHashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
 
@@ -22,7 +23,7 @@ impl Builder {
     pub fn new(signature: Arc<Signature>, device: Arc<dyn Device>) -> Builder {
         Builder {
             function: Function::new(signature, device),
-            open_dims: FnvHashMap::default(),
+            open_dims: FxHashMap::default(),
             actions: Vec::new(),
         }
     }

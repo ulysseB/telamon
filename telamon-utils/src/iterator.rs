@@ -1,5 +1,5 @@
 //! Extension of the iterator library.
-use crate::FnvHashMap;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use linked_list;
 use std;
@@ -85,14 +85,14 @@ pub fn at_most_one<IT: Iterator>(mut it: IT) -> Option<IT::Item> {
     out
 }
 
-/// Transforms an iterator into an `FnvHashMap`. Redundant nodes are merged using
+/// Transforms an iterator into an `FxHashMap`. Redundant nodes are merged using
 /// `merge`.
-pub fn to_map<K: Eq + std::hash::Hash, V, IT, M>(it: IT, merge: M) -> FnvHashMap<K, V>
+pub fn to_map<K: Eq + std::hash::Hash, V, IT, M>(it: IT, merge: M) -> FxHashMap<K, V>
 where
     IT: Iterator<Item = (K, V)>,
     M: Fn(V, V) -> V,
 {
-    let mut map = FnvHashMap::default();
+    let mut map = FxHashMap::default();
     for (k, v) in it {
         let v = if let Some(old_v) = map.remove(&k) {
             merge(old_v, v)

@@ -1,9 +1,9 @@
 use std::fmt;
 
 use crate::ir;
+use fxhash::FxHashSet;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use utils::*;
 
 /// Unique identifier for `InductionVar`
 #[derive(
@@ -27,7 +27,7 @@ impl<L> InductionVar<L> {
     ) -> Result<Self, ir::Error> {
         ir::TypeError::check_integer(base.t())?;
         // Assert dimensions are unique.
-        let mut dim_ids = FnvHashSet::default();
+        let mut dim_ids = FxHashSet::default();
         for &(id, _) in &dims {
             if !dim_ids.insert(id) {
                 return Err(ir::Error::DuplicateIncrement { dim: id });

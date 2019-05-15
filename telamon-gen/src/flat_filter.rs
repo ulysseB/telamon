@@ -1,5 +1,6 @@
 //! Filter generation.
 use crate::ir::{self, Adaptable};
+use fxhash::FxHashMap;
 use utils::*;
 
 /// Merge flat filters that can be merged in the given list.
@@ -76,7 +77,7 @@ impl FlatFilter {
             return false;
         }
         let mut merged = false;
-        let input_map: FnvHashMap<_, _> = self
+        let input_map: FxHashMap<_, _> = self
             .inputs
             .iter()
             .enumerate()

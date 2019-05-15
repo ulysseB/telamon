@@ -2,6 +2,7 @@
 use crate::ir;
 use crate::model::Level;
 use crate::search_space::{Domain, Order, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use std::cmp::Ordering;
 
@@ -78,7 +79,7 @@ fn generate(space: &SearchSpace, levels: &[Level]) -> Vec<CodePoint> {
 #[derive(Debug)]
 pub struct CodePointDag {
     pub dag: Dag<CodePoint>,
-    pub ids: FnvHashMap<CodePoint, usize>,
+    pub ids: FxHashMap<CodePoint, usize>,
 }
 
 impl CodePointDag {
@@ -159,7 +160,7 @@ fn convert_order(
 }
 
 /// Creates a map from code point to code point IDs.
-fn code_point_ids(code_points: &Dag<CodePoint>) -> FnvHashMap<CodePoint, usize> {
+fn code_point_ids(code_points: &Dag<CodePoint>) -> FxHashMap<CodePoint, usize> {
     code_points
         .nodes()
         .iter()

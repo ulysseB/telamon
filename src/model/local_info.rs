@@ -3,6 +3,7 @@ use crate::device::{Context, Device};
 use crate::ir::{self, Statement};
 use crate::model::{size, HwPressure};
 use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::integer::lcm;
 
@@ -12,12 +13,12 @@ use utils::*;
 #[derive(Debug)]
 pub struct LocalInfo {
     /// The loops inside and outside each Stmt.
-    pub nesting: FnvHashMap<ir::StmtId, Nesting>,
+    pub nesting: FxHashMap<ir::StmtId, Nesting>,
     /// The pressure incured by a signle instance of each Stmt.
-    pub hw_pressure: FnvHashMap<ir::StmtId, HwPressure>,
+    pub hw_pressure: FxHashMap<ir::StmtId, HwPressure>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
-    pub dim_overhead: FnvHashMap<ir::DimId, (HwPressure, HwPressure)>,
+    pub dim_overhead: FxHashMap<ir::DimId, (HwPressure, HwPressure)>,
     /// The overhead to initialize a thread.
     pub thread_overhead: HwPressure,
     /// Available parallelism in the kernel.
@@ -32,7 +33,7 @@ impl LocalInfo {
             .dims()
             .map(|d| (d.id(), size::bounds(d.size(), space, context)))
             .collect();
-        let nesting: FnvHashMap<_, _> = space
+        let nesting: FxHashMap<_, _> = space
             .ir_instance()
             .statements()
             .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
@@ -102,10 +103,10 @@ impl LocalInfo {
 fn add_indvar_pressure(
     device: &dyn Device,
     space: &SearchSpace,
-    dim_sizes: &FnvHashMap<ir::DimId, size::Range>,
+    dim_sizes: &FxHashMap<ir::DimId, size::Range>,
     indvar: &ir::InductionVar,
-    hw_pressure: &mut FnvHashMap<ir::StmtId, HwPressure>,
-    dim_overhead: &mut FnvHashMap<ir::DimId, (HwPressure, HwPressure)>,
+    hw_pressure: &mut FxHashMap<ir::StmtId, HwPressure>,
+    dim_overhead: &mut FxHashMap<ir::DimId, (HwPressure, HwPressure)>,
     thread_overhead: &mut HwPressure,
 ) {
     for &(dim, _) in indvar.dims() {
@@ -311,7 +312,7 @@ impl Default for Parallelism {
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
-    nesting: &FnvHashMap<ir::StmtId, Nesting>,
+    nesting: &FxHashMap<ir::StmtId, Nesting>,
     space: &SearchSpace,
     ctx: &dyn Context,
 ) -> Parallelism {

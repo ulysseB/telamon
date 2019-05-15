@@ -1,11 +1,10 @@
 //! Defines operators.
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
+use fxhash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{self, fmt};
-
-use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -170,7 +169,7 @@ impl<L> Operator<L> {
     /// Ensures the types of the operands are valid.
     pub fn check(
         &self,
-        iter_dims: &FnvHashSet<ir::DimId>,
+        iter_dims: &FxHashSet<ir::DimId>,
         fun: &ir::Function<L>,
     ) -> Result<(), ir::Error> {
         self.t()
