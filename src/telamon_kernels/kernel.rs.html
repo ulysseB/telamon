@@ -519,8 +519,8 @@
 <span class="doccomment">/// // `context` is an existing `device::Context`</span>
 <span class="doccomment">/// let (signature, kernel, context) = KernelBuilder::new()</span>
 <span class="doccomment">///     .name(&quot;My kernel&quot;)</span>
-<span class="doccomment">///     .build::&lt;linalg::MatMul&lt;f32&gt;, _&gt;(</span>
-<span class="doccomment">///         linalg::MatMulP::new(128, 128, 128),</span>
+<span class="doccomment">///     .build::&lt;linalg::FusedMM&lt;f32&gt;, _&gt;(</span>
+<span class="doccomment">///         linalg::FusedMMP::new(128, 128, 128),</span>
 <span class="doccomment">///         &amp;mut context,</span>
 <span class="doccomment">///     );</span>
 <span class="doccomment">///</span>

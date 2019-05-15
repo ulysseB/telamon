@@ -402,6 +402,12 @@
 <span id="402">402</span>
 <span id="403">403</span>
 <span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines operators.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
@@ -472,6 +478,8 @@
     <span class="ident">Leq</span>,
     <span class="doccomment">/// Computes `lhs == rhs`.</span>
     <span class="ident">Equals</span>,
+    <span class="doccomment">/// Computes max(lhs, rhs)</span>
+    <span class="ident">Max</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">BinOp</span> {
@@ -492,6 +500,7 @@
             <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;lt&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;leq&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="string">&quot;equals&quot;</span>,
+            <span class="ident">BinOp</span>::<span class="ident">Max</span> <span class="op">=&gt;</span> <span class="string">&quot;max&quot;</span>,
         }
     }
 
@@ -506,7 +515,7 @@
     <span class="doccomment">/// Indicates if the result must be rounded when operating on floats.</span>
     <span class="kw">fn</span> <span class="ident">requires_rounding</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+            <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Max</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="bool-val">true</span>,
         }
     }
@@ -520,11 +529,14 @@
     <span class="ident">Mov</span>,
     <span class="doccomment">/// Casts the input to another type.</span>
     <span class="ident">Cast</span>(<span class="ident">ir</span>::<span class="ident">Type</span>),
+    <span class="doccomment">/// Calculates exp(x)</span>
+    <span class="ident">Exp</span>(<span class="ident">ir</span>::<span class="ident">Type</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">UnaryOp</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">UnaryOp</span>::<span class="ident">Exp</span>(..) <span class="op">=&gt;</span> <span class="ident">fmt</span>.<span class="ident">write_str</span>(<span class="string">&quot;exp&quot;</span>),
             <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">fmt</span>.<span class="ident">write_str</span>(<span class="string">&quot;mov&quot;</span>),
             <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">fmt</span>, <span class="string">&quot;cast({})&quot;</span>, <span class="ident">t</span>),
         }
@@ -535,7 +547,7 @@
     <span class="doccomment">/// Gives the return type of the operand given its input type.</span>
     <span class="kw">fn</span> <span class="ident">t</span>(<span class="self">self</span>, <span class="ident">op_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">op_type</span>,
+            <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">|</span> <span class="ident">UnaryOp</span>::<span class="ident">Exp</span>(..) <span class="op">=&gt;</span> <span class="ident">op_type</span>,
             <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
         }
     }

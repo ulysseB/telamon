@@ -10,8 +10,8 @@ taken from <code>Kernel::name()</code>.</li>
 <span class="comment">// `context` is an existing `device::Context`</span>
 <span class="kw">let</span> (<span class="ident">signature</span>, <span class="ident">kernel</span>, <span class="ident">context</span>) <span class="op">=</span> <span class="ident">KernelBuilder</span>::<span class="ident">new</span>()
     .<span class="ident">name</span>(<span class="string">&quot;My kernel&quot;</span>)
-    .<span class="ident">build</span>::<span class="op">&lt;</span><span class="ident">linalg</span>::<span class="ident">MatMul</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span>(
-        <span class="ident">linalg</span>::<span class="ident">MatMulP</span>::<span class="ident">new</span>(<span class="number">128</span>, <span class="number">128</span>, <span class="number">128</span>),
+    .<span class="ident">build</span>::<span class="op">&lt;</span><span class="ident">linalg</span>::<span class="ident">FusedMM</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span>(
+        <span class="ident">linalg</span>::<span class="ident">FusedMMP</span>::<span class="ident">new</span>(<span class="number">128</span>, <span class="number">128</span>, <span class="number">128</span>),
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">context</span>,
     );
 

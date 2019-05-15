@@ -660,6 +660,24 @@
 <span id="660">660</span>
 <span id="661">661</span>
 <span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ValuePrinter</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -1123,21 +1141,32 @@
         <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">vector_factors</span>, [<span class="number">1</span>, <span class="number">1</span>]);
-        <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">op</span> {
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span> <span class="op">=&gt;</span> <span class="string">&quot;+&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span> <span class="op">=&gt;</span> <span class="string">&quot;-&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span> <span class="op">=&gt;</span> <span class="string">&quot;/&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">And</span> <span class="op">=&gt;</span> <span class="string">&quot;&amp;&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Or</span> <span class="op">=&gt;</span> <span class="string">&quot;|&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;&lt;&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;&lt;=&quot;</span>,
-            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="string">&quot;==&quot;</span>,
+
+        <span class="kw">let</span> (<span class="ident">op</span>, <span class="ident">is_infix_op</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">op</span> {
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span> <span class="op">=&gt;</span> (<span class="string">&quot;+&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span> <span class="op">=&gt;</span> (<span class="string">&quot;-&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span> <span class="op">=&gt;</span> (<span class="string">&quot;/&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">And</span> <span class="op">=&gt;</span> (<span class="string">&quot;&amp;&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Or</span> <span class="op">=&gt;</span> (<span class="string">&quot;|&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> (<span class="string">&quot;&lt;&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> (<span class="string">&quot;&lt;=&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> (<span class="string">&quot;==&quot;</span>, <span class="bool-val">true</span>),
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Max</span> <span class="op">=&gt;</span> (<span class="string">&quot;telamon_op_max&quot;</span>, <span class="bool-val">false</span>),
         };
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">buffer</span>,
-            <span class="string">&quot;{} = {} {} {};&quot;</span>,
-            <span class="ident">result</span>, <span class="ident">lhs</span>, <span class="ident">op</span>, <span class="ident">rhs</span>
-        ));
+
+        <span class="kw">if</span> <span class="ident">is_infix_op</span> {
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+                <span class="self">self</span>.<span class="ident">buffer</span>,
+                <span class="string">&quot;{} = {} {} {};&quot;</span>,
+                <span class="ident">result</span>, <span class="ident">lhs</span>, <span class="ident">op</span>, <span class="ident">rhs</span>
+            ));
+        } <span class="kw">else</span> {
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+                <span class="self">self</span>.<span class="ident">buffer</span>,
+                <span class="string">&quot;{} = {}({}, {});&quot;</span>,
+                <span class="ident">result</span>, <span class="ident">op</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>
+            ));
+        }
     }
 
     <span class="kw">fn</span> <span class="ident">print_unary_op</span>(
@@ -1151,12 +1180,19 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">vector_factors</span>, [<span class="number">1</span>, <span class="number">1</span>]);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;{} = &quot;</span>, <span class="ident">result</span>));
         <span class="kw">match</span> <span class="ident">operator</span> {
-            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> (),
-            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> {
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;({})&quot;</span>, <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">t</span>)))
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> {
+                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;{};&quot;</span>, <span class="ident">operand</span>));
             }
+
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> {
+                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;({}){};&quot;</span>, <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">t</span>), <span class="ident">operand</span>));
+            }
+
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Exp</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="kw">match</span> <span class="ident">t</span> {
+                <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>) <span class="op">=&gt;</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;expf({});&quot;</span>, <span class="ident">operand</span>)),
+                <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Exp not implemented for type {}&quot;</span>, <span class="ident">t</span>),
+            },
         };
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;{};&quot;</span>, <span class="ident">operand</span>));
     }
 
     <span class="kw">fn</span> <span class="ident">print_mul</span>(

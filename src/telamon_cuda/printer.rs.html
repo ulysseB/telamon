@@ -610,6 +610,34 @@
 <span id="610">610</span>
 <span id="611">611</span>
 <span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides functions to print PTX code.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Gpu</span>, <span class="ident">ValuePrinter</span>};
@@ -783,6 +811,7 @@
             <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;setp.lt&quot;</span>,
             <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;setp.le&quot;</span>,
             <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="string">&quot;setp.eq&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Max</span> <span class="op">=&gt;</span> <span class="string">&quot;max&quot;</span>,
         }
     }
 
@@ -1015,8 +1044,34 @@
         <span class="ident">operand</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">vector_factors</span>, [<span class="number">1</span>, <span class="number">1</span>]);
-        <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">operator</span> {
-            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">from</span>(<span class="string">&quot;mov&quot;</span>),
+        <span class="kw">let</span> <span class="ident">t_str</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">operand_type</span>);
+
+        <span class="kw">match</span> <span class="ident">operator</span> {
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+                <span class="self">self</span>.<span class="ident">buffer</span>,
+                <span class="string">&quot;  mov.{} {}, {};&quot;</span>,
+                <span class="ident">t_str</span>, <span class="ident">result</span>, <span class="ident">operand</span>
+            )),
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Exp</span>(..) <span class="op">=&gt;</span> {
+                <span class="comment">// The expression exp(x) needs to be decomposed into</span>
+                <span class="comment">// 2^(log2(e)*x).</span>
+                <span class="comment">//</span>
+                <span class="comment">// Only implemented for f32, since other types require</span>
+                <span class="comment">// significant software emulation</span>
+                <span class="kw">match</span> <span class="ident">operand_type</span> {
+                    <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>) <span class="op">=&gt;</span> {
+                        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+                            <span class="self">self</span>.<span class="ident">buffer</span>,
+                            <span class="string">&quot;mul.{t} {reg}, 0f3fb8aa3b, {operand}; // 0f3fb8aa3b = log2(e)\n
+                             ex2.approx.{t} {reg}, {reg};&quot;</span>,
+                            <span class="ident">t</span> <span class="op">=</span> <span class="ident">t_str</span>,
+                            <span class="ident">reg</span> <span class="op">=</span> <span class="ident">result</span>,
+                            <span class="ident">operand</span> <span class="op">=</span> <span class="ident">operand</span>
+                        ));
+                    }
+                    <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;No implementation of exp for type {}&quot;</span>, <span class="ident">operand_type</span>),
+                }
+            }
             <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">cast_type</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">cast_type</span>, <span class="ident">operand_type</span>) {
                     (<span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>), <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>))
@@ -1027,16 +1082,17 @@
                     <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>,
                 };
                 <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">rounding</span>(<span class="ident">rounding</span>);
-                <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;cvt{}.{}&quot;</span>, <span class="ident">rounding</span>, <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">cast_type</span>));
-                <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">from</span>(<span class="ident">op</span>)
+                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+                    <span class="self">self</span>.<span class="ident">buffer</span>,
+                    <span class="string">&quot;cvt{}.{}.{} {}, {};&quot;</span>,
+                    <span class="ident">rounding</span>,
+                    <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">cast_type</span>),
+                    <span class="ident">t_str</span>,
+                    <span class="ident">result</span>,
+                    <span class="ident">operand</span>
+                ));
             }
         };
-        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">operand_type</span>);
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">buffer</span>,
-            <span class="string">&quot;  {}.{} {}, {};&quot;</span>,
-            <span class="ident">operator</span>, <span class="ident">t</span>, <span class="ident">result</span>, <span class="ident">operand</span>
-        ));
     }
 
     <span class="doccomment">/// Print result = op1 * op2</span>
