@@ -48,7 +48,7 @@ pub enum DeviceId {
 #[derive(Clone)]
 pub enum KernelParameters {
     /// A matrix-matrix multiplication kernel.
-    MatMul(linalg::MatMulP),
+    MatMul(linalg::FusedMMP),
 }
 
 impl KernelParameters {
@@ -60,7 +60,7 @@ impl KernelParameters {
     ) {
         match self {
             KernelParameters::MatMul(params) => {
-                linalg::MatMul::<f32>::benchmark(
+                linalg::FusedMM::<f32>::benchmark(
                     config,
                     params.clone(),
                     0,
@@ -104,7 +104,7 @@ pub unsafe extern "C" fn kernel_matmul_new(
     tile_k: *const uint32_t,
     tile_k_len: size_t,
 ) -> *mut KernelParameters {
-    Box::into_raw(Box::new(KernelParameters::MatMul(linalg::MatMulP {
+    Box::into_raw(Box::new(KernelParameters::MatMul(linalg::FusedMMP {
         m: m as i32,
         n: n as i32,
         k: k as i32,
@@ -115,6 +115,7 @@ pub unsafe extern "C" fn kernel_matmul_new(
         m_tiling: c_tiling_pattern(tile_m, tile_m_len),
         n_tiling: c_tiling_pattern(tile_n, tile_n_len),
         k_tiling: c_tiling_pattern(tile_k, tile_k_len),
+        activation_fun: None,
     })))
 }
 

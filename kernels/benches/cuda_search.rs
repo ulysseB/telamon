@@ -12,8 +12,8 @@ fn main() {
     let executor = cuda::Executor::init();
     let cublas_handle = CublasHandle::new();
 
-    let params = linalg::MatMulP::new(256, 256, 256);
-    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+    let params = linalg::FusedMMP::new(256, 256, 256);
+    benchmark::<linalg::FusedMM<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
 
@@ -23,35 +23,35 @@ fn main() {
         saxpy_reference(&cublas_handle, params, ctx)
     });
     // 2.82 without tb
-    let params = linalg::MatMulP::new(128, 256, 32).static_sizes(); //.transpose_b();
-    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+    let params = linalg::FusedMMP::new(128, 256, 32).static_sizes(); //.transpose_b();
+    benchmark::<linalg::FusedMM<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 66x
-    let params = linalg::MatMulP::new(1024, 1024, 1024).stride_a(32);
-    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |_, _| {
+    let params = linalg::FusedMMP::new(1024, 1024, 1024).stride_a(32);
+    benchmark::<linalg::FusedMM<f32>, _>(params, &executor, |_, _| {
         7.1e8 // Obtained from a cuda program.
     });
     // 0.52/4H
-    let params = linalg::MatMulP::new(128, 1024, 1024)
+    let params = linalg::FusedMMP::new(128, 1024, 1024)
         .static_sizes()
         .transpose_a();
-    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+    benchmark::<linalg::FusedMM<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 0.41, 0.53 with TA+Static
-    let params = linalg::MatMulP::new(128, 16384, 4096)
+    let params = linalg::FusedMMP::new(128, 16384, 4096)
         .static_sizes()
         .transpose_a();
-    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+    benchmark::<linalg::FusedMM<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 0.87 in 2.38 hours/4H
-    let mut params = linalg::MatMulP::new(1024, 1024, 1024);
+    let mut params = linalg::FusedMMP::new(1024, 1024, 1024);
     params.m_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[32, 4]));
     params.n_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[32, 4]));
     params.k_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[32]));
-    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+    benchmark::<linalg::FusedMM<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 1.66 if reuseb + static sizes
@@ -235,7 +235,7 @@ fn matvec_reference(
 /// Reference implementation for the matrix-matrix multiplication.
 fn matmul_reference(
     handle: &CublasHandle,
-    params: &linalg::MatMulP,
+    params: &linalg::FusedMMP,
     context: &cuda::Context,
 ) -> f64 {
     let m = params.m as libc::c_int;

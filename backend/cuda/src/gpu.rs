@@ -145,6 +145,11 @@ pub struct Gpu {
     pub div_f64_inst: InstDesc,
     pub div_i32_inst: InstDesc,
     pub div_i64_inst: InstDesc,
+    pub max_f32_inst: InstDesc,
+    pub max_f64_inst: InstDesc,
+    pub max_i32_inst: InstDesc,
+    pub max_i64_inst: InstDesc,
+    pub exp_f32_inst: InstDesc,
     pub syncthread_inst: InstDesc,
 
     /// Overhead for entring the loop.
@@ -216,6 +221,11 @@ impl Gpu {
             div_f64_inst: InstDesc::default(),
             div_i32_inst: InstDesc::default(),
             div_i64_inst: InstDesc::default(),
+            max_f32_inst: InstDesc::default(),
+            max_f64_inst: InstDesc::default(),
+            max_i32_inst: InstDesc::default(),
+            max_i64_inst: InstDesc::default(),
+            exp_f32_inst: InstDesc::default(),
             syncthread_inst: InstDesc::default(),
             loop_init_overhead: InstDesc::default(),
             loop_iter_overhead: InstDesc::default(),
@@ -335,6 +345,10 @@ impl Gpu {
             (&BinOp(ir::BinOp::Div, ..), Some(Type::F(64))) => self.div_f64_inst.into(),
             (&BinOp(ir::BinOp::Div, ..), Some(Type::I(32))) => self.div_i32_inst.into(),
             (&BinOp(ir::BinOp::Div, ..), Some(Type::I(64))) => self.div_i64_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::F(32))) => self.max_f32_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::F(64))) => self.max_f64_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::I(32))) => self.max_i32_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::I(64))) => self.max_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
@@ -344,6 +358,9 @@ impl Gpu {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.store_desc(&mem_info, flag).into()
+            }
+            (&UnaryOp(ir::UnaryOp::Exp(..), ..), Some(Type::F(32))) => {
+                self.exp_f32_inst.into()
             }
             // TODO(model): Instruction description for mov and cast.
             (&UnaryOp(..), _) => HwPressure::zero(self),

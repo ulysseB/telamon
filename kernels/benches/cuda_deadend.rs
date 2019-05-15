@@ -8,8 +8,8 @@ fn main() {
     benchmark::<linalg::Axpy<f32>>((1 << 25, true), 1000, executor);
     benchmark::<linalg::MatVec<f32>>((1 << 13, 1 << 13, true), 1000, executor);
     benchmark::<linalg::Gesummv<f32>>((1 << 13, 1 << 13, true), 1000, executor);
-    let params = linalg::MatMulP::new(1024, 1024, 1024);
-    benchmark::<linalg::MatMul<f32>>(params, 500, executor);
+    let params = linalg::FusedMMP::new(1024, 1024, 1024);
+    benchmark::<linalg::FusedMM<f32>>(params, 500, executor);
 }
 
 fn benchmark<'a, K: Kernel<'a>>(

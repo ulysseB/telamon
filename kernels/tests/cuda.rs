@@ -18,8 +18,20 @@ test_output!(axpy, linalg::Axpy<f32>, 100, (1 << 15, true));
 test_output!(mv, linalg::MatVec<f32>, 100, (1 << 4, 1 << 2, true));
 test_output!(gesummv, linalg::Gesummv<f32>, 100, (1 << 4, 1 << 4, true));
 test_output!(
-    matmul,
-    linalg::MatMul<f32>,
+    fused_mm_identity,
+    linalg::FusedMM<f32>,
     100,
-    linalg::MatMulP::new(16, 16, 16)
+    linalg::FusedMMP::new(16, 16, 16)
+);
+test_output!(
+    fused_mm_relu,
+    linalg::FusedMM<f32>,
+    100,
+    linalg::FusedMMP::new(16, 16, 16).activation_fun(linalg::ActivationFunction::ReLU)
+);
+test_output!(
+    fused_mm_sigmoid,
+    linalg::FusedMM<f32>,
+    100,
+    linalg::FusedMMP::new(16, 16, 16).activation_fun(linalg::ActivationFunction::Sigmoid)
 );

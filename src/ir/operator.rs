@@ -67,6 +67,8 @@ pub enum BinOp {
     Leq,
     /// Computes `lhs == rhs`.
     Equals,
+    /// Computes max(lhs, rhs)
+    Max,
 }
 
 impl fmt::Display for BinOp {
@@ -87,6 +89,7 @@ impl BinOp {
             BinOp::Lt => "lt",
             BinOp::Leq => "leq",
             BinOp::Equals => "equals",
+            BinOp::Max => "max",
         }
     }
 
@@ -101,7 +104,7 @@ impl BinOp {
     /// Indicates if the result must be rounded when operating on floats.
     fn requires_rounding(self) -> bool {
         match self {
-            BinOp::Lt | BinOp::Leq | BinOp::Equals => false,
+            BinOp::Lt | BinOp::Leq | BinOp::Equals | BinOp::Max => false,
             _ => true,
         }
     }
@@ -115,11 +118,14 @@ pub enum UnaryOp {
     Mov,
     /// Casts the input to another type.
     Cast(ir::Type),
+    /// Calculates exp(x)
+    Exp(ir::Type),
 }
 
 impl fmt::Display for UnaryOp {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            UnaryOp::Exp(..) => fmt.write_str("exp"),
             UnaryOp::Mov => fmt.write_str("mov"),
             UnaryOp::Cast(t) => write!(fmt, "cast({})", t),
         }
@@ -130,7 +136,7 @@ impl UnaryOp {
     /// Gives the return type of the operand given its input type.
     fn t(self, op_type: ir::Type) -> ir::Type {
         match self {
-            UnaryOp::Mov => op_type,
+            UnaryOp::Mov | UnaryOp::Exp(..) => op_type,
             UnaryOp::Cast(t) => t,
         }
     }

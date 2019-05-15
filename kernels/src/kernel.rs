@@ -42,8 +42,8 @@ const MAX_DEADEND_RATIO: f32 = 0.95;
 /// // `context` is an existing `device::Context`
 /// let (signature, kernel, context) = KernelBuilder::new()
 ///     .name("My kernel")
-///     .build::<linalg::MatMul<f32>, _>(
-///         linalg::MatMulP::new(128, 128, 128),
+///     .build::<linalg::FusedMM<f32>, _>(
+///         linalg::FusedMMP::new(128, 128, 128),
 ///         &mut context,
 ///     );
 ///

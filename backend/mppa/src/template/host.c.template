@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <math.h>
 #include <utask.h>
 #include <mppa_async.h>
 #include <mppa_power.h>
 #include <mppa_remote.h>
+
+#define telamon_op_max(a, b) ((a) > (b) ? (a) : (b))
 
 #define UTASK_BARRIER_NB (2)
 #define UTASK_SUCCESS (0)
