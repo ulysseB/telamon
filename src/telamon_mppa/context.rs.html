@@ -373,6 +373,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">mppa</span>, <span class="ident">ValuePrinter</span>};
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
 <span class="kw">use</span> <span class="ident">crossbeam</span>::<span class="ident">queue</span>::<span class="ident">ArrayQueue</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{
@@ -389,7 +390,6 @@
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;real_mppa&quot;</span>))]</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">fake_telajax</span> <span class="kw">as</span> <span class="ident">telajax</span>;
@@ -471,7 +471,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span> {
     <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">mppa</span>::<span class="ident">Mppa</span><span class="op">&gt;</span>,
     <span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">telajax</span>::<span class="ident">Device</span>,
-    <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Argument</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">parameters</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Argument</span><span class="op">&gt;&gt;</span>,
     <span class="ident">writeback_slots</span>: <span class="ident">ArrayQueue</span><span class="op">&lt;</span><span class="ident">MppaArray</span><span class="op">&gt;</span>,
 }
 
@@ -493,7 +493,7 @@
         <span class="ident">Context</span> {
             <span class="ident">device</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">mppa</span>::<span class="ident">Mppa</span>::<span class="ident">default</span>()),
             <span class="ident">executor</span>,
-            <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">parameters</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
             <span class="ident">writeback_slots</span>,
         }
     }

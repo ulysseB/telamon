@@ -227,12 +227,14 @@
 <span id="227">227</span>
 <span id="228">228</span>
 <span id="229">229</span>
+<span id="230">230</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">api</span>::<span class="ident">Argument</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">kernel</span>::<span class="ident">Thunk</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Executor</span>, <span class="ident">Gpu</span>, <span class="ident">JITDaemon</span>, <span class="ident">Kernel</span>};
 <span class="doccomment">///! Defines the CUDA evaluation context.</span>
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">info</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">f64</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
@@ -252,7 +254,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">gpu_model</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Gpu</span><span class="op">&gt;</span>,
     <span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Executor</span>,
-    <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Argument</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">parameters</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Argument</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -266,7 +268,7 @@
         <span class="ident">Context</span> {
             <span class="ident">gpu_model</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">gpu</span>),
             <span class="ident">executor</span>,
-            <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">parameters</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
         }
     }
 

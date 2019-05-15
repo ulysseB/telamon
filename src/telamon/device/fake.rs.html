@@ -269,7 +269,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
-<span class="kw">use</span> <span class="ident">fnv</span>::<span class="ident">FnvHashMap</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">Candidate</span>;
@@ -380,8 +380,8 @@
     <span class="kw">fn</span> <span class="ident">hw_pressure</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
-        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">ir</span>::<span class="ident">Statement</span>,
         <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="kw">super</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {

@@ -596,6 +596,7 @@
 <span id="596">596</span>
 <span id="597">597</span>
 <span id="598">598</span>
+<span id="599">599</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -610,13 +611,14 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">print</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::{<span class="ident">FxHashMap</span>, <span class="ident">FxHashSet</span>};
 <span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">lazy_static</span>::<span class="ident">lazy_static</span>;
 <span class="kw">use</span> <span class="ident">regex</span>::<span class="ident">Regex</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">hash_map</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">FnvHashMap</span>, <span class="ident">FnvHashSet</span>, <span class="ident">RcStr</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">RcStr</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">constraint</span>::<span class="ident">dedup_inputs</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">constraint</span>::<span class="ident">Constraint</span> <span class="kw">as</span> <span class="ident">TypedConstraint</span>;
@@ -836,7 +838,7 @@
 <span class="doccomment">/// Maps variables to their set and position.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VarMap</span> {
-    <span class="ident">map</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Set</span>)<span class="op">&gt;</span>,
+    <span class="ident">map</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Set</span>)<span class="op">&gt;</span>,
     <span class="ident">next_arg_id</span>: <span class="ident">usize</span>,
     <span class="ident">next_forall_id</span>: <span class="ident">usize</span>,
 }
@@ -900,7 +902,7 @@
     }
 
     <span class="doccomment">/// Returns the maping of variables to sets.</span>
-    <span class="kw">fn</span> <span class="ident">env</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Set</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">env</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Set</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">values</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>()
     }
 }
@@ -1050,7 +1052,7 @@
 }
 
 <span class="doccomment">/// Returns the variable present in a piece of code.</span>
-<span class="kw">fn</span> <span class="ident">get_code_vars</span>(<span class="ident">code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">get_code_vars</span>(<span class="ident">code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">FxHashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
     <span class="macro">lazy_static</span><span class="macro">!</span> {
         <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VAR_PATTERN</span>: <span class="ident">Regex</span> <span class="op">=</span> <span class="ident">Regex</span>::<span class="ident">new</span>(<span class="string">r&quot;\$[a-zA-Z_][a-zA-Z_0-9]*&quot;</span>).<span class="ident">unwrap</span>();
     }
@@ -1153,7 +1155,7 @@
     <span class="doccomment">/// The values the enum can take, with the atached documentation.</span>
     <span class="ident">values</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span>,
     <span class="doccomment">/// Aliases mapped to the corresponding documentation and value set.</span>
-    <span class="ident">aliases</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="ident">aliases</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">FxHashSet</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Symmetry information.</span>
     <span class="ident">symmetry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Symmetry</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Constraints on a value.</span>

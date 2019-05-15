@@ -306,7 +306,6 @@
 <span id="306">306</span>
 <span id="307">307</span>
 <span id="308">308</span>
-<span id="309">309</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Generic helper functions.</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">clippy</span>::<span class="ident">all</span>)]</span>
@@ -325,12 +324,11 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">iterator</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">ndarray</span>::{<span class="ident">NDArray</span>, <span class="ident">NDRange</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">vec_set</span>::<span class="ident">VecSet</span>;
-<span class="kw">use</span> <span class="ident">fnv</span>::<span class="ident">FnvBuildHasher</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">fnv</span>::{<span class="ident">FnvHashMap</span>, <span class="ident">FnvHashSet</span>};
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxBuildHasher</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">Integer</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">Serialize</span>;
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">FnvMultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">multimap</span>::<span class="ident">MultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">FnvBuildHasher</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">FxMultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">multimap</span>::<span class="ident">MultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">FxBuildHasher</span><span class="op">&gt;</span>;
 
 <span class="doccomment">/// A reference counted string, compatible with `&amp;str`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Debug</span>)]</span>

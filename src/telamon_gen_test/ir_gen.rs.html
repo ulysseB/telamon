@@ -254,6 +254,7 @@
 <span id="254">254</span>
 <span id="255">255</span>
 <span id="256">256</span>
+<span id="257">257</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a fake IR.</span>
 
@@ -289,6 +290,7 @@
     (@<span class="ident">stack</span> [$([<span class="macro-nonterminal">$</span><span class="macro-nonterminal">kind</span>:<span class="ident">tt</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">param</span>:<span class="ident">tt</span>,
                <span class="macro-nonterminal">$</span><span class="kw">super</span>:<span class="macro-nonterminal">tt</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">super_param</span>:<span class="ident">tt</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">reverse</span>:<span class="ident">tt</span>],)<span class="kw-2">*</span>],) <span class="op">=&gt;</span> {
         <span class="kw">mod</span> <span class="ident">ir</span> {
+            <span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
             <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
             <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -305,7 +307,7 @@
             <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Clone</span>)]</span>
             <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span> {
                 <span class="ident">next_id</span>: <span class="ident">usize</span>,
-                $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="macro">define_ir</span><span class="macro">!</span>(@<span class="ident">full_id</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">param</span>),
+                $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="macro">define_ir</span><span class="macro">!</span>(@<span class="ident">full_id</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">param</span>),
                                  ::<span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>::<span class="ident">Obj</span><span class="op">&gt;&gt;</span>,)<span class="op">*</span>
             }
 

@@ -264,11 +264,13 @@
 <span id="264">264</span>
 <span id="265">265</span>
 <span id="266">266</span>
+<span id="267">267</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Code generation for `ir::Variable`.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -276,7 +278,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Variable</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">variable</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Variable</span>,
     <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
-    <span class="ident">instantiation_dims</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
+    <span class="ident">instantiation_dims</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="ident">alias</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Alias</span><span class="op">&gt;</span>,
 }
 
@@ -310,8 +312,8 @@
 <span class="doccomment">/// Indicates how a variable aliases with another.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Alias</span> {
     <span class="ident">other_variable</span>: <span class="ident">ir</span>::<span class="ident">VarId</span>,
-    <span class="ident">dim_mapping</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">reverse_mapping</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
+    <span class="ident">dim_mapping</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">reverse_mapping</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Alias</span> {
@@ -323,7 +325,7 @@
     <span class="doccomment">/// Specifies the mapping of dimensions from `other_variable` to the alias. A mapping</span>
     <span class="doccomment">/// to `None` indicates the alias takes the last instance of the variable on the</span>
     <span class="doccomment">/// dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_mapping</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_mapping</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dim_mapping</span>
     }
 
@@ -359,7 +361,7 @@
     <span class="kw">fn</span> <span class="ident">find_instantiation_dims</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">dim_mapping</span>
             .<span class="ident">iter</span>()
             .<span class="ident">flat_map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>)<span class="op">|</span> <span class="ident">rhs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">rhs</span><span class="op">|</span> (<span class="ident">lhs</span>, <span class="ident">rhs</span>)))
@@ -376,7 +378,7 @@
 }
 
 <span class="doccomment">/// Generates variables aliases.</span>
-<span class="kw">fn</span> <span class="ident">generate_aliases</span>(<span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Alias</span><span class="op">&gt;&gt;</span> {
+<span class="kw">fn</span> <span class="ident">generate_aliases</span>(<span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Alias</span><span class="op">&gt;&gt;</span> {
     <span class="ident">space</span>
         .<span class="ident">ir_instance</span>()
         .<span class="ident">variables</span>()
@@ -395,7 +397,7 @@
 
 <span class="doccomment">/// Sort variables by aliasing order.</span>
 <span class="kw">fn</span> <span class="ident">sort_variables</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="kw-2">mut</span> <span class="ident">aliases</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Alias</span><span class="op">&gt;&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">aliases</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Alias</span><span class="op">&gt;&gt;</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span>,
 ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Alias</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
     <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">variables</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">var</span><span class="op">|</span> {
@@ -469,7 +471,7 @@
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">fn</span> <span class="ident">mk_map</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">content</span>: <span class="kw-2">&amp;</span>[(<span class="ident">K</span>, <span class="ident">V</span>)]) <span class="op">-&gt;</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span>
+    <span class="kw">fn</span> <span class="ident">mk_map</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">content</span>: <span class="kw-2">&amp;</span>[(<span class="ident">K</span>, <span class="ident">V</span>)]) <span class="op">-&gt;</span> <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">K</span>: <span class="ident">Copy</span> <span class="op">+</span> <span class="ident">Eq</span> <span class="op">+</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">Hash</span>,
         <span class="ident">V</span>: <span class="ident">Copy</span>,

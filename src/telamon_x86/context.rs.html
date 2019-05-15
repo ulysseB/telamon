@@ -276,6 +276,7 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">compile</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cpu</span>::<span class="ident">Cpu</span>;
@@ -292,6 +293,7 @@
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>;
 
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
@@ -308,7 +310,7 @@
 <span class="doccomment">/// A CPU evaluation context.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span> {
     <span class="ident">cpu_model</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Cpu</span><span class="op">&gt;</span>,
-    <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Argument</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">parameters</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Argument</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Context</span> {
@@ -350,7 +352,7 @@
         <span class="kw">let</span> <span class="ident">default_cpu</span> <span class="op">=</span> <span class="ident">Cpu</span>::<span class="ident">dummy_cpu</span>();
         <span class="ident">Context</span> {
             <span class="ident">cpu_model</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">default_cpu</span>),
-            <span class="ident">parameters</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">parameters</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
         }
     }
 }

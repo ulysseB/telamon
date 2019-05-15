@@ -195,12 +195,14 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
+<span id="198">198</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! A module for handling accesses to the device memory.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">dim</span>, <span class="ident">InstId</span>, <span class="ident">Type</span>};
 
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashSet</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -283,7 +285,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockMap</span> {
     <span class="ident">blocks</span>: <span class="ident">ir</span>::<span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">MemId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
-    <span class="ident">layouts</span>: <span class="ident">FnvHashSet</span><span class="op">&lt;</span><span class="ident">MemId</span><span class="op">&gt;</span>,
+    <span class="ident">layouts</span>: <span class="ident">FxHashSet</span><span class="op">&lt;</span><span class="ident">MemId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BlockMap</span> {

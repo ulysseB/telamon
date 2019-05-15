@@ -635,6 +635,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">characterize</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">mem_model</span>::{<span class="self">self</span>, <span class="ident">MemInfo</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">printer</span>::<span class="ident">CudaPrinter</span>, <span class="ident">Executor</span>};
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">codegen</span>::<span class="ident">Function</span>;
@@ -642,7 +643,6 @@
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Operator</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">model</span>::{<span class="self">self</span>, <span class="ident">HwPressure</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">Domain</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">SearchSpace</span>};
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// FIXME: fix performance model</span>
 <span class="comment">// - l1_lines constraint for stores ?</span>
@@ -932,7 +932,7 @@
     <span class="kw">fn</span> <span class="ident">inst_pressure</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
+        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
         <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
@@ -1157,8 +1157,8 @@
     <span class="kw">fn</span> <span class="ident">hw_pressure</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
-        <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
+        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span><span class="op">&gt;</span>,
+        <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
         <span class="ident">stmt</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">ir</span>::<span class="ident">Statement</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">model</span>::<span class="ident">HwPressure</span> {

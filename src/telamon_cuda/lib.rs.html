@@ -89,6 +89,7 @@
 <span id="89">89</span>
 <span id="90">90</span>
 <span id="91">91</span>
+<span id="92">92</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines the CUDA target.</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">bare_trait_objects</span>)]</span>
@@ -119,6 +120,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">gpu</span>::{<span class="ident">Gpu</span>, <span class="ident">InstDesc</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">kernel</span>::<span class="ident">Kernel</span>;
 
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">ToPrimitive</span>;
@@ -128,7 +130,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ValuePrinter</span> {
-    <span class="ident">num_var</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
+    <span class="ident">num_var</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="ident">num_sizes</span>: <span class="ident">usize</span>,
 }
 

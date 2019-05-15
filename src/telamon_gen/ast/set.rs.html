@@ -471,6 +471,7 @@
 <span id="471">471</span>
 <span id="472">472</span>
 <span id="473">473</span>
+<span id="474">474</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">mem</span>;
@@ -487,10 +488,11 @@
 };
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">lexer</span>::<span class="ident">Spanned</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">trace</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">FnvHashMap</span>, <span class="ident">RcStr</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">RcStr</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SetDef</span> {
@@ -506,7 +508,7 @@
 <span class="kw">impl</span> <span class="ident">SetDef</span> {
     <span class="doccomment">/// This checks that thereisn&#39;t any keys doublon.</span>
     <span class="kw">fn</span> <span class="ident">check_redefinition_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">Spanned</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">Spanned</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="ident">FxHashMap</span>::<span class="ident">default</span>();
         <span class="kw">for</span> (<span class="ident">key</span>, ..) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pre</span>) <span class="op">=</span> <span class="ident">hash</span>.<span class="ident">insert</span>(<span class="ident">key</span>.<span class="ident">data</span>.<span class="ident">to_owned</span>(), <span class="ident">key</span>.<span class="ident">with_data</span>(())) {
                 <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Redefinition</span> {

@@ -325,19 +325,21 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
+<span id="328">328</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes the different kinds of operands an instruction can have.</span>
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operand</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">DimMap</span>, <span class="ident">InstId</span>, <span class="ident">Instruction</span>, <span class="ident">Parameter</span>, <span class="ident">Type</span>};
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">traits</span>::{<span class="ident">Signed</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">unwrap</span>, <span class="ident">FnvHashMap</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">unwrap</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoweringMap</span> {
@@ -347,12 +349,12 @@
     <span class="doccomment">/// lowering.</span>
     <span class="ident">st_inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
     <span class="doccomment">/// Maps the lhs dimensions in `map` to their lowered dimension.</span>
-    <span class="ident">st_map</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
+    <span class="ident">st_map</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Instruction ID to use for the `load` instruction when</span>
     <span class="doccomment">/// lowering.</span>
     <span class="ident">ld_inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
     <span class="doccomment">/// Maps the rhs dimensions in `map` to their lowered dimension.</span>
-    <span class="ident">ld_map</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
+    <span class="ident">ld_map</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimMappingId</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">LoweringMap</span> {
@@ -601,7 +603,7 @@
                     .<span class="ident">iter</span>()
                     .<span class="ident">sorted</span>()
                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
-                <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;&gt;</span>();
+                <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;&gt;</span>();
 
                 <span class="macro">write</span><span class="macro">!</span>(
                     <span class="ident">fmt</span>,
@@ -623,7 +625,7 @@
                     .<span class="ident">iter</span>()
                     .<span class="ident">sorted</span>()
                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
-                <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;&gt;</span>();
+                <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;&gt;</span>();
                 <span class="macro">write</span><span class="macro">!</span>(
                     <span class="ident">fmt</span>,
                     <span class="string">&quot;reduce({:?}[{}], {:?})&quot;</span>,

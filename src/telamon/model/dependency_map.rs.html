@@ -69,31 +69,29 @@
 <span id="69">69</span>
 <span id="70">70</span>
 <span id="71">71</span>
-<span id="72">72</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Holds the latency between each node and its dependencies.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">FastBound</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">hash_map</span>;
-
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Holds the latency between each node and its dependencies. Nodes must be sorted.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DependencyMap</span> {
-    <span class="ident">deps</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">FastBound</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">deps</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">FastBound</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">DependencyMap</span> {
     <span class="doccomment">/// Creates an empty dependency map.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">DependencyMap</span> {
         <span class="ident">DependencyMap</span> {
-            <span class="ident">deps</span>: (<span class="number">0</span>..<span class="ident">size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>()).<span class="ident">collect</span>(),
+            <span class="ident">deps</span>: (<span class="number">0</span>..<span class="ident">size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FxHashMap</span>::<span class="ident">default</span>()).<span class="ident">collect</span>(),
         }
     }
 
     <span class="doccomment">/// Returns the dependencies of a node.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deps</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">to</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">FastBound</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deps</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">to</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">FastBound</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">deps</span>[<span class="ident">to</span>]
     }
 

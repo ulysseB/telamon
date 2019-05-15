@@ -500,6 +500,7 @@
 <span id="500">500</span>
 <span id="501">501</span>
 <span id="502">502</span>
+<span id="503">503</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helper struct to build a `Function`.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Device</span>;
@@ -507,6 +508,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">op</span>, <span class="ident">Parameter</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Function</span>, <span class="ident">InstId</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Signature</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">DimKind</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">debug</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span>;
@@ -516,7 +518,7 @@
 <span class="doccomment">/// Helper to build a `Function`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Builder</span> {
     <span class="ident">function</span>: <span class="ident">Function</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-    <span class="ident">open_dims</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
+    <span class="ident">open_dims</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="ident">actions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>,
 }
 
@@ -525,7 +527,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">signature</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Signature</span><span class="op">&gt;</span>, <span class="ident">device</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Device</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">Builder</span> {
         <span class="ident">Builder</span> {
             <span class="ident">function</span>: <span class="ident">Function</span>::<span class="ident">new</span>(<span class="ident">signature</span>, <span class="ident">device</span>),
-            <span class="ident">open_dims</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">open_dims</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
             <span class="ident">actions</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
         }
     }

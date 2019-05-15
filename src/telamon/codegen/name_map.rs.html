@@ -573,11 +573,13 @@
 <span id="573">573</span>
 <span id="574">574</span>
 <span id="575">575</span>
+<span id="576">576</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">codegen</span>::{
     <span class="self">self</span>, <span class="ident">AllocationScheme</span>, <span class="ident">Dimension</span>, <span class="ident">Function</span>, <span class="ident">Instruction</span>, <span class="ident">ParamValKey</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">dim</span>, <span class="ident">DimMap</span>, <span class="ident">InstId</span>, <span class="ident">Type</span>};
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
@@ -614,27 +616,27 @@
     <span class="doccomment">/// Provides fresh names.</span>
     <span class="ident">value_printer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">VP</span>,
     <span class="doccomment">/// Keeps track of the names of the variables used in the kernel</span>
-    <span class="ident">variables</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="ident">VariableNames</span><span class="op">&gt;</span>,
+    <span class="ident">variables</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="ident">VariableNames</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of the name of the values produced by instructions.</span>
-    <span class="ident">insts</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">InstId</span>, <span class="ident">VariableNames</span><span class="op">&gt;</span>,
+    <span class="ident">insts</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">InstId</span>, <span class="ident">VariableNames</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of loop index names.</span>
-    <span class="ident">indexes</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">RcStr</span><span class="op">&gt;</span>,
+    <span class="ident">indexes</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">RcStr</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of parameter names, both in the code and in the arguments.</span>
-    <span class="ident">params</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ParamValKey</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, (<span class="ident">String</span>, <span class="ident">String</span>)<span class="op">&gt;</span>,
+    <span class="ident">params</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ParamValKey</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, (<span class="ident">String</span>, <span class="ident">String</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of memory block address names.</span>
-    <span class="ident">mem_blocks</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">MemId</span>, <span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="ident">mem_blocks</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">MemId</span>, <span class="ident">String</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of the next fresh ID that can be assigned to a loop.</span>
     <span class="ident">num_loop</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// Tracks the current index on expanded dimensions.</span>
-    <span class="ident">current_indexes</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
+    <span class="ident">current_indexes</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Total number threads.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;mppa&quot;</span>)]</span>
     <span class="ident">total_num_threads</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// Tracks the name of induction variables partial names.</span>
-    <span class="ident">induction_vars</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">induction_levels</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>), <span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="ident">induction_vars</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="ident">induction_levels</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>), <span class="ident">String</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Casted sizes.</span>
-    <span class="ident">size_casts</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">codegen</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">Type</span>), <span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="ident">size_casts</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">codegen</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">Type</span>), <span class="ident">String</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Guard to use in front of instructions with side effects.</span>
     <span class="ident">side_effect_guard</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
 }
@@ -642,7 +644,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">VP</span>: <span class="ident">ValuePrinter</span><span class="op">&gt;</span> <span class="ident">NameMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">VP</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new `NameMap`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">value_printer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">VP</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem_blocks</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem_blocks</span> <span class="op">=</span> <span class="ident">FxHashMap</span>::<span class="ident">default</span>();
         <span class="comment">// Setup parameters names.</span>
         <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">function</span>
             .<span class="ident">device_code_args</span>()
@@ -656,7 +658,7 @@
             })
             .<span class="ident">collect</span>();
         <span class="comment">// Name dimensions indexes.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">indexes</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">indexes</span> <span class="op">=</span> <span class="ident">FxHashMap</span>::<span class="ident">default</span>();
         <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">dimensions</span>() {
             <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">value_printer</span>.<span class="ident">name</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>)));
             <span class="kw">for</span> <span class="ident">id</span> <span class="kw">in</span> <span class="ident">dim</span>.<span class="ident">dim_ids</span>() {
@@ -664,8 +666,8 @@
             }
         }
         <span class="comment">// Name induction levels.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">induction_levels</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">induction_vars</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">induction_levels</span> <span class="op">=</span> <span class="ident">FxHashMap</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">induction_vars</span> <span class="op">=</span> <span class="ident">FxHashMap</span>::<span class="ident">default</span>();
         <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">induction_levels</span>() {
             <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">value_printer</span>.<span class="ident">name</span>(<span class="ident">level</span>.<span class="ident">t</span>());
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">dim</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="ident">level</span>.<span class="ident">increment</span> {
@@ -684,13 +686,13 @@
         <span class="kw">let</span> <span class="ident">variables</span> <span class="op">=</span> <span class="ident">VariableNames</span>::<span class="ident">create</span>(<span class="ident">function</span>, <span class="ident">value_printer</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">name_map</span> <span class="op">=</span> <span class="ident">NameMap</span> {
             <span class="ident">value_printer</span>,
-            <span class="ident">insts</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">insts</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
             <span class="ident">variables</span>,
             <span class="ident">num_loop</span>: <span class="number">0</span>,
-            <span class="ident">current_indexes</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">current_indexes</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;mppa&quot;</span>)]</span>
             <span class="ident">total_num_threads</span>: <span class="ident">function</span>.<span class="ident">num_threads</span>(),
-            <span class="ident">size_casts</span>: <span class="ident">FnvHashMap</span>::<span class="ident">default</span>(),
+            <span class="ident">size_casts</span>: <span class="ident">FxHashMap</span>::<span class="ident">default</span>(),
             <span class="ident">indexes</span>,
             <span class="ident">params</span>,
             <span class="ident">mem_blocks</span>,
@@ -773,7 +775,7 @@
     <span class="kw">fn</span> <span class="ident">name_op_with_indexes</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operand</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operand</span>,
-        <span class="ident">indexes</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">indexes</span>: <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">operand</span> {
             <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Int</span>(<span class="ident">val</span>, <span class="ident">len</span>) <span class="op">=&gt;</span> {
@@ -831,7 +833,7 @@
     <span class="kw">fn</span> <span class="ident">name_mapped_inst</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="ident">InstId</span>,
-        <span class="kw-2">mut</span> <span class="ident">indexes</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">indexes</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
         <span class="ident">dim_map</span>: <span class="kw-2">&amp;</span><span class="ident">DimMap</span>,
     ) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="kw">in</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>() {
@@ -857,7 +859,7 @@
     <span class="kw">fn</span> <span class="ident">decl_alias</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">alias</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>, <span class="ident">base</span>: <span class="ident">InstId</span>, <span class="ident">dim_map</span>: <span class="kw-2">&amp;</span><span class="ident">DimMap</span>) {
         <span class="comment">// We temporarily rely on `VariableNames` to generate instruction names until we</span>
         <span class="comment">// remove the need to rename variables altogether.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mapping</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mapping</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
         <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">dim</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">alias</span>.<span class="ident">instantiation_dims</span>() {
             <span class="ident">mapping</span>.<span class="ident">insert</span>(<span class="ident">dim</span>, <span class="ident">dim</span>);
         }
@@ -1000,7 +1002,7 @@
 
 <span class="kw">impl</span> <span class="ident">VariableNames</span> {
     <span class="doccomment">/// Returns the name of the variable for the given dimension indexes.</span>
-    <span class="kw">fn</span> <span class="ident">get_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim_indexes</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">get_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim_indexes</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw">let</span> <span class="ident">indexes</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">indexes</span>
             .<span class="ident">iter</span>()
@@ -1019,8 +1021,8 @@
     <span class="kw">fn</span> <span class="ident">create</span>(
         <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Function</span>,
         <span class="ident">value_printer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">ValuePrinter</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vars_names</span> <span class="op">=</span> <span class="ident">FnvHashMap</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="self">Self</span><span class="op">&gt;</span>::<span class="ident">default</span>();
+    ) <span class="op">-&gt;</span> <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span>, <span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vars_names</span> <span class="op">=</span> <span class="ident">FxHashMap</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="self">Self</span><span class="op">&gt;</span>::<span class="ident">default</span>();
         <span class="kw">for</span> <span class="ident">var</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">variables</span>() {
             <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">alias</span>) <span class="op">=</span> <span class="ident">var</span>.<span class="ident">alias</span>() {
                 <span class="comment">// `codegen::Function` lists variables that depend on an alias after the</span>
@@ -1056,7 +1058,7 @@
     <span class="doccomment">/// dimensions mapped to `None`.</span>
     <span class="kw">fn</span> <span class="ident">create_alias</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">dim_mapping</span>: <span class="kw-2">&amp;</span><span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">dim_mapping</span>: <span class="kw-2">&amp;</span><span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">indexes</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">indexes</span>
@@ -1111,8 +1113,8 @@
         }
     }
 
-    <span class="doccomment">/// Converts list of indexes into a `FnvHashMap`.</span>
-    <span class="kw">fn</span> <span class="ident">mk_index</span>(<span class="ident">idx</span>: <span class="kw-2">&amp;</span>[(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span>)]) <span class="op">-&gt;</span> <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Converts list of indexes into a `FxHashMap`.</span>
+    <span class="kw">fn</span> <span class="ident">mk_index</span>(<span class="ident">idx</span>: <span class="kw-2">&amp;</span>[(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span>)]) <span class="op">-&gt;</span> <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="ident">idx</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>()
     }
 

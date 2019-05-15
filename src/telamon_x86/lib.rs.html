@@ -99,6 +99,7 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
+<span id="102">102</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines the CPU target.</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">bare_trait_objects</span>)]</span>
@@ -112,6 +113,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">context</span>::<span class="ident">Context</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">cpu</span>::<span class="ident">Cpu</span>;
 
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">traits</span>::<span class="ident">Float</span>;
@@ -122,7 +124,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ValuePrinter</span> {
-    <span class="ident">num_var</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
+    <span class="ident">num_var</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="ident">num_sizes</span>: <span class="ident">usize</span>,
     <span class="ident">num_glob_ptr</span>: <span class="ident">usize</span>,
 }

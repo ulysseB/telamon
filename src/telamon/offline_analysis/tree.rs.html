@@ -466,10 +466,10 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">choice</span>::<span class="ident">ActionEx</span> <span class="kw">as</span> <span class="ident">Action</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">mcts</span>::{<span class="ident">EdgeIndex</span>, <span class="ident">NodeId</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::<span class="ident">Bound</span>;
+<span class="kw">use</span> <span class="ident">fxhash</span>::<span class="ident">FxHashMap</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::{<span class="ident">Ref</span>, <span class="ident">RefCell</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">rc</span>::{<span class="ident">Rc</span>, <span class="ident">Weak</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
-<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">FnvHashMap</span>;
 
 <span class="doccomment">/// Outgoing Edge to a child annotated with the action for the</span>
 <span class="doccomment">/// child. If `child` is None, the child node corresponding to the</span>
@@ -767,7 +767,7 @@
     <span class="ident">root</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Weak</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">CandidateNodeInner</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Mapping node ID -&gt; Candidate nodes</span>
-    <span class="ident">nodes</span>: <span class="ident">FnvHashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">CandidateNodeInner</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">nodes</span>: <span class="ident">FxHashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">CandidateNodeInner</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">CandidateTree</span> {
