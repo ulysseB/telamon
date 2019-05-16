@@ -439,97 +439,6 @@
 <span id="439">439</span>
 <span id="440">440</span>
 <span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -543,8 +452,6 @@
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="self">self</span>, <span class="ident">error</span>, <span class="ident">fmt</span>, <span class="ident">str</span>::<span class="ident">FromStr</span>};
 
 <span class="kw">use</span> <span class="ident">config</span>;
-<span class="kw">use</span> <span class="ident">getopts</span>;
-<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">num_cpus</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">tfrecord</span>, <span class="ident">unwrap</span>};
@@ -602,24 +509,6 @@
         <span class="ident">config_parser</span>
     }
 
-    <span class="doccomment">/// Reads the configuration from the &quot;Settings.toml&quot; file and from the command line.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">arg_parser</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">setup_args_parser</span>();
-        <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">env</span>::<span class="ident">args</span>().<span class="ident">collect_vec</span>();
-        <span class="kw">let</span> <span class="ident">arg_matches</span> <span class="op">=</span> <span class="ident">arg_parser</span>.<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>[<span class="number">1</span>..]).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
-            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{} Use &#39;--help&#39; to display a list of valid options.&quot;</span>, <span class="ident">err</span>);
-            <span class="ident">std</span>::<span class="ident">process</span>::<span class="ident">exit</span>(<span class="op">-</span><span class="number">1</span>);
-        });
-        <span class="kw">if</span> <span class="ident">arg_matches</span>.<span class="ident">opt_present</span>(<span class="string">&quot;h&quot;</span>) {
-            <span class="kw">let</span> <span class="ident">brief</span> <span class="op">=</span> <span class="ident">arg_parser</span>.<span class="ident">short_usage</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>[<span class="number">0</span>]);
-            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">arg_parser</span>.<span class="ident">usage</span>(<span class="kw-2">&amp;</span><span class="ident">brief</span>));
-            <span class="ident">std</span>::<span class="ident">process</span>::<span class="ident">exit</span>(<span class="number">0</span>);
-        }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">config_parser</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">create_parser</span>();
-        <span class="self">Self</span>::<span class="ident">parse_arguments</span>(<span class="kw-2">&amp;</span><span class="ident">arg_matches</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">config_parser</span>);
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">config_parser</span>.<span class="ident">try_into</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>())
-    }
-
     <span class="doccomment">/// Extract the configuration from the configuration file, if any.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_from_file</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">Self</span>::<span class="ident">create_parser</span>().<span class="ident">try_into</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>())
@@ -631,36 +520,6 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parser</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">create_parser</span>();
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">parser</span>.<span class="ident">merge</span>(<span class="ident">config</span>::<span class="ident">File</span>::<span class="ident">from_str</span>(<span class="ident">json</span>, <span class="ident">config</span>::<span class="ident">FileFormat</span>::<span class="ident">Json</span>)));
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">parser</span>.<span class="ident">try_into</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>())
-    }
-
-    <span class="doccomment">/// Sets up the parser of command line arguments.</span>
-    <span class="kw">fn</span> <span class="ident">setup_args_parser</span>() <span class="op">-&gt;</span> <span class="ident">getopts</span>::<span class="ident">Options</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">getopts</span>::<span class="ident">Options</span>::<span class="ident">new</span>();
-        <span class="ident">opts</span>.<span class="ident">optflag</span>(<span class="string">&quot;h&quot;</span>, <span class="string">&quot;help&quot;</span>, <span class="string">&quot;Print the help menu.&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">optopt</span>(
-            <span class="string">&quot;j&quot;</span>,
-            <span class="string">&quot;jobs&quot;</span>,
-            <span class="string">&quot;number of explorer working in parallel&quot;</span>,
-            <span class="string">&quot;N_THREAD&quot;</span>,
-        );
-        <span class="ident">opts</span>.<span class="ident">optopt</span>(<span class="string">&quot;f&quot;</span>, <span class="string">&quot;log_file&quot;</span>, <span class="string">&quot;name of watcher file&quot;</span>, <span class="string">&quot;string&quot;</span>);
-        <span class="ident">SearchAlgorithm</span>::<span class="ident">setup_args_parser</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">opts</span>);
-        <span class="ident">opts</span>
-    }
-
-    <span class="doccomment">/// Overwrite the configuration with the parameters from the command line.</span>
-    <span class="kw">fn</span> <span class="ident">parse_arguments</span>(<span class="ident">arguments</span>: <span class="kw-2">&amp;</span><span class="ident">getopts</span>::<span class="ident">Matches</span>, <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">config</span>::<span class="ident">Config</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">num_workers</span>) <span class="op">=</span> <span class="ident">arguments</span>.<span class="ident">opt_str</span>(<span class="string">&quot;j&quot;</span>) {
-            <span class="kw">let</span> <span class="ident">num_workers</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="ident">num_workers</span>.<span class="ident">parse</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Could not parse the number of workers.&quot;</span>);
-                <span class="ident">std</span>::<span class="ident">process</span>::<span class="ident">exit</span>(<span class="op">-</span><span class="number">1</span>)
-            });
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">config</span>.<span class="ident">set</span>(<span class="string">&quot;num_workers&quot;</span>, <span class="ident">num_workers</span>));
-        }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">log_file</span>) <span class="op">=</span> <span class="ident">arguments</span>.<span class="ident">opt_str</span>(<span class="string">&quot;f&quot;</span>) {
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">config</span>.<span class="ident">set</span>(<span class="string">&quot;log_file&quot;</span>, <span class="ident">log_file</span>));
-        }
-        <span class="ident">SearchAlgorithm</span>::<span class="ident">parse_arguments</span>(<span class="ident">arguments</span>, <span class="ident">config</span>);
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output_path</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">path</span>: <span class="ident">P</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span> {
@@ -713,27 +572,6 @@
     <span class="ident">BoundOrder</span>,
     <span class="doccomment">/// Use a MCTS algorithm</span>
     <span class="ident">Mcts</span>(<span class="ident">BanditConfig</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">SearchAlgorithm</span> {
-    <span class="doccomment">/// Sets up the options that can be passed on the command line.</span>
-    <span class="kw">fn</span> <span class="ident">setup_args_parser</span>(<span class="ident">opts</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">getopts</span>::<span class="ident">Options</span>) {
-        <span class="ident">opts</span>.<span class="ident">optopt</span>(
-            <span class="string">&quot;a&quot;</span>,
-            <span class="string">&quot;algorithm&quot;</span>,
-            <span class="string">&quot;exploration algorithm: bound_order or mcts&quot;</span>,
-            <span class="string">&quot;bound_order:mcts&quot;</span>,
-        );
-        <span class="ident">BanditConfig</span>::<span class="ident">setup_args_parser</span>(<span class="ident">opts</span>);
-    }
-
-    <span class="doccomment">/// Overwrite the configuration with the parameters from the command line.</span>
-    <span class="kw">fn</span> <span class="ident">parse_arguments</span>(<span class="ident">arguments</span>: <span class="kw-2">&amp;</span><span class="ident">getopts</span>::<span class="ident">Matches</span>, <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">config</span>::<span class="ident">Config</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">algo</span>) <span class="op">=</span> <span class="ident">arguments</span>.<span class="ident">opt_str</span>(<span class="string">&quot;a&quot;</span>) {
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">config</span>.<span class="ident">set</span>(<span class="string">&quot;algorithm&quot;</span>, <span class="ident">algo</span>));
-        }
-        <span class="ident">BanditConfig</span>::<span class="ident">parse_arguments</span>(<span class="ident">arguments</span>, <span class="ident">config</span>);
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SearchAlgorithm</span> {
@@ -892,26 +730,6 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Normalization</span> {
     <span class="doccomment">/// Normalize the exploration term according to the current global best.</span>
     <span class="ident">GlobalBest</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">BanditConfig</span> {
-    <span class="doccomment">/// Sets up the options that can be passed on the command line.</span>
-    <span class="kw">fn</span> <span class="ident">setup_args_parser</span>(<span class="ident">opts</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">getopts</span>::<span class="ident">Options</span>) {
-        <span class="ident">opts</span>.<span class="ident">optopt</span>(
-            <span class="string">&quot;s&quot;</span>,
-            <span class="string">&quot;default_node_selection&quot;</span>,
-            <span class="string">&quot;selection algorithm for nodes without evaluations: \
-             api, random, bound, weighted_random&quot;</span>,
-            <span class="string">&quot;api|random|bound|weighted_random&quot;</span>,
-        );
-    }
-
-    <span class="doccomment">/// Overwrite the configuration with the parameters from the command line.</span>
-    <span class="kw">fn</span> <span class="ident">parse_arguments</span>(<span class="ident">arguments</span>: <span class="kw-2">&amp;</span><span class="ident">getopts</span>::<span class="ident">Matches</span>, <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">config</span>::<span class="ident">Config</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">algo</span>) <span class="op">=</span> <span class="ident">arguments</span>.<span class="ident">opt_str</span>(<span class="string">&quot;s&quot;</span>) {
-            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">config</span>.<span class="ident">set</span>(<span class="string">&quot;new_nodes_order&quot;</span>, <span class="ident">algo</span>));
-        }
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BanditConfig</span> {
