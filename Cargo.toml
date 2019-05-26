@@ -89,5 +89,4 @@ members = [
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
-    "sym",
 ]
