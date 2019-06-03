@@ -292,6 +292,17 @@ impl VirtualTensor {
     pub fn inst(&self) -> ir::InstId {
         self.inst
     }
+
+    /// Returns true if the other cirtual tensor has the same number
+    /// of dimensions and each dimension has the same size
+    pub fn same_shape<T>(&self, other: &Self, function: &ir::Function<T>) -> bool {
+        self.num_dims() == other.num_dims()
+            && self
+                .dims
+                .iter()
+                .zip(&other.dims)
+                .all(|(self_dim, other_dim)| self_dim.size_eq(other_dim, function))
+    }
 }
 
 impl std::ops::Index<usize> for VirtualTensor {
