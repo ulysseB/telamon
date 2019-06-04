@@ -3,6 +3,7 @@
 
 mod kernel;
 
+pub mod compose;
 pub mod linalg;
 pub mod statistics;
 

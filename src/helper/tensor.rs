@@ -293,6 +293,11 @@ impl VirtualTensor {
         self.inst
     }
 
+    /// Returns the number of logical dimensions.
+    pub fn num_dims(&self) -> usize {
+        self.dims.len()
+    }
+
     /// Returns true if the other cirtual tensor has the same number
     /// of dimensions and each dimension has the same size
     pub fn same_shape<T>(&self, other: &Self, function: &ir::Function<T>) -> bool {
@@ -302,6 +307,10 @@ impl VirtualTensor {
                 .iter()
                 .zip(&other.dims)
                 .all(|(self_dim, other_dim)| self_dim.size_eq(other_dim, function))
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, LogicalDim> {
+        self.into_iter()
     }
 }
 
