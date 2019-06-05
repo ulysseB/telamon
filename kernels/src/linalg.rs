@@ -3,8 +3,7 @@
 use std::sync::Arc;
 
 use crate::compose::{
-    matrix_matrix_multiply, tensor_elementwise_max, tensor_elementwise_mul, tensor_mad,
-    tensor_map,
+    matrix_matrix_multiply, tensor_elementwise_mul, tensor_mad, ActivationFunction,
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
@@ -366,15 +365,6 @@ pub struct FusedMM<'a, S: Scalar> {
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
     c: Tensor<'a, S>,
-}
-
-#[derive(Clone, Deserialize, Serialize)]
-pub enum ActivationFunction {
-    /// Linear rectifier (i.e., max(0, v))
-    ReLU,
-
-    /// Sigmoid activation function (i.e., 1 / (1 + exp(v))
-    Sigmoid,
 }
 
 impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
@@ -842,20 +832,7 @@ impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
         let aabcpbd = tensor_mad(&mut builder, &d, &"beta", &aabc);
 
         if let Some(activation_fun) = &self.params.activation_fun {
-            let res = match activation_fun {
-                ActivationFunction::ReLU => {
-                    tensor_elementwise_max(&mut builder, &aabcpbd, &S::zero())
-                }
-
-                ActivationFunction::Sigmoid => {
-                    tensor_map(&mut builder, &aabcpbd, |operand, builder| {
-                        let exp = builder.exp(operand);
-                        let add = builder.add(&S::one(), &exp);
-                        builder.div(&S::one(), &add)
-                    })
-                }
-            };
-
+            let res = activation_fun.apply::<S>(&mut builder, &aabcpbd);
             res.store(&self.e, &mut builder);
         } else {
             aabcpbd.store(&self.e, &mut builder);

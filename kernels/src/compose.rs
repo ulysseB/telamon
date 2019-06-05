@@ -1,4 +1,6 @@
+use crate::Scalar;
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use telamon::helper::tensor::*;
 use telamon::helper::{AutoOperand, Builder, Reduce};
 use telamon::ir;
@@ -213,4 +215,32 @@ pub fn tensor_elementwise_max(
     tensor_map(builder, lhs, |tensor_operand, builder| {
         builder.max(tensor_operand, rhs)
     })
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub enum ActivationFunction {
+    /// Linear rectifier (i.e., max(0, v))
+    ReLU,
+
+    /// Sigmoid activation function (i.e., 1 / (1 + exp(v))
+    Sigmoid,
+}
+
+impl ActivationFunction {
+    /// Creates a new virtual tensor by applying the activation
+    /// function to each element of `t`
+    pub fn apply<S: Scalar>(
+        &self,
+        builder: &mut Builder,
+        t: &VirtualTensor,
+    ) -> VirtualTensor {
+        match self {
+            ActivationFunction::ReLU => tensor_elementwise_max(builder, t, &S::zero()),
+            ActivationFunction::Sigmoid => tensor_map(builder, t, |operand, builder| {
+                let exp = builder.exp(operand);
+                let add = builder.add(&S::one(), &exp);
+                builder.div(&S::one(), &add)
+            }),
+        }
+    }
 }
