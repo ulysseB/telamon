@@ -1,11 +1,12 @@
 //! Size evaluation and manipulation primitives.
 use crate::device::Context;
+use crate::ir;
 use crate::search_space::{NumSet, SearchSpace};
-use crate::{ir, sym};
 use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
+
 use utils::*;
 
 #[derive(Debug, Eq)]
@@ -84,18 +85,13 @@ impl DimSize {
 pub type SymbolicInt = sym::Int<DimSize>;
 pub type SymbolicFloat = sym::Float<DimSize>;
 
-impl sym::Atom for DimSize {}
+impl sym::Range for DimSize {
+    fn min_value(&self) -> u64 {
+        self.inner.possible_values[0].into()
+    }
 
-pub trait ToRange {
-    fn to_range(&self) -> Range;
-}
-
-impl ToRange for DimSize {
-    fn to_range(&self) -> Range {
-        Range {
-            min: self.inner.possible_values[0].into(),
-            max: self.inner.possible_values[self.inner.possible_values.len() - 1].into(),
-        }
+    fn max_value(&self) -> u64 {
+        self.inner.possible_values[self.inner.possible_values.len() - 1].into()
     }
 }
 

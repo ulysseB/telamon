@@ -42,6 +42,8 @@ use crate::model::local_info::LocalInfo;
 use crate::search_space::SearchSpace;
 use itertools::Itertools;
 use std::cmp;
+
+use sym::Range;
 use utils::*;
 
 /// Returns a lower bound on the execution time of all the implementation candidates in
@@ -286,7 +288,7 @@ fn repeat_level(
 ) {
     // Since we handle separately the first and last iteration, we need at least the
     // first and the last to be present.
-    assert!(action.iterations.range().min >= 2);
+    assert!(action.iterations.min_value() >= 2);
     let level_id = action.level_id;
     let entry_point = code_points.ids[&CodePoint::LevelEntry(action.level_id)];
     let exit_point = code_points.ids[&CodePoint::LevelExit(action.level_id)];
@@ -336,7 +338,7 @@ fn repeat_level(
                 lat.clone().iterate(&(&action.iterations - 2u32), level_id),
             );
             level_dag.add_dependency(to_map, pred, point, &latency);
-            if action.iterations.range().min >= 3 {
+            if action.iterations.min_value() >= 3 {
                 let exit_lat = unwrap!(latency_to_exit[point].clone());
                 // TODO(sym): action.iterations.to_float() - 3
                 let latency = init_lat

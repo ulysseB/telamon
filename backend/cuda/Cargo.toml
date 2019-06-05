@@ -27,6 +27,7 @@ serde_json = "1.0.22"
 telamon = {path = "../../"}
 utils = {package = "telamon-utils", path = "../../telamon-utils"}
 xdg = { version = "2.1", optional = true }
+sym = {path = "../../deps/sym"}
 
 [dev-dependencies]
 regex = "0.2"

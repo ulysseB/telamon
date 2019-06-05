@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::rc::Rc;
 use std::{cmp, fmt, iter};
+
+use sym::Range;
 use utils::*;
 
 /// A lower bound on the execution time.
@@ -78,7 +80,7 @@ impl FastBound {
     // TODO: iterations: SymbolicFloat
     pub fn iterate(self, iterations: &size::SymbolicInt, level: usize) -> Self {
         let origin = FastOrigin::Loop {
-            iterations: iterations.range().min, // TODO: be more precise?
+            iterations: iterations.min_value(), // TODO: be more precise?
             level,
             inner: self.origin,
         };
@@ -140,11 +142,10 @@ impl FastBound {
     ) -> Self {
         assert!(hw_parallelism < u64::from(u32::max_value()));
 
-        // TODO(sym): let num_waves = Float::div_ceil(max_par, hw_parallelism as u32)
-        let num_waves = size::SymbolicInt::div_ceil(max_par, hw_parallelism as u32);
+        let num_waves = size::SymbolicFloat::div_ceil(max_par, hw_parallelism as u32);
         // TODO(sym): let factor = num_waves * iterations / max_par.to_symbolic_float()
         // -> div_ceil_inv_magic(max_par, hw_parallelism) * iterations
-        let factor = (num_waves * iterations).to_symbolic_float() / max_par;
+        let factor = (num_waves * iterations.to_symbolic_float()) / max_par;
         let origin = Rc::new(FastOrigin::Scale {
             inner: self.origin,
             factor: factor.min_value(), // TODO: improve
@@ -679,9 +680,9 @@ impl<'a> fmt::Display for DisplayHwPressure<'a> {
         let rates = self.device.total_rates();
         write!(
             fmt,
-            "latency {} ({:.2e}ns)",
+            "latency {} ({}ns)",
             self.hw_pressure.latency,
-            self.hw_pressure.latency / rates.latency
+            &self.hw_pressure.latency / rates.latency.as_f64().unwrap()
         )?;
 
         let mut pairs = self
@@ -690,12 +691,12 @@ impl<'a> fmt::Display for DisplayHwPressure<'a> {
             .iter()
             .zip(&rates.bottlenecks)
             .enumerate()
-            .map(|(id, (val, rate))| (names[id], val, val / rate));
+            .map(|(id, (val, rate))| (names[id], val, val / rate.as_f64().unwrap()));
         if let Some((name, val, ratio)) = pairs.next() {
-            write!(fmt, ", with usage {} on {} ({:.2e}ns)", val, name, ratio)?;
+            write!(fmt, ", with usage {} on {} ({}ns)", val, name, ratio)?;
         }
         for (name, val, ratio) in pairs {
-            write!(fmt, ", {} on {} ({:.2e}ns)", val, name, ratio)?;
+            write!(fmt, ", {} on {} ({}ns)", val, name, ratio)?;
         }
         Ok(())
     }

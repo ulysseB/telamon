@@ -7,6 +7,7 @@ use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::integer::lcm;
 
+use sym::Range;
 use utils::*;
 
 /// Local information on the different objects.
@@ -235,7 +236,7 @@ fn add_indvar_pressure(
             thread_overhead.add_parallel(&overhead);
         } else {
             let size = &dim_sizes[&dim];
-            if size.range().min > 1 {
+            if size.min_value() > 1 {
                 unwrap!(dim_overhead.get_mut(&dim))
                     .0
                     .add_parallel(&overhead);

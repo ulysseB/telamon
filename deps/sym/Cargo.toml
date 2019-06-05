@@ -1,0 +1,11 @@
+[package]
+name = "sym"
+authors = ["Basile Clement <basile.clement@inria.fr>"]
+license = "Apache-2.0"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+num = "0.2"
+itertools = "0.8"

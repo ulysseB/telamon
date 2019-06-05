@@ -9,6 +9,8 @@ use telamon::device::Context;
 use telamon::ir;
 use telamon::model::size;
 use telamon::search_space::*;
+
+use sym::Range;
 use utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
@@ -172,7 +174,10 @@ fn tensor_thread_dims(
         .chain(external_dims);
     let mut out = Vec::new();
     for (id, is_active_thread) in dims {
-        let size = sizes[&id].range();
+        let size = size::Range {
+            min: sizes[&id].min_value(),
+            max: sizes[&id].max_value(),
+        };
         let stride_size = tensor_dims.get(&id);
         let stride = stride_size
             .map(|s| size::bounds(s, space, ctx))
@@ -397,7 +402,7 @@ fn shared_replay_factor(
         .iter()
         .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
-        .map(|(d, stride)| dim_sizes[&d].range().min as u32 * stride)
+        .map(|(d, stride)| dim_sizes[&d].min_value() as u32 * stride)
         .map(|size| div_ceil(size, gpu.shared_bank_stride))
         .min()
         .unwrap_or(1);

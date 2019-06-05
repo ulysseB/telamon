@@ -64,6 +64,7 @@ dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
 telajax = {path = "telajax", optional = true}
+sym = {path = "deps/sym"}
 
 
 [dev-dependencies]
@@ -89,4 +90,5 @@ members = [
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
+    "deps/sym"
 ]

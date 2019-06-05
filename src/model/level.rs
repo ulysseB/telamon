@@ -18,6 +18,7 @@ use itertools::{self, Itertools};
 use std;
 use std::cmp::Ordering;
 
+use sym::Range;
 use utils::*;
 
 /// A level at which latency should be computed.
@@ -429,7 +430,7 @@ impl RepeatLevel {
             })
             .map(|d| &local_info.dim_sizes[d])
             .product::<size::SymbolicInt>();
-        if iterations.range().min <= 1 {
+        if iterations.min_value() <= 1 {
             None
         } else {
             Some(RepeatLevel {
