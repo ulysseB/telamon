@@ -405,49 +405,17 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
 
         let mut builder = helper::Builder::new(signature, ctx.device());
 
-        let ld_a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
-        let ld_b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
+        let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
+        let b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
 
-        // Matrix multiplication
-        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
-        let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
-        let acc_init = builder.mov(&0f32);
-        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
-        let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
-        let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
-        let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+        let ab = matrix_matrix_multiply(&mut builder, &a, &b);
 
-        builder.close_dim(&acc_dim_k);
-
-        let (res, res_dim_m, res_dim_n) =
-            if let Some(activation_fun) = &self.params.activation_fun {
-                // Activation function specified -> create new set of
-                // nested dimensions hosting instructions for the
-                // activaton function
-                let act_dim_m = builder.open_mapped_dim(&acc_dim_m);
-                let act_dim_n = builder.open_mapped_dim(&acc_dim_n);
-
-                let act = match activation_fun {
-                    ActivationFunction::ReLU => builder.max(&S::zero(), &acc),
-                    ActivationFunction::Sigmoid => {
-                        let exp = builder.exp(&acc);
-                        let add = builder.add(&S::one(), &exp);
-                        builder.div(&S::one(), &add)
-                    }
-                };
-
-                (act, act_dim_m, act_dim_n)
-            } else {
-                // No activation function -> just use original result
-                // from matrix multiplication with the original
-                // dimensions
-                (acc, acc_dim_m, acc_dim_n)
-            };
-
-        let res_vt = VirtualTensor::new(res, vec![res_dim_m, res_dim_n]);
-        res_vt.store(&self.c, &mut builder);
+        if let Some(activation_fun) = &self.params.activation_fun {
+            let res = activation_fun.apply::<S>(&mut builder, &ab);
+            res.store(&self.c, &mut builder);
+        } else {
+            ab.store(&self.c, &mut builder);
+        }
 
         vec![build_candidate(builder.get(), ctx)]
     }
