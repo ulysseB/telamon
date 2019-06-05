@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use crate::compose::{
-    matrix_matrix_multiply, tensor_elementwise_mul, tensor_mad, ActivationFunction,
+    matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul, tensor_mad,
+    ActivationFunction,
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
@@ -136,24 +137,12 @@ where
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
         let mut builder = Builder::new(signature, ctx.device());
-        let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
-        let ld_a = self.a.load(vec![m_tiling, n_tiling], &mut builder);
-        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
-        let init = builder.mov(&0f32);
-        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
-        let acc = builder.mad(&a_op, &x_op, &helper::Reduce(init));
-        builder.close_dim(&acc_dim_n);
-        let sum = VirtualTensor::new(acc, vec![acc_dim_m]);
-        let st_y = sum.store(&self.y, &mut builder);
+        let x = self.x.load(vec![n_tiling.clone()], &mut builder);
+        let a = self.a.load(vec![m_tiling, n_tiling], &mut builder);
 
-        builder.order(&acc_dim_n, &st_y.inst(), Order::BEFORE);
-        // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
+        let ax = matrix_vector_multiply(&mut builder, &a, &x);
+        ax.store(&self.y, &mut builder);
+
         vec![build_candidate(builder.get(), ctx)]
     }
 
