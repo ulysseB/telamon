@@ -232,33 +232,23 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
     ) -> Vec<Candidate> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
-        let mut builder = helper::Builder::new(signature, ctx.device());
-        let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
-        let ab_tiling = vec![m_tiling, n_tiling];
-        let ld_a = self.a.load(ab_tiling.clone(), &mut builder);
-        let ld_b = self.b.load(ab_tiling, &mut builder);
-        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
-        let init_a = builder.mov(&0f32);
-        let init_b = builder.mov(&0f32);
-        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
-        let acc_a = builder.mad(&a_op, &x_op, &helper::Reduce(init_a));
-        let acc_b = builder.mad(&b_op, &x_op, &helper::Reduce(init_b));
-        builder.close_dim(&acc_dim_n);
-        let y_a = builder.mul(&acc_a, &"alpha");
-        let sum = builder.mad(&acc_b, &"beta", &y_a);
-        let sum = VirtualTensor::new(sum, vec![acc_dim_m]);
-        let st_y = sum.store(&self.y, &mut builder);
+        let ab_tiling = vec![m_tiling, n_tiling.clone()];
 
-        builder.order(&acc_dim_n, &y_a, Order::BEFORE);
-        // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let x = self.x.load(vec![n_tiling], &mut builder);
+        let a = self.a.load(ab_tiling.clone(), &mut builder);
+        let b = self.b.load(ab_tiling, &mut builder);
+
+        let ax = matrix_vector_multiply(&mut builder, &a, &x);
+        let aax = tensor_elementwise_mul(&mut builder, &"alpha", &ax);
+
+        let bx = matrix_vector_multiply(&mut builder, &b, &x);
+
+        let aaxpbbx = tensor_mad(&mut builder, &bx, &"beta", &aax);
+
+        aaxpbbx.store(&self.y, &mut builder);
+
         vec![build_candidate(builder.get(), ctx)]
     }
 
