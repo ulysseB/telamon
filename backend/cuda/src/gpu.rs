@@ -245,9 +245,9 @@ impl Gpu {
         // TODO(search_space,model): support CA and NC flags.
         assert!(InstFlag::COHERENT.contains(flags));
         // Compute possible latencies.
-        let l2_miss = mem_info.l2_miss_ratio / mem_info.l2_coalescing;
         let gbl_latency = if mem_info.access_global {
-            l2_miss * self.load_ram_latency + (1.0 - l2_miss) * self.load_l2_latency
+            let miss = mem_info.l2_miss_ratio / mem_info.l2_coalescing;
+            miss * self.load_ram_latency + (1.0 - miss) * self.load_l2_latency
         } else {
             std::f64::INFINITY
         };
@@ -262,8 +262,7 @@ impl Gpu {
             mem: mem_info.replay_factor,
             l1_lines_from_l2: mem_info.l1_coalescing,
             l2_lines_read: mem_info.l2_coalescing,
-            ram_bw: l2_miss * f64::from(self.l2_cache_line),
-            // XXX mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
+            ram_bw: mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             ..InstDesc::default()
         }
     }
@@ -278,7 +277,7 @@ impl Gpu {
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
             l2_lines_stored: mem_info.l2_coalescing,
-            ram_bw: 0.0, // 2.0 * mem_info.l2_coalescing * f64::from(self.l2_cache_line),
+            ram_bw: 2.0 * mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             ..InstDesc::default()
         }
     }

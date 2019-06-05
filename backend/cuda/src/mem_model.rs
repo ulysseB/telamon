@@ -19,7 +19,7 @@ use utils::*;
 /// Result of the memory analysis for one instruction. Vector instructions are considered
 /// as a single instance and predicated dimensions are not considered to compute the
 /// average pressure.
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct MemInfo {
     /// The proportion of instruction that produce a L2 miss.
     pub l2_miss_ratio: f64,
@@ -33,19 +33,6 @@ pub struct MemInfo {
     pub access_shared: bool,
     /// Indicates if the instruction accesses global memory.
     pub access_global: bool,
-}
-
-impl Default for MemInfo {
-    fn default() -> Self {
-        MemInfo {
-            l2_miss_ratio: 1.0f64,
-            l1_coalescing: 0f64,
-            l2_coalescing: 0f64,
-            replay_factor: 0f64,
-            access_shared: false,
-            access_global: false,
-        }
-    }
 }
 
 /// Runs the memory analysis.
