@@ -33,7 +33,40 @@ impl LocalInfo {
         space: &SearchSpace,
         context: &dyn Context,
     ) -> FxHashMap<ir::DimId, size::SymbolicInt> {
+        #[derive(Default)]
+        struct UF {
+            map: FxHashMap<ir::DimId, ir::DimId>,
+        }
+
+        impl UF {
+            fn union(&mut self, left: ir::DimId, right: ir::DimId) -> ir::DimId {
+                let left = self.find(left);
+                let right = self.find(right);
+                let (left, right) = if left < right {
+                    (left, right)
+                } else {
+                    (right, left)
+                };
+
+                if left != right {
+                    self.map.insert(right, left);
+                }
+                left
+            }
+
+            fn find(&self, mut key: ir::DimId) -> ir::DimId {
+                loop {
+                    if let Some(next) = self.map.get(&key) {
+                        key = *next;
+                    } else {
+                        break key;
+                    }
+                }
+            }
+        }
+
         struct Builder<'a> {
+            uf: UF,
             space: &'a SearchSpace,
             context: &'a dyn Context,
 
@@ -45,6 +78,11 @@ impl LocalInfo {
             /// a fully specified implementation.
             static_dims: FxHashMap<ir::DimId, Result<u64, size::DimSize>>,
         }
+        let mut uf = UF::default();
+        for mapping in space.ir_instance().dim_mappings() {
+            let dims = mapping.dims();
+            uf.union(dims[1], dims[0]);
+        }
 
         impl<'a> Builder<'a> {
             fn get_or_create_static_dim(
@@ -55,6 +93,7 @@ impl LocalInfo {
                     .entry(id)
                     .or_insert_with({
                         let space = self.space;
+                        let uf = &self.uf;
                         move || {
                             let size = space.domain().get_size(id);
                             let universe = space
@@ -67,7 +106,7 @@ impl LocalInfo {
                             if values.len() == 1 {
                                 Ok(u64::from(values[0]))
                             } else {
-                                Err(size::DimSize::new(id, values))
+                                Err(size::DimSize::new(uf.find(id), values))
                             }
                         }
                     })
@@ -76,7 +115,6 @@ impl LocalInfo {
 
             fn dim(&mut self, size: &ir::PartialSize) -> size::SymbolicInt {
                 let (static_factor, param_factors, dim_factors) = size.factors();
-                let divisors = size.divisors();
 
                 let mut factor = u64::from(static_factor)
                     * param_factors
@@ -117,6 +155,7 @@ impl LocalInfo {
         }
 
         let mut builder = Builder {
+            uf,
             space,
             context,
             static_dims: FxHashMap::default(),

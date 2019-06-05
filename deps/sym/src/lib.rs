@@ -291,7 +291,10 @@ impl<P> Ratio<P>
 where
     P: Atom,
 {
-    fn new(factor: BigUint, numer: Vec<P>, denom: Vec<P>) -> Self {
+    fn new(factor: BigUint, mut numer: Vec<P>, mut denom: Vec<P>) -> Self {
+        numer.sort();
+        denom.sort();
+
         RatioInner {
             factor,
             numer,
@@ -398,6 +401,9 @@ where
                 lhs.denom.push(denom.clone());
             }
         }
+
+        lhs.numer.sort();
+        lhs.denom.sort();
     }
 }
 
@@ -923,11 +929,14 @@ where
         match &*self.inner {
             IntInner::Reduction(IntReduction {
                 kind: IntReductionKind::Min,
-                ..
-            }) => {
-                // TODO: convert to float minimum (actually -- do we ever need this?)
-                unimplemented!()
-            }
+                constant,
+                others,
+            }) => FloatInner::Reduction(FloatReduction {
+                kind: FloatReductionKind::Min,
+                constant: constant.as_ref().map(|x| x.to_u32().unwrap() as f64),
+                others: others.iter().map(Int::to_symbolic_float).collect(),
+            })
+            .into(),
             IntInner::Sub(lhs, rhs) => lhs.to_symbolic_float() - f64::from(*rhs),
             IntInner::Mul(ratio, args) => {
                 if let Some(value) = self.to_u32() {
@@ -1013,11 +1022,24 @@ where
     pub fn min_assign(&mut self, rhs: &Int<P>) {
         // TODO: if `rhs.max <= self.min` there is nothing to do.
         self.reduce_assign(IntReductionKind::Min, rhs);
+        self.simplify()
     }
 
     pub fn lcm_assign(&mut self, rhs: &Int<P>) {
         // TODO: If `self.gcd` is a multiple of `rhs.lcm` there is nothing to do.
         self.reduce_assign(IntReductionKind::Lcm, rhs);
+        self.simplify()
+    }
+
+    fn simplify(&mut self) {
+        match &*self.inner {
+            IntInner::Reduction(red)
+                if red.constant.is_none() && red.others.len() == 1 =>
+            {
+                *self = red.others[0].clone();
+            }
+            _ => (),
+        }
     }
 
     pub fn to_u32(&self) -> Option<u32> {
@@ -1048,7 +1070,21 @@ where
                 // TODO: should take gcd for le min
                 (numer_min + denom - 1) / denom
             }
-            IntInner::Reduction(_) => unimplemented!("min_value for {}", self),
+            IntInner::Reduction(IntReduction {
+                kind,
+                constant,
+                others,
+            }) => {
+                let mut elems = constant
+                    .clone()
+                    .into_iter()
+                    .chain(others.iter().map(Range::min_value).map(BigUint::from));
+                let first = elems.next().unwrap();
+                elems
+                    .fold(first, |min, arg| kind.reduce(&min, &arg))
+                    .to_u64()
+                    .unwrap()
+            }
             IntInner::Sub(lhs, rhs) => lhs.min_value() - u64::from(*rhs),
             IntInner::Mul(ratio, args) => args
                 .iter()
@@ -1062,7 +1098,21 @@ where
                 let denom = u64::from(*denom);
                 (numer.max_value() + denom - 1) / denom
             }
-            IntInner::Reduction(_) => unimplemented!("max_value for {}", self),
+            IntInner::Reduction(IntReduction {
+                kind,
+                constant,
+                others,
+            }) => {
+                let mut elems = constant
+                    .clone()
+                    .into_iter()
+                    .chain(others.iter().map(Range::max_value).map(BigUint::from));
+                let first = elems.next().unwrap();
+                elems
+                    .fold(first, |max, arg| kind.reduce(&max, &arg))
+                    .to_u64()
+                    .unwrap()
+            }
             IntInner::Sub(lhs, rhs) => lhs.max_value() - u64::from(*rhs),
             IntInner::Mul(ratio, args) => args
                 .iter()
