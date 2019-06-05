@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::sync::Arc;
 
-use fnv::FnvHashMap;
+use fxhash::FxHashMap;
 
 use crate::codegen;
 use crate::explorer::Candidate;
@@ -113,8 +113,8 @@ impl super::Device for Device {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FnvHashMap<ir::DimId, model::size::Range>,
-        _: &FnvHashMap<ir::StmtId, model::Nesting>,
+        _: &FxHashMap<ir::DimId, model::size::SymbolicInt>,
+        _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &dyn ir::Statement,
         _: &dyn super::Context,
     ) -> HwPressure {
@@ -151,9 +151,9 @@ impl super::Device for Device {
 
     fn add_block_overhead(
         &self,
-        _: model::size::FactorRange,
-        _: model::size::FactorRange,
-        _: model::size::Range,
+        _: model::size::SymbolicInt,
+        _: model::size::SymbolicInt,
+        _: model::size::SymbolicInt,
         _: &mut HwPressure,
     ) {
     }

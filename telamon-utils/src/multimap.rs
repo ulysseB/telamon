@@ -1,4 +1,4 @@
-//! A `FnvHashMap` with mutiple values for each key.
+//! A `FxHashMap` with mutiple values for each key.
 use serde::ser::{Serialize, Serializer};
 use std;
 use std::borrow::Borrow;
@@ -6,7 +6,7 @@ use std::collections::hash_map;
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash};
 
-/// A `FnvHashMap` with mutiple values for each key.
+/// A `FxHashMap` with mutiple values for each key.
 #[derive(Clone)]
 pub struct MultiHashMap<K, V, S = RandomState>
 where

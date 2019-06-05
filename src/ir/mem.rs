@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::ir::{self, dim, InstId, Type};
 
+use fxhash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use utils::*;
 
@@ -85,7 +86,7 @@ impl Block {
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct BlockMap {
     blocks: ir::SparseVec<MemId, Block>,
-    layouts: FnvHashSet<MemId>,
+    layouts: FxHashSet<MemId>,
 }
 
 impl BlockMap {

@@ -3,7 +3,97 @@ use crate::device::Context;
 use crate::ir;
 use crate::search_space::{NumSet, SearchSpace};
 use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
+use std::cmp::Ordering;
+use std::fmt;
+use std::rc::Rc;
+
 use utils::*;
+
+#[derive(Debug, Eq)]
+struct DimSizeInner {
+    id: ir::DimId,
+    possible_values: Vec<u32>,
+    gcd: u32,
+    lcm: u32,
+}
+
+impl fmt::Display for DimSizeInner {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{:?}", self.id)
+    }
+}
+
+impl PartialEq for DimSizeInner {
+    fn eq(&self, other: &DimSizeInner) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Ord for DimSizeInner {
+    fn cmp(&self, other: &DimSizeInner) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl PartialOrd for DimSizeInner {
+    fn partial_cmp(&self, other: &DimSizeInner) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct DimSize {
+    inner: Rc<DimSizeInner>,
+}
+
+impl fmt::Debug for DimSize {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, fmt)
+    }
+}
+
+impl fmt::Display for DimSize {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, fmt)
+    }
+}
+
+impl DimSize {
+    pub(super) fn new<II>(id: ir::DimId, possible_values: II) -> Self
+    where
+        II: IntoIterator<Item = u32>,
+    {
+        let mut possible_values = possible_values.into_iter().collect::<Vec<_>>();
+        assert!(!possible_values.is_empty(), "Impossible size.");
+        assert!(
+            possible_values.len() > 1,
+            "DimSize should not be singleton, duh."
+        );
+
+        possible_values.sort();
+        DimSize {
+            inner: Rc::new(DimSizeInner {
+                id,
+                possible_values,
+                gcd: 1, // TODO
+                lcm: 1, // TODO
+            }),
+        }
+    }
+}
+
+pub type SymbolicInt = sym::Int<DimSize>;
+pub type SymbolicFloat = sym::Float<DimSize>;
+
+impl sym::Range for DimSize {
+    fn min_value(&self) -> u64 {
+        self.inner.possible_values[0].into()
+    }
+
+    fn max_value(&self) -> u64 {
+        self.inner.possible_values[self.inner.possible_values.len() - 1].into()
+    }
+}
 
 /// A span of values.
 #[derive(Debug, Copy, Clone)]

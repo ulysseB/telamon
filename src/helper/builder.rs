@@ -4,6 +4,7 @@ use crate::helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use crate::ir::{self, op, Parameter, Type};
 use crate::ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use log::debug;
 use std::borrow::Borrow;
@@ -13,7 +14,7 @@ use utils::*;
 /// Helper to build a `Function`.
 pub struct Builder {
     function: Function<()>,
-    open_dims: FnvHashMap<ir::DimId, ir::DimId>,
+    open_dims: FxHashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
 
@@ -22,7 +23,7 @@ impl Builder {
     pub fn new(signature: Arc<Signature>, device: Arc<dyn Device>) -> Builder {
         Builder {
             function: Function::new(signature, device),
-            open_dims: FnvHashMap::default(),
+            open_dims: FxHashMap::default(),
             actions: Vec::new(),
         }
     }
@@ -106,6 +107,15 @@ impl Builder {
         self.inst(op)
     }
 
+    /// Adds a `Max` instruction to the fuction.
+    pub fn max(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
+        let lhs_op = self.get_op(lhs);
+        let rhs_op = self.get_op(rhs);
+        let rounding = op::Rounding::Exact;
+        let op = ir::BinOp::Max;
+        self.inst(op::BinOp(op, lhs_op, rhs_op, rounding))
+    }
+
     /// Adds a `Div` instruction to the fuction.
     pub fn div(&mut self, lhs: &dyn AutoOperand, rhs: &dyn AutoOperand) -> InstId {
         self.binop(ir::BinOp::Div, lhs, rhs)
@@ -115,6 +125,13 @@ impl Builder {
     pub fn mov(&mut self, arg: &dyn AutoOperand) -> InstId {
         let arg_op = self.get_op(arg);
         self.inst(op::UnaryOp(ir::UnaryOp::Mov, arg_op))
+    }
+
+    /// Adds an `Exp` instruction to the function.
+    pub fn exp(&mut self, arg: &dyn AutoOperand) -> InstId {
+        let arg_op = self.get_op(arg);
+        let t = arg_op.t();
+        self.inst(op::UnaryOp(ir::UnaryOp::Exp(t), arg_op))
     }
 
     /// Adds a coherent load from global memory instruction to the function.

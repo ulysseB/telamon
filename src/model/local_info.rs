@@ -3,21 +3,25 @@ use crate::device::{Context, Device};
 use crate::ir::{self, Statement};
 use crate::model::{size, HwPressure};
 use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::integer::lcm;
 
+use sym::Range;
 use utils::*;
 
 /// Local information on the different objects.
 #[derive(Debug)]
 pub struct LocalInfo {
+    /// The symbolic size of each dimension.
+    pub dim_sizes: FxHashMap<ir::DimId, size::SymbolicInt>,
     /// The loops inside and outside each Stmt.
-    pub nesting: FnvHashMap<ir::StmtId, Nesting>,
-    /// The pressure incured by a signle instance of each Stmt.
-    pub hw_pressure: FnvHashMap<ir::StmtId, HwPressure>,
+    pub nesting: FxHashMap<ir::StmtId, Nesting>,
+    /// The pressure incured by a single instance of each Stmt.
+    pub hw_pressure: FxHashMap<ir::StmtId, HwPressure>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
-    pub dim_overhead: FnvHashMap<ir::DimId, (HwPressure, HwPressure)>,
+    pub dim_overhead: FxHashMap<ir::DimId, (HwPressure, HwPressure)>,
     /// The overhead to initialize a thread.
     pub thread_overhead: HwPressure,
     /// Available parallelism in the kernel.
@@ -25,18 +29,120 @@ pub struct LocalInfo {
 }
 
 impl LocalInfo {
-    /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace, context: &dyn Context) -> Self {
-        let dim_sizes = space
+    fn dim_sizes(
+        space: &SearchSpace,
+        context: &dyn Context,
+    ) -> FxHashMap<ir::DimId, size::SymbolicInt> {
+        struct Builder<'a> {
+            space: &'a SearchSpace,
+            context: &'a dyn Context,
+
+            /// Internal mapping from dimensin ID to actual size.
+            /// The size is either an integer when it is known exactly, or a representation of the
+            /// dimension's possible values.
+            ///
+            /// This only contains information about static dimensions whose size will be exactly known in
+            /// a fully specified implementation.
+            static_dims: FxHashMap<ir::DimId, Result<u64, size::DimSize>>,
+        }
+
+        impl<'a> Builder<'a> {
+            fn get_or_create_static_dim(
+                &mut self,
+                id: ir::DimId,
+            ) -> Result<u64, size::DimSize> {
+                self.static_dims
+                    .entry(id)
+                    .or_insert_with({
+                        let space = self.space;
+                        move || {
+                            let size = space.domain().get_size(id);
+                            let universe = space
+                                .ir_instance()
+                                .dim(id)
+                                .possible_sizes()
+                                .unwrap_or_else(|| panic!("Unknown static dim ?!"));
+                            let values = size.list_values(universe).collect::<Vec<_>>();
+
+                            if values.len() == 1 {
+                                Ok(u64::from(values[0]))
+                            } else {
+                                Err(size::DimSize::new(id, values))
+                            }
+                        }
+                    })
+                    .clone()
+            }
+
+            fn dim(&mut self, size: &ir::PartialSize) -> size::SymbolicInt {
+                let (static_factor, param_factors, dim_factors) = size.factors();
+                let divisors = size.divisors();
+
+                let mut factor = u64::from(static_factor)
+                    * param_factors
+                        .iter()
+                        .map(|p| {
+                            u64::from(
+                                self.context.param_as_size(&p.name).unwrap_or_else(
+                                    || panic!("Unknown param: {}", p.name),
+                                ),
+                            )
+                        })
+                        .product::<u64>();
+
+                let mut numer = Vec::new();
+                for &id in dim_factors {
+                    match self.get_or_create_static_dim(id) {
+                        Ok(x) => factor *= x,
+                        Err(d) => numer.push(d),
+                    }
+                }
+
+                let mut denom = Vec::new();
+                for &id in size.divisors() {
+                    match self.get_or_create_static_dim(id) {
+                        Ok(x) => {
+                            assert!(
+                                factor % x == 0,
+                                "Inconsistent size: denominator does not divide factor."
+                            );
+                            factor /= x;
+                        }
+                        Err(d) => denom.push(d),
+                    }
+                }
+
+                size::SymbolicInt::ratio(factor, numer, denom)
+            }
+        }
+
+        let mut builder = Builder {
+            space,
+            context,
+            static_dims: FxHashMap::default(),
+        };
+
+        space
             .ir_instance()
             .dims()
-            .map(|d| (d.id(), size::bounds(d.size(), space, context)))
-            .collect();
-        let nesting: FnvHashMap<_, _> = space
+            .map(|d| (d.id(), builder.dim(d.size())))
+            .collect()
+    }
+
+    /// Compute the local information for the given search space, in the context.
+    pub fn compute(space: &SearchSpace, context: &dyn Context) -> Self {
+        let dim_sizes = Self::dim_sizes(space, context);
+        let nesting: FxHashMap<_, _> = space
             .ir_instance()
             .statements()
-            .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
+            .map(|stmt| {
+                (
+                    stmt.stmt_id(),
+                    Nesting::compute(space, &dim_sizes, stmt.stmt_id()),
+                )
+            })
             .collect();
+        let parallelism = parallelism(space, &dim_sizes, &nesting, context);
         let mut hw_pressure = space
             .ir_instance()
             .statements()
@@ -75,7 +181,6 @@ impl LocalInfo {
                 }
             })
             .collect();
-        let parallelism = parallelism(&nesting, space, context);
         // Add the pressure induced by induction variables.
         let mut thread_overhead = HwPressure::zero(&*context.device());
         for (_, var) in space.ir_instance().induction_vars() {
@@ -90,6 +195,7 @@ impl LocalInfo {
             );
         }
         LocalInfo {
+            dim_sizes,
             nesting,
             hw_pressure,
             dim_overhead,
@@ -102,10 +208,10 @@ impl LocalInfo {
 fn add_indvar_pressure(
     device: &dyn Device,
     space: &SearchSpace,
-    dim_sizes: &FnvHashMap<ir::DimId, size::Range>,
+    dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
     indvar: &ir::InductionVar,
-    hw_pressure: &mut FnvHashMap<ir::StmtId, HwPressure>,
-    dim_overhead: &mut FnvHashMap<ir::DimId, (HwPressure, HwPressure)>,
+    hw_pressure: &mut FxHashMap<ir::StmtId, HwPressure>,
+    dim_overhead: &mut FxHashMap<ir::DimId, (HwPressure, HwPressure)>,
     thread_overhead: &mut HwPressure,
 ) {
     for &(dim, _) in indvar.dims() {
@@ -126,15 +232,18 @@ fn add_indvar_pressure(
         } else {
             device.multiplicative_indvar_pressure(&t)
         };
-        let size = dim_sizes[&dim].min;
         if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
             thread_overhead.add_parallel(&overhead);
-        } else if size > 1 {
-            unwrap!(dim_overhead.get_mut(&dim))
-                .0
-                .add_parallel(&overhead);
-            overhead.repeat_parallel((size - 1) as f64);
-            unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
+        } else {
+            let size = &dim_sizes[&dim];
+            if size.min_value() > 1 {
+                unwrap!(dim_overhead.get_mut(&dim))
+                    .0
+                    .add_parallel(&overhead);
+                // TODO(sym): size.to_float() - 1
+                overhead.repeat_parallel(&(size - 1u32));
+                unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
+            }
         }
     }
 }
@@ -158,15 +267,19 @@ pub struct Nesting {
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
-    pub num_unmapped_threads: ir::PartialSize,
+    pub num_unmapped_threads: size::SymbolicInt,
     /// Maximal number of threads this block can be in, considering only outer dimensions
     /// (an not mapped out dimensions).
-    pub max_threads_per_block: ir::PartialSize,
+    pub max_threads_per_block: size::SymbolicInt,
 }
 
 impl Nesting {
     /// Computes the nesting of a `Statement`.
-    fn compute(space: &SearchSpace, stmt: ir::StmtId) -> Self {
+    fn compute(
+        space: &SearchSpace,
+        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+        stmt: ir::StmtId,
+    ) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_stmts = Vec::new();
         let mut before_self = Vec::new();
@@ -216,14 +329,14 @@ impl Nesting {
                     mapping.intersects(ThreadMapping::MAPPED)
                 })
             })
-            .map(|d| d.size())
-            .product::<ir::PartialSize>();
+            .map(|d| &dim_sizes[&d.id()])
+            .product::<size::SymbolicInt>();
         let max_threads_per_block = outer_dims
             .iter()
             .cloned()
             .filter(|&d| space.domain().get_dim_kind(d).intersects(DimKind::THREAD))
-            .map(|d| space.ir_instance().dim(d).size())
-            .product::<ir::PartialSize>();
+            .map(|d| &dim_sizes[&d])
+            .product::<size::SymbolicInt>();
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_stmts: VecSet::new(inner_stmts),
@@ -273,78 +386,80 @@ impl Nesting {
 #[derive(Debug)]
 pub struct Parallelism {
     /// Minimal number of blocks.
-    pub min_num_blocks: u64,
+    // TODO(sym): Float
+    pub min_num_blocks: size::SymbolicInt,
     /// Minimal number of threads per blocks.
-    pub min_num_threads_per_blocks: u64,
+    pub min_num_threads_per_blocks: size::SymbolicInt,
     /// Minimal number of threads.
-    pub min_num_threads: u64,
+    pub min_num_threads: size::SymbolicInt,
     /// A multiple of the number of blocks.
-    pub lcm_num_blocks: u64,
+    pub lcm_num_blocks: size::SymbolicInt,
 }
 
 impl Parallelism {
     /// Combines two `Parallelism` summaries computed on different instructions and computes the
     /// `Parallelism` of the union of the instructions.
-    fn combine(self, rhs: &Self) -> Self {
-        let min_num_threads_per_blocks = self
-            .min_num_threads_per_blocks
-            .min(rhs.min_num_threads_per_blocks);
-        Parallelism {
-            min_num_blocks: self.min_num_blocks.min(rhs.min_num_blocks),
-            min_num_threads_per_blocks,
-            min_num_threads: self.min_num_threads.min(rhs.min_num_threads),
-            lcm_num_blocks: lcm(self.lcm_num_blocks, rhs.lcm_num_blocks),
-        }
+    fn combine(mut self, rhs: &Self) -> Self {
+        self.combine_assign(rhs);
+        self
+    }
+
+    fn combine_assign(&mut self, rhs: &Self) {
+        self.min_num_threads_per_blocks
+            .min_assign(&rhs.min_num_threads_per_blocks);
+        self.min_num_blocks.min_assign(&rhs.min_num_blocks);
+        self.min_num_threads.min_assign(&rhs.min_num_threads);
+        self.lcm_num_blocks.lcm_assign(&rhs.lcm_num_blocks);
     }
 }
 
 impl Default for Parallelism {
     fn default() -> Self {
         Parallelism {
-            min_num_blocks: 1,
-            min_num_threads_per_blocks: 1,
-            min_num_threads: 1,
-            lcm_num_blocks: 1,
+            // TODO(sym): float
+            min_num_blocks: 1u32.into(),
+            min_num_threads_per_blocks: 1u32.into(),
+            min_num_threads: 1u32.into(),
+            lcm_num_blocks: 1u32.into(),
         }
     }
 }
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
-    nesting: &FnvHashMap<ir::StmtId, Nesting>,
     space: &SearchSpace,
+    dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    nesting: &FxHashMap<ir::StmtId, Nesting>,
     ctx: &dyn Context,
 ) -> Parallelism {
     let size_thread_dims = space
         .ir_instance()
         .thread_dims()
-        .map(|d| d.size())
-        .product::<ir::PartialSize>();
-    let min_threads_per_blocks = size::bounds(&size_thread_dims, space, ctx).min;
+        .map(|d| &dim_sizes[&d.id()])
+        .product::<size::SymbolicInt>();
     space
         .ir_instance()
         .insts()
         .map(|inst| {
-            let mut min_size_blocks = ir::PartialSize::default();
-            let mut max_size_blocks = ir::PartialSize::default();
+            let mut min_size_blocks = size::SymbolicInt::one();
+            let mut max_size_blocks = size::SymbolicInt::one();
             for &dim in &nesting[&inst.stmt_id()].outer_dims {
                 let kind = space.domain().get_dim_kind(dim);
                 if kind.intersects(DimKind::BLOCK) {
-                    let size = space.ir_instance().dim(dim).size();
+                    let size = &dim_sizes[&dim];
                     max_size_blocks *= size;
                     if kind == DimKind::BLOCK {
                         min_size_blocks *= size;
                     }
                 }
             }
-            let min_num_blocks = size::bounds(&min_size_blocks, space, ctx).min;
-            let lcm_num_blocks = size::factors(&max_size_blocks, space, ctx).lcm;
-            let size_threads_and_blocks = min_size_blocks * &size_thread_dims;
+
             Parallelism {
-                min_num_blocks,
-                min_num_threads_per_blocks: min_threads_per_blocks,
-                min_num_threads: size::bounds(&size_threads_and_blocks, space, ctx).min,
-                lcm_num_blocks,
+                min_num_threads: &min_size_blocks * &size_thread_dims,
+                // TODO(sym): min_size_blocks.to_float()
+                min_num_blocks: min_size_blocks,
+                min_num_threads_per_blocks: size_thread_dims.clone(),
+                lcm_num_blocks: max_size_blocks,
             }
         })
         .fold1(|lhs, rhs| lhs.combine(&rhs))

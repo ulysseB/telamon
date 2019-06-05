@@ -1,5 +1,6 @@
 //! Filter on choices.
 use crate::ir::{self, Adaptable, SetRef};
+use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use std;
 use std::collections::BTreeSet;
@@ -45,7 +46,7 @@ impl Rule {
     pub fn instantiate(
         &self,
         inputs: &[ChoiceInstance],
-        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
+        input_mapping: &FxHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Option<Rule> {
         let mut conditions = Vec::new();
@@ -352,7 +353,7 @@ impl Condition {
     pub fn instantiate(
         &self,
         inputs: &[ChoiceInstance],
-        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
+        input_mapping: &FxHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Condition {
         self.evaluate(inputs, input_mapping, ir_desc)
@@ -365,7 +366,7 @@ impl Condition {
     pub fn evaluate(
         &self,
         inputs: &[ChoiceInstance],
-        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
+        input_mapping: &FxHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Trivalent {
         match *self {
@@ -567,12 +568,12 @@ fn normalize_values<'a, IT>(
     negate: bool,
     inverse: bool,
     choice: &'a ir::Enum,
-) -> FnvHashSet<&'a RcStr>
+) -> FxHashSet<&'a RcStr>
 where
     IT: IntoIterator<Item = &'a RcStr>,
 {
     let inverser = |x| if inverse { choice.inverse(x) } else { x };
-    let mut values: FnvHashSet<_> = values.into_iter().map(inverser).collect();
+    let mut values: FxHashSet<_> = values.into_iter().map(inverser).collect();
     if negate {
         values = choice
             .values()
@@ -878,7 +879,7 @@ impl ValueSet {
     /// Instantiates the `ValueSet` for a given input assignment.
     pub fn instantiate(
         &self,
-        input_mapping: &FnvHashMap<usize, &ir::ValueSet>,
+        input_mapping: &FxHashMap<usize, &ir::ValueSet>,
         ir_desc: &ir::IrDesc,
     ) -> Self {
         match *self {

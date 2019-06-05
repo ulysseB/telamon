@@ -10,6 +10,7 @@ mod printer;
 pub use crate::context::Context;
 pub use crate::cpu::Cpu;
 
+use fxhash::FxHashMap;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::Float;
@@ -20,7 +21,7 @@ use utils::*;
 
 #[derive(Default)]
 pub(crate) struct ValuePrinter {
-    num_var: FnvHashMap<ir::Type, usize>,
+    num_var: FxHashMap<ir::Type, usize>,
     num_sizes: usize,
     num_glob_ptr: usize,
 }

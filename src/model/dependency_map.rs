@@ -1,26 +1,25 @@
 //! Holds the latency between each node and its dependencies.
 use crate::model::FastBound;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use std::collections::hash_map;
-
-use utils::*;
 
 /// Holds the latency between each node and its dependencies. Nodes must be sorted.
 #[derive(Clone, Debug)]
 pub struct DependencyMap {
-    deps: Vec<FnvHashMap<usize, FastBound>>,
+    deps: Vec<FxHashMap<usize, FastBound>>,
 }
 
 impl DependencyMap {
     /// Creates an empty dependency map.
     pub fn new(size: usize) -> DependencyMap {
         DependencyMap {
-            deps: (0..size).map(|_| FnvHashMap::default()).collect(),
+            deps: (0..size).map(|_| FxHashMap::default()).collect(),
         }
     }
 
     /// Returns the dependencies of a node.
-    pub fn deps(&self, to: usize) -> &FnvHashMap<usize, FastBound> {
+    pub fn deps(&self, to: usize) -> &FxHashMap<usize, FastBound> {
         &self.deps[to]
     }
 
@@ -32,10 +31,7 @@ impl DependencyMap {
                 entry.insert(latency);
             }
             hash_map::Entry::Occupied(mut entry) => {
-                let old = entry.get_mut();
-                if latency.is_better_than(old) {
-                    *old = latency;
-                }
+                entry.get_mut().max_assign(latency);
             }
         }
     }
@@ -57,12 +53,9 @@ impl DependencyMap {
                 for (&pred, lat_to_i) in &self.deps[i] {
                     let new_lat = lat_to_i.clone().chain(i, lat_to_dest.clone());
                     let old_lat = &mut latencies[pred];
-                    if old_lat
-                        .as_ref()
-                        .map(|x| new_lat.is_better_than(x))
-                        .unwrap_or(true)
-                    {
-                        *old_lat = Some(new_lat);
+                    match old_lat {
+                        None => *old_lat = Some(new_lat),
+                        Some(old) => old.max_assign(new_lat),
                     }
                 }
             }

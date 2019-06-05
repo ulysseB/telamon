@@ -13,6 +13,7 @@ use telamon::explorer;
 use telamon::ir;
 
 use crossbeam;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use libc;
 use log::debug;
@@ -29,7 +30,7 @@ const EVAL_BUFFER_SIZE: usize = 100;
 /// A CPU evaluation context.
 pub struct Context {
     cpu_model: Arc<Cpu>,
-    parameters: FnvHashMap<String, Arc<dyn Argument>>,
+    parameters: FxHashMap<String, Arc<dyn Argument>>,
 }
 
 impl Context {
@@ -71,7 +72,7 @@ impl Default for Context {
         let default_cpu = Cpu::dummy_cpu();
         Context {
             cpu_model: Arc::new(default_cpu),
-            parameters: FnvHashMap::default(),
+            parameters: FxHashMap::default(),
         }
     }
 }

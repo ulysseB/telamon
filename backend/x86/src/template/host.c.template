@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <math.h>
+
+#define telamon_op_max(a, b) ((a) > (b) ? (a) : (b))
 
 typedef struct thread_dim_id {{
 pthread_barrier_t * barrier;

@@ -1,6 +1,7 @@
 //! Allows the execution of kernels on the GPU.
 use crate::api::wrapper::*;
 use crate::api::Argument;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use std::ffi::CString;
 use std::fmt;
@@ -10,7 +11,7 @@ use utils::*;
 pub struct PerfCounterSet<'a> {
     num_event: usize,
     event_sets: *mut CuptiEventGroupSets,
-    event_pos: FnvHashMap<u32, usize>,
+    event_pos: FxHashMap<u32, usize>,
     context: &'a CudaContext,
 }
 

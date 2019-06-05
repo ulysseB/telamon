@@ -3,14 +3,14 @@
 use crate::characterize;
 use crate::mem_model::{self, MemInfo};
 use crate::{printer::CudaPrinter, Executor};
+use fxhash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use telamon::codegen::Function;
 use telamon::device::{self, Device};
 use telamon::ir::{self, Operator, Type};
-use telamon::model::{self, HwPressure};
+use telamon::model::{self, size, HwPressure};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use utils::*;
 
 // FIXME: fix performance model
 // - l1_lines constraint for stores ?
@@ -41,18 +41,20 @@ pub struct InstDesc {
 }
 
 impl InstDesc {
-    fn wasted_ratio(ratio: f64) -> Self {
-        InstDesc {
-            latency: 1.0,
-            issue: ratio,
-            alu: ratio,
-            sync: ratio,
-            mem: ratio,
-            l1_lines_from_l2: 1.0,
-            l2_lines_read: 1.0,
-            l2_lines_stored: 1.0,
-            ram_bw: 1.0,
-        }
+    fn wasted_ratio(ratio: &size::SymbolicFloat) -> HwPressure {
+        HwPressure::new(
+            1f64.into(),
+            vec![
+                ratio.clone(),
+                ratio.clone(),
+                ratio.clone(),
+                ratio.clone(),
+                1f64.into(),
+                1f64.into(),
+                1f64.into(),
+                1f64.into(),
+            ],
+        )
     }
 }
 
@@ -145,6 +147,11 @@ pub struct Gpu {
     pub div_f64_inst: InstDesc,
     pub div_i32_inst: InstDesc,
     pub div_i64_inst: InstDesc,
+    pub max_f32_inst: InstDesc,
+    pub max_f64_inst: InstDesc,
+    pub max_i32_inst: InstDesc,
+    pub max_i64_inst: InstDesc,
+    pub exp_f32_inst: InstDesc,
     pub syncthread_inst: InstDesc,
 
     /// Overhead for entring the loop.
@@ -216,6 +223,11 @@ impl Gpu {
             div_f64_inst: InstDesc::default(),
             div_i32_inst: InstDesc::default(),
             div_i64_inst: InstDesc::default(),
+            max_f32_inst: InstDesc::default(),
+            max_f64_inst: InstDesc::default(),
+            max_i32_inst: InstDesc::default(),
+            max_i64_inst: InstDesc::default(),
+            exp_f32_inst: InstDesc::default(),
             syncthread_inst: InstDesc::default(),
             loop_init_overhead: InstDesc::default(),
             loop_iter_overhead: InstDesc::default(),
@@ -272,10 +284,10 @@ impl Gpu {
     }
 
     /// Returns the overhead induced by all the iterations of a loop.
-    fn dim_pressure(&self, kind: DimKind, size: model::size::Range) -> HwPressure {
+    fn dim_pressure(&self, kind: DimKind, size: &size::SymbolicInt) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(size.min as f64);
+            pressure.repeat_sequential(size);
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
@@ -291,7 +303,7 @@ impl Gpu {
     fn inst_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
+        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
         inst: &ir::Instruction,
         ctx: &dyn device::Context,
     ) -> HwPressure {
@@ -336,6 +348,10 @@ impl Gpu {
             (&BinOp(ir::BinOp::Div, ..), Some(Type::F(64))) => self.div_f64_inst.into(),
             (&BinOp(ir::BinOp::Div, ..), Some(Type::I(32))) => self.div_i32_inst.into(),
             (&BinOp(ir::BinOp::Div, ..), Some(Type::I(64))) => self.div_i64_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::F(32))) => self.max_f32_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::F(64))) => self.max_f64_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::I(32))) => self.max_i32_inst.into(),
+            (&BinOp(ir::BinOp::Max, ..), Some(Type::I(64))) => self.max_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
@@ -345,6 +361,9 @@ impl Gpu {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.store_desc(&mem_info, flag).into()
+            }
+            (&UnaryOp(ir::UnaryOp::Exp(..), ..), Some(Type::F(32))) => {
+                self.exp_f32_inst.into()
             }
             // TODO(model): Instruction description for mov and cast.
             (&UnaryOp(..), _) => HwPressure::zero(self),
@@ -382,12 +401,14 @@ impl Gpu {
         .into()
     }
 
-    /// Computes the ratio `num_wraps*wrap_size/num_threads`. This ratio may be `>1`
-    /// because the hardware creates additionnal threads to fill the wraps.
-    fn waste_ratio(&self, lcm_threads_per_block: u64) -> f64 {
-        let wrap_size = u64::from(self.wrap_size);
-        let n_wraps = (lcm_threads_per_block + wrap_size - 1) / wrap_size;
-        (n_wraps * wrap_size) as f64 / lcm_threads_per_block as f64
+    /// Computes the ratio `num_warps*warp_size/num_threads`. This ratio may be `>1`
+    /// because the hardware creates additionnal threads to fill the warps.
+    fn waste_ratio(&self, threads_per_block: size::SymbolicInt) -> size::SymbolicFloat {
+        // TODO(sym): (n_warps * Float::constant(warp_size)) / threads_per-block.to_float()
+        // -> div_ceil_inv_magic(threads_per_block, warp_size) * n_warps
+        let warp_size = size::SymbolicInt::from(self.wrap_size).to_symbolic_float();
+        let n_warps = size::SymbolicFloat::div_ceil(&threads_per_block, self.wrap_size);
+        (n_warps * warp_size) / &threads_per_block
     }
 }
 
@@ -509,8 +530,8 @@ impl device::Device for Gpu {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FnvHashMap<ir::DimId, model::size::Range>,
-        _nesting: &FnvHashMap<ir::StmtId, model::Nesting>,
+        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+        _nesting: &FxHashMap<ir::StmtId, model::Nesting>,
         stmt: &dyn ir::Statement,
         ctx: &dyn device::Context,
     ) -> model::HwPressure {
@@ -518,7 +539,7 @@ impl device::Device for Gpu {
             self.inst_pressure(space, dim_sizes, inst, ctx)
         } else if let Some(dim) = stmt.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
-            self.dim_pressure(kind, dim_sizes[&dim.id()])
+            self.dim_pressure(kind, &dim_sizes[&dim.id()])
         } else {
             panic!()
         }
@@ -585,20 +606,21 @@ impl device::Device for Gpu {
 
     fn add_block_overhead(
         &self,
-        max_active_threads: model::size::FactorRange,
-        max_threads: model::size::FactorRange,
-        predication_factor: model::size::Range,
+        max_active_threads: size::SymbolicInt,
+        max_threads: size::SymbolicInt,
+        predication_factor: size::SymbolicInt,
         pressure: &mut HwPressure,
     ) {
-        let active_ratio = self.waste_ratio(max_active_threads.lcm);
-        pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
+        let active_ratio = self.waste_ratio(max_active_threads);
+        pressure.multiply(&InstDesc::wasted_ratio(&active_ratio));
         // Account for inactive wraps.
-        let total_ratio = self.waste_ratio(max_threads.lcm);
+        let total_ratio = self.waste_ratio(max_threads);
         // TODO(model): might be able to do better since `predication_factor` value is
         // linked to `max_threads` value.
-        let num_skipped = total_ratio * predication_factor.min as f64 - active_ratio;
-        if num_skipped > 0. {
-            pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
+        let num_skipped = total_ratio * &predication_factor - active_ratio;
+        // TODO: should we always do it?
+        if num_skipped.min_value() > 0. {
+            pressure.repeat_and_add_bottlenecks(&num_skipped, &self.skipped_pressure());
         }
     }
 }

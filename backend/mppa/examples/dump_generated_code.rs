@@ -48,10 +48,10 @@ fn main() {
         let file = fs::File::create(&opt.output).unwrap();
         let mut action_list = vec![];
         let mut context = mppa::Context::new();
-        let params = linalg::MatMulP::new(16, 16, 16);
+        let params = linalg::FusedMMP::new(16, 16, 16);
 
         let (signature, kernel, context) = KernelBuilder::new()
-            .build::<linalg::MatMul<f32>, mppa::Context>(params, &mut context);
+            .build::<linalg::FusedMM<f32>, mppa::Context>(params, &mut context);
 
         let candidates = kernel.build_body(signature.into(), context);
         let ordering = explorer::config::ChoiceOrdering::default();

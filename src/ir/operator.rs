@@ -1,11 +1,10 @@
 //! Defines operators.
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
+use fxhash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{self, fmt};
-
-use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -67,6 +66,8 @@ pub enum BinOp {
     Leq,
     /// Computes `lhs == rhs`.
     Equals,
+    /// Computes max(lhs, rhs)
+    Max,
 }
 
 impl fmt::Display for BinOp {
@@ -87,6 +88,7 @@ impl BinOp {
             BinOp::Lt => "lt",
             BinOp::Leq => "leq",
             BinOp::Equals => "equals",
+            BinOp::Max => "max",
         }
     }
 
@@ -101,7 +103,7 @@ impl BinOp {
     /// Indicates if the result must be rounded when operating on floats.
     fn requires_rounding(self) -> bool {
         match self {
-            BinOp::Lt | BinOp::Leq | BinOp::Equals => false,
+            BinOp::Lt | BinOp::Leq | BinOp::Equals | BinOp::Max => false,
             _ => true,
         }
     }
@@ -115,11 +117,14 @@ pub enum UnaryOp {
     Mov,
     /// Casts the input to another type.
     Cast(ir::Type),
+    /// Calculates exp(x)
+    Exp(ir::Type),
 }
 
 impl fmt::Display for UnaryOp {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            UnaryOp::Exp(..) => fmt.write_str("exp"),
             UnaryOp::Mov => fmt.write_str("mov"),
             UnaryOp::Cast(t) => write!(fmt, "cast({})", t),
         }
@@ -130,7 +135,7 @@ impl UnaryOp {
     /// Gives the return type of the operand given its input type.
     fn t(self, op_type: ir::Type) -> ir::Type {
         match self {
-            UnaryOp::Mov => op_type,
+            UnaryOp::Mov | UnaryOp::Exp(..) => op_type,
             UnaryOp::Cast(t) => t,
         }
     }
@@ -164,7 +169,7 @@ impl<L> Operator<L> {
     /// Ensures the types of the operands are valid.
     pub fn check(
         &self,
-        iter_dims: &FnvHashSet<ir::DimId>,
+        iter_dims: &FxHashSet<ir::DimId>,
         fun: &ir::Function<L>,
     ) -> Result<(), ir::Error> {
         self.t()

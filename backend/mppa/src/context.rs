@@ -3,6 +3,7 @@ use crate::printer::MppaPrinter;
 use crate::{mppa, ValuePrinter};
 use crossbeam;
 use crossbeam::queue::ArrayQueue;
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use libc;
 use std::sync::{
@@ -19,7 +20,6 @@ use telamon::device::{
 use telamon::explorer;
 use telamon::ir;
 use utils::unwrap;
-use utils::*;
 
 #[cfg(not(feature = "real_mppa"))]
 use crate::fake_telajax as telajax;
@@ -101,7 +101,7 @@ impl KernelArg {
 pub struct Context {
     device: Arc<mppa::Mppa>,
     executor: &'static telajax::Device,
-    parameters: FnvHashMap<String, Arc<Argument>>,
+    parameters: FxHashMap<String, Arc<Argument>>,
     writeback_slots: ArrayQueue<MppaArray>,
 }
 
@@ -123,7 +123,7 @@ impl Context {
         Context {
             device: Arc::new(mppa::Mppa::default()),
             executor,
-            parameters: FnvHashMap::default(),
+            parameters: FxHashMap::default(),
             writeback_slots,
         }
     }

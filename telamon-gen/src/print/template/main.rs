@@ -11,6 +11,7 @@ use serde::Serialize;
 use serde::Deserialize;
 #[allow(unused_imports)]
 use utils::*;
+use fxhash::FxHashMap;
 
 {{>store}}
 

@@ -1,6 +1,7 @@
 //! Memory accesses analysis.
 use crate::Gpu;
 use binary_heap_plus::BinaryHeap;
+use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use log::trace;
 use num::Integer;
@@ -8,6 +9,8 @@ use telamon::device::Context;
 use telamon::ir;
 use telamon::model::size;
 use telamon::search_space::*;
+
+use sym::Range;
 use utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
@@ -50,7 +53,7 @@ pub fn analyse(
     space: &SearchSpace,
     gpu: &Gpu,
     inst: &ir::Instruction,
-    sizes: &FnvHashMap<ir::DimId, size::Range>,
+    sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
     ctx: &dyn Context,
 ) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
@@ -103,10 +106,10 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &Gpu) -> MemInfo {
 fn info(
     space: &SearchSpace,
     inst: &ir::Instruction,
-    dims: &FnvHashMap<ir::DimId, ir::PartialSize>,
+    dims: &FxHashMap<ir::DimId, ir::PartialSize>,
     is_shared_access: Trivalent,
     gpu: &Gpu,
-    sizes: &FnvHashMap<ir::DimId, size::Range>,
+    sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
     ctx: &dyn Context,
 ) -> MemInfo {
     let mut info = MemInfo::default();
@@ -166,8 +169,8 @@ impl ThreadDimInfo {
 fn tensor_thread_dims(
     space: &SearchSpace,
     inst: &ir::Instruction,
-    tensor_dims: &FnvHashMap<ir::DimId, ir::PartialSize>,
-    sizes: &FnvHashMap<ir::DimId, size::Range>,
+    tensor_dims: &FxHashMap<ir::DimId, ir::PartialSize>,
+    sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
     ctx: &dyn Context,
 ) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
@@ -184,7 +187,10 @@ fn tensor_thread_dims(
         .chain(external_dims);
     let mut out = Vec::new();
     for (id, is_active_thread) in dims {
-        let size = sizes[&id];
+        let size = size::Range {
+            min: sizes[&id].min_value(),
+            max: sizes[&id].max_value(),
+        };
         let stride_size = tensor_dims.get(&id);
         let stride = stride_size
             .map(|s| size::bounds(s, space, ctx))
@@ -261,7 +267,7 @@ fn sort_thread_dims(
         .collect_vec();
     let cmp = |x: &ThreadDimInfo, y: &ThreadDimInfo| cmp_thread_dims(x, y, use_gcd, gpu);
     let mut heap = BinaryHeap::with_capacity_by(dims.len(), cmp);
-    let mut dim_groups: FnvMultiHashMap<_, _> = dims
+    let mut dim_groups: FxMultiHashMap<_, _> = dims
         // Do not account for partial dims
         .into_iter()
         .map(|d| {
@@ -376,8 +382,8 @@ fn increment_index(pos: usize, dims: &[ThreadDimInfo], indexes: &mut [u64]) -> b
 /// Compute the replay factor caused by shared memory accesses.
 fn shared_replay_factor(
     thread_dims: Vec<ThreadDimInfo>,
-    tensor_dims: &FnvHashMap<ir::DimId, ir::PartialSize>,
-    dim_sizes: &FnvHashMap<ir::DimId, size::Range>,
+    tensor_dims: &FxHashMap<ir::DimId, ir::PartialSize>,
+    dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
     space: &SearchSpace,
     gpu: &Gpu,
 ) -> f64 {
@@ -409,7 +415,7 @@ fn shared_replay_factor(
         .iter()
         .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
-        .map(|(d, stride)| dim_sizes[&d].min as u32 * stride)
+        .map(|(d, stride)| dim_sizes[&d].min_value() as u32 * stride)
         .map(|size| div_ceil(size, gpu.shared_bank_stride))
         .min()
         .unwrap_or(1);
@@ -422,7 +428,7 @@ fn shared_replay_factor(
 fn offsets_shared_replay_factor(offsets: &[u64], gpu: &Gpu) -> u32 {
     // We only need to account for hits on the first bank. Other banks will have a smaller
     // replay factor.
-    let mut hits: FnvHashSet<_> = std::iter::once(0).collect();
+    let mut hits: FxHashSet<_> = std::iter::once(0).collect();
     for &offset in offsets {
         let num_bank_stride = offset / u64::from(gpu.shared_bank_stride);
         let (hit_id, rem) = num_bank_stride.div_rem(&(u64::from(gpu.wrap_size)));
@@ -462,8 +468,8 @@ fn global_coalescing(
 
 /// Computes the L1, L2 coalescing and replay factor for a global memory access.
 fn offsets_global_coalescing(offsets: &[u64], gpu: &Gpu) -> (f64, f64, f64) {
-    let mut l1_lines: FnvHashSet<_> = std::iter::once(0).collect();
-    let mut l2_lines: FnvHashSet<_> = std::iter::once(0).collect();
+    let mut l1_lines: FxHashSet<_> = std::iter::once(0).collect();
+    let mut l2_lines: FxHashSet<_> = std::iter::once(0).collect();
     // Compute the lines accessed by each tread in a wrap.
     for &offset in offsets {
         l1_lines.insert(offset / u64::from(gpu.l1_cache_line));
@@ -485,7 +491,7 @@ fn miss_ratios(inst: &ir::Instruction,
                pattern: &ir::AccessPattern,
                space: &SearchSpace,
                gpu: &cuda::Gpu,
-               sizes: &FnvHashMap<ir::DimId, u32>) -> f64 {
+               sizes: &FxHashMap<ir::DimId, u32>) -> f64 {
     // Compute MSHR, without taking other accesses into account.
     // (1) Find accesses to the sane memory block.
     let other_accesses = space.ir_instance().insts().filter(|other_inst| {
@@ -536,7 +542,7 @@ fn reuse_distance(inst: &ir::Instruction,
 dim: &ir::Dimension,
 pattern: &ir::AccessPattern,
 space: &SearchSpace,
-sizes: &FnvHashMap<ir::DimId, u32>,
+sizes: &FxHashMap<ir::DimId, u32>,
 gpu: &cuda::Gpu) -> u32 {
 space.ir_instance().dims().filter(|&other_dim| {
 other_dim.id() != dim.id() &&
@@ -552,7 +558,7 @@ let size = sizes[&other_dim.id()] as u32;
 /// Evaluate the stride of an access pattern of a given dimension.
 fn eval_stride(pattern: &ir::AccessPattern,
 dim: ir::DimId,
-sizes: &FnvHashMap<ir::DimId, u32>) -> ir::Stride {
+sizes: &FxHashMap<ir::DimId, u32>) -> ir::Stride {
 match *pattern {
 ir::AccessPattern::Unknown { .. } => ir::Stride::Unknown,
 ir::AccessPattern::Tensor { ref stride, ref dims, .. } => {
@@ -611,7 +617,7 @@ mod tests {
     use env_logger;
     use std::sync::Arc;
     use telamon::device::Device;
-    use telamon::model::size::Range;
+    use telamon::model::size::{Range, SymbolicInt};
     use telamon::search_space::Order;
     use telamon::{helper, ir};
 
@@ -621,7 +627,7 @@ mod tests {
         signature: Arc<ir::Signature>,
         gpu: &'a Gpu,
         d0_d1_order: Order,
-    ) -> (SearchSpace, ir::InstId, FnvHashMap<ir::DimId, Range>) {
+    ) -> (SearchSpace, ir::InstId, FxHashMap<ir::DimId, SymbolicInt>) {
         let mut builder = helper::Builder::new(signature, Arc::new(gpu.clone()));
         let t = ir::Type::F(32);
         let size = builder.cst_size(gpu.wrap_size);
@@ -634,12 +640,9 @@ mod tests {
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.order(&d0, &d1, d0_d1_order);
 
-        let mut size_map = FnvHashMap::default();
-        let wrap_size = Range {
-            min: gpu.wrap_size.into(),
-            max: gpu.wrap_size.into(),
-        };
-        size_map.insert(d0[0], wrap_size);
+        let mut size_map = FxHashMap::default();
+        let wrap_size: SymbolicInt = gpu.wrap_size.into();
+        size_map.insert(d0[0], wrap_size.clone());
         size_map.insert(d1[0], wrap_size);
         (builder.get(), ld, size_map)
     }

@@ -1,3 +1,4 @@
+use fxhash::FxHashMap;
 use std;
 use std::io::Write;
 use telamon::codegen::Function;
@@ -6,7 +7,6 @@ use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
 use utils::unwrap;
-use utils::*;
 
 /// Describes a MPPA chip.
 #[derive(Default)]
@@ -81,8 +81,8 @@ impl device::Device for Mppa {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FnvHashMap<ir::DimId, model::size::Range>,
-        _: &FnvHashMap<ir::StmtId, model::Nesting>,
+        _: &FxHashMap<ir::DimId, model::size::Range>,
+        _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &ir::Statement,
         _: &device::Context,
     ) -> model::HwPressure {

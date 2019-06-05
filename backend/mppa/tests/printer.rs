@@ -11,10 +11,10 @@ fn print_candidates() {
     let dump = fs::read_to_string("dumps/implementation_code.json").unwrap();
 
     let mut context = mppa::Context::new();
-    let params = linalg::MatMulP::new(16, 16, 16);
+    let params = linalg::FusedMMP::new(16, 16, 16);
 
     let (signature, kernel, context) = KernelBuilder::new()
-        .build::<linalg::MatMul<f32>, mppa::Context>(params, &mut context);
+        .build::<linalg::FusedMM<f32>, mppa::Context>(params, &mut context);
 
     // build_body for the kernel always returns a single candidate
     let candidate = kernel.build_body(signature.into(), context).remove(0);

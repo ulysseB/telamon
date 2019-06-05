@@ -241,7 +241,7 @@ pub fn register_induction_vars<'a>(
     dims: &mut Vec<Dimension<'a>>,
     space: &'a SearchSpace,
 ) -> (Vec<InductionVar<'a>>, Vec<InductionLevel<'a>>) {
-    let mut ind_levels_map = FnvMultiHashMap::default();
+    let mut ind_levels_map = FxMultiHashMap::default();
     let mut ind_vars = Vec::new();
     let mut precomputed_levels = Vec::new();
     for (id, ind_var) in space.ir_instance().induction_vars() {

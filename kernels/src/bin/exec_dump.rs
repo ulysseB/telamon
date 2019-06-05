@@ -12,7 +12,7 @@ fn dispatch_exec<'a, C: Context + ArgMap<'a>, R: Read>(
         "axpy" => linalg::Axpy::<f32>::execute_dump(context, file),
         "mv" => linalg::MatVec::<f32>::execute_dump(context, file),
         "gesummv" => linalg::Gesummv::<f32>::execute_dump(context, file),
-        "matmul" => linalg::MatMul::<f32>::execute_dump(context, file),
+        "matmul" => linalg::FusedMM::<f32>::execute_dump(context, file),
         _ => panic!("Valid kernel names are: axpy, mv, gesummv, matmul"),
     }
 }

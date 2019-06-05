@@ -3,13 +3,14 @@ use std::fmt;
 
 use self::Operand::*;
 use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
+use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use utils::{unwrap, FnvHashMap};
+use utils::unwrap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoweringMap {
@@ -19,12 +20,12 @@ pub struct LoweringMap {
     /// lowering.
     st_inst: ir::InstId,
     /// Maps the lhs dimensions in `map` to their lowered dimension.
-    st_map: FnvHashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
+    st_map: FxHashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
     /// Instruction ID to use for the `load` instruction when
     /// lowering.
     ld_inst: ir::InstId,
     /// Maps the rhs dimensions in `map` to their lowered dimension.
-    ld_map: FnvHashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
+    ld_map: FxHashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
 }
 
 impl LoweringMap {
@@ -273,7 +274,7 @@ impl<L> ir::IrDisplay<L> for Operand<L> {
                     .iter()
                     .sorted()
                     .collect::<Vec<_>>();
-                let mapping = dim_map.iter().cloned().collect::<FnvHashMap<_, _>>();
+                let mapping = dim_map.iter().cloned().collect::<FxHashMap<_, _>>();
 
                 write!(
                     fmt,
@@ -295,7 +296,7 @@ impl<L> ir::IrDisplay<L> for Operand<L> {
                     .iter()
                     .sorted()
                     .collect::<Vec<_>>();
-                let mapping = dim_map.iter().cloned().collect::<FnvHashMap<_, _>>();
+                let mapping = dim_map.iter().cloned().collect::<FxHashMap<_, _>>();
                 write!(
                     fmt,
                     "reduce({:?}[{}], {:?})",

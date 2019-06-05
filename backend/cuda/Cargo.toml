@@ -16,6 +16,7 @@ libc = { version = "0.2", optional = true }
 errno = { version = "0.2", optional = true }
 env_logger = "0.5"
 failure = "0.1"
+fxhash = "0.2"
 itertools = "0.8"
 log = "0.4"
 num = "0.2"
@@ -26,6 +27,7 @@ serde_json = "1.0.22"
 telamon = {path = "../../"}
 utils = {package = "telamon-utils", path = "../../telamon-utils"}
 xdg = { version = "2.1", optional = true }
+sym = {path = "../../deps/sym"}
 
 [dev-dependencies]
 regex = "0.2"

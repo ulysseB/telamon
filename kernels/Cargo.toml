@@ -23,11 +23,12 @@ cuda-sys = { optional = true, version = "0.1.0" }
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional=true }
 telamon-mppa = { path = "../backend/mppa", optional=true }
-telamon-x86 = { path = "../backend/x86" }
+telamon-x86 = { path = "../backend/x86", optional=true }
 utils = { package = "telamon-utils", path = "../telamon-utils" }
 
 [dev-dependencies]
 futures = "0.1.23"
+telamon-x86 = { path = "../backend/x86" }
 
 [features]
 mppa = [
@@ -37,6 +38,17 @@ cuda = [
     "telamon-cuda",
     "cuda-sys",
 ]
+x86 = [
+    "telamon-x86",
+]
+
+[[bin]]
+name = "exec_dump"
+required-features = ["x86"]
+
+[[bin]]
+name = "kernel_dump"
+required-features = ["x86"]
 
 [[bench]]
 name = "cuda-search"

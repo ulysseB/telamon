@@ -6,7 +6,7 @@ use crate::codegen::{
 };
 use crate::ir::{self, IrDisplay};
 use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
-use utils::unwrap;
+use fxhash::FxHashSet;
 use utils::*;
 
 use itertools::Itertools;
@@ -49,7 +49,7 @@ impl<'a> Function<'a> {
                     .iter()
                     .flat_map(|l| l.host_values(space)),
             )
-            .collect::<FnvHashSet<_>>();
+            .collect::<FxHashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
         device_code_args.extend(
