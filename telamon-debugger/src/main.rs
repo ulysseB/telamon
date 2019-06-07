@@ -43,6 +43,7 @@ impl<T, E> Ignore for Result<T, E> {
 struct Node {
     children: Vec<Edge>,
     bound: Bound,
+    bound_compute_time: std::time::Duration,
     candidate: SearchSpace,
     evaluations: RwLock<Vec<Option<f64>>>,
 }
@@ -57,9 +58,13 @@ impl Node {
                 action,
             })
             .collect::<Vec<_>>();
+        let start = std::time::Instant::now();
+        let bound = env.bound(&candidate);
+        let duration = start.elapsed();
         Node {
             children,
-            bound: env.bound(&candidate),
+            bound,
+            bound_compute_time: duration,
             candidate,
             evaluations: RwLock::new(Vec::new()),
         }
@@ -337,7 +342,11 @@ impl<'a> Widget for Explorer<'a> {
         self.selector.draw(chunks[0], buf);
         Paragraph::new(
             [
-                Text::raw(format!("{}\n", self.selector.cursor.node.bound)),
+                Text::raw(format!(
+                    "{} (computed in {:?})\n",
+                    self.selector.cursor.node.bound,
+                    self.selector.cursor.node.bound_compute_time
+                )),
                 Text::raw(format!(
                     "{:?}",
                     self.selector
@@ -517,10 +526,10 @@ fn main() -> io::Result<()> {
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
-    let params = linalg::MatMulP::new(256, 256, 256);
+    let params = linalg::FusedMMP::new(256, 256, 256);
 
     let (signature, kernel, context) = KernelBuilder::default()
-        .build::<linalg::MatMul<f32>, telamon_cuda::Context>(
+        .build::<linalg::FusedMM<f32>, telamon_cuda::Context>(
             params.clone(),
             &mut context,
         );
@@ -554,9 +563,13 @@ fn main() -> io::Result<()> {
                     action,
                 })
                 .collect::<Vec<_>>();
+            let start = std::time::Instant::now();
+            let bound = env.bound(&candidate);
+            let duration = start.elapsed();
             let root = Arc::new(Node {
                 children,
-                bound: env.bound(&candidate),
+                bound,
+                bound_compute_time: duration,
                 candidate: candidate,
                 evaluations: RwLock::new(Vec::new()),
             });
