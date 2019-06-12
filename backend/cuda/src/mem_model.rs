@@ -40,7 +40,7 @@ pub fn analyse(
     space: &SearchSpace,
     gpu: &Gpu,
     inst: &ir::Instruction,
-    sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    sizes: &FxHashMap<ir::DimId, size::Ratio>,
     ctx: &dyn Context,
 ) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
@@ -96,7 +96,7 @@ fn info(
     dims: &FxHashMap<ir::DimId, ir::PartialSize>,
     is_shared_access: Trivalent,
     gpu: &Gpu,
-    sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    sizes: &FxHashMap<ir::DimId, size::Ratio>,
     ctx: &dyn Context,
 ) -> MemInfo {
     let mut info = MemInfo::default();
@@ -157,7 +157,7 @@ fn tensor_thread_dims(
     space: &SearchSpace,
     inst: &ir::Instruction,
     tensor_dims: &FxHashMap<ir::DimId, ir::PartialSize>,
-    sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    sizes: &FxHashMap<ir::DimId, size::Ratio>,
     ctx: &dyn Context,
 ) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
@@ -370,7 +370,7 @@ fn increment_index(pos: usize, dims: &[ThreadDimInfo], indexes: &mut [u64]) -> b
 fn shared_replay_factor(
     thread_dims: Vec<ThreadDimInfo>,
     tensor_dims: &FxHashMap<ir::DimId, ir::PartialSize>,
-    dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    dim_sizes: &FxHashMap<ir::DimId, size::Ratio>,
     space: &SearchSpace,
     gpu: &Gpu,
 ) -> f64 {

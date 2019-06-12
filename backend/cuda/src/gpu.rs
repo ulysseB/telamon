@@ -283,10 +283,10 @@ impl Gpu {
     }
 
     /// Returns the overhead induced by all the iterations of a loop.
-    fn dim_pressure(&self, kind: DimKind, size: &size::SymbolicInt) -> HwPressure {
+    fn dim_pressure(&self, kind: DimKind, size: &size::Ratio) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(size);
+            pressure.repeat_sequential(&size::SymbolicInt::from(size.clone()));
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
@@ -302,7 +302,7 @@ impl Gpu {
     fn inst_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+        dim_sizes: &FxHashMap<ir::DimId, size::Ratio>,
         inst: &ir::Instruction,
         ctx: &dyn device::Context,
     ) -> HwPressure {
@@ -402,12 +402,14 @@ impl Gpu {
 
     /// Computes the ratio `num_warps*warp_size/num_threads`. This ratio may be `>1`
     /// because the hardware creates additionnal threads to fill the warps.
-    fn waste_ratio(&self, threads_per_block: size::SymbolicInt) -> size::SymbolicFloat {
+    fn waste_ratio(&self, threads_per_block: size::Min) -> size::SymbolicFloat {
         // TODO(sym): (n_warps * Float::constant(warp_size)) / threads_per-block.to_float()
         // -> div_ceil_inv_magic(threads_per_block, warp_size) * n_warps
-        let warp_size = size::SymbolicInt::from(self.wrap_size).to_symbolic_float();
-        let n_warps = size::SymbolicFloat::div_ceil(&threads_per_block, self.wrap_size);
-        (n_warps * warp_size) / &threads_per_block
+        let n_warps = size::SymbolicFloat::div_ceil(
+            &threads_per_block.clone().into(),
+            self.wrap_size,
+        );
+        (n_warps * self.wrap_size as f64) / &size::SymbolicInt::from(threads_per_block)
     }
 }
 
@@ -529,7 +531,7 @@ impl device::Device for Gpu {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+        dim_sizes: &FxHashMap<ir::DimId, size::Ratio>,
         _nesting: &FxHashMap<ir::StmtId, model::Nesting>,
         stmt: &dyn ir::Statement,
         ctx: &dyn device::Context,
@@ -605,9 +607,9 @@ impl device::Device for Gpu {
 
     fn add_block_overhead(
         &self,
-        max_active_threads: size::SymbolicInt,
-        max_threads: size::SymbolicInt,
-        predication_factor: size::SymbolicInt,
+        max_active_threads: size::Min,
+        max_threads: size::Min,
+        predication_factor: size::Ratio,
         pressure: &mut HwPressure,
     ) {
         let active_ratio = self.waste_ratio(max_active_threads);
@@ -616,7 +618,8 @@ impl device::Device for Gpu {
         let total_ratio = self.waste_ratio(max_threads);
         // TODO(model): might be able to do better since `predication_factor` value is
         // linked to `max_threads` value.
-        let num_skipped = total_ratio * &predication_factor - active_ratio;
+        let num_skipped =
+            total_ratio * predication_factor.to_symbolic_float() - active_ratio;
         // TODO: should we always do it?
         if num_skipped.min_value() > 0. {
             pressure.repeat_and_add_bottlenecks(&num_skipped, &self.skipped_pressure());

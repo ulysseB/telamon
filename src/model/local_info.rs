@@ -5,7 +5,8 @@ use crate::model::{size, HwPressure};
 use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
 use fxhash::FxHashMap;
 use itertools::Itertools;
-use num::integer::lcm;
+use log::debug;
+use num::BigUint;
 
 use sym::Range;
 use utils::*;
@@ -14,7 +15,7 @@ use utils::*;
 #[derive(Debug)]
 pub struct LocalInfo {
     /// The symbolic size of each dimension.
-    pub dim_sizes: FxHashMap<ir::DimId, size::SymbolicInt>,
+    pub dim_sizes: FxHashMap<ir::DimId, size::Ratio>,
     /// The loops inside and outside each Stmt.
     pub nesting: FxHashMap<ir::StmtId, Nesting>,
     /// The pressure incured by a single instance of each Stmt.
@@ -32,7 +33,7 @@ impl LocalInfo {
     fn dim_sizes(
         space: &SearchSpace,
         context: &dyn Context,
-    ) -> FxHashMap<ir::DimId, size::SymbolicInt> {
+    ) -> FxHashMap<ir::DimId, size::Ratio> {
         #[derive(Default)]
         struct UF {
             map: FxHashMap<ir::DimId, ir::DimId>,
@@ -113,7 +114,7 @@ impl LocalInfo {
                     .clone()
             }
 
-            fn dim(&mut self, size: &ir::PartialSize) -> size::SymbolicInt {
+            fn dim(&mut self, size: &ir::PartialSize) -> size::Ratio {
                 let (static_factor, param_factors, dim_factors) = size.factors();
 
                 let mut factor = u64::from(static_factor)
@@ -150,7 +151,7 @@ impl LocalInfo {
                     }
                 }
 
-                size::SymbolicInt::ratio(factor, numer, denom)
+                size::Ratio::new(BigUint::from(factor), numer, denom)
             }
         }
 
@@ -247,7 +248,7 @@ impl LocalInfo {
 fn add_indvar_pressure(
     device: &dyn Device,
     space: &SearchSpace,
-    dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    dim_sizes: &FxHashMap<ir::DimId, size::Ratio>,
     indvar: &ir::InductionVar,
     hw_pressure: &mut FxHashMap<ir::StmtId, HwPressure>,
     dim_overhead: &mut FxHashMap<ir::DimId, (HwPressure, HwPressure)>,
@@ -279,8 +280,7 @@ fn add_indvar_pressure(
                 unwrap!(dim_overhead.get_mut(&dim))
                     .0
                     .add_parallel(&overhead);
-                // TODO(sym): size.to_float() - 1
-                overhead.repeat_parallel(&(size - 1u32));
+                overhead.repeat_parallel(size.to_symbolic_float() - 1f64);
                 unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
             }
         }
@@ -306,17 +306,17 @@ pub struct Nesting {
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
-    pub num_unmapped_threads: size::SymbolicInt,
+    pub num_unmapped_threads: size::Ratio,
     /// Maximal number of threads this block can be in, considering only outer dimensions
     /// (an not mapped out dimensions).
-    pub max_threads_per_block: size::SymbolicInt,
+    pub max_threads_per_block: size::Ratio,
 }
 
 impl Nesting {
     /// Computes the nesting of a `Statement`.
     fn compute(
         space: &SearchSpace,
-        dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+        dim_sizes: &FxHashMap<ir::DimId, size::Ratio>,
         stmt: ir::StmtId,
     ) -> Self {
         let mut inner_dims = Vec::new();
@@ -369,13 +369,13 @@ impl Nesting {
                 })
             })
             .map(|d| &dim_sizes[&d.id()])
-            .product::<size::SymbolicInt>();
+            .product::<size::Ratio>();
         let max_threads_per_block = outer_dims
             .iter()
             .cloned()
             .filter(|&d| space.domain().get_dim_kind(d).intersects(DimKind::THREAD))
             .map(|d| &dim_sizes[&d])
-            .product::<size::SymbolicInt>();
+            .product::<size::Ratio>();
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_stmts: VecSet::new(inner_stmts),
@@ -426,48 +426,19 @@ impl Nesting {
 pub struct Parallelism {
     /// Minimal number of blocks.
     // TODO(sym): Float
-    pub min_num_blocks: size::SymbolicInt,
+    pub min_num_blocks: size::Min,
     /// Minimal number of threads per blocks.
-    pub min_num_threads_per_blocks: size::SymbolicInt,
+    pub min_num_threads_per_blocks: size::Ratio,
     /// Minimal number of threads.
-    pub min_num_threads: size::SymbolicInt,
+    pub min_num_threads: size::Min,
     /// A multiple of the number of blocks.
-    pub lcm_num_blocks: size::SymbolicInt,
-}
-
-impl Parallelism {
-    /// Combines two `Parallelism` summaries computed on different instructions and computes the
-    /// `Parallelism` of the union of the instructions.
-    fn combine(mut self, rhs: &Self) -> Self {
-        self.combine_assign(rhs);
-        self
-    }
-
-    fn combine_assign(&mut self, rhs: &Self) {
-        self.min_num_threads_per_blocks
-            .min_assign(&rhs.min_num_threads_per_blocks);
-        self.min_num_blocks.min_assign(&rhs.min_num_blocks);
-        self.min_num_threads.min_assign(&rhs.min_num_threads);
-        self.lcm_num_blocks.lcm_assign(&rhs.lcm_num_blocks);
-    }
-}
-
-impl Default for Parallelism {
-    fn default() -> Self {
-        Parallelism {
-            // TODO(sym): float
-            min_num_blocks: 1u32.into(),
-            min_num_threads_per_blocks: 1u32.into(),
-            min_num_threads: 1u32.into(),
-            lcm_num_blocks: 1u32.into(),
-        }
-    }
+    pub lcm_num_blocks: size::Lcm,
 }
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
     space: &SearchSpace,
-    dim_sizes: &FxHashMap<ir::DimId, size::SymbolicInt>,
+    dim_sizes: &FxHashMap<ir::DimId, size::Ratio>,
     nesting: &FxHashMap<ir::StmtId, Nesting>,
     ctx: &dyn Context,
 ) -> Parallelism {
@@ -475,32 +446,46 @@ fn parallelism(
         .ir_instance()
         .thread_dims()
         .map(|d| &dim_sizes[&d.id()])
-        .product::<size::SymbolicInt>();
-    space
-        .ir_instance()
-        .insts()
-        .map(|inst| {
-            let mut min_size_blocks = size::SymbolicInt::one();
-            let mut max_size_blocks = size::SymbolicInt::one();
-            for &dim in &nesting[&inst.stmt_id()].outer_dims {
-                let kind = space.domain().get_dim_kind(dim);
-                if kind.intersects(DimKind::BLOCK) {
-                    let size = &dim_sizes[&dim];
-                    max_size_blocks *= size;
-                    if kind == DimKind::BLOCK {
-                        min_size_blocks *= size;
-                    }
+        .product::<size::Ratio>();
+
+    let mut min_num_threads = Vec::new();
+    let mut min_num_blocks = Vec::new();
+    let mut lcm_num_blocks = Vec::new();
+    for inst in space.ir_instance().insts() {
+        let mut min_size_blocks = size::Ratio::one();
+        let mut max_size_blocks = size::Ratio::one();
+        for &dim in &nesting[&inst.stmt_id()].outer_dims {
+            let kind = space.domain().get_dim_kind(dim);
+            if kind.intersects(DimKind::BLOCK) {
+                let size = &dim_sizes[&dim];
+                max_size_blocks *= size;
+                if kind == DimKind::BLOCK {
+                    min_size_blocks *= size;
                 }
             }
+        }
 
-            Parallelism {
-                min_num_threads: &min_size_blocks * &size_thread_dims,
-                // TODO(sym): min_size_blocks.to_float()
-                min_num_blocks: min_size_blocks,
-                min_num_threads_per_blocks: size_thread_dims.clone(),
-                lcm_num_blocks: max_size_blocks,
-            }
-        })
-        .fold1(|lhs, rhs| lhs.combine(&rhs))
-        .unwrap_or_default()
+        min_num_threads.push(&min_size_blocks * &size_thread_dims);
+        // TODO(sym): min_size_blocks.to_float()
+        min_num_blocks.push(min_size_blocks);
+        lcm_num_blocks.push(max_size_blocks);
+    }
+
+    let p = Parallelism {
+        // TODO: unwrap_or(one)
+        min_num_threads: size::Min::new(min_num_threads).unwrap_or_else(size::Min::one),
+        min_num_blocks: size::Min::new(min_num_blocks).unwrap_or_else(size::Min::one),
+        min_num_threads_per_blocks: size_thread_dims,
+        lcm_num_blocks: size::Lcm::new(lcm_num_blocks).unwrap_or_else(size::Lcm::one),
+    };
+
+    debug!("parallelism min_num_threads: {}", p.min_num_threads);
+    debug!("parallelism min_num_blocks: {}", p.min_num_blocks);
+    debug!(
+        "parallelism min_num_threads_per_blocks: {}",
+        p.min_num_threads_per_blocks
+    );
+    debug!("parallelism lcm_num_blocks: {}", p.lcm_num_blocks);
+
+    p
 }

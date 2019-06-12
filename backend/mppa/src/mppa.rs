@@ -81,7 +81,7 @@ impl device::Device for Mppa {
     fn hw_pressure(
         &self,
         _: &SearchSpace,
-        _: &FxHashMap<ir::DimId, model::size::Range>,
+        _: &FxHashMap<ir::DimId, model::size::Ratio>,
         _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &ir::Statement,
         _: &device::Context,
@@ -130,9 +130,9 @@ impl device::Device for Mppa {
 
     fn add_block_overhead(
         &self,
-        _: model::size::FactorRange,
-        _: model::size::FactorRange,
-        _: model::size::Range,
+        _: model::size::Min,
+        _: model::size::Min,
+        _: model::size::Ratio,
         _pressure: &mut HwPressure,
     ) {
     }

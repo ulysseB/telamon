@@ -53,7 +53,7 @@ pub trait Device: Send + Sync + 'static {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &FxHashMap<ir::DimId, model::size::SymbolicInt>,
+        dim_sizes: &FxHashMap<ir::DimId, model::size::Ratio>,
         nesting: &FxHashMap<ir::StmtId, Nesting>,
         bb: &dyn ir::Statement,
         ctx: &dyn Context,
@@ -80,9 +80,9 @@ pub trait Device: Send + Sync + 'static {
     /// be `1`.
     fn add_block_overhead(
         &self,
-        max_active_threads: model::size::SymbolicInt,
-        max_threads: model::size::SymbolicInt,
-        predication_factor: model::size::SymbolicInt,
+        max_active_threads: model::size::Min,
+        max_threads: model::size::Min,
+        predication_factor: model::size::Ratio,
         pressure: &mut HwPressure,
     );
 

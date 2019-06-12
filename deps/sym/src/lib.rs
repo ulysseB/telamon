@@ -1,15 +1,18 @@
-use log::{debug, info};
-use std::borrow::Borrow;
-use std::cmp;
+use log::{info, trace};
+use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::ops::{self, Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use std::rc::Rc;
 
-use num::{BigUint, Integer, Num, One, ToPrimitive, Zero};
+use num::{BigUint, Integer, One, ToPrimitive, Zero};
 
 mod hash;
+
+fn is_close(lhs: f64, rhs: f64) -> bool {
+    (lhs - rhs).abs() < 1e-8 + 1e-5 * rhs
+}
 
 pub trait Range<N = u64> {
     fn min_value(&self) -> N;
@@ -17,10 +20,27 @@ pub trait Range<N = u64> {
     fn max_value(&self) -> N;
 }
 
-pub trait Atom: Range + Clone + fmt::Debug + fmt::Display + PartialEq + Ord {}
+pub trait Factor<N = u64> {
+    fn gcd_value(&self) -> N;
+
+    fn lcm_value(&self) -> N;
+}
+
+pub trait Atom:
+    Range + Factor + Clone + fmt::Debug + fmt::Display + PartialEq + Ord + Hash
+{
+}
 
 impl<T> Atom for T where
-    T: ?Sized + Range + Clone + fmt::Debug + fmt::Display + PartialEq + Ord
+    T: ?Sized
+        + Range
+        + Factor
+        + Clone
+        + fmt::Debug
+        + fmt::Display
+        + PartialEq
+        + Ord
+        + Hash
 {
 }
 
@@ -242,7 +262,7 @@ where
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct Ratio<P> {
+pub struct Ratio<P> {
     inner: Rc<RatioInner<P>>,
 }
 
@@ -287,11 +307,27 @@ where
     }
 }
 
+impl<'a, P: 'a> iter::Product<&'a Ratio<P>> for Ratio<P>
+where
+    P: Atom,
+{
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = &'a Ratio<P>>,
+    {
+        let mut res = Self::one();
+        for elem in iter {
+            res *= elem;
+        }
+        res
+    }
+}
+
 impl<P> Ratio<P>
 where
     P: Atom,
 {
-    fn new(factor: BigUint, mut numer: Vec<P>, mut denom: Vec<P>) -> Self {
+    pub fn new(factor: BigUint, mut numer: Vec<P>, mut denom: Vec<P>) -> Self {
         numer.sort();
         denom.sort();
 
@@ -301,6 +337,14 @@ where
             denom,
         }
         .into()
+    }
+
+    pub fn one() -> Self {
+        Self::new(1u32.into(), Vec::new(), Vec::new())
+    }
+
+    pub fn to_symbolic_float(&self) -> Float<P> {
+        FloatInner::Mul(self.clone().into(), Vec::new()).into()
     }
 
     fn to_u32(&self) -> Option<u32> {
@@ -316,10 +360,6 @@ where
         }
     }
 
-    fn one() -> Self {
-        Self::new(1u32.into(), Vec::new(), Vec::new())
-    }
-
     fn as_biguint(&self) -> Option<&BigUint> {
         if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
             Some(&self.inner.factor)
@@ -328,17 +368,43 @@ where
         }
     }
 
-    fn as_biguint_mut(&mut self) -> Option<&mut BigUint> {
-        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
-            let inner = Rc::make_mut(&mut self.inner);
-            if inner.numer.is_empty() && inner.denom.is_empty() {
-                Some(&mut inner.factor)
-            } else {
-                unreachable!()
-            }
-        } else {
-            None
-        }
+    fn is_multiple_of(&self, other: &Ratio<P>) -> bool {
+        use itertools::{EitherOrBoth::*, Itertools};
+
+        let (left_gcd, right_lcm) =
+            (self.inner.factor.clone(), other.inner.factor.clone());
+        let (left_gcd, right_lcm) = self
+            .inner
+            .numer
+            .iter()
+            .merge_join_by(&other.inner.numer, |lhs, rhs| lhs.cmp(rhs))
+            .fold(
+                (left_gcd, right_lcm),
+                |(left_gcd, right_lcm), either| match either {
+                    Left(lhs) => (left_gcd * lhs.gcd_value(), right_lcm),
+                    Right(rhs) => (left_gcd, right_lcm * rhs.lcm_value()),
+                    Both(_, _) => (left_gcd, right_lcm),
+                },
+            );
+        let (left_gcd, right_lcm) = self
+            .inner
+            .denom
+            .iter()
+            .merge_join_by(&other.inner.denom, |lhs, rhs| lhs.cmp(rhs))
+            .fold(
+                (left_gcd, right_lcm),
+                |(left_gcd, right_lcm), either| match either {
+                    Left(lhs) => (left_gcd / lhs.lcm_value(), right_lcm),
+                    Right(rhs) => (left_gcd, right_lcm / rhs.gcd_value()),
+                    Both(_, _) => (left_gcd, right_lcm),
+                },
+            );
+        left_gcd.is_multiple_of(&right_lcm)
+    }
+
+    fn is_less_than(&self, other: &Ratio<P>) -> bool {
+        // TODO
+        self.max_value() <= other.min_value()
     }
 }
 
@@ -367,6 +433,35 @@ where
     }
 }
 
+impl<P> Factor for RatioInner<P>
+where
+    P: Factor,
+{
+    fn gcd_value(&self) -> u64 {
+        let factor = self
+            .factor
+            .to_u64()
+            .unwrap_or_else(|| panic!("Unable to represent factor as u64"));
+        let numer_gcd = self.numer.iter().map(Factor::gcd_value).product::<u64>();
+        let denom_lcm = self.denom.iter().map(Factor::lcm_value).product::<u64>();
+        assert!((factor * numer_gcd).is_multiple_of(&denom_lcm));
+
+        (factor * numer_gcd) / denom_lcm
+    }
+
+    fn lcm_value(&self) -> u64 {
+        let factor = self
+            .factor
+            .to_u64()
+            .unwrap_or_else(|| panic!("Unable to represent factor as u64"));
+        let numer_lcm = self.numer.iter().map(Factor::lcm_value).product::<u64>();
+        let denom_gcd = self.denom.iter().map(Factor::gcd_value).product::<u64>();
+        assert!((factor * numer_lcm).is_multiple_of(&denom_gcd));
+
+        (factor * numer_lcm) / denom_gcd
+    }
+}
+
 impl<P> Range for Ratio<P>
 where
     P: Range,
@@ -377,6 +472,19 @@ where
 
     fn max_value(&self) -> u64 {
         self.inner.max_value()
+    }
+}
+
+impl<P> Factor for Ratio<P>
+where
+    P: Factor,
+{
+    fn gcd_value(&self) -> u64 {
+        self.inner.gcd_value()
+    }
+
+    fn lcm_value(&self) -> u64 {
+        self.inner.lcm_value()
     }
 }
 
@@ -482,111 +590,8 @@ where
     }
 }
 
-impl<P> AsReduction<IntReductionKind, Int<P>> for Int<P>
-where
-    P: Atom,
-{
-    type Value = BigUint;
-
-    fn as_reduction(&self, kind: IntReductionKind) -> Option<&IntReduction<P>> {
-        match &*self.inner {
-            IntInner::Reduction(reduction) if reduction.kind == kind => Some(reduction),
-            _ => None,
-        }
-    }
-
-    fn as_reduction_mut(
-        &mut self,
-        kind: IntReductionKind,
-    ) -> Option<&mut IntReduction<P>> {
-        if self.as_reduction(kind).is_some() {
-            Some(match Rc::make_mut(&mut self.inner) {
-                IntInner::Reduction(reduction) if reduction.kind == kind => reduction,
-                _ => unreachable!(),
-            })
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum IntReductionKind {
-    /// Computes the lowest common multiple of its arguments.
-    Lcm,
-    /// Computes the minimum of its arguments.
-    Min,
-}
-
-impl fmt::Display for IntReductionKind {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            IntReductionKind::Lcm => write!(fmt, "lcm"),
-            IntReductionKind::Min => write!(fmt, "min"),
-        }
-    }
-}
-
-impl ReductionKind<BigUint> for IntReductionKind {
-    fn reduce(&self, lhs: &BigUint, rhs: &BigUint) -> BigUint {
-        match self {
-            IntReductionKind::Lcm => lhs.lcm(rhs),
-            IntReductionKind::Min => {
-                if lhs < rhs {
-                    lhs.clone()
-                } else {
-                    rhs.clone()
-                }
-            }
-        }
-    }
-
-    fn reduce_assign(&self, lhs: &mut BigUint, rhs: &BigUint) {
-        match self {
-            IntReductionKind::Lcm => *lhs = lhs.lcm(rhs),
-            IntReductionKind::Min => {
-                if rhs < lhs {
-                    *lhs = rhs.clone()
-                }
-            }
-        }
-    }
-}
-
-impl<P> ReductionSkip<BigUint, Int<P>> for IntReductionKind
-where
-    P: Atom,
-{
-    /// Indicates whether to skip adding `other` to a reduction which contains `constant`.  Returns
-    /// `true` when we are able to prove that `reduction(constant, other) = constant`.
-    fn should_skip(&self, constant: &BigUint, other: &Int<P>) -> bool {
-        info!("Try skipping: {} for {}", constant, other);
-
-        match self {
-            // lcm(ka, a/b) = ka
-            IntReductionKind::Lcm => {
-                if let Some(ratio) = other.as_ratio() {
-                    ratio.inner.numer.is_empty()
-                        && constant.is_multiple_of(&ratio.inner.factor)
-                } else {
-                    false
-                }
-            }
-            // min(a, b) = a if a <= b
-            IntReductionKind::Min => constant < &BigUint::from(other.min_value()),
-        }
-    }
-
-    fn get_bound(&self, other: &Int<P>) -> Option<BigUint> {
-        match self {
-            IntReductionKind::Min => Some(other.max_value().into()),
-            IntReductionKind::Lcm => None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-struct Reduction<K, C, S> {
+pub struct Reduction<K, C, S> {
     kind: K,
     constant: Option<C>,
     others: Vec<S>,
@@ -731,61 +736,348 @@ where
     }
 }
 
-type IntReduction<P> = Reduction<IntReductionKind, BigUint, Int<P>>;
-
-impl<P> Eq for IntReduction<P> where P: Eq {}
-
-impl<P> Ord for IntReduction<P>
-where
-    P: Ord,
-{
-    fn cmp(&self, other: &IntReduction<P>) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct LcmExpr<P> {
+    gcd: BigUint,
+    lcm: BigUint,
+    args: VecSet<Ratio<P>>,
 }
 
-impl<P> Hash for IntReduction<P>
-where
-    P: Hash,
-{
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.kind.hash(state);
-        self.constant.hash(state);
-        self.others.hash(state);
-    }
-}
-
-impl<P> IntReduction<P>
+impl<P> fmt::Display for LcmExpr<P>
 where
     P: Atom,
 {
-    fn as_biguint(&self) -> Option<&BigUint> {
-        self.as_value()
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use itertools::Itertools;
+
+        if self.args.is_empty() {
+            write!(fmt, "lcm({})", self.lcm)
+        } else {
+            write!(fmt, "lcm({}, {})", self.lcm, self.args.iter().format(", "))
+        }
+    }
+}
+
+impl<P> From<LcmExpr<P>> for Int<P>
+where
+    P: Atom,
+{
+    fn from(lmin: LcmExpr<P>) -> Self {
+        lmin.simplified()
+            .map(|ratio| IntInner::Mul(ratio).into())
+            .unwrap_or_else(|lcm| IntInner::Lcm(lcm).into())
+    }
+}
+
+impl<P> From<Ratio<P>> for LcmExpr<P>
+where
+    P: Atom,
+{
+    fn from(value: Ratio<P>) -> Self {
+        LcmExpr {
+            gcd: value.gcd_value().into(),
+            lcm: value.lcm_value().into(),
+            args: VecSet::from_sorted_iter(iter::once(value)),
+        }
+    }
+}
+
+impl<P> LcmExpr<P>
+where
+    P: Atom,
+{
+    pub fn new<II>(iter: II) -> Option<Self>
+    where
+        II: IntoIterator<Item = Ratio<P>>,
+    {
+        let mut iter = iter.into_iter();
+        let mut args: Vec<Ratio<P>> = Vec::with_capacity(iter.size_hint().1.unwrap_or(0));
+
+        if let Some(first) = iter.next() {
+            let mut gcd = BigUint::from(first.gcd_value());
+            let mut lcm = BigUint::from(first.lcm_value());
+
+            'elem: for elem in iter {
+                let mut to_remove = vec![];
+                for (ix, arg) in args.iter().enumerate() {
+                    if arg.is_multiple_of(&elem) {
+                        continue 'elem;
+                    }
+
+                    if elem.is_multiple_of(&arg) {
+                        to_remove.push(ix);
+                    }
+                }
+
+                // Need to iterate backwards so that indices stay valid
+                for ix in to_remove.into_iter().rev() {
+                    args.remove(ix);
+                }
+
+                gcd = gcd.lcm(&BigUint::from(elem.gcd_value()));
+                lcm = lcm.lcm(&BigUint::from(elem.lcm_value()));
+                args.push(elem);
+            }
+
+            Some(LcmExpr {
+                gcd,
+                lcm,
+                args: args.into_iter().collect(),
+            })
+        } else {
+            None
+        }
     }
 
-    fn as_biguint_mut(&mut self) -> Option<&mut BigUint> {
-        self.as_value_mut()
+    pub fn one() -> Self {
+        LcmExpr {
+            gcd: 1u32.into(),
+            lcm: 1u32.into(),
+            args: VecSet::default(),
+        }
+    }
+
+    fn as_biguint(&self) -> Option<&BigUint> {
+        if self.is_constant() {
+            Some(&self.lcm)
+        } else {
+            None
+        }
+    }
+
+    fn to_u32(&self) -> Option<u32> {
+        self.as_biguint().map(|value| {
+            value
+                .to_u32()
+                .expect("Unable to convert constant lcm to u32")
+        })
+    }
+
+    fn is_constant(&self) -> bool {
+        self.gcd == self.lcm
+    }
+
+    fn is_single_value(&self) -> bool {
+        self.args.len() == 1 && self.gcd == BigUint::from(self.args[0].gcd_value())
+    }
+
+    fn can_simplify(&self) -> bool {
+        return self.is_constant() || self.is_single_value();
+    }
+
+    fn simplified(self) -> Result<Ratio<P>, Self> {
+        if self.is_constant() {
+            Ok(Ratio::new(self.gcd, Vec::new(), Vec::new()))
+        } else if self.is_single_value() {
+            Ok(self.args.values[0].clone())
+        } else {
+            Err(self)
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct MinExpr<P> {
+    min: BigUint,
+    max: BigUint,
+    values: VecSet<Ratio<P>>,
+}
+
+impl<P> fmt::Display for MinExpr<P>
+where
+    P: Atom,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use itertools::Itertools;
+
+        if let Some(minmax) = self.values.iter().map(Range::max_value).min() {
+            if BigUint::from(minmax) == self.max {
+                write!(fmt, "min({})", self.values.iter().format(", "))
+            } else {
+                write!(
+                    fmt,
+                    "min({}, {})",
+                    self.max,
+                    self.values.iter().format(", ")
+                )
+            }
+        } else {
+            assert!(self.values.is_empty());
+            assert_eq!(self.min, self.max);
+
+            write!(fmt, "min({})", self.min)
+        }
+    }
+}
+
+impl<P> From<MinExpr<P>> for Int<P>
+where
+    P: Atom,
+{
+    fn from(emin: MinExpr<P>) -> Self {
+        emin.simplified()
+            .map(|ratio| IntInner::Mul(ratio).into())
+            .unwrap_or_else(|min| IntInner::Min(min).into())
+    }
+}
+
+impl<P> From<Ratio<P>> for Int<P>
+where
+    P: Atom,
+{
+    fn from(ratio: Ratio<P>) -> Self {
+        IntInner::Mul(ratio).into()
+    }
+}
+
+impl<P> From<Ratio<P>> for MinExpr<P>
+where
+    P: Atom,
+{
+    fn from(value: Ratio<P>) -> Self {
+        MinExpr {
+            min: value.min_value().into(),
+            max: value.max_value().into(),
+            values: VecSet::from_sorted_iter(iter::once(value)),
+        }
+    }
+}
+
+impl<P> From<u32> for MinExpr<P>
+where
+    P: Atom,
+{
+    fn from(constant: u32) -> Self {
+        MinExpr {
+            min: constant.into(),
+            max: constant.into(),
+            values: VecSet::default(),
+        }
+    }
+}
+
+impl<P> MinExpr<P>
+where
+    P: Atom,
+{
+    pub fn new<II>(iter: II) -> Option<Self>
+    where
+        II: IntoIterator<Item = Ratio<P>>,
+    {
+        let mut iter = iter.into_iter();
+        let mut args: Vec<Ratio<P>> = Vec::with_capacity(iter.size_hint().1.unwrap_or(0));
+
+        if let Some(first) = iter.next() {
+            let mut min = BigUint::from(first.min_value());
+            let mut max = BigUint::from(first.max_value());
+
+            'elem: for elem in iter {
+                if max <= BigUint::from(elem.min_value()) {
+                    continue;
+                }
+
+                let mut to_remove = vec![];
+                for (ix, arg) in args.iter().enumerate() {
+                    if arg.is_less_than(&elem) {
+                        continue 'elem;
+                    }
+
+                    if elem.is_less_than(&arg) {
+                        to_remove.push(ix);
+                    }
+                }
+
+                // Need to iterate backwards so that indices stay valid
+                for ix in to_remove.into_iter().rev() {
+                    args.remove(ix);
+                }
+
+                min = min.min(BigUint::from(elem.min_value()));
+                max = max.min(BigUint::from(elem.max_value()));
+                args.push(elem);
+            }
+
+            Some(MinExpr {
+                min,
+                max,
+                values: args.into_iter().collect(),
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn one() -> Self {
+        1u32.into()
+    }
+
+    pub fn to_symbolic_float(&self) -> Float<P> {
+        self.clone()
+            .simplified()
+            .map(|ratio| ratio.to_symbolic_float())
+            .unwrap_or_else(|emin| {
+                FloatInner::Reduction(FloatReduction {
+                    kind: FloatReductionKind::Min,
+                    constant: Some(emin.min.to_u32().unwrap() as f64),
+                    others: emin
+                        .values
+                        .iter()
+                        .cloned()
+                        .map(FloatRatioInner::from)
+                        .map(FloatRatio::from)
+                        .map(|ratio| FloatInner::Mul(ratio, Vec::new()).into())
+                        .collect(),
+                })
+                .into()
+            })
+    }
+
+    fn as_biguint(&self) -> Option<&BigUint> {
+        if self.is_constant() {
+            debug_assert_eq!(self.min, self.max);
+
+            Some(&self.min)
+        } else {
+            None
+        }
+    }
+
+    fn to_u32(&self) -> Option<u32> {
+        self.as_biguint().map(|value| value.to_u32().unwrap())
+    }
+
+    fn is_constant(&self) -> bool {
+        self.min == self.max
+    }
+
+    fn is_single_value(&self) -> bool {
+        self.values.len() == 1 && self.max == BigUint::from(self.values[0].max_value())
+    }
+
+    fn can_simplify(&self) -> bool {
+        return self.is_constant() || self.is_single_value();
+    }
+
+    fn simplified(self) -> Result<Ratio<P>, Self> {
+        if self.is_constant() {
+            debug_assert_eq!(self.min, self.max);
+
+            Ok(Ratio::new(self.min, Vec::new(), Vec::new()))
+        } else if self.is_single_value() {
+            debug_assert!(self.values.len() == 1);
+
+            Ok(self.values.values[0].clone())
+        } else {
+            Err(self)
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum IntInner<P> {
-    // Ceil division: ceil(numer / denom)
-    DivCeil(Int<P>, u32),
-    /// Minimum/Lowest common multiple of all arguments.
-    /// TODO: split the constant element when there is one.
-    /// TODO: The constant element should include the `gcd` of all others?
-    /// TODO: Incorporate a `Mul`?
-    Reduction(IntReduction<P>),
-    /// a - b
-    Sub(Int<P>, u32),
-    // Reduction(IntReduction<P>)
-    /// Multiplication of all arguments.  We keep the Ratio separate to make simplifications
-    /// easier.
-    Mul(Ratio<P>, Vec<Int<P>>),
+    Lcm(LcmExpr<P>),
+    Min(MinExpr<P>),
+    Mul(Ratio<P>),
 }
 
 impl<P> fmt::Display for IntInner<P>
@@ -793,20 +1085,10 @@ where
     P: Atom + fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        use itertools::Itertools;
-        use IntInner::*;
-
         match self {
-            DivCeil(numer, denom) => write!(fmt, "div_ceil({}, {})", numer, denom),
-            Reduction(reduction) => write!(fmt, "{}", reduction),
-            Sub(lhs, rhs) => write!(fmt, "{} - {}", lhs, rhs),
-            Mul(ratio, args) if args.is_empty() => write!(fmt, "{}", ratio),
-            Mul(ratio, args) => {
-                if !ratio.as_biguint().map(One::is_one).unwrap_or(false) {
-                    write!(fmt, "{}*", ratio)?;
-                }
-                write!(fmt, "{}", args.iter().format("*"))
-            }
+            IntInner::Lcm(lcm) => write!(fmt, "{}", lcm),
+            IntInner::Min(min) => write!(fmt, "{}", min),
+            IntInner::Mul(ratio) => write!(fmt, "{}", ratio),
         }
     }
 }
@@ -816,7 +1098,7 @@ where
     P: Atom,
 {
     fn is_mul(&self) -> bool {
-        if let IntInner::Mul(_, _) = self {
+        if let IntInner::Mul(_) = self {
             true
         } else {
             false
@@ -855,15 +1137,6 @@ impl<P> Clone for Int<P> {
     }
 }
 
-impl<P> From<IntReduction<P>> for Int<P>
-where
-    P: Atom,
-{
-    fn from(reduction: IntReduction<P>) -> Self {
-        IntInner::Reduction(reduction).into()
-    }
-}
-
 impl<P> From<IntInner<P>> for Int<P>
 where
     P: Atom,
@@ -885,75 +1158,20 @@ where
     }
 }
 
-impl<P> AsValue<BigUint> for Int<P>
-where
-    P: Atom,
-{
-    fn as_value(&self) -> Option<&BigUint> {
-        self.as_biguint()
-    }
-
-    fn as_value_mut(&mut self) -> Option<&mut BigUint> {
-        self.as_biguint_mut()
-    }
-}
-
 impl<P> Int<P>
 where
     P: Atom,
 {
-    fn div_ceil(lhs: &Self, rhs: u32) -> Self {
-        match (&*lhs.inner, lhs.as_biguint()) {
-            (_, Some(value)) => Int::from((value + rhs - 1u32) / rhs),
-            // TODO: This should be a check on factors!
-            (IntInner::Mul(ratio, args), None)
-                if ratio.inner.factor.is_multiple_of(&rhs.into()) =>
-            {
-                // TODO: This is no longer an integer division!!!!  The denominator does not
-                // necessarily divide the numerator anymore.
-                IntInner::Mul(
-                    Ratio::new(
-                        &ratio.inner.factor / rhs,
-                        ratio.inner.numer.clone(),
-                        ratio.inner.denom.clone(),
-                    ),
-                    args.clone(),
-                )
-                .into()
-            }
-            (_, None) => IntInner::DivCeil(lhs.clone(), rhs).into(),
-        }
-    }
-
     pub fn to_symbolic_float(&self) -> Float<P> {
         match &*self.inner {
-            IntInner::Reduction(IntReduction {
-                kind: IntReductionKind::Min,
-                constant,
-                others,
-            }) => FloatInner::Reduction(FloatReduction {
-                kind: FloatReductionKind::Min,
-                constant: constant.as_ref().map(|x| x.to_u32().unwrap() as f64),
-                others: others.iter().map(Int::to_symbolic_float).collect(),
-            })
-            .into(),
-            IntInner::Sub(lhs, rhs) => lhs.to_symbolic_float() - f64::from(*rhs),
-            IntInner::Mul(ratio, args) => {
-                if let Some(value) = self.to_u32() {
-                    Float::from(value as f64)
-                } else {
-                    /* TODO */
-                    FloatInner::Mul(self.clone().into(), Vec::new()).into()
-                }
-            }
-            IntInner::DivCeil(_, _) | IntInner::Reduction(_) => {
-                FloatInner::Mul(self.clone().into(), Vec::new()).into()
-            }
+            IntInner::Min(emin) => emin.to_symbolic_float(),
+            IntInner::Mul(ratio) => ratio.to_symbolic_float(),
+            IntInner::Lcm(_) => unimplemented!("Can't convert {} to float", self),
         }
     }
 
     pub fn ratio<T: Into<BigUint>>(factor: T, numer: Vec<P>, denom: Vec<P>) -> Self {
-        IntInner::Mul(Ratio::new(factor.into(), numer, denom), Vec::new()).into()
+        IntInner::Mul(Ratio::new(factor.into(), numer, denom)).into()
     }
 
     pub fn one() -> Self {
@@ -974,69 +1192,19 @@ where
 
     fn as_biguint(&self) -> Option<&BigUint> {
         match &*self.inner {
-            IntInner::Mul(ratio, args) if args.is_empty() => ratio.as_biguint(),
-            IntInner::Reduction(reduction) => reduction.as_biguint(),
-            _ => None,
+            IntInner::Mul(ratio) => ratio.as_biguint(),
+            IntInner::Min(emin) => emin.as_biguint(),
+            IntInner::Lcm(elcm) => elcm.as_biguint(),
         }
-    }
-
-    fn as_biguint_mut(&mut self) -> Option<&mut BigUint> {
-        if self.as_biguint().is_some() {
-            Some(match Rc::make_mut(&mut self.inner) {
-                IntInner::Mul(ratio, args) if args.is_empty() => {
-                    ratio.as_biguint_mut().unwrap()
-                }
-                IntInner::Reduction(reduction) => reduction.as_biguint_mut().unwrap(),
-                _ => unreachable!(),
-            })
-        } else {
-            None
-        }
-    }
-
-    fn as_sub(&self) -> Option<(&Int<P>, u32)> {
-        match &*self.inner {
-            IntInner::Sub(lhs, rhs) => Some((lhs, *rhs)),
-            _ => None,
-        }
-    }
-
-    fn as_ratio(&self) -> Option<&Ratio<P>> {
-        match &*self.inner {
-            IntInner::Mul(ratio, args) if args.is_empty() => Some(ratio),
-            _ => None,
-        }
-    }
-
-    fn as_ratio_mut(&mut self) -> Option<&mut Ratio<P>> {
-        if self.as_ratio().is_some() {
-            Some(match Rc::make_mut(&mut self.inner) {
-                IntInner::Mul(ratio, args) if args.is_empty() => ratio,
-                _ => unreachable!(),
-            })
-        } else {
-            None
-        }
-    }
-
-    pub fn min_assign(&mut self, rhs: &Int<P>) {
-        // TODO: if `rhs.max <= self.min` there is nothing to do.
-        self.reduce_assign(IntReductionKind::Min, rhs);
-        self.simplify()
-    }
-
-    pub fn lcm_assign(&mut self, rhs: &Int<P>) {
-        // TODO: If `self.gcd` is a multiple of `rhs.lcm` there is nothing to do.
-        self.reduce_assign(IntReductionKind::Lcm, rhs);
-        self.simplify()
     }
 
     fn simplify(&mut self) {
         match &*self.inner {
-            IntInner::Reduction(red)
-                if red.constant.is_none() && red.others.len() == 1 =>
-            {
-                *self = red.others[0].clone();
+            IntInner::Lcm(lcm) if lcm.can_simplify() => {
+                *self = IntInner::Mul(lcm.clone().simplified().unwrap()).into();
+            }
+            IntInner::Min(emin) if emin.can_simplify() => {
+                *self = IntInner::Mul(emin.clone().simplified().unwrap()).into();
             }
             _ => (),
         }
@@ -1044,16 +1212,9 @@ where
 
     pub fn to_u32(&self) -> Option<u32> {
         match &*self.inner {
-            IntInner::DivCeil(lhs, rhs) => lhs.to_u32().map(|lhs| (lhs + rhs - 1) / rhs),
-            IntInner::Reduction(_) => unimplemented!("to_u32 for {}", self),
-            IntInner::Sub(lhs, rhs) => lhs.to_u32().map(|lhs| lhs - rhs),
-            IntInner::Mul(ratio, args) => ratio.to_u32().and_then(|ratio| {
-                args.iter()
-                    .map(|arg| arg.to_u32().ok_or(()))
-                    .product::<Result<u32, ()>>()
-                    .ok()
-                    .map(|res| res * ratio)
-            }),
+            IntInner::Min(emin) => emin.to_u32(),
+            IntInner::Lcm(elcm) => elcm.to_u32(),
+            IntInner::Mul(ratio) => ratio.to_u32(),
         }
     }
 }
@@ -1064,74 +1225,20 @@ where
 {
     fn min_value(&self) -> u64 {
         match &*self.inner {
-            IntInner::DivCeil(numer, denom) => {
-                let numer_min = numer.min_value();
-                let denom = u64::from(*denom);
-                // TODO: should take gcd for le min
-                (numer_min + denom - 1) / denom
-            }
-            IntInner::Reduction(IntReduction {
-                kind,
-                constant,
-                others,
-            }) => {
-                let mut elems = constant
-                    .clone()
-                    .into_iter()
-                    .chain(others.iter().map(Range::min_value).map(BigUint::from));
-                let first = elems.next().unwrap();
-                elems
-                    .fold(first, |min, arg| kind.reduce(&min, &arg))
-                    .to_u64()
-                    .unwrap()
-            }
-            IntInner::Sub(lhs, rhs) => lhs.min_value() - u64::from(*rhs),
-            IntInner::Mul(ratio, args) => args
-                .iter()
-                .fold(ratio.min_value(), |min, arg| min * arg.min_value()),
+            IntInner::Lcm(elcm) => unimplemented!("min_value for {}", elcm), // elcm.gcd.to_u64().unwrap(),
+            IntInner::Min(emin) => emin.min.to_u64().unwrap(),
+            IntInner::Mul(ratio) => ratio.min_value(),
         }
     }
 
     fn max_value(&self) -> u64 {
         match &*self.inner {
-            IntInner::DivCeil(numer, denom) => {
-                let denom = u64::from(*denom);
-                (numer.max_value() + denom - 1) / denom
-            }
-            IntInner::Reduction(IntReduction {
-                kind,
-                constant,
-                others,
-            }) => {
-                let mut elems = constant
-                    .clone()
-                    .into_iter()
-                    .chain(others.iter().map(Range::max_value).map(BigUint::from));
-                let first = elems.next().unwrap();
-                elems
-                    .fold(first, |max, arg| kind.reduce(&max, &arg))
-                    .to_u64()
-                    .unwrap()
-            }
-            IntInner::Sub(lhs, rhs) => lhs.max_value() - u64::from(*rhs),
-            IntInner::Mul(ratio, args) => args
-                .iter()
-                .fold(ratio.max_value(), |max, arg| max * arg.max_value()),
+            IntInner::Lcm(elcm) => unimplemented!("max_value for {}", elcm), // elcm.lcm.to_u64().unwrap(),
+            IntInner::Min(emin) => emin.max.to_u64().unwrap(),
+            IntInner::Mul(ratio) => ratio.max_value(),
         }
     }
 }
-
-impl<'a, P> SubAssign<&'a u32> for Int<P>
-where
-    P: Atom,
-{
-    #[inline]
-    fn sub_assign(&mut self, rhs: &'a u32) {
-        *self = IntInner::Sub(self.clone(), *rhs).into();
-    }
-}
-
-forward_binop_to_op_assign!(impl(P: Atom) Sub, sub for Int<P>, u32, SubAssign, sub_assign);
 
 impl<'a, P> MulAssign<&'a Int<P>> for Int<P>
 where
@@ -1144,25 +1251,18 @@ where
 
         if self.inner.is_mul() {
             match Rc::make_mut(&mut self.inner) {
-                IntInner::Mul(lhs_ratio, lhs_args) => match &*rhs.inner {
-                    IntInner::Mul(rhs_ratio, rhs_args) => {
+                IntInner::Mul(lhs_ratio) => match &*rhs.inner {
+                    IntInner::Mul(rhs_ratio) => {
                         *lhs_ratio *= rhs_ratio;
-                        lhs_args.extend(rhs_args.iter().cloned());
                     }
-                    _ => lhs_args.push(rhs.clone()),
+                    _ => unimplemented!("mul of {} and {}", self, rhs),
                 },
                 _ => unreachable!(),
             }
-        } else if let IntInner::Mul(rhs_ratio, rhs_args) = &*rhs.inner {
-            *self = IntInner::Mul(
-                rhs_ratio.clone(),
-                iter::once(self.clone())
-                    .chain(rhs_args.iter().cloned())
-                    .collect(),
-            )
-            .into();
+        } else if let IntInner::Mul(rhs_ratio) = &*rhs.inner {
+            unimplemented!("mul of {} and {}", self, rhs);
         } else {
-            *self = IntInner::Mul(Ratio::one(), vec![self.clone(), rhs.clone()]).into();
+            unimplemented!("mul of {} and {}", self, rhs);
         }
     }
 }
@@ -1198,12 +1298,25 @@ where
 }
 
 // factor * float(numer) / float(denom)
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct FloatRatioInner<P> {
     factor: f64,
-    numer: Int<P>,
-    denom: Int<P>,
+    numer: Vec<P>,
+    denom: Vec<P>,
     // should be: factor * float(numer/denom) * float(numer)/float(denom)
+}
+
+impl<P> From<Ratio<P>> for FloatRatioInner<P>
+where
+    P: Atom,
+{
+    fn from(ratio: Ratio<P>) -> Self {
+        FloatRatioInner {
+            factor: ratio.inner.factor.to_u64().unwrap() as f64,
+            numer: ratio.inner.numer.clone(),
+            denom: ratio.inner.denom.clone(),
+        }
+    }
 }
 
 impl<P> Eq for FloatRatioInner<P> where P: Eq {}
@@ -1231,24 +1344,29 @@ where
     }
 }
 
-impl<P> Clone for FloatRatioInner<P> {
-    fn clone(&self) -> Self {
-        FloatRatioInner {
-            factor: self.factor,
-            numer: self.numer.clone(),
-            denom: self.denom.clone(),
-        }
-    }
-}
-
 impl<'a, P> MulAssign<&'a FloatRatioInner<P>> for FloatRatioInner<P>
 where
     P: Atom,
 {
     fn mul_assign(&mut self, rhs: &'a FloatRatioInner<P>) {
-        self.factor *= rhs.factor;
-        self.numer *= &rhs.numer;
-        self.denom *= &rhs.denom;
+        self.factor *= &rhs.factor;
+        for numer in rhs.numer.iter() {
+            if let Some(pos) = self.denom.iter().position(|d| d == numer) {
+                self.denom.swap_remove(pos);
+            } else {
+                self.numer.push(numer.clone());
+            }
+        }
+        for denom in rhs.denom.iter() {
+            if let Some(pos) = self.numer.iter().position(|n| n == denom) {
+                self.numer.swap_remove(pos);
+            } else {
+                self.denom.push(denom.clone());
+            }
+        }
+
+        self.numer.sort();
+        self.denom.sort();
     }
 }
 
@@ -1259,16 +1377,20 @@ where
     P: Atom + fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if self.factor == 1f64 {
-            write!(fmt, "{}", self.numer)?;
-        } else if self.numer.is_one() {
+        use itertools::Itertools;
+
+        if self.numer.is_empty() {
             write!(fmt, "{}", self.factor)?;
         } else {
-            write!(fmt, "{}*{}", self.factor, self.numer)?;
+            if !self.factor.is_one() {
+                write!(fmt, "{}*", self.factor)?;
+            }
+
+            write!(fmt, "{}", self.numer.iter().format("*"))?;
         }
 
-        if !self.denom.is_one() {
-            write!(fmt, "/({})", self.denom)?;
+        if !self.denom.is_empty() {
+            write!(fmt, "/{}", self.denom.iter().format("/"))?;
         }
 
         Ok(())
@@ -1276,8 +1398,19 @@ where
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct FloatRatio<P> {
+pub struct FloatRatio<P> {
     inner: Rc<FloatRatioInner<P>>,
+}
+
+impl<P> From<Ratio<P>> for FloatRatio<P>
+where
+    P: Atom,
+{
+    fn from(ratio: Ratio<P>) -> Self {
+        FloatRatio {
+            inner: Rc::new(ratio.into()),
+        }
+    }
 }
 
 impl<P> Clone for FloatRatio<P> {
@@ -1317,17 +1450,6 @@ where
     }
 }
 
-impl<P> FloatRatioInner<P>
-where
-    P: Atom,
-{
-    fn recip(mut self) -> Self {
-        self.factor = self.factor.recip();
-        std::mem::swap(&mut self.numer, &mut self.denom);
-        self
-    }
-}
-
 impl<P> From<FloatRatioInner<P>> for FloatRatio<P>
 where
     P: Atom,
@@ -1346,8 +1468,8 @@ where
     fn from(constant: f64) -> Self {
         FloatRatioInner {
             factor: constant,
-            numer: Int::one(),
-            denom: Int::one(),
+            numer: Vec::new(),
+            denom: Vec::new(),
         }
     }
 }
@@ -1361,60 +1483,37 @@ where
     }
 }
 
-impl<P> From<Int<P>> for FloatRatio<P>
-where
-    P: Atom,
-{
-    fn from(int: Int<P>) -> Self {
-        FloatRatioInner {
-            factor: 1f64,
-            numer: int,
-            denom: Int::one(),
-        }
-        .into()
-    }
-}
-
 impl<P> FloatRatio<P>
 where
     P: Atom,
 {
     fn new_constant(factor: f64) -> Self {
+        FloatRatio::new(factor, Vec::new(), Vec::new())
+    }
+
+    fn new(factor: f64, numer: Vec<P>, denom: Vec<P>) -> Self {
         FloatRatioInner {
             factor,
-            numer: Int::one(),
-            denom: Int::one(),
+            numer,
+            denom,
         }
         .into()
     }
 
-    fn recip(denom: Int<P>) -> Self {
-        if let Some(val) = denom.as_biguint() {
-            val.to_f64().expect("bigint too big").recip().into()
-        } else {
-            FloatRatioInner {
-                factor: 1f64,
-                numer: Int::one(),
-                denom,
-            }
-            .into()
-        }
-    }
-
     fn is_one(&self) -> bool {
         self.inner.factor == 1f64
-            && self.inner.numer.is_one()
-            && self.inner.denom.is_one()
+            && self.inner.numer.is_empty()
+            && self.inner.denom.is_empty()
     }
 
     fn is_zero(&self) -> bool {
         self.inner.factor == 0f64
-            && self.inner.numer.is_one()
-            && self.inner.denom.is_one()
+            && self.inner.numer.is_empty()
+            && self.inner.denom.is_empty()
     }
 
     fn as_f64_ref(&self) -> Option<&f64> {
-        if self.inner.numer.is_one() && self.inner.denom.is_one() {
+        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
             Some(&self.inner.factor)
         } else {
             None
@@ -1422,7 +1521,7 @@ where
     }
 
     fn as_f64_mut(&mut self) -> Option<&mut f64> {
-        if self.inner.numer.is_one() && self.inner.denom.is_one() {
+        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
             Some(&mut Rc::make_mut(&mut self.inner).factor)
         } else {
             None
@@ -1430,104 +1529,346 @@ where
     }
 
     fn as_f64(&self) -> Option<f64> {
-        let numer = self.inner.numer.as_biguint()?.to_f64()?;
-        let denom = self.inner.denom.as_biguint()?.to_f64()?;
-        Some(self.inner.factor * numer / denom)
+        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
+            Some(self.inner.factor)
+        } else {
+            None
+        }
     }
 
     fn to_f64(&self) -> Option<f64> {
-        let numer = f64::from(self.inner.numer.to_u32()?);
-        let denom = f64::from(self.inner.denom.to_u32()?);
-        Some(self.inner.factor * numer / denom)
+        self.as_f64()
     }
 
     fn min_value(&self) -> f64
     where
         P: Atom,
     {
-        self.inner.factor * self.inner.numer.min_value() as f64
-            / self.inner.denom.max_value() as f64
+        let min = self.inner.factor;
+        let min = self
+            .inner
+            .numer
+            .iter()
+            .fold(min, |min, n| min * n.min_value() as f64);
+        self.inner
+            .denom
+            .iter()
+            .fold(min, |min, d| min / d.max_value() as f64)
     }
 
     fn max_value(&self) -> f64
     where
         P: Atom,
     {
-        self.inner.factor * self.inner.numer.max_value() as f64
-            / self.inner.denom.min_value() as f64
+        let max = self.inner.factor;
+        let max = self
+            .inner
+            .numer
+            .iter()
+            .fold(max, |max, n| max * n.max_value() as f64);
+        self.inner
+            .denom
+            .iter()
+            .fold(max, |max, d| max / d.min_value() as f64)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-struct Diff<P> {
-    constant: f64,
-    positive: Vec<Float<P>>,
-    negative: Vec<Float<P>>,
-}
-
-impl<P> Eq for Diff<P> where P: Eq {}
-
-impl<P> Ord for Diff<P>
+#[derive(Debug, Clone, PartialEq)]
+pub struct DiffExpr<P>
 where
-    P: Ord,
+    P: Atom,
 {
-    fn cmp(&self, other: &Diff<P>) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+    constant: f64,
+    values: WeightedVecSet<Float<P>>,
+}
+
+impl<P> Eq for DiffExpr<P> where P: Atom + Eq {}
+
+/*
+impl<P> PartialOrd for DiffExpr<P>
+where
+    P: Atom,
+{
+    fn partial_cmp(&self, other: &DiffExpr<P>) -> Option<Ordering> {
+        let mut seen_lt = false;
+        let mut seen_gt = false;
+
+        if !is_close(self.constant, other.constant) {
+            if self.constant < other.constant {
+                seen_lt = true;
+            } else {
+                seen_gt = true;
+            }
+        }
+
+        for (self_weight, other_weight, _) in
+            WeightedZip::new(self.values.iter(), other.values.iter())
+        {
+            if !is_close(self_weight, other_weight) {
+                if self_weight < other_weight {
+                    if seen_gt {
+                        return None;
+                    }
+                    seen_lt = true;
+                } else {
+                    if seen_lt {
+                        return None;
+                    }
+                    seen_gt = true;
+                }
+            }
+        }
+
+        assert!(!seen_lt || !seen_gt);
+
+        Some(if seen_lt {
+            Ordering::Less
+        } else if seen_gt {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        })
+    }
+}
+*/
+
+impl<P> PartialOrd for DiffExpr<P>
+where
+    P: Atom + PartialOrd,
+{
+    fn partial_cmp(&self, other: &DiffExpr<P>) -> Option<Ordering> {
+        self.values.partial_cmp(&other.values).map(|ord| {
+            ord.then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
+        })
     }
 }
 
-impl<P> Hash for Diff<P>
+impl<P> Ord for DiffExpr<P>
 where
-    P: Hash,
+    P: Atom + Ord,
+{
+    fn cmp(&self, other: &DiffExpr<P>) -> Ordering {
+        self.values
+            .cmp(&other.values)
+            .then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
+    }
+}
+
+impl<P> Hash for DiffExpr<P>
+where
+    P: Atom,
 {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
     {
         self.constant.to_bits().hash(state);
-        self.positive.hash(state);
-        self.negative.hash(state);
+        self.values.hash(state);
     }
 }
 
-impl<P> fmt::Display for Diff<P>
+impl<P> fmt::Display for DiffExpr<P>
 where
     P: Atom + fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use itertools::Itertools;
 
-        if self.positive.is_empty() {
-            if self.negative.is_empty() {
-                write!(fmt, "{}", self.constant)
-            } else if self.constant.is_zero() {
-                write!(fmt, "-{}", self.negative.iter().format(" - "))
-            } else {
+        if self.values.is_empty() {
+            write!(fmt, "{}", self.constant)
+        } else {
+            let (positive, negative) = self
+                .values
+                .iter()
+                .partition::<Vec<_>, _>(|(weight, _)| weight > &0.);
+
+            let mut has_written = false;
+            if !self.constant.is_zero() {
+                write!(fmt, "{}", self.constant)?;
+
+                has_written = true;
+            }
+
+            if !positive.is_empty() {
                 write!(
                     fmt,
-                    "{} - {}",
-                    self.constant,
-                    self.negative.iter().format(" - ")
-                )
-            }
-        } else {
-            if !self.constant.is_zero() {
-                write!(fmt, "{} + ", self.constant)?;
+                    "{}{}",
+                    if has_written { " + " } else { "" },
+                    positive
+                        .iter()
+                        .map(|(weight, item)| format!("{}*{}", weight, item))
+                        .format(" + "),
+                )?;
+
+                has_written = true;
             }
 
-            write!(fmt, "{}", self.positive.iter().format(" + "),)?;
-
-            if !self.negative.is_empty() {
-                write!(fmt, " - {}", self.negative.iter().format(" - "))?;
+            if !negative.is_empty() {
+                write!(
+                    fmt,
+                    "{}{}",
+                    if has_written { " - " } else { "-" },
+                    negative
+                        .iter()
+                        .map(|(weight, item)| format!("{}*{}", -weight, item))
+                        .format(" - ")
+                )?;
             }
+
             Ok(())
         }
     }
 }
 
-impl<P> AsValue<f64> for Diff<P> {
+impl<'a, 'b, P> ops::Add<&'a f64> for &'b DiffExpr<P>
+where
+    P: Atom,
+{
+    type Output = DiffExpr<P>;
+
+    fn add(self, other: &'a f64) -> DiffExpr<P> {
+        let result = DiffExpr {
+            constant: self.constant + other,
+            values: self.values.clone(),
+        };
+
+        #[cfg(verify)]
+        {
+            assert!(is_close(self.min_value() + other, result.min_value()));
+            assert!(is_close(self.max_value() + other, result.max_value()));
+        }
+
+        result
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Add<Output = DiffExpr<P>>, add for DiffExpr<P>, f64);
+
+impl<'a, 'b, P> ops::Add<&'a DiffExpr<P>> for &'b DiffExpr<P>
+where
+    P: Atom,
+{
+    type Output = DiffExpr<P>;
+
+    fn add(self, other: &'a DiffExpr<P>) -> DiffExpr<P> {
+        let result = DiffExpr {
+            constant: self.constant + other.constant,
+            values: self.values.union(&other.values),
+        };
+
+        #[cfg(verify)]
+        {
+            assert!(is_close(
+                self.min_value() + other.min_value(),
+                result.min_value()
+            ));
+            assert!(is_close(
+                self.max_value() + other.max_value(),
+                result.max_value()
+            ));
+        }
+
+        result
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Add<Output = DiffExpr<P>>, add for DiffExpr<P>, DiffExpr<P>);
+
+impl<'a, 'b, P> ops::Sub<&'a f64> for &'b DiffExpr<P>
+where
+    P: Atom,
+{
+    type Output = DiffExpr<P>;
+
+    fn sub(self, other: &'a f64) -> DiffExpr<P> {
+        let result = DiffExpr {
+            constant: self.constant - other,
+            values: self.values.clone(),
+        };
+
+        #[cfg(verify)]
+        {
+            assert!(is_close(self.min_value() - other, result.min_value()));
+            assert!(is_close(self.max_value() - other, result.max_value()));
+        }
+
+        result
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Sub<Output = DiffExpr<P>>, sub for DiffExpr<P>, f64);
+
+impl<'a, 'b, P> ops::Sub<&'a DiffExpr<P>> for &'b DiffExpr<P>
+where
+    P: Atom,
+{
+    type Output = DiffExpr<P>;
+
+    fn sub(self, other: &'a DiffExpr<P>) -> DiffExpr<P> {
+        let result = DiffExpr {
+            constant: self.constant - other.constant,
+            values: self
+                .values
+                .union_sorted(other.values.iter().map(|(weight, item)| (-weight, item))),
+        };
+
+        #[cfg(verify)]
+        {
+            assert!(is_close(
+                self.min_value() - other.max_value(),
+                result.min_value()
+            ));
+            assert!(is_close(
+                self.max_value() - other.min_value(),
+                result.max_value()
+            ));
+        }
+
+        result
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Sub<Output = DiffExpr<P>>, sub for DiffExpr<P>, DiffExpr<P>);
+
+impl<'a, 'b, P> ops::Mul<&'a f64> for &'b DiffExpr<P>
+where
+    P: Atom,
+{
+    type Output = DiffExpr<P>;
+
+    fn mul(self, other: &'a f64) -> DiffExpr<P> {
+        let result = DiffExpr {
+            constant: self.constant * other,
+            values: WeightedVecSet::from_sorted_iter(
+                self.values
+                    .iter()
+                    .map(|(weight, item)| (weight * other, item.clone())),
+            ),
+        };
+
+        #[cfg(verify)]
+        {
+            if other > 0. {
+                assert!(is_close(self.min_value() * other, result.min_value()));
+                assert!(is_close(self.max_value() * other, result.max_value()));
+            } else {
+                assert!(is_close(self.min_value() * other, result.max_value()));
+                assert!(is_close(self.max_value() * other, result.min_value()));
+            }
+        }
+
+        result
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Mul<Output = DiffExpr<P>>, mul for DiffExpr<P>, f64);
+
+impl<P> AsValue<f64> for DiffExpr<P>
+where
+    P: Atom,
+{
     fn as_value(&self) -> Option<&f64> {
-        if self.positive.is_empty() && self.negative.is_empty() {
+        if self.values.is_empty() {
             Some(&self.constant)
         } else {
             None
@@ -1535,7 +1876,7 @@ impl<P> AsValue<f64> for Diff<P> {
     }
 
     fn as_value_mut(&mut self) -> Option<&mut f64> {
-        if self.positive.is_empty() && self.negative.is_empty() {
+        if self.values.is_empty() {
             Some(&mut self.constant)
         } else {
             None
@@ -1543,85 +1884,115 @@ impl<P> AsValue<f64> for Diff<P> {
     }
 }
 
-impl<P> Diff<P> {
-    fn new_constant(constant: f64) -> Self {
-        Diff {
+impl<P> From<f64> for DiffExpr<P>
+where
+    P: Atom,
+{
+    fn from(constant: f64) -> Self {
+        DiffExpr {
             constant,
-            positive: Vec::new(),
-            negative: Vec::new(),
+            values: Default::default(),
         }
     }
+}
 
-    fn new_unknown(positive: Vec<Float<P>>, negative: Vec<Float<P>>) -> Self {
-        Diff {
-            constant: 0f64,
-            positive,
-            negative,
+impl<P> From<Float<P>> for DiffExpr<P>
+where
+    P: Atom,
+{
+    fn from(value: Float<P>) -> Self {
+        match value.as_f64() {
+            Some(val) => DiffExpr {
+                constant: val,
+                values: Default::default(),
+            },
+            None => match &*value {
+                FloatInner::Diff(ediff) => ediff.clone(),
+                FloatInner::Mul(ratio, args) => DiffExpr {
+                    constant: 0.,
+                    values: WeightedVecSet::from_sorted_iter(iter::once((
+                        ratio.inner.factor,
+                        FloatInner::Mul(
+                            FloatRatio::new(
+                                1.,
+                                ratio.inner.numer.clone(),
+                                ratio.inner.denom.clone(),
+                            ),
+                            args.clone(),
+                        )
+                        .into(),
+                    ))),
+                },
+                _ => DiffExpr {
+                    constant: 0.,
+                    values: WeightedVecSet::from_sorted_iter(iter::once((1., value))),
+                },
+            },
         }
     }
+}
 
+impl<P> DiffExpr<P>
+where
+    P: Atom,
+{
     fn min_value(&self) -> f64
     where
         P: Atom,
     {
-        self.constant + self.positive.iter().map(Float::min_value).sum::<f64>()
-            - self.negative.iter().map(Float::max_value).sum::<f64>()
+        self.constant
+            + self
+                .values
+                .iter()
+                .map(|(weight, value)| {
+                    assert!(value.min_value() >= 0.);
+
+                    if weight < 0. {
+                        weight * value.max_value()
+                    } else {
+                        weight * value.min_value()
+                    }
+                })
+                .sum::<f64>()
     }
 
     fn max_value(&self) -> f64
     where
         P: Atom,
     {
-        self.constant + self.positive.iter().map(Float::max_value).sum::<f64>()
-            - self.negative.iter().map(Float::min_value).sum::<f64>()
-    }
+        self.constant
+            + self
+                .values
+                .iter()
+                .map(|(weight, value)| {
+                    assert!(value.min_value() >= 0.);
 
-    fn neg(mut self) -> Self {
-        self.constant = -self.constant;
-        std::mem::swap(&mut self.positive, &mut self.negative);
-        self
-    }
-
-    fn add<'a, Pos, Neg>(mut self, constant: f64, positive: Pos, negative: Neg) -> Self
-    where
-        P: 'a,
-        Pos: IntoIterator<Item = &'a Float<P>>,
-        Neg: IntoIterator<Item = &'a Float<P>>,
-    {
-        self.add_assign(constant, positive, negative);
-        self
-    }
-
-    fn add_assign<'a, Pos, Neg>(&mut self, constant: f64, positive: Pos, negative: Neg)
-    where
-        P: 'a,
-        Pos: IntoIterator<Item = &'a Float<P>>,
-        Neg: IntoIterator<Item = &'a Float<P>>,
-    {
-        self.constant += constant;
-        self.positive.extend(positive.into_iter().cloned());
-        self.negative.extend(negative.into_iter().cloned());
+                    if weight < 0. {
+                        weight * value.min_value()
+                    } else {
+                        weight * value.max_value()
+                    }
+                })
+                .sum::<f64>()
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum FloatReductionKind {
+pub enum FloatReductionKind {
     Min,
-    Max,
 }
 
 impl fmt::Display for FloatReductionKind {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
             FloatReductionKind::Min => write!(fmt, "min"),
-            FloatReductionKind::Max => write!(fmt, "max"),
         }
     }
 }
 
 impl<P> Hash for FloatReduction<P>
 where
-    P: Hash,
+    P: Atom + Hash,
 {
     fn hash<H>(&self, state: &mut H)
     where
@@ -1637,7 +2008,6 @@ impl ReductionKind<f64> for FloatReductionKind {
     fn reduce(&self, lhs: &f64, rhs: &f64) -> f64 {
         match self {
             FloatReductionKind::Min => lhs.min(*rhs),
-            FloatReductionKind::Max => lhs.max(*rhs),
         }
     }
 
@@ -1653,7 +2023,6 @@ where
     fn should_skip(&self, constant: &f64, other: &Float<P>) -> bool {
         match self {
             FloatReductionKind::Min => other.min_value() >= *constant,
-            FloatReductionKind::Max => other.max_value() <= *constant,
         }
     }
 
@@ -1661,18 +2030,17 @@ where
         info!("Getting bound from {}", other);
         Some(match self {
             FloatReductionKind::Min => other.max_value(),
-            FloatReductionKind::Max => other.min_value(),
         })
     }
 }
 
 type FloatReduction<P> = Reduction<FloatReductionKind, f64, Float<P>>;
 
-impl<P> Eq for FloatReduction<P> where P: Eq {}
+impl<P> Eq for FloatReduction<P> where P: Atom + Eq {}
 
 impl<P> Ord for FloatReduction<P>
 where
-    P: Ord,
+    P: Atom + Ord,
 {
     fn cmp(&self, other: &FloatReduction<P>) -> std::cmp::Ordering {
         self.partial_cmp(other).unwrap()
@@ -1690,44 +2058,345 @@ where
                 .iter()
                 .map(Float::min_value)
                 .fold(self.constant.unwrap(), f64::min),
-            FloatReductionKind::Max => self.constant.unwrap(),
         }
     }
 
     fn max_value(&self) -> f64 {
         match self.kind {
-            FloatReductionKind::Max => self
-                .others
-                .iter()
-                .map(Float::max_value)
-                .fold(self.constant.unwrap(), f64::max),
             FloatReductionKind::Min => self.constant.unwrap(),
         }
     }
 }
 
-/*
-#[derive(Debug, Clone)]
-struct IntMemo {
-    hash: Cell<Option<u64>>,
-    range: Cell<Option<Range<BigUint>>>,
-    factors: Cell<Option<Factors<BigUint>>>,
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct FMaxExpr<P>
+where
+    P: Atom,
+{
+    min: f64,
+    max: f64,
+    values: VecSet<DiffExpr<P>>,
 }
 
-#[derive(Debug, Clone)]
-struct FloatMemo {
-    hash: Cell<Option<u64>>,
-    range: Cell<Option<Range<f64>>>,
+impl<P> Eq for FMaxExpr<P> where P: Atom + Eq {}
+
+impl<P> Ord for FMaxExpr<P>
+where
+    P: Atom + Ord,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
-*/
+
+impl<P> Hash for FMaxExpr<P>
+where
+    P: Atom + Hash,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.values.hash(state);
+    }
+}
+
+impl<P> fmt::Display for FMaxExpr<P>
+where
+    P: Atom,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use itertools::Itertools;
+
+        if self.values.is_empty() {
+            debug_assert_eq!(self.min, self.max);
+
+            write!(fmt, "max({})", self.min)
+        } else {
+            let maxmin = self
+                .values
+                .iter()
+                .skip(1)
+                .map(DiffExpr::min_value)
+                .fold(self.values[0].min_value(), f64::max);
+            assert!(maxmin.is_finite());
+
+            if maxmin == self.min {
+                write!(fmt, "max({})", self.values.iter().format(", "))
+            } else {
+                write!(
+                    fmt,
+                    "max({}, {})",
+                    self.min,
+                    self.values.iter().format(", ")
+                )
+            }
+        }
+    }
+}
+
+impl<P> From<FMaxExpr<P>> for Float<P>
+where
+    P: Atom,
+{
+    fn from(emax: FMaxExpr<P>) -> Self {
+        emax.simplified()
+            .unwrap_or_else(|emax| FloatInner::Max(emax).into())
+    }
+}
+
+impl<P> From<Float<P>> for FMaxExpr<P>
+where
+    P: Atom,
+{
+    fn from(value: Float<P>) -> Self {
+        match value.as_f64() {
+            Some(val) => FMaxExpr {
+                min: val,
+                max: val,
+                values: Default::default(),
+            },
+            None => match &*value {
+                FloatInner::Max(emax) => emax.clone(),
+                _ => FMaxExpr {
+                    min: value.min_value(),
+                    max: value.max_value(),
+                    values: VecSet::new(DiffExpr::from(value)),
+                },
+            },
+        }
+    }
+}
+
+impl<'a, 'b, P> Add<&'a f64> for &'b FMaxExpr<P>
+where
+    P: Atom,
+{
+    type Output = FMaxExpr<P>;
+
+    fn add(self, other: &'a f64) -> FMaxExpr<P> {
+        FMaxExpr {
+            min: self.min + other,
+            max: self.max + other,
+            values: self.values.iter().map(|item| item + other).collect(),
+        }
+    }
+}
+
+impl<P> FMaxExpr<P>
+where
+    P: Atom,
+{
+    fn new(min: f64, max: f64, values: Vec<DiffExpr<P>>) -> Self {
+        assert!(min.is_finite() && max.is_finite());
+
+        FMaxExpr {
+            min,
+            max,
+            values: values.into_iter().collect(),
+        }
+    }
+
+    /*
+    fn deplane(mut self) -> Self {
+        use std::collections::{HashMap, HashSet};
+        let mut planes = Vec::with_capacity(self.values.len());
+        let mut ndiffs = Vec::with_capacity(self.values.len());
+        'values: for value in self.values {
+            match &*value.inner {
+                FloatInner::Diff(diff) => {
+                    let mut slack = HashMap::new();
+                    for positive in &diff.positive {
+                        assert!(positive.min_value() >= 0.);
+
+                        match &*positive.inner {
+                            FloatInner::Mul(ratio, args) => {
+                                *slack
+                                    .entry((
+                                        ratio.inner.numer.clone(),
+                                        ratio.inner.denom.clone(),
+                                        args.clone(),
+                                    ))
+                                    .or_insert(0f64) += ratio.inner.factor
+                            }
+                            _ => {
+                                ndiffs.push(value);
+                                continue 'values;
+                            }
+                        }
+                    }
+                    for negative in &diff.negative {
+                        assert!(negative.min_value() >= 0.);
+
+                        match &*negative.inner {
+                            FloatInner::Mul(ratio, args) => {
+                                *slack
+                                    .entry((
+                                        ratio.inner.numer.clone(),
+                                        ratio.inner.denom.clone(),
+                                        args.clone(),
+                                    ))
+                                    .or_insert(0f64) -= ratio.inner.factor
+                            }
+                            _ => {
+                                ndiffs.push(value);
+                                continue 'values;
+                            }
+                        }
+                    }
+                    planes.push((diff.constant, slack));
+                }
+                FloatInner::Mul(ratio, args) => {
+                    planes.push((
+                        0f64,
+                        iter::once((
+                            (
+                                ratio.inner.numer.clone(),
+                                ratio.inner.denom.clone(),
+                                args.clone(),
+                            ),
+                            ratio.inner.factor,
+                        ))
+                        .collect(),
+                    ));
+                }
+                _ => ndiffs.push(value),
+            }
+        }
+
+        if !planes.is_empty() {
+            let mut lol = HashSet::new();
+            for (_, slack) in &planes {
+                lol.extend(slack.keys());
+            }
+
+            let mut points: Vec<Vec<_>> = Vec::with_capacity(planes.len());
+            for (factor, slack) in &planes {
+                let mut values = Vec::with_capacity(lol.len() + 1);
+                values.push(factor);
+                for key in &lol {
+                    values.push(slack.get(key).unwrap_or(&0f64));
+                }
+
+                let mut skip = false;
+                let mut to_remove = Vec::new();
+                for (ix, other) in points.iter().enumerate() {
+                    assert_eq!(other.len(), values.len());
+
+                    if other.iter().zip(values.iter()).all(|(o, v)| o >= v) {
+                        skip = true;
+                    } else if other.iter().zip(values.iter()).all(|(o, v)| o <= v) {
+                        to_remove.push(ix);
+                    }
+                }
+
+                let mut nremoved = 0;
+                for ix in to_remove {
+                    points.remove(ix - nremoved);
+                    nremoved += 1;
+                }
+
+                if !skip {
+                    points.push(values);
+                }
+            }
+
+            assert!(!points.is_empty());
+
+            for point in points {
+                let factor = point[0];
+                let (positive, negative) = point
+                    .into_iter()
+                    .skip(1)
+                    .zip(lol.iter())
+                    .filter(|(v, _)| !v.is_zero())
+                    .map(|(v, (n, d, args))| {
+                        let val = v.abs();
+                        (
+                            v > &0f64,
+                            Float::ratio(val, n.clone(), d.clone(), args.clone()),
+                        )
+                    })
+                    .partition::<Vec<_>, _>(|(sign, _)| *sign);
+
+                ndiffs.push(
+                    Diff {
+                        constant: *factor,
+                        positive: positive.into_iter().map(|(_, flt)| flt).collect(),
+                        negative: negative.into_iter().map(|(_, flt)| flt).collect(),
+                    }
+                    .into(),
+                );
+            }
+        }
+
+        FMaxExpr {
+            min: self.min,
+            max: self.max,
+            values: ndiffs,
+        }
+    }
+    */
+
+    fn fmax(&self, other: &FMaxExpr<P>) -> FMaxExpr<P> {
+        if self.min >= other.max {
+            self.clone()
+        } else if other.min >= self.max {
+            other.clone()
+        } else {
+            let min = self.min.max(other.min);
+            let max = self.max.max(other.max);
+
+            let values = VecSet::from_sorted_iter(
+                Union::new(
+                    self.values.iter().filter(|value| value.max_value() > min),
+                    other.values.iter().filter(|value| value.max_value() > min),
+                )
+                .cloned(),
+            );
+
+            FMaxExpr { min, max, values }
+        }
+    }
+
+    fn is_constant(&self) -> bool {
+        self.min == self.max
+    }
+
+    fn is_single_value(&self) -> bool {
+        // Need to check that the min value is close to the min value of the single arg, because it
+        // is possible that we computed a min with a constant value
+        self.values.len() == 1 && is_close(self.values[0].min_value(), self.min)
+    }
+
+    fn simplified(self) -> Result<Float<P>, Self> {
+        if self.is_constant() {
+            debug_assert_eq!(self.min, self.max);
+
+            Ok(self.min.into())
+        } else if self.is_single_value() {
+            debug_assert!(self.values.len() == 1);
+
+            Ok(self.values.values[0].clone().into())
+        } else {
+            Err(self)
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum FloatInner<P> {
+pub enum FloatInner<P>
+where
+    P: Atom,
+{
     /// Product of all arguments.  We keep the `FloatRatio` separate to make simplifications
     /// easier.
     Mul(FloatRatio<P>, Vec<Float<P>>),
     Reduction(FloatReduction<P>),
-    Diff(Diff<P>),
+    Max(FMaxExpr<P>),
+    Diff(DiffExpr<P>),
+    // Ceil division: ceil(numer / denom)
+    DivCeil(Int<P>, u32),
 }
 
 impl<P> fmt::Display for FloatInner<P>
@@ -1739,6 +2408,7 @@ where
         use FloatInner::*;
 
         match self {
+            DivCeil(numer, denom) => write!(fmt, "div_ceil({}, {})", numer, denom),
             Mul(ratio, args) if args.is_empty() => write!(fmt, "{}", ratio),
             Mul(ratio, args) => {
                 if !ratio.is_one() {
@@ -1748,40 +2418,78 @@ where
                 write!(fmt, "{}", args.iter().format("*"))
             }
             Reduction(reduction) => write!(fmt, "{}", reduction),
+            Max(emax) => write!(fmt, "{}", emax),
             Diff(diff) => write!(fmt, "{}", diff),
         }
     }
 }
 
-impl<P> FloatInner<P>
+#[derive(PartialEq, Eq, Hash)]
+pub struct Float<P>
 where
     P: Atom,
 {
-    fn is_mul(&self) -> bool {
-        if let FloatInner::Mul(_, _) = self {
-            true
-        } else {
-            false
-        }
-    }
+    inner: Rc<hash::MemoizedHash<FloatInner<P>>>,
+}
 
-    fn is_diff(&self) -> bool {
-        if let FloatInner::Diff(_) = self {
-            true
+impl<P> PartialOrd for Float<P>
+where
+    P: Atom + PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if Rc::ptr_eq(&self.inner, &other.inner) {
+            Some(Ordering::Equal)
         } else {
-            false
+            self.inner.partial_cmp(&other.inner)
         }
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Float<P> {
-    inner: Rc<FloatInner<P>>,
+impl<P> Ord for Float<P>
+where
+    P: Atom + Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        if Rc::ptr_eq(&self.inner, &other.inner) {
+            Ordering::Equal
+        } else {
+            self.inner.cmp(&other.inner)
+        }
+    }
+}
+
+impl<P> AsRef<FloatInner<P>> for Float<P>
+where
+    P: Atom,
+{
+    fn as_ref(&self) -> &FloatInner<P> {
+        self
+    }
+}
+
+impl<P> Float<P>
+where
+    P: Atom,
+{
+    fn make_mut(&mut self) -> &mut FloatInner<P> {
+        hash::MemoizedHash::make_mut(Rc::make_mut(&mut self.inner))
+    }
+}
+
+impl<P> ops::Deref for Float<P>
+where
+    P: Atom,
+{
+    type Target = FloatInner<P>;
+
+    fn deref(&self) -> &FloatInner<P> {
+        &**self.inner
+    }
 }
 
 impl<P> fmt::Debug for Float<P>
 where
-    P: fmt::Debug,
+    P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.inner, fmt)
@@ -1790,14 +2498,17 @@ where
 
 impl<P> fmt::Display for Float<P>
 where
-    P: Atom + fmt::Display,
+    P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.inner, fmt)
     }
 }
 
-impl<P> Clone for Float<P> {
+impl<P> Clone for Float<P>
+where
+    P: Atom,
+{
     fn clone(&self) -> Self {
         Float {
             inner: Rc::clone(&self.inner),
@@ -1805,12 +2516,19 @@ impl<P> Clone for Float<P> {
     }
 }
 
-impl<P> From<Diff<P>> for Float<P>
+impl<P> From<DiffExpr<P>> for Float<P>
 where
     P: Atom,
 {
-    fn from(diff: Diff<P>) -> Self {
-        FloatInner::Diff(diff).into()
+    fn from(diff: DiffExpr<P>) -> Self {
+        if diff.values.is_empty() {
+            diff.constant.into()
+        } else if diff.values.len() == 1 && diff.constant == 0. {
+            let (weight, item) = diff.values.values[0].clone();
+            item * weight
+        } else {
+            FloatInner::Diff(diff).into()
+        }
     }
 }
 
@@ -1820,7 +2538,7 @@ where
 {
     fn from(inner: FloatInner<P>) -> Self {
         Float {
-            inner: Rc::new(inner),
+            inner: Rc::new(hash::MemoizedHash::new(inner)),
         }
     }
 }
@@ -1839,7 +2557,7 @@ where
     P: Atom,
 {
     fn as_value(&self) -> Option<&f64> {
-        match &*self.inner {
+        match &**self {
             FloatInner::Mul(ratio, args) if args.is_empty() => ratio.as_f64_ref(),
             _ => None,
         }
@@ -1847,7 +2565,7 @@ where
 
     fn as_value_mut(&mut self) -> Option<&mut f64> {
         if self.as_value().is_some() {
-            Some(match Rc::make_mut(&mut self.inner) {
+            Some(match self.make_mut() {
                 FloatInner::Mul(ratio, args) if args.is_empty() => {
                     ratio.as_f64_mut().unwrap()
                 }
@@ -1866,7 +2584,7 @@ where
     type Value = f64;
 
     fn as_reduction(&self, kind: FloatReductionKind) -> Option<&FloatReduction<P>> {
-        match &*self.inner {
+        match &**self {
             FloatInner::Reduction(reduction) if reduction.kind == kind => Some(reduction),
             _ => None,
         }
@@ -1877,7 +2595,7 @@ where
         kind: FloatReductionKind,
     ) -> Option<&mut FloatReduction<P>> {
         if self.as_reduction(kind).is_some() {
-            Some(match Rc::make_mut(&mut self.inner) {
+            Some(match self.make_mut() {
                 FloatInner::Reduction(reduction) if reduction.kind == kind => reduction,
                 _ => unreachable!(),
             })
@@ -1900,8 +2618,52 @@ impl<P> Float<P>
 where
     P: Atom,
 {
+    fn ratio(factor: f64, numer: Vec<P>, denom: Vec<P>, args: Vec<Float<P>>) -> Self {
+        FloatInner::Mul(
+            FloatRatio::from(FloatRatioInner {
+                factor,
+                numer,
+                denom,
+            }),
+            args,
+        )
+        .into()
+    }
+
     pub fn div_ceil(lhs: &Int<P>, rhs: u32) -> Self {
-        Int::div_ceil(lhs, rhs).to_symbolic_float()
+        match (&*lhs.inner, lhs.as_biguint()) {
+            (_, Some(value)) => Int::from((value + rhs - 1u32) / rhs).to_symbolic_float(),
+            // TODO: This should be a check on factors!
+            (IntInner::Mul(ratio), None)
+                if /* ratio.inner.denom.is_empty()
+                    && */ ratio.inner.factor.is_multiple_of(&rhs.into()) =>
+            {
+                // TODO: This is no longer an integer division!!!!  The denominator does not
+                // necessarily divide the numerator anymore.
+                Int::from(IntInner::Mul(Ratio::new(
+                    &ratio.inner.factor / rhs,
+                    ratio.inner.numer.clone(),
+                    ratio.inner.denom.clone(),
+                )))
+                .to_symbolic_float()
+            }
+            (IntInner::Mul(ratio), None) => {
+                let big_rhs = BigUint::from(rhs);
+                let gcd = ratio.inner.factor.gcd(&big_rhs);
+
+                FloatInner::DivCeil(
+                    IntInner::Mul(Ratio::new(
+                        &ratio.inner.factor / &gcd,
+                        ratio.inner.numer.clone(),
+                        ratio.inner.denom.clone(),
+                    ))
+                    .into(),
+                    (big_rhs / gcd).to_u32().unwrap(),
+                )
+                .into()
+            }
+            (_, None) => FloatInner::DivCeil(lhs.clone(), rhs).into(),
+        }
     }
 
     fn fast_eq(lhs: &Self, rhs: &Self) -> bool {
@@ -1913,27 +2675,9 @@ where
     }
 
     fn is_one(&self) -> bool {
-        match &*self.inner {
+        match &**self {
             FloatInner::Mul(ratio, args) if args.is_empty() => ratio.is_one(),
             _ => false,
-        }
-    }
-
-    fn as_diff(&self) -> Option<&Diff<P>> {
-        match &*self.inner {
-            FloatInner::Diff(diff) => Some(diff),
-            _ => None,
-        }
-    }
-
-    fn as_diff_mut(&mut self) -> Option<&mut Diff<P>> {
-        if self.as_diff().is_some() {
-            Some(match Rc::make_mut(&mut self.inner) {
-                FloatInner::Diff(diff) => diff,
-                _ => unreachable!(),
-            })
-        } else {
-            None
         }
     }
 
@@ -1945,29 +2689,34 @@ where
         self.reduce_assign(FloatReductionKind::Min, rhs);
     }
 
+    pub fn max(&self, other: &Float<P>) -> Float<P> {
+        trace!("max lhs: {}", self);
+        trace!("max rhs: {}", other);
+
+        let result = FMaxExpr::from(self.clone())
+            .fmax(&FMaxExpr::from(other.clone()))
+            .into();
+
+        trace!("max out: {}", result);
+        result
+    }
+
     pub fn max_assign(&mut self, rhs: &Float<P>) {
-        self.reduce_assign(FloatReductionKind::Max, rhs);
-        if let Some(red) = self.as_reduction(FloatReductionKind::Max) {
-            if red.others.len() == 1 && red.others[0].min_value() >= red.constant.unwrap()
-            {
-                *self = self
-                    .as_reduction_mut(FloatReductionKind::Max)
-                    .unwrap()
-                    .others
-                    .swap_remove(0);
-            }
-        }
+        *self = Float::max(&self.clone(), rhs);
     }
 
     pub fn as_f64(&self) -> Option<f64> {
-        match &*self.inner {
+        match &**self {
             FloatInner::Mul(ratio, args) if args.is_empty() => ratio.as_f64(),
             _ => None,
         }
     }
 
     pub fn to_f64(&self) -> Option<f64> {
-        match &*self.inner {
+        match &**self {
+            FloatInner::DivCeil(lhs, rhs) => {
+                lhs.to_u32().map(|lhs| ((lhs + rhs - 1) / rhs) as f64)
+            }
             FloatInner::Mul(ratio, args) => ratio.to_f64().and_then(|ratio| {
                 args.iter()
                     .map(|arg| arg.to_f64().ok_or(()))
@@ -1975,6 +2724,7 @@ where
                     .ok()
                     .map(|result| ratio * result)
             }),
+            FloatInner::Max(emax) => unimplemented!("to_f64 for {}", emax),
             FloatInner::Reduction(_) => unimplemented!("to_f64 for {}", self),
             FloatInner::Diff(_) => unimplemented!("to_f64 for {}", self),
         }
@@ -1983,14 +2733,96 @@ where
     pub fn min_value(&self) -> f64 {
         info!("min_value for {}", self);
 
-        match &*self.inner {
-            FloatInner::Mul(ratio, args) => {
-                let mut min = ratio.min_value();
-                for arg in args.iter() {
-                    min *= arg.min_value();
-                }
-                min
+        match &**self {
+            FloatInner::DivCeil(numer, denom) => {
+                let numer_min = numer.min_value();
+                let denom = u64::from(*denom);
+                // TODO: should take gcd for le min
+                ((numer_min + denom - 1) / denom) as f64
             }
+            FloatInner::Mul(ratio, args) => {
+                // Find the DivCeils and collect theirs factors
+                let (divceils, others) = args.iter().fold(
+                    (
+                        Vec::with_capacity(args.len()),
+                        Vec::with_capacity(args.len()),
+                    ),
+                    |(mut divceils, mut others), arg| {
+                        match &**arg {
+                            FloatInner::DivCeil(numer, denom) => match &*numer.inner {
+                                IntInner::Mul(ratio) if ratio.inner.denom.len() == 0 => {
+                                    divceils.push((
+                                        &ratio.inner.factor,
+                                        &ratio.inner.numer,
+                                        denom,
+                                    ))
+                                }
+                                _ => unimplemented!("min_value containing {}", arg),
+                            },
+                            _ => others.push(arg),
+                        };
+                        (divceils, others)
+                    },
+                );
+
+                let min = ratio.inner.factor.clone();
+                let min = ratio
+                    .inner
+                    .numer
+                    .iter()
+                    .fold(min, |min, num| min * num.min_value() as f64);
+
+                let min = if divceils.len() > 1 {
+                    unimplemented!("min_value for {} (more than 1 divceil)", self);
+                } else if divceils.len() == 1 {
+                    let (dcfactor, dcnumer, dcdenom) = divceils[0];
+
+                    // denom is only on the denominator
+                    let mut denom = ratio.inner.denom.iter().collect::<Vec<_>>();
+                    // dconly is only on the lcm numer
+                    let mut dc_numer_value = dcfactor.clone();
+
+                    let mut min = min;
+                    for dcn in dcnumer {
+                        if let Some(pos) = denom.iter().position(|elem| *elem == dcn) {
+                            // Don't use it twice!
+                            denom.swap_remove(pos);
+
+                            let lcm_value = dcn.lcm_value();
+                            dc_numer_value *= lcm_value;
+                            min /= lcm_value as f64;
+                        } else {
+                            dc_numer_value *= dcn.gcd_value();
+                        }
+                    }
+
+                    let min = min
+                        * ((dc_numer_value + dcdenom - 1u32) / dcdenom)
+                            .to_u64()
+                            .unwrap() as f64;
+
+                    denom
+                        .into_iter()
+                        .fold(min, |min, denom| min / denom.max_value() as f64)
+
+                // dcnumer_only -> min (gcd?)
+                // common -> lcm
+                // denom_only -> max
+                } else {
+                    assert!(divceils.is_empty());
+
+                    ratio
+                        .inner
+                        .denom
+                        .iter()
+                        .fold(min, |min, denom| min / denom.max_value() as f64)
+                };
+
+                others
+                    .into_iter()
+                    .fold(min, |min, other| min * other.min_value())
+            }
+            FloatInner::Max(emax) => emax.min,
             FloatInner::Reduction(red) => red.min_value(),
             FloatInner::Diff(diff) => diff.min_value(),
         }
@@ -1999,7 +2831,11 @@ where
     pub fn max_value(&self) -> f64 {
         info!("max_value for {}", self);
 
-        match &*self.inner {
+        match &**self {
+            FloatInner::DivCeil(numer, denom) => {
+                let denom = u64::from(*denom);
+                ((numer.max_value() + denom - 1) / denom) as f64
+            }
             FloatInner::Mul(ratio, args) => {
                 let mut min = ratio.max_value();
                 for arg in args.iter() {
@@ -2007,6 +2843,7 @@ where
                 }
                 min
             }
+            FloatInner::Max(emax) => emax.max,
             FloatInner::Reduction(red) => red.max_value(),
             FloatInner::Diff(diff) => diff.max_value(),
         }
@@ -2031,6 +2868,63 @@ where
     }
 }
 
+impl<'a, 'b, P> Mul<&'a f64> for &'b Float<P>
+where
+    P: Atom,
+{
+    type Output = Float<P>;
+
+    fn mul(self, other: &'a f64) -> Float<P> {
+        use FloatInner::*;
+
+        let result = match self.as_value() {
+            Some(value) => (value * other).into(),
+            None => match &**self {
+                Mul(ratio, args) => {
+                    let mut ratio = ratio.clone();
+                    ratio *= FloatRatio::new_constant(*other);
+                    Mul(ratio, args.clone()).into()
+                }
+                Diff(ediff) => DiffExpr {
+                    constant: ediff.constant * other,
+                    values: WeightedVecSet::from_sorted_iter(
+                        ediff
+                            .values
+                            .iter()
+                            .map(|(weight, item)| (weight * other, item.clone())),
+                    ),
+                }
+                .into(),
+                Max(emax) => FMaxExpr::new(
+                    emax.min * other,
+                    emax.max * other,
+                    emax.values
+                        .iter()
+                        .map(|value| ops::Mul::mul(value, other))
+                        .collect(),
+                )
+                .into(),
+                _ => Mul((*other).into(), vec![self.clone()]).into(),
+            },
+        };
+
+        #[cfg(verify)]
+        {
+            if other > 0. {
+                assert!(is_close(self.min_value() * other, result.min_value()));
+                assert!(is_close(self.max_value() * other, result.max_value()));
+            } else {
+                assert!(is_close(self.min_value() * other, result.max_value()));
+                assert!(is_close(self.max_value() * other, result.min_value()));
+            }
+        }
+
+        result
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Mul<Output = Float<P>>, mul for Float<P>, f64);
+
 impl<'a, 'b, P> Mul<&'a Float<P>> for &'b Float<P>
 where
     P: Atom,
@@ -2039,114 +2933,85 @@ where
 
     fn mul(self, other: &'a Float<P>) -> Float<P> {
         use FloatInner::*;
+        let result;
+
+        trace!("mul lhs: {}", self);
+        trace!("mul rhs: {}", other);
 
         if self.is_one() || other.is_zero() {
-            return other.clone();
+            result = other.clone();
         } else if other.is_one() || self.is_zero() {
-            return self.clone();
+            result = self.clone();
+        } else if let Some(value) = other.as_value() {
+            result = ops::Mul::mul(self, value)
+        } else if let Some(value) = self.as_value() {
+            result = ops::Mul::mul(other, value)
+        } else {
+            result = match (&**self, &**other) {
+                (Mul(lhs_ratio, lhs_args), Mul(rhs_ratio, rhs_args)) => {
+                    let mut args = lhs_args.clone();
+                    args.extend(rhs_args.iter().cloned());
+                    Mul(lhs_ratio * rhs_ratio, args).into()
+                }
+                (Mul(lhs_ratio, lhs_args), Diff(ediff)) => {
+                    let factor = lhs_ratio.inner.factor;
+                    let naked = Float::from(Mul(
+                        FloatRatio::new(
+                            1f64,
+                            lhs_ratio.inner.numer.clone(),
+                            lhs_ratio.inner.denom.clone(),
+                        ),
+                        lhs_args.clone(),
+                    ));
+                    DiffExpr {
+                        constant: 0f64,
+                        values: if ediff.constant.is_zero() {
+                            None
+                        } else {
+                            Some((factor * ediff.constant, naked.clone()))
+                        }
+                        .into_iter()
+                        .chain(
+                            ediff
+                                .values
+                                .iter()
+                                .map(|(weight, item)| (weight * factor, item * &naked)),
+                        )
+                        .collect(),
+                    }
+                    .into()
+                }
+                (Mul(lhs_ratio, lhs_args), _) => {
+                    let mut args = lhs_args.clone();
+                    args.push(other.clone());
+                    Mul(lhs_ratio.clone(), args).into()
+                }
+                (_, Mul(_, _)) => ops::Mul::mul(other, self),
+                (_, _) => {
+                    trace!("true mul: {:?} and {:?}", self, other);
+                    Mul(1f64.into(), vec![self.clone(), other.clone()]).into()
+                }
+            }
         }
 
-        match (
-            (&*self.inner, self.as_value()),
-            (&*other.inner, other.as_value()),
-        ) {
-            ((_, Some(lhs)), (_, Some(rhs))) => (*lhs * *rhs).into(),
-            ((Mul(ratio, args), None), (_, Some(value)))
-            | ((_, Some(value)), (Mul(ratio, args), None)) => {
-                let mut ratio = ratio.clone();
-                ratio *= FloatRatio::new_constant(*value);
-                Mul(ratio, args.clone()).into()
-            }
-            ((Mul(lhs_ratio, lhs_args), None), (Mul(rhs_ratio, rhs_args), None)) => {
-                let mut args = lhs_args.clone();
-                args.extend(rhs_args.iter().cloned());
-                Mul(lhs_ratio * rhs_ratio, args).into()
-            }
-            (
-                (_, Some(value)),
-                (
-                    Diff(self::Diff {
-                        constant,
-                        positive,
-                        negative,
-                    }),
-                    None,
-                ),
-            )
-            | (
-                (
-                    Diff(self::Diff {
-                        constant,
-                        positive,
-                        negative,
-                    }),
-                    None,
-                ),
-                (_, Some(value)),
-            ) => {
-                let orig_value = *value;
-                let (value, positive, negative) = if orig_value < 0f64 {
-                    (-orig_value, negative, positive)
-                } else {
-                    (orig_value, positive, negative)
-                };
+        trace!("mul out: {}", result);
 
-                Diff(self::Diff {
-                    constant: constant * orig_value,
-                    positive: positive.iter().map(|p| Float::from(value) * p).collect(),
-                    negative: negative.iter().map(|n| Float::from(value) * n).collect(),
-                })
-                .into()
-            }
-            (
-                (Mul(ratio, args), _),
-                (
-                    Diff(self::Diff {
-                        constant,
-                        positive,
-                        negative,
-                    }),
-                    None,
-                ),
-            )
-            | (
-                (
-                    Diff(self::Diff {
-                        constant,
-                        positive,
-                        negative,
-                    }),
-                    None,
-                ),
-                (Mul(ratio, args), _),
-            ) => {
-                let factor = Float::from(Mul(ratio.clone(), args.clone()));
-                let mut positive =
-                    positive.iter().map(|p| &factor * p).collect::<Vec<_>>();
-                let constant_ratio = FloatRatio::new_constant(*constant);
-                let new_ratio = ratio * &constant_ratio;
-                let constant_flt = Float::from(Mul(constant_ratio, vec![]));
-                positive.push(
-                    Mul(new_ratio, args.iter().map(|a| a * &constant_flt).collect())
-                        .into(),
-                );
-                let negative = negative.iter().map(|n| &factor * n).collect::<Vec<_>>();
+        #[cfg(verify)]
+        {
+            assert!(self.min_value() > 0.);
+            assert!(other.min_value() > 0.);
 
-                Diff(self::Diff {
-                    constant: 0f64,
-                    positive,
-                    negative,
-                })
-                .into()
-            }
-            ((Mul(lhs_ratio, lhs_args), _), _) => {
-                let mut args = lhs_args.clone();
-                args.push(other.clone());
-                Mul(lhs_ratio.clone(), args).into()
-            }
-            (_, (Mul(_, _), _)) => ops::Mul::mul(other, self),
-            (_, _) => Mul(1f64.into(), vec![self.clone(), other.clone()]).into(),
+            assert!(is_close(
+                self.min_value() * other.min_value(),
+                result.min_value()
+            ));
+            assert!(is_close(
+                self.max_value() * other.max_value(),
+                result.max_value()
+            ));
         }
+
+        result
     }
 }
 
@@ -2163,6 +3028,26 @@ where
 
 forward_binop_to_op_assign!(impl(P: Atom) Mul, mul for Float<P>, Int<P>, MulAssign, mul_assign);
 forward_binop_to_ref_val_commutative!(impl(P: Atom) Mul<Output = Float<P>>, mul for Int<P>, Float<P>);
+
+impl<'a, 'b, P> Add<&'a f64> for &'b Float<P>
+where
+    P: Atom,
+{
+    type Output = Float<P>;
+
+    fn add(self, other: &'a f64) -> Float<P> {
+        if let Some(value) = self.as_value() {
+            (value + other).into()
+        } else if *other == 0. {
+            self.clone()
+        } else {
+            match &**self {
+                FloatInner::Max(max) => ops::Add::add(max, other).into(),
+                _ => ops::Add::add(DiffExpr::from(self.clone()), other).into(),
+            }
+        }
+    }
+}
 
 impl<P> AddAssign<&'_ Float<P>> for Float<P>
 where
@@ -2189,77 +3074,33 @@ where
     type Output = Float<P>;
 
     fn add(self, other: &'a Float<P>) -> Float<P> {
-        use FloatInner::*;
+        trace!("add lhs: {}", self);
+        trace!("add rhs: {}", other);
 
-        if self.is_zero() {
-            return other.clone();
-        } else if other.is_zero() {
-            return self.clone();
+        let result = if let Some(value) = other.as_value() {
+            ops::Add::add(self, value)
+        } else if let Some(value) = self.as_value() {
+            ops::Add::add(other, value)
+        } else {
+            ops::Add::add(DiffExpr::from(self.clone()), DiffExpr::from(other.clone()))
+                .into()
+        };
+
+        trace!("add out: {}", result);
+
+        #[cfg(verify)]
+        {
+            assert!(is_close(
+                self.min_value() + other.min_value(),
+                result.min_value()
+            ));
+            assert!(is_close(
+                self.max_value() + other.max_value(),
+                result.max_value()
+            ));
         }
 
-        match (
-            (&*self.inner, self.as_value()),
-            (&*other.inner, other.as_value()),
-        ) {
-            ((_, Some(lhs)), (_, Some(rhs))) => (*lhs + *rhs).into(),
-            ((Diff(diff), None), (_, Some(value)))
-            | ((_, Some(value)), (Diff(diff), None)) => {
-                let mut new = diff.clone();
-                new.add_assign(*value, iter::empty(), iter::empty());
-                Diff(new).into()
-            }
-            ((_, Some(value)), (Reduction(red), None))
-            | ((Reduction(red), None), (_, Some(value))) => match red.kind {
-                FloatReductionKind::Min | FloatReductionKind::Max => {
-                    let mut red = red.clone();
-                    red.constant = Some(red.constant.unwrap() + value);
-                    for other in &mut red.others {
-                        *other += Float::from(*value);
-                    }
-                    red.simplify();
-                    Reduction(red).into()
-                }
-            },
-            ((Diff(lhs), None), (Diff(rhs), None)) => {
-                let mut lhs = lhs.clone();
-                lhs.add_assign(rhs.constant, rhs.positive.iter(), rhs.negative.iter());
-                Diff(lhs).into()
-            }
-            ((Reduction(_), None), (Reduction(_), None)) => {
-                // Prevent term size explosion when adding reductions together
-                self::Diff::new_unknown(vec![self.clone(), other.clone()], vec![]).into()
-            }
-            ((_, None), (Reduction(red), None)) => {
-                let mut red = red.clone();
-                let constant = red.constant.unwrap();
-                let bound = match red.kind {
-                    FloatReductionKind::Min => self.max_value(),
-                    FloatReductionKind::Max => self.min_value(),
-                };
-                red.constant = Some(constant + bound);
-                for other in &mut red.others {
-                    *other += self;
-                }
-                red.reduce_assign(None, iter::once(&(self + Float::from(constant))));
-                Reduction(red).into()
-            }
-            ((Reduction(_), None), (_, None)) => Add::add(other, self),
-            ((Diff(lhs), _), (_, None)) => {
-                let mut lhs = lhs.clone();
-                lhs.add_assign(0f64, iter::once(other), iter::empty());
-                Diff(lhs).into()
-            }
-            ((_, None), (Diff(_), _)) => Add::add(other, self),
-            ((_, None), (_, Some(value))) => self::Diff::new_constant(*value)
-                .add(0f64, iter::once(self), iter::empty())
-                .into(),
-            ((_, Some(value)), (_, None)) => self::Diff::new_constant(*value)
-                .add(0f64, iter::once(other), iter::empty())
-                .into(),
-            ((_, None), (_, None)) => {
-                self::Diff::new_unknown(vec![self.clone(), other.clone()], vec![]).into()
-            }
-        }
+        result
     }
 }
 
@@ -2270,10 +3111,25 @@ where
     P: Atom,
 {
     fn div_assign(&mut self, rhs: &'a Int<P>) {
-        self.mul_assign(&Float::from(FloatInner::Mul(
-            FloatRatio::recip(rhs.clone()),
-            Vec::new(),
-        )));
+        trace!("div lhs: {}", self);
+        trace!("div rhs: {}", rhs);
+
+        match &*rhs.inner {
+            IntInner::Mul(ratio) => {
+                let mut flt_ratio = FloatRatioInner::from(ratio.clone());
+                std::mem::swap(&mut flt_ratio.numer, &mut flt_ratio.denom);
+                flt_ratio.factor = flt_ratio.factor.recip();
+                *self *= Float::from(FloatInner::Mul(
+                    FloatRatio {
+                        inner: Rc::new(flt_ratio),
+                    },
+                    vec![],
+                ));
+            }
+            _ => unimplemented!("{} / {}", self, rhs),
+        }
+
+        trace!("div out: {}", self);
     }
 }
 
@@ -2290,79 +3146,105 @@ where
 
 forward_binop_to_op_assign!(impl(P: Atom) Div, div for Float<P>, f64, DivAssign, div_assign);
 
-impl<'a, P> SubAssign<&'a Float<P>> for Float<P>
+impl<P> SubAssign<&'_ f64> for Float<P>
 where
     P: Atom,
 {
-    fn sub_assign(&mut self, rhs: &'a Float<P>) {
-        if self.is_zero() {
-            *self = rhs.clone();
-        } else if rhs.is_zero() {
-            // Nothing to do
-        } else if self == rhs {
-            *self = 0f64.into()
-        } else if let Some(lhs_val) = self.as_value() {
-            if let Some(rhs_val) = rhs.as_value() {
-                *self = (*lhs_val - *rhs_val).into();
-            } else if let Some(rhs_diff) = rhs.as_diff() {
-                *self = rhs_diff
-                    .clone()
-                    .neg()
-                    .add(*lhs_val, iter::empty(), iter::empty())
-                    .into();
-            } else {
-                *self = Diff::new_constant(*lhs_val)
-                    .add(0f64, iter::empty(), iter::once(rhs))
-                    .into();
-            }
-        } else if let Some(lhs_diff) = self.as_diff_mut() {
-            if let Some(rhs_val) = rhs.as_value() {
-                lhs_diff.add_assign(-*rhs_val, iter::empty(), iter::empty());
-            } else if let Some(rhs_diff) = rhs.as_diff() {
-                lhs_diff.add_assign(
-                    -rhs_diff.constant,
-                    rhs_diff.negative.iter(),
-                    rhs_diff.positive.iter(),
-                );
-            } else {
-                lhs_diff.add_assign(0f64, iter::empty(), iter::once(rhs));
-            }
-        } else if let Some(rhs_val) = rhs.as_value() {
-            *self = Diff::new_constant(*rhs_val)
-                .add(0f64, iter::empty(), iter::once(&*self))
-                .neg()
-                .into();
-        } else if let Some(rhs_diff) = rhs.as_diff() {
-            *self = rhs_diff
-                .clone()
-                .add(0f64, iter::empty(), iter::once(&*self))
-                .neg()
-                .into();
+    fn sub_assign(&mut self, other: &'_ f64) {
+        *self = ops::Sub::sub(self.clone(), other);
+    }
+}
+
+impl<P> SubAssign<f64> for Float<P>
+where
+    P: Atom,
+{
+    fn sub_assign(&mut self, other: f64) {
+        *self = ops::Sub::sub(self.clone(), other);
+    }
+}
+
+impl<'a, 'b, P> Sub<&'a f64> for &'b Float<P>
+where
+    P: Atom,
+{
+    type Output = Float<P>;
+
+    fn sub(self, other: &'a f64) -> Float<P> {
+        if let Some(value) = self.as_value() {
+            (value - other).into()
+        } else if *other == 0. {
+            self.clone()
         } else {
-            *self = Diff::new_unknown(vec![self.clone()], vec![rhs.clone()]).into();
+            ops::Sub::sub(DiffExpr::from(self.clone()), other).into()
         }
     }
 }
 
-forward_binop_to_op_assign!(impl(P: Atom) Sub, sub for Float<P>, Float<P>, SubAssign, sub_assign);
+forward_binop_to_ref_ref!(impl(P: Atom) Sub<Output = Float<P>>, sub for Float<P>, f64);
 
-impl<'a, P> SubAssign<&'a f64> for Float<P>
+impl<'a, 'b, P> Sub<&'a Float<P>> for &'b Float<P>
 where
     P: Atom,
 {
-    fn sub_assign(&mut self, rhs: &'a f64) {
-        *self -= Float::from(*rhs);
+    type Output = Float<P>;
+
+    fn sub(self, other: &'a Float<P>) -> Float<P> {
+        trace!("sub lhs: {}", self);
+        trace!("sub rhs: {}", other);
+
+        let result = if self == other {
+            0f64.into()
+        } else if let Some(value) = other.as_value() {
+            ops::Sub::sub(self, value)
+        } else {
+            ops::Sub::sub(DiffExpr::from(self.clone()), DiffExpr::from(other.clone()))
+                .into()
+        };
+
+        trace!("sub out: {}", result);
+        #[cfg(verify)]
+        {
+            assert!(is_close(
+                self.min_value() - other.max_value(),
+                result.min_value()
+            ));
+            assert!(is_close(
+                self.max_value() - other.min_value(),
+                result.max_value()
+            ));
+        }
+
+        result
     }
 }
 
-forward_binop_to_op_assign!(impl(P: Atom) Sub, sub for Float<P>, f64, SubAssign, sub_assign);
+forward_binop_to_ref_ref!(impl(P: Atom) Sub<Output = Float<P>>, sub for Float<P>, Float<P>);
+
+impl<P> SubAssign<Float<P>> for Float<P>
+where
+    P: Atom,
+{
+    fn sub_assign(&mut self, rhs: Float<P>) {
+        *self = Sub::sub(self.clone(), rhs);
+    }
+}
+
+impl<P> SubAssign<&'_ Float<P>> for Float<P>
+where
+    P: Atom,
+{
+    fn sub_assign(&mut self, rhs: &'_ Float<P>) {
+        *self = Sub::sub(self.clone(), rhs);
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use std::borrow::Cow;
     use std::fmt;
 
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, Hash)]
     struct Size<'a> {
         name: Cow<'a, str>,
         min: u64,
@@ -2405,6 +3287,16 @@ mod tests {
         }
     }
 
+    impl super::Factor for Size<'_> {
+        fn gcd_value(&self) -> u64 {
+            self.min
+        }
+
+        fn lcm_value(&self) -> u64 {
+            self.max
+        }
+    }
+
     impl<'a> Size<'a> {
         fn new<N>(name: N, min: u64, max: u64) -> Self
         where
@@ -2431,6 +3323,14 @@ mod tests {
         (
             super::Int::ratio(1u32, vec![size.clone()], vec![]),
             super::Int::ratio(1u32, vec![], vec![size]),
+        )
+    }
+
+    fn symbolic(value: u64) -> super::Int<Size<'static>> {
+        super::Int::ratio(
+            1u32,
+            vec![Size::new(format!("_{}_", value), value, value)],
+            vec![],
         )
     }
 
@@ -2485,5 +3385,418 @@ mod tests {
         let expr = expr + ymax;
 
         assert_eq!(format!("{}", expr), "max(3, x) + max(9, y)");
+    }
+
+    #[test]
+    fn max_dedup() {
+        let (x, _) = make("x", 1, 10);
+
+        let mut expr = x.to_symbolic_float();
+        expr.max_assign(&x.to_symbolic_float());
+
+        assert_eq!(format!("{}", expr), "x");
+    }
+
+    #[test]
+    fn max_dedup_2() {
+        let (x, _) = make("x", 3, 3);
+
+        let mut expr = x.to_symbolic_float();
+        expr.max_assign(&symbolic(2).to_symbolic_float());
+
+        println!("{:?}", expr);
+
+        assert_eq!(format!("{}", expr), "3");
+    }
+
+    #[test]
+    fn max_lin() {
+        let (x, _) = make("x", 1, 10);
+
+        let mut expr = x.to_symbolic_float() * 2f64;
+        expr.max_assign(&(x.to_symbolic_float() * 3f64));
+
+        assert_eq!(format!("{}", expr), "3*x");
+    }
+
+    // TODO: test that `(a + b) * c => a * c + b * c
+    // need to check with "args" in c, eg. 3 * div_ceil(...)
+    //
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn sub_zero(x: super::Float<Size<'static>>) {
+            let delta = x - x;
+
+            assert!(delta.min_value().is_zero() && delta.max_value().is_zero());
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct VecSet<T> {
+    values: Rc<Vec<T>>,
+}
+
+impl<T> Default for VecSet<T>
+where
+    T: Ord + Clone,
+{
+    fn default() -> Self {
+        iter::empty().collect()
+    }
+}
+
+impl<T> iter::FromIterator<T> for VecSet<T>
+where
+    T: Ord + Clone,
+{
+    fn from_iter<II>(iter: II) -> Self
+    where
+        II: IntoIterator<Item = T>,
+    {
+        let mut values = Vec::from_iter(iter);
+        values.sort();
+        values.dedup();
+
+        VecSet {
+            values: Rc::new(values),
+        }
+    }
+}
+
+impl<T> VecSet<T> {
+    fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    fn iter(&self) -> std::slice::Iter<'_, T> {
+        self.values.iter()
+    }
+}
+
+impl<T, I> ops::Index<I> for VecSet<T>
+where
+    Vec<T>: ops::Index<I>,
+{
+    type Output = <Vec<T> as ops::Index<I>>::Output;
+
+    fn index(&self, index: I) -> &Self::Output {
+        ops::Index::index(self.values.as_ref(), index)
+    }
+}
+
+struct Union<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    left: std::iter::Peekable<L>,
+    right: std::iter::Peekable<R>,
+}
+
+impl<T, L, R> Union<L, R>
+where
+    T: Ord,
+    L: Iterator<Item = T>,
+    R: Iterator<Item = T>,
+{
+    fn new(left: L, right: R) -> Self {
+        Union {
+            left: left.peekable(),
+            right: right.peekable(),
+        }
+    }
+}
+
+impl<T, L, R> Iterator for Union<L, R>
+where
+    T: Ord,
+    L: Iterator<Item = T>,
+    R: Iterator<Item = T>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        if let Some(litem) = self.left.peek() {
+            if let Some(ritem) = self.right.peek() {
+                match litem.cmp(ritem) {
+                    Ordering::Less => {
+                        Some(self.left.next().unwrap_or_else(|| unreachable!()))
+                    }
+                    Ordering::Greater => {
+                        Some(self.right.next().unwrap_or_else(|| unreachable!()))
+                    }
+                    Ordering::Equal => {
+                        self.left.next().unwrap_or_else(|| unreachable!());
+                        Some(self.right.next().unwrap_or_else(|| unreachable!()))
+                    }
+                }
+            } else {
+                Some(self.left.next().unwrap_or_else(|| unreachable!()))
+            }
+        } else {
+            self.right.next()
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (llow, lhigh) = self.left.size_hint();
+        let (rlow, rhigh) = self.right.size_hint();
+
+        (
+            llow.min(rlow),
+            lhigh.and_then(|lhigh| rhigh.map(|rhigh| lhigh + rhigh)),
+        )
+    }
+}
+
+impl<T> VecSet<T>
+where
+    T: Ord + Clone,
+{
+    fn new(value: T) -> Self {
+        VecSet {
+            values: Rc::new(vec![value]),
+        }
+    }
+
+    fn from_sorted_iter<II>(values: II) -> Self
+    where
+        II: IntoIterator<Item = T>,
+    {
+        VecSet {
+            values: Rc::new(values.into_iter().collect()),
+        }
+    }
+}
+
+struct WeightedUnion<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    left: std::iter::Peekable<L>,
+    right: std::iter::Peekable<R>,
+}
+
+impl<T, L, R> WeightedUnion<L, R>
+where
+    T: Ord,
+    L: Iterator<Item = (f64, T)>,
+    R: Iterator<Item = (f64, T)>,
+{
+    fn new(left: L, right: R) -> Self {
+        WeightedUnion {
+            left: left.peekable(),
+            right: right.peekable(),
+        }
+    }
+}
+
+impl<T, L, R> Iterator for WeightedUnion<L, R>
+where
+    T: Ord,
+    L: Iterator<Item = (f64, T)>,
+    R: Iterator<Item = (f64, T)>,
+{
+    type Item = (f64, T);
+
+    fn next(&mut self) -> Option<(f64, T)> {
+        loop {
+            if let Some((_, litem)) = self.left.peek() {
+                if let Some((_, ritem)) = self.right.peek() {
+                    match litem.cmp(ritem) {
+                        Ordering::Less => {
+                            break Some(
+                                self.left.next().unwrap_or_else(|| unreachable!()),
+                            )
+                        }
+                        Ordering::Greater => {
+                            break Some(
+                                self.right.next().unwrap_or_else(|| unreachable!()),
+                            )
+                        }
+                        Ordering::Equal => {
+                            let (lweight, litem) =
+                                self.left.next().unwrap_or_else(|| unreachable!());
+                            let (rweight, _ritem) =
+                                self.right.next().unwrap_or_else(|| unreachable!());
+
+                            let weight = lweight + rweight;
+
+                            if is_close(weight, 0.) {
+                                continue;
+                            } else {
+                                break Some((lweight + rweight, litem));
+                            }
+                        }
+                    }
+                } else {
+                    break Some(self.left.next().unwrap_or_else(|| unreachable!()));
+                }
+            } else {
+                break self.right.next();
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (llow, lhigh) = self.left.size_hint();
+        let (rlow, rhigh) = self.right.size_hint();
+
+        (
+            llow.min(rlow),
+            lhigh.and_then(|lhigh| rhigh.map(|rhigh| lhigh.max(rhigh))),
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct WeightedVecSet<T> {
+    values: Rc<Vec<(f64, T)>>,
+}
+
+impl<T> Default for WeightedVecSet<T> {
+    fn default() -> Self {
+        WeightedVecSet {
+            values: Rc::default(),
+        }
+    }
+}
+
+impl<T> Eq for WeightedVecSet<T> where T: Eq {}
+
+impl<T> PartialOrd for WeightedVecSet<T>
+where
+    T: Ord,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for WeightedVecSet<T>
+where
+    T: Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.len() < other.len() {
+            Ordering::Less
+        } else if self.len() > other.len() {
+            Ordering::Greater
+        } else {
+            for ((_, lhs), (_, rhs)) in self.iter().zip(other.iter()) {
+                match lhs.cmp(rhs) {
+                    Ordering::Less => return Ordering::Less,
+                    Ordering::Greater => return Ordering::Greater,
+                    Ordering::Equal => (),
+                }
+            }
+
+            for ((lhs, _), (rhs, _)) in self.iter().zip(other.iter()) {
+                if lhs < rhs {
+                    return Ordering::Less;
+                } else if lhs > rhs {
+                    return Ordering::Greater;
+                }
+            }
+
+            Ordering::Equal
+        }
+    }
+}
+
+impl<T> Hash for WeightedVecSet<T>
+where
+    T: Hash,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        for (factor, item) in self.values.as_ref() {
+            factor.to_bits().hash(state);
+            item.hash(state)
+        }
+    }
+}
+
+impl<T> WeightedVecSet<T> {
+    fn len(&self) -> usize {
+        self.values.len()
+    }
+}
+
+impl<T> iter::FromIterator<(f64, T)> for WeightedVecSet<T>
+where
+    T: Ord,
+{
+    fn from_iter<II>(iter: II) -> Self
+    where
+        II: IntoIterator<Item = (f64, T)>,
+    {
+        let mut values = Vec::from_iter(iter);
+        values.sort_by(|(_, lhs), (_, rhs)| lhs.cmp(rhs));
+
+        // TODO: sumdups()
+
+        WeightedVecSet::from_sorted_iter(values)
+    }
+}
+
+impl<T> WeightedVecSet<T>
+where
+    T: Ord,
+{
+    fn from_sorted_iter<II>(values: II) -> Self
+    where
+        II: IntoIterator<Item = (f64, T)>,
+    {
+        WeightedVecSet {
+            values: Rc::new(values.into_iter().collect()),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    fn iter<'a>(&'a self) -> impl Iterator<Item = (f64, &'a T)> {
+        self.values.iter().map(|(weight, item)| (*weight, item))
+    }
+}
+
+impl<T> WeightedVecSet<T>
+where
+    T: Ord + Clone,
+{
+    fn union(&self, other: &WeightedVecSet<T>) -> WeightedVecSet<T> {
+        if self.is_empty() {
+            other.clone()
+        } else {
+            self.union_sorted(other.iter())
+        }
+    }
+
+    fn union_sorted<'a, II>(&'a self, other: II) -> WeightedVecSet<T>
+    where
+        II: IntoIterator<Item = (f64, &'a T)>,
+        T: 'a,
+    {
+        let other = other.into_iter();
+        if other.size_hint().1 == Some(0) {
+            self.clone()
+        } else {
+            WeightedVecSet::from_sorted_iter(
+                WeightedUnion::new(self.iter(), other)
+                    .map(|(weight, item)| (weight, item.clone())),
+            )
+        }
     }
 }

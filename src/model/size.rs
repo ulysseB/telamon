@@ -5,6 +5,7 @@ use crate::search_space::{NumSet, SearchSpace};
 use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
 use std::cmp::Ordering;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
 use utils::*;
@@ -13,8 +14,8 @@ use utils::*;
 struct DimSizeInner {
     id: ir::DimId,
     possible_values: Vec<u32>,
-    gcd: u32,
-    lcm: u32,
+    gcd: u64,
+    lcm: u64,
 }
 
 impl fmt::Display for DimSizeInner {
@@ -41,7 +42,16 @@ impl PartialOrd for DimSizeInner {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+impl Hash for DimSizeInner {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.id.hash(state);
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct DimSize {
     inner: Rc<DimSizeInner>,
 }
@@ -71,12 +81,20 @@ impl DimSize {
         );
 
         possible_values.sort();
+
+        let (gcd, lcm) = possible_values.iter().skip(1).cloned().map(u64::from).fold(
+            (u64::from(possible_values[0]), u64::from(possible_values[0])),
+            |(gcd, lcm), possible_value| {
+                (gcd.gcd(&possible_value), lcm.lcm(&possible_value))
+            },
+        );
+
         DimSize {
             inner: Rc::new(DimSizeInner {
                 id,
                 possible_values,
-                gcd: 1, // TODO
-                lcm: 1, // TODO
+                gcd,
+                lcm,
             }),
         }
     }
@@ -84,6 +102,9 @@ impl DimSize {
 
 pub type SymbolicInt = sym::Int<DimSize>;
 pub type SymbolicFloat = sym::Float<DimSize>;
+pub type Ratio = sym::Ratio<DimSize>;
+pub type Lcm = sym::LcmExpr<DimSize>;
+pub type Min = sym::MinExpr<DimSize>;
 
 impl sym::Range for DimSize {
     fn min_value(&self) -> u64 {
@@ -92,6 +113,16 @@ impl sym::Range for DimSize {
 
     fn max_value(&self) -> u64 {
         self.inner.possible_values[self.inner.possible_values.len() - 1].into()
+    }
+}
+
+impl sym::Factor for DimSize {
+    fn gcd_value(&self) -> u64 {
+        self.inner.gcd
+    }
+
+    fn lcm_value(&self) -> u64 {
+        self.inner.lcm
     }
 }
 

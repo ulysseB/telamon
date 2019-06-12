@@ -1,109 +1,162 @@
+use fxhash::FxHasher;
 use std::cell::Cell;
 use std::cmp::Ordering;
-use std::collections::hash_map::DefaultHasher;
 use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
+use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 use std::ops;
 
-#[derive(Debug, Clone)]
-struct HashMemo<T, B = DefaultHasher> {
-    _hasher: PhantomData<fn() -> B>,
+#[derive(Debug, Clone, Default)]
+pub struct MemoizedHash<T: ?Sized, S = BuildHasherDefault<FxHasher>> {
+    hash_builder: S,
     hash: Cell<Option<u64>>,
     value: T,
 }
 
-impl<T, B> Hash for HashMemo<T, B>
+impl<T, S> From<T> for MemoizedHash<T, S>
 where
-    T: Hash,
-    B: Hasher + Default,
+    S: BuildHasher + Default,
 {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        state.write_u64(self.hash())
-    }
-}
-
-impl<T, B> HashMemo<T, B> {
-    fn hash(&self) -> u64
-    where
-        T: Hash,
-        B: Hasher + Default,
-    {
-        if let Some(hash) = self.hash.get() {
-            hash
-        } else {
-            let mut hasher = B::default();
-            self.value.hash(&mut hasher);
-            let hash = hasher.finish();
-            self.hash.set(Some(hash));
-            hash
+    fn from(value: T) -> Self {
+        MemoizedHash {
+            hash_builder: S::default(),
+            hash: Cell::new(None),
+            value,
         }
     }
 }
 
-impl<T, B> fmt::Display for HashMemo<T, B>
+impl<T, S> fmt::Display for MemoizedHash<T, S>
 where
-    T: fmt::Display,
+    T: fmt::Display + ?Sized,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.value, fmt)
     }
 }
 
-impl<T, B> PartialEq for HashMemo<T, B>
+impl<T, S> PartialEq for MemoizedHash<T, S>
 where
-    T: PartialEq + Hash,
-    B: Hasher + Default,
+    T: PartialEq + Hash + ?Sized,
+    S: BuildHasher,
 {
-    fn eq(&self, other: &HashMemo<T, B>) -> bool {
-        if self.hash() == other.hash() {
-            self.value == other.value
-        } else {
+    fn eq(&self, other: &Self) -> bool {
+        if MemoizedHash::get_hash(self) != MemoizedHash::get_hash(other) {
             false
+        } else {
+            self.value.eq(&other.value)
         }
     }
 }
 
-impl<T, B> Eq for HashMemo<T, B>
+impl<T, S> Eq for MemoizedHash<T, S>
 where
-    T: Eq + Hash,
-    B: Hasher + Default,
+    T: Eq + Hash + ?Sized,
+    S: BuildHasher,
 {
 }
 
-impl<T, B> PartialOrd for HashMemo<T, B>
+impl<T, S> PartialOrd for MemoizedHash<T, S>
 where
-    T: PartialOrd + Hash,
-    B: Hasher + Default,
+    T: PartialOrd + Hash + ?Sized,
+    S: BuildHasher,
 {
-    fn partial_cmp(&self, other: &HashMemo<T, B>) -> Option<Ordering> {
-        match self.hash().cmp(&other.hash()) {
-            Ordering::Greater => Some(Ordering::Greater),
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match MemoizedHash::get_hash(self).cmp(&MemoizedHash::get_hash(other)) {
             Ordering::Less => Some(Ordering::Less),
             Ordering::Equal => self.value.partial_cmp(&other.value),
+            Ordering::Greater => Some(Ordering::Greater),
         }
     }
 }
 
-impl<T, B> Ord for HashMemo<T, B>
+impl<T, S> Ord for MemoizedHash<T, S>
 where
-    T: Ord + Hash,
-    B: Hasher + Default,
+    T: Ord + Hash + ?Sized,
+    S: BuildHasher,
 {
-    fn cmp(&self, other: &HashMemo<T, B>) -> Ordering {
-        self.hash()
-            .cmp(&other.hash())
+    fn cmp(&self, other: &Self) -> Ordering {
+        MemoizedHash::get_hash(self)
+            .cmp(&MemoizedHash::get_hash(other))
             .then_with(|| self.value.cmp(&other.value))
     }
 }
 
-impl<T, B> ops::Deref for HashMemo<T, B> {
+impl<T, S> MemoizedHash<T, S>
+where
+    T: Hash,
+    S: BuildHasher,
+{
+    pub fn with_hasher(value: T, hash_builder: S) -> Self {
+        MemoizedHash {
+            hash_builder,
+            hash: Cell::new(None),
+            value,
+        }
+    }
+
+    pub fn new(value: T) -> Self
+    where
+        S: Default,
+    {
+        MemoizedHash::with_hasher(value, S::default())
+    }
+}
+
+impl<T, S> MemoizedHash<T, S>
+where
+    T: Hash + ?Sized,
+    S: BuildHasher,
+{
+    fn get_hash(&self) -> u64 {
+        match self.hash.get() {
+            None => {
+                let mut hasher = self.hash_builder.build_hasher();
+                self.value.hash(&mut hasher);
+                let hash = hasher.finish();
+                self.hash.set(Some(hash));
+                hash
+            }
+            Some(hash) => hash,
+        }
+    }
+}
+
+impl<T, S> Hash for MemoizedHash<T, S>
+where
+    T: Hash + ?Sized,
+    S: BuildHasher,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        MemoizedHash::get_hash(self).hash(state);
+    }
+}
+
+impl<T, S> AsRef<T> for MemoizedHash<T, S>
+where
+    T: ?Sized,
+{
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
+impl<T, S> ops::Deref for MemoizedHash<T, S>
+where
+    T: ?Sized,
+{
     type Target = T;
 
     fn deref(&self) -> &T {
         &self.value
+    }
+}
+
+impl<T, S> MemoizedHash<T, S>
+where
+    T: ?Sized,
+{
+    pub fn make_mut(this: &mut Self) -> &mut T {
+        this.hash.set(None);
+        &mut this.value
     }
 }

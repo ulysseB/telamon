@@ -32,7 +32,7 @@ pub type FastBound = ExplainedBound<Rc<FastOrigin>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bound {
     value: f64,
-    lol: String,
+    pub lol: String,
     size: usize,
     origin: Origin,
 }
@@ -79,9 +79,9 @@ impl FastBound {
 
     /// Repeat the bound by iteration on a given loop level.
     // TODO: iterations: SymbolicFloat
-    pub fn iterate(self, iterations: &size::SymbolicInt, level: usize) -> Self {
+    pub fn iterate(self, iterations: size::SymbolicFloat, level: usize) -> Self {
         let origin = FastOrigin::Loop {
-            iterations: iterations.min_value(), // TODO: be more precise?
+            iterations: iterations.min_value() as u64, // TODO: be more precise?
             level,
             inner: self.origin,
         };
@@ -123,7 +123,7 @@ impl FastBound {
             .1;
         Bound {
             value: self.value.min_value(), // TODO:?
-            lol: format!("{}", self.value),
+            lol: "".to_string(), // self.value.to_string(),   // format!("{}", self.value),
             origin,
             size: self.size,
         }
@@ -139,12 +139,13 @@ impl FastBound {
         self,
         hw_parallelism: u64,
         // TODO(sym): SymbolicFloat
-        iterations: &size::SymbolicInt,
-        max_par: &size::SymbolicInt,
+        iterations: &size::Min,
+        max_par: &size::Lcm,
     ) -> Self {
         assert!(hw_parallelism < u64::from(u32::max_value()));
 
-        let num_waves = size::SymbolicFloat::div_ceil(max_par, hw_parallelism as u32);
+        let max_par = size::SymbolicInt::from(max_par.clone());
+        let num_waves = size::SymbolicFloat::div_ceil(&max_par, hw_parallelism as u32);
         // TODO(sym): let factor = num_waves * iterations / max_par.to_symbolic_float()
         // -> div_ceil_inv_magic(max_par, hw_parallelism) * iterations
         let factor = (num_waves * iterations.to_symbolic_float()) / max_par;
@@ -161,6 +162,7 @@ impl FastBound {
 
     pub fn max_assign(&mut self, other: FastBound) {
         self.value.max_assign(&other.value);
+        // TODO: explanation!!
         // TODO
         /*
         if other.is_better_than(self) {
@@ -242,11 +244,7 @@ impl Bound {
 
 impl fmt::Display for Bound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{:.2e}ns ({}) because {}",
-            self.value, self.lol, self.origin
-        )
+        write!(f, "{:.2e}ns because {}", self.value, self.origin)
     }
 }
 
@@ -593,9 +591,9 @@ impl HwPressure {
     }
 
     /// Computes the pressure obtained by duplicating this one in parallel.
-    pub fn repeat_parallel(&mut self, factor: &size::SymbolicInt) {
+    pub fn repeat_parallel(&mut self, factor: size::SymbolicFloat) {
         for b in &mut self.bottlenecks {
-            *b *= factor;
+            *b *= &factor;
         }
     }
 

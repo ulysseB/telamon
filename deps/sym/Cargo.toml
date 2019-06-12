@@ -6,6 +6,14 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
+fxhash = "0.2"
 log = "0.4"
 num = "0.2"
 itertools = "0.8"
+
+[dev-dependencies]
+proptest = "0.9"
+
+[features]
+default = ["verify"]
+verify = []

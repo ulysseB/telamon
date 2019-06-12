@@ -115,7 +115,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         &local_info,
         BottleneckLevel::Global,
         &[],
-        &size::SymbolicInt::one(),
+        &size::Ratio::one(),
     );
     trace!(
         "global pressure {}",
@@ -308,7 +308,9 @@ fn repeat_level(
         // First add the dependency without considering data dependencies from the
         // first and to the last iteration. This reduce the size of the bound
         // explanation when such dependencies are not needed
-        let iter_lat = cycle_lat.clone().iterate(&action.iterations, level_id);
+        let iter_lat = cycle_lat
+            .clone()
+            .iterate(action.iterations.to_symbolic_float(), level_id);
         let latency = FastBound::zero().chain(entry_point, iter_lat);
         level_dag.add_dependency(to_map, pred, exit_point, &latency);
     }
@@ -319,7 +321,7 @@ fn repeat_level(
         // ... bad for the bound?
         let iter_lat = cycle_lat
             .clone()
-            .iterate(&(&action.iterations - 2u32), level_id);
+            .iterate(action.iterations.to_symbolic_float() - 2f64, level_id);
         let latency = init_lat.chain(entry_point, iter_lat);
         level_dag.add_dependency(to_map, pred, entry_point, &latency);
     }
@@ -335,7 +337,8 @@ fn repeat_level(
             // TODO(sym): action.iterations.to_float() - 2
             let latency = init_lat.clone().chain(
                 point,
-                lat.clone().iterate(&(&action.iterations - 2u32), level_id),
+                lat.clone()
+                    .iterate(action.iterations.to_symbolic_float() - 2f64, level_id),
             );
             level_dag.add_dependency(to_map, pred, point, &latency);
             if action.iterations.min_value() >= 3 {
@@ -344,7 +347,10 @@ fn repeat_level(
                 let latency = init_lat
                     .chain(
                         point,
-                        lat.clone().iterate(&(&action.iterations - 3u32), level_id),
+                        lat.clone().iterate(
+                            action.iterations.to_symbolic_float() - 3f64,
+                            level_id,
+                        ),
                     )
                     .chain(point, exit_lat);
                 level_dag.add_dependency(to_map, pred, entry_point, &latency);
