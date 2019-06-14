@@ -1,6 +1,6 @@
 use log::warn;
 use std::{fs, path::Path};
-use telamon_kernels::{linalg, Kernel};
+use telamon_kernels::{compose::ActivationFunction, linalg, Kernel};
 use telamon_x86 as x86;
 
 macro_rules! kernel_dump {
@@ -34,14 +34,12 @@ fn main() {
         linalg::FusedMM<f32>,
         fused_mm_relu,
         100,
-        linalg::FusedMMP::new(16, 16, 16)
-            .activation_fun(linalg::ActivationFunction::ReLU)
+        linalg::FusedMMP::new(16, 16, 16).activation_fun(ActivationFunction::ReLU)
     );
     kernel_dump!(
         linalg::FusedMM<f32>,
         fused_mm_sigmoid,
         100,
-        linalg::FusedMMP::new(16, 16, 16)
-            .activation_fun(linalg::ActivationFunction::Sigmoid)
+        linalg::FusedMMP::new(16, 16, 16).activation_fun(ActivationFunction::Sigmoid)
     );
 }

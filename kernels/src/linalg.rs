@@ -2,6 +2,10 @@
 #![allow(clippy::many_single_char_names)]
 use std::sync::Arc;
 
+use crate::compose::{
+    matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul, tensor_mad,
+    ActivationFunction,
+};
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
 use ::ndarray::{Array1, Array2, Array3, ArrayD};
@@ -60,12 +64,11 @@ where
         let tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[1024, 4]);
         let mut builder = Builder::new(signature, ctx.device());
 
-        let ld_x = self.x.load(vec![tiling.clone()], &mut builder);
-        let ld_y = self.y.load(vec![tiling], &mut builder);
-        let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-        let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
-        let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
-        let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
+        let x = self.x.load(vec![tiling.clone()], &mut builder);
+        let y = self.y.load(vec![tiling], &mut builder);
+
+        let mad = tensor_mad(&mut builder, &x, &"alpha", &y);
+
         mad.store(&self.z, &mut builder);
         vec![build_candidate(builder.get(), ctx)]
     }
@@ -134,24 +137,12 @@ where
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
         let mut builder = Builder::new(signature, ctx.device());
-        let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
-        let ld_a = self.a.load(vec![m_tiling, n_tiling], &mut builder);
-        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
-        let init = builder.mov(&0f32);
-        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
-        let acc = builder.mad(&a_op, &x_op, &helper::Reduce(init));
-        builder.close_dim(&acc_dim_n);
-        let sum = VirtualTensor::new(acc, vec![acc_dim_m]);
-        let st_y = sum.store(&self.y, &mut builder);
+        let x = self.x.load(vec![n_tiling.clone()], &mut builder);
+        let a = self.a.load(vec![m_tiling, n_tiling], &mut builder);
 
-        builder.order(&acc_dim_n, &st_y.inst(), Order::BEFORE);
-        // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
+        let ax = matrix_vector_multiply(&mut builder, &a, &x);
+        ax.store(&self.y, &mut builder);
+
         vec![build_candidate(builder.get(), ctx)]
     }
 
@@ -241,33 +232,23 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
     ) -> Vec<Candidate> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
-        let mut builder = helper::Builder::new(signature, ctx.device());
-        let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
-        let ab_tiling = vec![m_tiling, n_tiling];
-        let ld_a = self.a.load(ab_tiling.clone(), &mut builder);
-        let ld_b = self.b.load(ab_tiling, &mut builder);
-        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
-        let init_a = builder.mov(&0f32);
-        let init_b = builder.mov(&0f32);
-        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
-        let acc_a = builder.mad(&a_op, &x_op, &helper::Reduce(init_a));
-        let acc_b = builder.mad(&b_op, &x_op, &helper::Reduce(init_b));
-        builder.close_dim(&acc_dim_n);
-        let y_a = builder.mul(&acc_a, &"alpha");
-        let sum = builder.mad(&acc_b, &"beta", &y_a);
-        let sum = VirtualTensor::new(sum, vec![acc_dim_m]);
-        let st_y = sum.store(&self.y, &mut builder);
+        let ab_tiling = vec![m_tiling, n_tiling.clone()];
 
-        builder.order(&acc_dim_n, &y_a, Order::BEFORE);
-        // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));
-        builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let x = self.x.load(vec![n_tiling], &mut builder);
+        let a = self.a.load(ab_tiling.clone(), &mut builder);
+        let b = self.b.load(ab_tiling, &mut builder);
+
+        let ax = matrix_vector_multiply(&mut builder, &a, &x);
+        let aax = tensor_elementwise_mul(&mut builder, &"alpha", &ax);
+
+        let bx = matrix_vector_multiply(&mut builder, &b, &x);
+
+        let aaxpbbx = tensor_mad(&mut builder, &bx, &"beta", &aax);
+
+        aaxpbbx.store(&self.y, &mut builder);
+
         vec![build_candidate(builder.get(), ctx)]
     }
 
@@ -364,15 +345,6 @@ pub struct FusedMM<'a, S: Scalar> {
     c: Tensor<'a, S>,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
-pub enum ActivationFunction {
-    /// Linear rectifier (i.e., max(0, v))
-    ReLU,
-
-    /// Sigmoid activation function (i.e., 1 / (1 + exp(v))
-    Sigmoid,
-}
-
 impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
     type Parameters = FusedMMP;
     type ExpectedOutput = Array2<S>;
@@ -411,49 +383,17 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
 
         let mut builder = helper::Builder::new(signature, ctx.device());
 
-        let ld_a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
-        let ld_b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
+        let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
+        let b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
 
-        // Matrix multiplication
-        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
-        let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
-        let acc_init = builder.mov(&0f32);
-        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
-        let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
-        let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
-        let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+        let ab = matrix_matrix_multiply(&mut builder, &a, &b);
 
-        builder.close_dim(&acc_dim_k);
-
-        let (res, res_dim_m, res_dim_n) =
-            if let Some(activation_fun) = &self.params.activation_fun {
-                // Activation function specified -> create new set of
-                // nested dimensions hosting instructions for the
-                // activaton function
-                let act_dim_m = builder.open_mapped_dim(&acc_dim_m);
-                let act_dim_n = builder.open_mapped_dim(&acc_dim_n);
-
-                let act = match activation_fun {
-                    ActivationFunction::ReLU => builder.max(&S::zero(), &acc),
-                    ActivationFunction::Sigmoid => {
-                        let exp = builder.exp(&acc);
-                        let add = builder.add(&S::one(), &exp);
-                        builder.div(&S::one(), &add)
-                    }
-                };
-
-                (act, act_dim_m, act_dim_n)
-            } else {
-                // No activation function -> just use original result
-                // from matrix multiplication with the original
-                // dimensions
-                (acc, acc_dim_m, acc_dim_n)
-            };
-
-        let res_vt = VirtualTensor::new(res, vec![res_dim_m, res_dim_n]);
-        res_vt.store(&self.c, &mut builder);
+        if let Some(activation_fun) = &self.params.activation_fun {
+            let res = activation_fun.apply::<S>(&mut builder, &ab);
+            res.store(&self.c, &mut builder);
+        } else {
+            ab.store(&self.c, &mut builder);
+        }
 
         vec![build_candidate(builder.get(), ctx)]
     }
@@ -672,6 +612,224 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let c = self.c.read_to_host(context).into_shape(c_shape).unwrap();
         if let Err(invalid) = check_output(&c, expected) {
             Err(format!("Invalid batched_gemm output: {}", invalid))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Fused2MMP {
+    pub m: i32,
+    pub n: i32,
+    pub k: i32,
+    pub p: i32,
+    pub alpha: f32,
+    pub beta: f32,
+    pub transpose_a: bool,
+    pub transpose_b: bool,
+    pub transpose_c: bool,
+    pub transpose_d: bool,
+    pub generic: bool,
+    pub m_tiling: Option<helper::TilingPattern>,
+    pub n_tiling: Option<helper::TilingPattern>,
+    pub k_tiling: Option<helper::TilingPattern>,
+    pub p_tiling: Option<helper::TilingPattern>,
+    pub activation_fun: Option<ActivationFunction>,
+}
+
+impl Fused2MMP {
+    pub fn new(m: i32, n: i32, k: i32, p: i32, alpha: f32, beta: f32) -> Self {
+        Fused2MMP {
+            m,
+            n,
+            k,
+            p,
+            alpha,
+            beta,
+            transpose_a: false,
+            transpose_b: false,
+            transpose_c: false,
+            transpose_d: false,
+            generic: true,
+            m_tiling: None,
+            n_tiling: None,
+            k_tiling: None,
+            p_tiling: None,
+            activation_fun: None,
+        }
+    }
+
+    pub fn transpose_a(mut self) -> Self {
+        self.transpose_a = true;
+        self
+    }
+
+    pub fn transpose_b(mut self) -> Self {
+        self.transpose_b = true;
+        self
+    }
+
+    pub fn transpose_c(mut self) -> Self {
+        self.transpose_c = true;
+        self
+    }
+
+    pub fn transpose_d(mut self) -> Self {
+        self.transpose_d = true;
+        self
+    }
+
+    pub fn activation_fun<F>(mut self, fun: F) -> Self
+    where
+        F: Into<Option<ActivationFunction>>,
+    {
+        self.activation_fun = fun.into();
+        self
+    }
+
+    /// Inline the sizes in the generated code.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
+        self
+    }
+}
+
+/// Computes `E = alpha*A.B.C + beta*D` and applies an activation
+/// function to each element of E.
+pub struct Fused2MM<'a, S: Scalar> {
+    pub params: Fused2MMP,
+    a: Tensor<'a, S>,
+    b: Tensor<'a, S>,
+    c: Tensor<'a, S>,
+    d: Tensor<'a, S>,
+    e: Tensor<'a, S>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
+    type Parameters = Fused2MMP;
+    type ExpectedOutput = Array2<S>;
+
+    fn name() -> &'static str {
+        "fused_2mm"
+    }
+
+    fn build_signature<AM>(params: Fused2MMP, builder: &mut SignatureBuilder<AM>) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let k_size = create_size(params.k, "k", params.generic, builder);
+        let p_size = create_size(params.p, "p", params.generic, builder);
+
+        let a = TensorBuilder::new("a", vec![m_size.clone(), k_size.clone()])
+            .doif(params.transpose_a, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let b = TensorBuilder::new("b", vec![k_size, n_size.clone()])
+            .doif(params.transpose_b, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let c = TensorBuilder::new("c", vec![n_size.clone(), p_size.clone()])
+            .doif(params.transpose_c, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let d = TensorBuilder::new("d", vec![m_size.clone(), p_size.clone()])
+            .doif(params.transpose_d, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        builder.scalar("alpha", params.alpha);
+        builder.scalar("beta", params.beta);
+
+        let e = builder.tensor::<S>("e", vec![m_size, p_size], false);
+        Fused2MM {
+            params,
+            a,
+            b,
+            c,
+            d,
+            e,
+        }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
+        let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
+        let p_tiling = infer_tiling(self.params.p, &self.params.p_tiling, &[32, 4]);
+        let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let a = self
+            .a
+            .load(vec![m_tiling.clone(), k_tiling.clone()], &mut builder);
+        let b = self.b.load(vec![k_tiling, n_tiling.clone()], &mut builder);
+        let c = self.c.load(vec![n_tiling, p_tiling.clone()], &mut builder);
+        let d = self.d.load(vec![m_tiling, p_tiling], &mut builder);
+
+        let ab = matrix_matrix_multiply(&mut builder, &a, &b);
+        let aab = tensor_elementwise_mul(&mut builder, &"alpha", &ab);
+        let aabc = matrix_matrix_multiply(&mut builder, &aab, &c);
+        let aabcpbd = tensor_mad(&mut builder, &d, &"beta", &aabc);
+
+        if let Some(activation_fun) = &self.params.activation_fun {
+            let res = activation_fun.apply::<S>(&mut builder, &aabcpbd);
+            res.store(&self.e, &mut builder);
+        } else {
+            aabcpbd.store(&self.e, &mut builder);
+        }
+
+        let candidate = build_candidate(builder.get(), ctx);
+
+        vec![candidate]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
+        let a_shape = (self.params.m as usize, self.params.k as usize);
+        let b_shape = (self.params.k as usize, self.params.n as usize);
+        let c_shape = (self.params.n as usize, self.params.p as usize);
+        let d_shape = (self.params.m as usize, self.params.p as usize);
+
+        let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
+        let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
+        let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
+        let d = unwrap!(self.d.read_to_host(context).into_shape(d_shape));
+        let ab = a.dot(&b);
+        let aab = ab.mapv(|x| x * S::from(self.params.alpha).unwrap());
+        let aabc = aab.dot(&c);
+        let bd = d.mapv(|x| x * S::from(self.params.beta).unwrap());
+        let mut aabcpbd = aabc + bd;
+
+        match self.params.activation_fun {
+            Some(ActivationFunction::ReLU) => {
+                aabcpbd.mapv_inplace(|c| c.max(S::zero()));
+            }
+
+            Some(ActivationFunction::Sigmoid) => {
+                let one = S::one();
+                aabcpbd.mapv_inplace(|c| one / (one + S::exp(c)));
+            }
+
+            None => {}
+        };
+
+        aabcpbd
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let e_shape = (self.params.m as usize, self.params.p as usize);
+        let e = unwrap!(self.e.read_to_host(context).into_shape(e_shape));
+        if let Err(invalid) = check_output(&e, expected) {
+            Err(format!("Invalid fused_2mm output: {}", invalid))
         } else {
             Ok(())
         }
