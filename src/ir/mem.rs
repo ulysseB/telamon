@@ -175,7 +175,7 @@ impl BlockMap {
         for &id in &self.layouts {
             let mut changed = false; // Ensure we only lower once.
             let block = &mut self.blocks[id];
-            for pair in block.maybe_mapped.filter_remove(|&mut (lhs2, rhs2)| {
+            for pair in block.maybe_mapped.drain_filter(|&mut (lhs2, rhs2)| {
                 (lhs2 == lhs && rhs2 == rhs) || (lhs2 == rhs && rhs2 == lhs)
             }) {
                 block.mapped_dims.push(pair);
