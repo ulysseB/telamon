@@ -1,7 +1,8 @@
 use std::cmp::Ord;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock, Weak};
-use std::{fmt, io, thread};
+use std::collections::HashSet;
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+use std::{fs, io, thread};
 
 use rayon::prelude::*;
 use termion::event::Key;
@@ -10,10 +11,11 @@ use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Direction, Layout, Rect};
-use tui::style::{Color, Modifier, Style};
+use tui::style::{Modifier, Style};
 use tui::widgets::{Block, Borders, List, Paragraph, SelectableList, Text, Widget};
 use tui::Terminal;
 
+use log::warn;
 use telamon::codegen;
 use telamon::device::{Context, EvalMode, KernelEvaluator};
 use telamon::explorer::{
@@ -23,14 +25,14 @@ use telamon::explorer::{
 };
 use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
-use telamon::search_space::{Choice, SearchSpace};
+use telamon::search_space::SearchSpace;
 use telamon_cuda;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 use crossbeam::channel;
-use crossbeam_deque::{Injector, Stealer, Worker};
 use futures::{executor, Future};
-use std::iter;
+use quicli::prelude::{CliResult, Verbosity};
+use structopt::StructOpt;
 
 trait Ignore {
     fn ignore(self);
@@ -159,6 +161,12 @@ impl<'a> Cursor<'a> {
         } else {
             Err(())
         }
+    }
+
+    fn path(&self) -> impl Iterator<Item = &Action> {
+        self.path
+            .iter()
+            .map(|(node, index)| &node.children[*index].action)
     }
 }
 
@@ -521,8 +529,61 @@ impl<'a, T: Send> Evaluator<'a, T> {
     }
 }
 
-fn main() -> io::Result<()> {
-    env_logger::init();
+/// The Telamon Debugger
+#[derive(Debug, StructOpt)]
+#[structopt(name = "tldbg")]
+struct Opt {
+    /// Path to the replay directory.
+    ///
+    /// The replay directory is used to store replays with 'w', which can later be reloaded with
+    /// 'r' (not yet implemented).
+    ///
+    /// Replays are stored as .json files containing the actions to use, which is also the same
+    /// format used by the replay tests.
+    #[structopt(
+        parse(from_os_str),
+        long = "replay-dir",
+        raw(aliases = r#"&["replay_dir"]"#)
+    )]
+    replay_dir: Option<PathBuf>,
+
+    // From quicli
+    #[structopt(flatten)]
+    verbosity: Verbosity,
+}
+
+impl Opt {
+    pub fn save_replay(&self, replay: &[Action]) -> io::Result<()> {
+        if let Some(path) = &self.replay_dir {
+            // Ensure the replay directory exists
+            fs::create_dir_all(path)?;
+
+            let names = fs::read_dir(path)?
+                .map(|entry| entry.map(|entry| entry.file_name()))
+                .collect::<Result<HashSet<_>, _>>()?;
+
+            let mut ix = names.len();
+            let name = loop {
+                let name = std::ffi::OsString::from(format!("replay{}.json", ix));
+                if !names.contains(&name) {
+                    break name;
+                } else {
+                    ix += 1;
+                }
+            };
+
+            fs::write(path.join(&name), serde_json::to_string(replay)?)
+        } else {
+            warn!("Trying to save replay but no replay directory was defined.");
+
+            Ok(())
+        }
+    }
+}
+
+fn main() -> CliResult {
+    let args = Opt::from_args();
+    args.verbosity.setup_env_logger("telamon")?;
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
@@ -602,6 +663,11 @@ fn main() -> io::Result<()> {
                         Key::Char('/') => command.push('/'),
                         Key::Char('u') => widget.selector.undo().ignore(),
                         Key::Char('b') => widget.selector.compute_bound().ignore(),
+                        Key::Char('w') => {
+                            let actions: Vec<_> =
+                                widget.selector.cursor.path().cloned().collect();
+                            args.save_replay(&actions).unwrap();
+                        }
                         Key::Char('s') => {
                             let candidates = vec![Candidate::new(
                                 widget.selector.cursor.node.candidate.clone(),
