@@ -24,7 +24,7 @@ pub fn get() -> TokenStream {
                 let start = new_universe.binary_search(&self.min_value(self_universe))
                     .unwrap_or_else(|x| x);
                 let len = new_universe.binary_search(&self.max_value(self_universe))
-                    .unwrap_or_else(|x| x) - start;
+                    .unwrap_or_else(|x| x) - start + 1;
                 let enabled_values = ((1 << len) - 1) << start;
                 NumericSet { enabled_values }
             }

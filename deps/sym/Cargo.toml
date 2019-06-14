@@ -15,5 +15,5 @@ itertools = "0.8"
 proptest = "0.9"
 
 [features]
-default = ["verify"]
+default = []
 verify = []

@@ -4,7 +4,7 @@ use telamon::device::Context;
 use telamon::explorer;
 use telamon::ir;
 use telamon::model::bound;
-use telamon::search_space::{Action, DimKind};
+use telamon::search_space::{Action, DimKind, NumDomain, NumericSet};
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 fn main() {
@@ -31,16 +31,35 @@ fn main() {
         .swap_remove(0)
         .space
         .prioritized();
+    let sixteen = NumericSet::new_eq(
+        candidate
+            .ir_instance()
+            .dim(ir::DimId(28))
+            .possible_sizes()
+            .unwrap(),
+        16,
+        &(),
+    );
+    println!(
+        "{:?}, {:?}",
+        candidate.ir_instance().dim(ir::DimId(28)).possible_sizes(),
+        sixteen
+    );
     candidate
         .apply_decisions(vec![
-            Action::DimKind(ir::DimId(11), DimKind::UNROLL),
-            Action::DimKind(ir::DimId(1), DimKind::LOOP),
+            Action::DimKind(ir::DimId(28), DimKind::THREAD),
+            Action::Size(ir::DimId(28), sixteen),
         ])
         .unwrap();
 
+    let bound = bound(&candidate, context);
+    println!("Bound: {:?}", bound);
+
+    /*
     let bounds = (0..100)
         .map(|_| bound(&candidate, context))
         .collect::<Vec<_>>();
-    println!("Bounds: {:?}", bounds.len());
+        */
+    //println!("Bounds: {:?}", bounds.len());
     // println!("Expr: {}", bounds[0].lol);
 }

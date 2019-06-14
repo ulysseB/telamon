@@ -7,6 +7,7 @@ use crate::model::{
 };
 use crate::search_space::{DimKind, Domain};
 use itertools::Itertools;
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::rc::Rc;
@@ -121,6 +122,7 @@ impl FastBound {
             .explain(device, levels, code_points)
             .simplify()
             .1;
+        info!("bound is {}", self.value);
         Bound {
             value: self.value.min_value(), // TODO:?
             lol: "".to_string(), // self.value.to_string(),   // format!("{}", self.value),

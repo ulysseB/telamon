@@ -5,7 +5,7 @@ use std::fmt;
 use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 use std::ops;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct MemoizedHash<T: ?Sized, S = BuildHasherDefault<FxHasher>> {
     hash_builder: S,
     hash: Cell<Option<u64>>,
@@ -22,6 +22,15 @@ where
             hash: Cell::new(None),
             value,
         }
+    }
+}
+
+impl<T, S> fmt::Debug for MemoizedHash<T, S>
+where
+    T: fmt::Debug + ?Sized,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.value, fmt)
     }
 }
 
