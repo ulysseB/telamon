@@ -142,6 +142,15 @@
 <span id="142">142</span>
 <span id="143">143</span>
 <span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helper functions to build an IR instance.</span>
 <span class="kw">mod</span> <span class="ident">builder</span>;
@@ -176,6 +185,15 @@
     <span class="doccomment">/// Returns the id of the logical dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">LogicalDimId</span> {
         <span class="self">self</span>.<span class="ident">logical_id</span>
+    }
+
+    <span class="doccomment">/// Returns true if the size of `other` is equal to the</span>
+    <span class="doccomment">/// dimension&#39;s own size</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">size_eq</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">let</span> <span class="ident">self_size</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">logical_dim</span>(<span class="self">self</span>.<span class="ident">logical_id</span>).<span class="ident">total_size</span>();
+        <span class="kw">let</span> <span class="ident">other_size</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">logical_dim</span>(<span class="ident">other</span>.<span class="ident">logical_id</span>).<span class="ident">total_size</span>();
+
+        <span class="ident">self_size</span> <span class="op">==</span> <span class="ident">other_size</span>
     }
 }
 

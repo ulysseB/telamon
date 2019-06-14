@@ -43,12 +43,10 @@
 <span id="43">43</span>
 <span id="44">44</span>
 <span id="45">45</span>
-<span id="46">46</span>
-<span id="47">47</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">log</span>::<span class="ident">warn</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fs</span>, <span class="ident">path</span>::<span class="ident">Path</span>};
-<span class="kw">use</span> <span class="ident">telamon_kernels</span>::{<span class="ident">linalg</span>, <span class="ident">Kernel</span>};
+<span class="kw">use</span> <span class="ident">telamon_kernels</span>::{<span class="ident">compose</span>::<span class="ident">ActivationFunction</span>, <span class="ident">linalg</span>, <span class="ident">Kernel</span>};
 <span class="kw">use</span> <span class="ident">telamon_x86</span> <span class="kw">as</span> <span class="ident">x86</span>;
 
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">kernel_dump</span> {
@@ -82,15 +80,13 @@
         <span class="ident">linalg</span>::<span class="ident">FusedMM</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>,
         <span class="ident">fused_mm_relu</span>,
         <span class="number">100</span>,
-        <span class="ident">linalg</span>::<span class="ident">FusedMMP</span>::<span class="ident">new</span>(<span class="number">16</span>, <span class="number">16</span>, <span class="number">16</span>)
-            .<span class="ident">activation_fun</span>(<span class="ident">linalg</span>::<span class="ident">ActivationFunction</span>::<span class="ident">ReLU</span>)
+        <span class="ident">linalg</span>::<span class="ident">FusedMMP</span>::<span class="ident">new</span>(<span class="number">16</span>, <span class="number">16</span>, <span class="number">16</span>).<span class="ident">activation_fun</span>(<span class="ident">ActivationFunction</span>::<span class="ident">ReLU</span>)
     );
     <span class="macro">kernel_dump</span><span class="macro">!</span>(
         <span class="ident">linalg</span>::<span class="ident">FusedMM</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>,
         <span class="ident">fused_mm_sigmoid</span>,
         <span class="number">100</span>,
-        <span class="ident">linalg</span>::<span class="ident">FusedMMP</span>::<span class="ident">new</span>(<span class="number">16</span>, <span class="number">16</span>, <span class="number">16</span>)
-            .<span class="ident">activation_fun</span>(<span class="ident">linalg</span>::<span class="ident">ActivationFunction</span>::<span class="ident">Sigmoid</span>)
+        <span class="ident">linalg</span>::<span class="ident">FusedMMP</span>::<span class="ident">new</span>(<span class="number">16</span>, <span class="number">16</span>, <span class="number">16</span>).<span class="ident">activation_fun</span>(<span class="ident">ActivationFunction</span>::<span class="ident">Sigmoid</span>)
     );
 }
 </pre></div>
