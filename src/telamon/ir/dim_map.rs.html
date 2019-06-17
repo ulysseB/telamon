@@ -153,9 +153,9 @@
 
 <span class="doccomment">/// Represents a mapping between dimenions.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="comment">// TODO(cleanup): once merge is handled exclusively from the domain, we can use</span>
-<span class="comment">// a `Vec` instead.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DimMap</span> {
+    <span class="comment">// TODO(cleanup): once merge is handled exclusively from the domain, we can use</span>
+    <span class="comment">// a `Vec` instead.</span>
     <span class="ident">map</span>: <span class="ident">LinkedList</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>)<span class="op">&gt;</span>,
 }
 
@@ -227,7 +227,7 @@
     <span class="doccomment">/// Renames a basic block into an other. Indicates if some mapping were</span>
     <span class="doccomment">/// removed.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_dims</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">pair</span><span class="op">|</span> <span class="ident">pair</span> <span class="op">==</span> (<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">||</span> <span class="ident">pair</span> <span class="op">==</span> (<span class="ident">rhs</span>, <span class="ident">lhs</span>))
+        <span class="self">self</span>.<span class="ident">drain_filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">pair</span><span class="op">|</span> <span class="ident">pair</span> <span class="op">==</span> (<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="op">||</span> <span class="ident">pair</span> <span class="op">==</span> (<span class="ident">rhs</span>, <span class="ident">lhs</span>))
             .<span class="ident">count</span>()
             <span class="op">&gt;</span> <span class="number">0</span>
     }
@@ -237,8 +237,8 @@
         <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">iter</span>()
     }
 
-    <span class="doccomment">/// Filters the DimMap.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">FilterList</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>), <span class="ident">F</span><span class="op">&gt;</span>
+    <span class="doccomment">/// Filters the DimMap, removing the filtered elements in-place.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">drain_filter</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">FilterList</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>), <span class="ident">F</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>)) <span class="op">-&gt;</span> <span class="ident">bool</span>,
     {
