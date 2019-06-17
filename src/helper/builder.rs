@@ -483,7 +483,7 @@ impl Builder {
     }
 
     /// Returns a reference to the function being built.
-    pub(super) fn function(&self) -> &ir::Function<()> {
+    pub fn function(&self) -> &ir::Function<()> {
         &self.function
     }
 

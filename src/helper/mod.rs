@@ -32,6 +32,15 @@ impl LogicalDim {
     pub fn id(&self) -> ir::LogicalDimId {
         self.logical_id
     }
+
+    /// Returns true if the size of `other` is equal to the
+    /// dimension's own size
+    pub fn size_eq<T>(&self, other: &Self, function: &ir::Function<T>) -> bool {
+        let self_size = function.logical_dim(self.logical_id).total_size();
+        let other_size = function.logical_dim(other.logical_id).total_size();
+
+        self_size == other_size
+    }
 }
 
 impl std::ops::Index<usize> for LogicalDim {
