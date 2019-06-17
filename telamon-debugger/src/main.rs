@@ -747,7 +747,14 @@ fn main() -> CliResult {
                             .wait_future()
                             .unwrap()
                         }
-                        Key::Ctrl('l') => (),
+                        Key::Ctrl('l') => {
+                            // Yes, we need both of those because `clear` doesn't do what you think
+                            // it does (it does not update termion's buffers), and `draw` does not
+                            // clear the screen but only the portions which were changed (which
+                            // includes manually erasing characters in this case -- crazy, I know).
+                            terminal.draw(|_| {})?;
+                            terminal.clear()?;
+                        }
                         Key::Esc => widget.selector.unfilter(),
                         /*
                         Key::Ctrl('r') => widget.selector.redo().ignore(),
