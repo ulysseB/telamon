@@ -10,8 +10,8 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::buffer::Buffer;
-use tui::layout::{Constraint, Direction, Layout, Rect};
-use tui::style::{Modifier, Style};
+use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
+use tui::style::{Color, Modifier, Style};
 use tui::widgets::{Block, Borders, List, Paragraph, SelectableList, Text, Widget};
 use tui::Terminal;
 
@@ -33,6 +33,129 @@ use crossbeam::channel;
 use futures::{executor, Future};
 use quicli::prelude::{CliResult, Verbosity};
 use structopt::StructOpt;
+
+trait Dispatch<'a, E> {
+    fn add_listener<F>(&mut self, f: F)
+    where
+        F: FnMut(&E) -> bool + 'a;
+
+    fn with_listener<F>(mut self, f: F) -> Self
+    where
+        F: FnMut(&E) -> bool + 'a,
+        Self: Sized,
+    {
+        self.add_listener(f);
+        self
+    }
+}
+
+trait InputHandler<E> {
+    type Output;
+
+    fn handle_input(&mut self, event: &E) -> Option<Self::Output>;
+}
+
+trait InputHandlerExt<E>: InputHandler<E> + Sized {
+    fn or_else<U>(self, other: U) -> OrElse<Self, U>
+    where
+        U: InputHandler<E, Output = Self::Output>,
+    {
+        OrElse { a: self, b: other }
+    }
+}
+
+struct OrElse<A, B> {
+    a: A,
+    b: B,
+}
+
+impl<A, B, E, O> InputHandler<E> for OrElse<A, B>
+where
+    A: InputHandler<E, Output = O>,
+    B: InputHandler<E, Output = O>,
+{
+    type Output = O;
+
+    fn handle_input(&mut self, event: &E) -> Option<O> {
+        let OrElse { a, b } = self;
+        a.handle_input(event).or_else(move || b.handle_input(event))
+    }
+}
+
+impl<E, O, F> InputHandler<E> for F
+where
+    F: FnMut(&E) -> Option<O>,
+{
+    type Output = O;
+
+    fn handle_input(&mut self, event: &E) -> Option<O> {
+        self(event)
+    }
+}
+
+impl<T, E> InputHandler<E> for Option<T>
+where
+    T: InputHandler<E>,
+{
+    type Output = T::Output;
+
+    fn handle_input(&mut self, event: &E) -> Option<Self::Output> {
+        self.as_mut()
+            .and_then(move |inner| inner.handle_input(event))
+    }
+}
+
+struct InputDispatcher<'a, E> {
+    handlers: Vec<Box<dyn FnMut(&E) -> bool + 'a>>,
+}
+
+impl<'a, E> InputDispatcher<'a, E> {
+    pub fn new() -> Self {
+        InputDispatcher {
+            handlers: Vec::new(),
+        }
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        InputDispatcher {
+            handlers: Vec::with_capacity(capacity),
+        }
+    }
+
+    pub fn dispatch(&mut self, event: &E) -> bool {
+        // Iterate in reverse order to ensure last added handlers have higher priority
+        for handler in self.handlers.iter_mut().rev() {
+            if handler(event) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    pub fn clear(&mut self) {
+        self.handlers.clear();
+    }
+}
+
+impl<'a, E> Dispatch<'a, E> for InputDispatcher<'a, E> {
+    fn add_listener<F>(&mut self, f: F)
+    where
+        F: FnMut(&E) -> bool + 'a,
+    {
+        self.handlers.push(Box::new(f))
+    }
+}
+
+struct IgnoreDispatch;
+
+impl<'a, E> Dispatch<'a, E> for IgnoreDispatch {
+    fn add_listener<F>(&mut self, _f: F)
+    where
+        F: FnMut(&E) -> bool + 'a,
+    {
+    }
+}
 
 trait Ignore {
     fn ignore(self);
@@ -352,21 +475,28 @@ impl<'a> Widget for TuiCursor<'a> {
 }
 
 struct Explorer<'a> {
+    actionline: Option<String>,
     selector: TuiCursor<'a>,
 }
 
 impl<'a> Explorer<'a> {
     fn new(selector: TuiCursor<'a>) -> Self {
-        Explorer { selector }
+        Explorer {
+            actionline: None,
+            selector,
+        }
     }
 }
 
 impl<'a> Widget for Explorer<'a> {
     fn draw(&mut self, area: Rect, buf: &mut Buffer) {
+        let modeline = Rect::new(area.x, area.y + area.height - 1, area.width, 1);
+        let rest = Rect::new(area.x, area.y, area.width, area.height - 1);
+
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(70), Constraint::Min(40)].as_ref())
-            .split(area);
+            .constraints([Constraint::Ratio(2, 3), Constraint::Ratio(1, 3)].as_ref())
+            .split(rest);
 
         self.selector.draw(chunks[0], buf);
         Paragraph::new(
@@ -401,6 +531,52 @@ impl<'a> Widget for Explorer<'a> {
         )
         .wrap(true)
         .draw(chunks[1], buf);
+
+        if let Some(actionline) = &self.actionline {
+            Paragraph::new([Text::raw(actionline)].iter())
+                .wrap(false)
+                .style(Style::default().bg(Color::Gray))
+                .draw(modeline, buf);
+        }
+
+        /* Alert - WIP
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Percentage(50),
+                    Constraint::Min(4),
+                    Constraint::Percentage(50),
+                ]
+                .as_ref(),
+            )
+            .split(area);
+
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                [
+                    Constraint::Percentage(15),
+                    Constraint::Min(40),
+                    Constraint::Percentage(15),
+                ]
+                .as_ref(),
+            )
+            .split(chunks[1]);
+
+        Paragraph::new([Text::raw("Replay saved to /tmp/wut.json")].iter())
+            .wrap(true)
+            .alignment(Alignment::Center)
+            .block(
+                Block::default()
+                    .title("File saved")
+                    .title_style(Style::default().bg(Color::Gray))
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().bg(Color::Gray)),
+            )
+            .style(Style::default().bg(Color::Gray))
+            .draw(chunks[1], buf);
+            */
     }
 }
 
@@ -589,7 +765,7 @@ impl Opt {
         }
     }
 
-    pub fn save_replay(&self, replay: &[Action]) -> io::Result<()> {
+    pub fn save_replay(&self, replay: &[Action]) -> io::Result<Option<PathBuf>> {
         if let Some(path) = &self.replay_dir {
             // Ensure the replay directory exists
             fs::create_dir_all(path)?;
@@ -608,11 +784,13 @@ impl Opt {
                 }
             };
 
-            fs::write(path.join(&name), serde_json::to_string(replay)?)
+            let full_path = path.join(&name);
+            fs::write(&full_path, serde_json::to_string(replay)?)?;
+            Ok(Some(full_path))
         } else {
             warn!("Trying to save replay but no replay directory was defined.");
 
-            Ok(())
+            Ok(None)
         }
     }
 }
@@ -694,103 +872,154 @@ fn main() -> CliResult {
 
             let mut command = String::new();
             for c in stdin.keys() {
-                if command.is_empty() {
-                    match c? {
-                        Key::Char('q') => break,
-                        Key::Char('\n') => {
-                            widget.selector.select().ignore();
-                        }
-                        Key::Up | Key::Char('k') => widget.selector.up().ignore(),
-                        Key::Down | Key::Char('j') => widget.selector.down().ignore(),
-                        Key::Char('/') => command.push('/'),
-                        Key::Char('u') => widget.selector.undo().ignore(),
-                        Key::Char('b') => widget.selector.compute_bound().ignore(),
-                        Key::Char('w') => {
-                            let actions: Vec<_> =
-                                widget.selector.cursor.path().cloned().collect();
-                            args.save_replay(&actions).unwrap();
-                        }
-                        Key::Char('s') => {
-                            let candidates = vec![Candidate::new(
-                                widget.selector.cursor.node.candidate.clone(),
-                                widget.selector.cursor.node.bound.clone(),
-                            )];
+                widget.actionline = None;
+                {
+                    let mut dispatcher = InputDispatcher::new();
 
-                            if let Some(best) =
-                                find_best_ex(&config, context, candidates, Some(&checker))
-                            {
-                                for action in best.actions.into_iter() {
-                                    eprintln!(
-                                        "Trying {}",
-                                        action.display(
+                    if command.is_empty() {
+                        dispatcher.add_listener(|key| {
+                            let mut handled = true;
+                            match key {
+                                Key::Char('\n') => {
+                                    widget.selector.select().ignore();
+                                }
+                                Key::Up | Key::Char('k') => widget.selector.up().ignore(),
+                                Key::Down | Key::Char('j') => {
+                                    widget.selector.down().ignore()
+                                }
+                                Key::Char('/') => command.push('/'),
+                                Key::Char('u') => widget.selector.undo().ignore(),
+                                Key::Char('b') => {
+                                    widget.selector.compute_bound().ignore()
+                                }
+                                Key::Char('w') => {
+                                    if args.replay_dir.is_some() {
+                                        let actions: Vec<_> = widget
+                                            .selector
+                                            .cursor
+                                            .path()
+                                            .cloned()
+                                            .collect();
+                                        let path =
+                                            args.save_replay(&actions).unwrap().unwrap();
+                                        widget.actionline = Some(format!(
+                                            "Replay saved to `{}`",
+                                            path.display()
+                                        ));
+                                    } else {
+                                        widget.actionline = Some(
+                                            "No replay directory available.".to_string(),
+                                        );
+                                    }
+                                }
+                                Key::Char('s') => {
+                                    let candidates = vec![Candidate::new(
+                                        widget.selector.cursor.node.candidate.clone(),
+                                        widget.selector.cursor.node.bound.clone(),
+                                    )];
+
+                                    if let Some(best) = find_best_ex(
+                                        &config,
+                                        context,
+                                        candidates,
+                                        Some(&checker),
+                                    ) {
+                                        for action in best.actions.into_iter() {
+                                            eprintln!(
+                                                "Trying {}",
+                                                action.display(
+                                                    widget
+                                                        .selector
+                                                        .cursor
+                                                        .node
+                                                        .candidate
+                                                        .ir_instance()
+                                                )
+                                            );
+
                                             widget
                                                 .selector
                                                 .cursor
-                                                .node
-                                                .candidate
-                                                .ir_instance()
-                                        )
+                                                .select_action(&action)
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+                                Key::Char('c') => {
+                                    let node = &widget.selector.cursor.node;
+                                    if !node.is_implementation() {
+                                        return false;
+                                    }
+
+                                    let candidate = Candidate::new(
+                                        node.candidate.clone(),
+                                        node.bound.clone(),
                                     );
 
-                                    widget
-                                        .selector
-                                        .cursor
-                                        .select_action(&action)
-                                        .unwrap();
+                                    let node = Arc::clone(node);
+                                    executor::spawn(
+                                        evaluator
+                                            .evaluate(
+                                                candidate,
+                                                move |candidate, keval| {
+                                                    let runtime = stabilizer
+                                                        .wrap(keval)
+                                                        .evaluate()
+                                                        .unwrap();
+                                                    checker(&candidate, context)?;
+                                                    Ok(runtime)
+                                                },
+                                            )
+                                            .map(|eval| {
+                                                node.evaluations
+                                                    .write()
+                                                    .unwrap()
+                                                    .push(eval.ok());
+                                            }),
+                                    )
+                                    .wait_future()
+                                    .unwrap()
                                 }
+                                Key::Ctrl('l') => {
+                                    // Yes, we need both of those because `clear` doesn't do what you think
+                                    // it does (it does not update termion's buffers), and `draw` does not
+                                    // clear the screen but only the portions which were changed (which
+                                    // includes manually erasing characters in this case -- crazy, I know).
+                                    terminal.draw(|_| {}).unwrap();
+                                    terminal.clear().unwrap();
+                                }
+                                Key::Esc => widget.selector.unfilter(),
+                                /*
+                                Key::Ctrl('r') => widget.selector.redo().ignore(),
+                                */
+                                _ => handled = false,
                             }
-                        }
-                        Key::Char('c') => {
-                            let node = &widget.selector.cursor.node;
-                            if !node.is_implementation() {
-                                continue;
+                            handled
+                        });
+                    } else {
+                        dispatcher.add_listener(|key| {
+                            let mut handled = true;
+                            match key {
+                                Key::Up => widget.selector.up().ignore(),
+                                Key::Down => widget.selector.down().ignore(),
+                                Key::Char('\n') => command = "".to_string(),
+                                Key::Char(c) => {
+                                    command.push(*c);
+                                    widget.selector.filter(command[1..].to_string());
+                                }
+                                _ => handled = false,
                             }
+                            handled
+                        })
+                    };
 
-                            let candidate = Candidate::new(
-                                node.candidate.clone(),
-                                node.bound.clone(),
-                            );
+                    let event = c?;
 
-                            let node = Arc::clone(node);
-                            executor::spawn(
-                                evaluator
-                                    .evaluate(candidate, move |candidate, keval| {
-                                        let runtime =
-                                            stabilizer.wrap(keval).evaluate().unwrap();
-                                        checker(&candidate, context)?;
-                                        Ok(runtime)
-                                    })
-                                    .map(|eval| {
-                                        node.evaluations.write().unwrap().push(eval.ok());
-                                    }),
-                            )
-                            .wait_future()
-                            .unwrap()
+                    if !dispatcher.dispatch(&event) {
+                        match &event {
+                            Key::Char('q') => break,
+                            _ => (),
                         }
-                        Key::Ctrl('l') => {
-                            // Yes, we need both of those because `clear` doesn't do what you think
-                            // it does (it does not update termion's buffers), and `draw` does not
-                            // clear the screen but only the portions which were changed (which
-                            // includes manually erasing characters in this case -- crazy, I know).
-                            terminal.draw(|_| {})?;
-                            terminal.clear()?;
-                        }
-                        Key::Esc => widget.selector.unfilter(),
-                        /*
-                        Key::Ctrl('r') => widget.selector.redo().ignore(),
-                        */
-                        _ => (),
-                    }
-                } else {
-                    match c? {
-                        Key::Up => widget.selector.up().ignore(),
-                        Key::Down => widget.selector.down().ignore(),
-                        Key::Char('\n') => command = "".to_string(),
-                        Key::Char(c) => {
-                            command.push(c);
-                            widget.selector.filter(command[1..].to_string());
-                        }
-                        _ => (),
                     }
                 }
 
