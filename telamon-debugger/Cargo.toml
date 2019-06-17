@@ -16,7 +16,6 @@ tui = "0.5.0"
 quicli = "0.4"
 structopt = "0.2"
 serde_json = "1.0"
-log = "0.4"
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda" }
