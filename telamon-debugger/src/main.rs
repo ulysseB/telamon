@@ -137,6 +137,24 @@ impl<'a> Cursor<'a> {
         }
     }
 
+    fn select_action(&mut self, action: &Action) -> Result<(), ()> {
+        let index = self
+            .node
+            .children
+            .iter()
+            .enumerate()
+            .find(|(i, e)| e.action == *action)
+            .map(|(i, _)| i)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Unable to find action {}",
+                    action.display(self.node.candidate.ir_instance())
+                )
+            });
+
+        self.select_child(index)
+    }
+
     fn select_child(&mut self, index: usize) -> Result<(), ()> {
         if let Some(child) = self
             .node
@@ -539,7 +557,7 @@ struct Opt {
     /// Path to the replay directory.
     ///
     /// The replay directory is used to store replays with 'w', which can later be reloaded with
-    /// 'r' (not yet implemented).
+    /// `--replay`.
     ///
     /// Replays are stored as .json files containing the actions to use, which is also the same
     /// format used by the replay tests.
@@ -550,12 +568,27 @@ struct Opt {
     )]
     replay_dir: Option<PathBuf>,
 
+    /// Path to a replay file to load.
+    ///
+    /// The replay file is a .json file containing a serialized representation of the actions to
+    /// apply, as saved by the 'w' command in the debugger or the replay tests.
+    #[structopt(parse(from_os_str), long = "replay")]
+    replay: Option<PathBuf>,
+
     // From quicli
     #[structopt(flatten)]
     verbosity: Verbosity,
 }
 
 impl Opt {
+    pub fn load_replay(&self) -> io::Result<Option<Vec<Action>>> {
+        if let Some(path) = &self.replay {
+            Ok(Some(serde_json::from_reader(fs::File::open(path)?)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn save_replay(&self, replay: &[Action]) -> io::Result<()> {
         if let Some(path) = &self.replay_dir {
             // Ensure the replay directory exists
@@ -648,6 +681,12 @@ fn main() -> CliResult {
 
             let mut widget = Explorer::new(TuiCursor::new(Cursor::new(&env, root)));
 
+            if let Some(replay) = args.load_replay()? {
+                for action in &replay {
+                    widget.selector.cursor.select_action(action).unwrap();
+                }
+            }
+
             terminal.draw(|mut f| {
                 let size = f.size();
                 widget.render(&mut f, size);
@@ -693,32 +732,10 @@ fn main() -> CliResult {
                                         )
                                     );
 
-                                    let action_index = widget
-                                        .selector
-                                        .cursor
-                                        .node
-                                        .children
-                                        .iter()
-                                        .enumerate()
-                                        .find(|(i, e)| e.action == *action)
-                                        .map(|(i, _)| i)
-                                        .unwrap_or_else(|| {
-                                            panic!(
-                                                "Unable to find action {}",
-                                                action.display(
-                                                    widget
-                                                        .selector
-                                                        .cursor
-                                                        .node
-                                                        .candidate
-                                                        .ir_instance()
-                                                )
-                                            );
-                                        });
                                     widget
                                         .selector
                                         .cursor
-                                        .select_child(action_index)
+                                        .select_action(&action)
                                         .unwrap();
                                 }
                             }
