@@ -11,9 +11,9 @@ use utils::*;
 
 /// Represents a mapping between dimenions.
 #[derive(Clone, Debug)]
-// TODO(cleanup): once merge is handled exclusively from the domain, we can use
-// a `Vec` instead.
 pub struct DimMap {
+    // TODO(cleanup): once merge is handled exclusively from the domain, we can use
+    // a `Vec` instead.
     map: LinkedList<(ir::DimId, ir::DimId)>,
 }
 
@@ -85,7 +85,7 @@ impl DimMap {
     /// Renames a basic block into an other. Indicates if some mapping were
     /// removed.
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) -> bool {
-        self.filter(|&mut pair| pair == (lhs, rhs) || pair == (rhs, lhs))
+        self.drain_filter(|&mut pair| pair == (lhs, rhs) || pair == (rhs, lhs))
             .count()
             > 0
     }
@@ -95,8 +95,8 @@ impl DimMap {
         self.map.iter()
     }
 
-    /// Filters the DimMap.
-    pub fn filter<F>(&mut self, f: F) -> FilterList<(ir::DimId, ir::DimId), F>
+    /// Filters the DimMap, removing the filtered elements in-place.
+    pub fn drain_filter<F>(&mut self, f: F) -> FilterList<(ir::DimId, ir::DimId), F>
     where
         F: FnMut(&mut (ir::DimId, ir::DimId)) -> bool,
     {
