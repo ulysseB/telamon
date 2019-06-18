@@ -349,37 +349,6 @@ fn benchmark<'a, K, REF, CB>(
 use std::fmt;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
-enum DeviceKind {
-    X86,
-    Cuda,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ParseDeviceError {
-    _priv: (),
-}
-
-impl fmt::Display for ParseDeviceError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "invalid device kind")
-    }
-}
-
-impl std::error::Error for ParseDeviceError {}
-
-impl std::str::FromStr for DeviceKind {
-    type Err = ParseDeviceError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.trim() {
-            "x86" => Ok(DeviceKind::X86),
-            "cuda" => Ok(DeviceKind::Cuda),
-            _ => Err(ParseDeviceError { _priv: () }),
-        }
-    }
-}
-
 #[derive(StructOpt)]
 struct Opt {
     /// Path to the configuration file to use.
@@ -387,9 +356,6 @@ struct Opt {
     /// Configuration file must be in TOML format.
     #[structopt(parse(from_os_str), long = "config")]
     config_path: Option<PathBuf>,
-
-    #[structopt(long = "device", short = "d")]
-    device: DeviceKind,
 }
 
 impl Opt {
