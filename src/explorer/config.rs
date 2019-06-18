@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::{self, error, fmt, str::FromStr};
 
 use config;
+use log::warn;
 use num_cpus;
 use serde::{Deserialize, Serialize};
 use utils::{tfrecord, unwrap};
@@ -60,24 +61,35 @@ impl Config {
         // option, which makes the parsing succeed even if there is
         // nothing to parse.
         unwrap!(config_parser.set_default::<Option<f64>>("timeout", None));
-        let config_path = std::path::Path::new("Settings.toml");
-        if config_path.exists() {
-            unwrap!(config_parser.merge(config::File::from(config_path)));
-        }
         config_parser
     }
 
-    /// Extract the configuration from the configuration file, if any.
-    pub fn read_from_file() -> Self {
-        unwrap!(Self::create_parser().try_into::<Self>())
+    /// Create a new configuration from the hardcoded `Settings.toml` configuration file if it
+    /// exisst.
+    pub fn from_settings_toml() -> Self {
+        let settings_path = std::path::Path::new("Settings.toml");
+        if settings_path.exists() {
+            warn!("*** Loading config from Settings.toml ***");
+            warn!("*** Pay careful attention to the parameters used as they may differ from the defaults. ***");
+            unwrap!(Self::from_path(settings_path))
+        } else {
+            Self::default()
+        }
+    }
+
+    /// Extract the configuration from the given configuration file.
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, config::ConfigError> {
+        let mut parser = Self::create_parser();
+        parser.merge(config::File::from(path.as_ref()))?;
+        parser.try_into::<Self>()
     }
 
     /// Parse the configuration from a JSON string. Primary user is
     /// the Python API (through the C API).
-    pub fn from_json(json: &str) -> Self {
+    pub fn from_json(json: &str) -> Result<Self, config::ConfigError> {
         let mut parser = Self::create_parser();
-        unwrap!(parser.merge(config::File::from_str(json, config::FileFormat::Json)));
-        unwrap!(parser.try_into::<Self>())
+        parser.merge(config::File::from_str(json, config::FileFormat::Json))?;
+        parser.try_into::<Self>()
     }
 
     pub fn output_path<P: AsRef<Path>>(&self, path: P) -> io::Result<PathBuf> {

@@ -99,7 +99,7 @@ fn benchmark<'a, K, REF>(
     K: Kernel<'a>,
     REF: FnMut(&K::Parameters, &cuda::Context) -> f64,
 {
-    let mut config = Config::read_from_file();
+    let mut config = Config::from_settings_toml();
     config.timeout.get_or_insert(TIMEOUT);
     //config.distance_to_best.get_or_insert(20.);
 
