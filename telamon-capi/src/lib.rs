@@ -142,7 +142,8 @@ pub unsafe extern "C" fn kernel_optimize(
             let slice = std::slice::from_raw_parts(config_data as *const u8, config_len);
             std::str::from_utf8(slice).expect("Invalid configuration string")
         };
-        Config::from_json(config_str)
+        // TODO: Should not unwrap here.
+        Config::from_json(config_str).unwrap()
     };
     match device {
         DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::default()),
