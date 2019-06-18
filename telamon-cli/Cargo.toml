@@ -1,0 +1,22 @@
+[package]
+authors = ["Basile Clement <basile.clement@ens.fr>"]
+name = "telamon-cli"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+structopt = "0.2"
+cuda-sys = { version = "0.1", optional = true }
+libc = { version = "0.2", optional = true }
+env_logger = "0.5"
+
+telamon = { path = "../" }
+telamon-cuda = { path = "../backend/cuda", optional = true }
+telamon-kernels = { path = "../kernels" }
+telamon-utils = { path = "../telamon-utils" }
+telamon-x86 = { path = "../backend/x86", optional = true }
+
+[features]
+default = ["cuda"]
+cuda = ["telamon-cuda/real_gpu", "cuda-sys", "libc"]
+x86 = ["telamon-x86"]
