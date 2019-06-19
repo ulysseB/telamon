@@ -91,7 +91,6 @@ members = [
     "telamon-gen/cc_tests",
     "telamon-capi",
     "telamon-cli",
-    "telamon-debugger",
     "deps/sym"
 ]
 
