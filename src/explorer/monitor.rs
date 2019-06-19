@@ -16,7 +16,7 @@ use std::sync::{
     Arc,
 };
 use std::time::{Duration, Instant};
-use std::{self, fs, thread};
+use std::{self, thread};
 use utils::unwrap;
 
 pub type MonitorMessage<T> = (Candidate, f64, <T as Store>::PayLoad);
@@ -177,20 +177,13 @@ where
         };
         unwrap!(log_sender.send(log_message));
 
-        config
-            .output_path(format!("best_{}", status.num_evaluations))
-            .and_then(|output_path| {
-                // Dump actions json
-                fs::write(
-                    output_path.with_extension(".json"),
-                    serde_json::to_string(&cand.actions)?,
-                );
-
-                cand.space.dump_code(context, output_path)?;
-
-                Ok(())
-            })
-            .unwrap_or_else(|err| warn!("Error while dumping candidate: {}", err));
+        match config.output_path(format!("best_{}", status.num_evaluations)) {
+            Ok(output_path) => cand
+                .space
+                .dump_code(context, output_path)
+                .unwrap_or_else(|err| warn!("Error while dumping candidate: {}", err)),
+            Err(err) => warn!("Error while dumping candidate: {}", err),
+        }
 
         status.best_candidate = Some((cand, eval));
     }
