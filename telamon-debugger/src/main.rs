@@ -31,7 +31,6 @@ use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 use crossbeam::channel;
 use futures::{executor, Future};
-use quicli::prelude::{CliResult, Verbosity};
 use structopt::StructOpt;
 
 trait Dispatch<'a, E> {
@@ -750,10 +749,6 @@ struct Opt {
     /// apply, as saved by the 'w' command in the debugger or the replay tests.
     #[structopt(parse(from_os_str), long = "replay")]
     replay: Option<PathBuf>,
-
-    // From quicli
-    #[structopt(flatten)]
-    verbosity: Verbosity,
 }
 
 impl Opt {
@@ -795,9 +790,10 @@ impl Opt {
     }
 }
 
-fn main() -> CliResult {
+fn main() -> io::Result<()> {
+    env_logger::init();
+
     let args = Opt::from_args();
-    args.verbosity.setup_env_logger("telamon")?;
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
