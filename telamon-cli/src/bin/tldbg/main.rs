@@ -25,7 +25,9 @@ use telamon::explorer::{
 use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::search_space::SearchSpace;
+use telamon_cli::{Bench, CublasHandle, Reference};
 use telamon_cuda;
+use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 use crossbeam::channel;
@@ -497,6 +499,21 @@ impl<'a> Widget for Explorer<'a> {
             .split(rest);
 
         self.selector.draw(chunks[0], buf);
+        let evaluations = self
+            .selector
+            .cursor
+            .node
+            .evaluations
+            .read()
+            .unwrap()
+            .iter()
+            .filter_map(|&x| x)
+            .collect::<Vec<_>>();
+        let estimate = if evaluations.len() < 2 {
+            None
+        } else {
+            Some(estimate_mean(evaluations, 0.95, "ns"))
+        };
         Paragraph::new(
             [
                 Text::raw(format!(
@@ -504,22 +521,11 @@ impl<'a> Widget for Explorer<'a> {
                     self.selector.cursor.node.bound_compute_time,
                     self.selector.cursor.node.bound,
                 )),
-                Text::raw(format!(
-                    "{:?}",
-                    self.selector
-                        .cursor
-                        .node
-                        .evaluations
-                        .read()
-                        .unwrap()
-                        .iter()
-                        .map(|e| if let Some(e) = e {
-                            e.to_string()
-                        } else {
-                            "ERR".to_string()
-                        })
-                        .collect::<Vec<_>>()
-                )),
+                Text::raw(if let Some(estimate) = estimate {
+                    estimate.to_string()
+                } else {
+                    "".to_string()
+                }),
                 Text::raw(format!(
                     "{}\n",
                     self.selector.cursor.node.candidate.ir_instance()
@@ -807,6 +813,15 @@ fn main() -> io::Result<()> {
     let expected = kernel.get_expected_output(context);
     let env = FullEnv { context };
 
+    let reference_fn = {
+        let reference = CublasHandle::new();
+        move || {
+            Reference::<'_, linalg::FusedMM<f32>>::eval_reference(
+                &reference, &params, context,
+            )
+        }
+    };
+
     let stabilizer = &context.stabilizer();
     let mut config = explorer::Config::default();
     config.output_dir = "/tmp".to_string();
@@ -939,6 +954,16 @@ fn main() -> io::Result<()> {
                                                 .unwrap();
                                         }
                                     }
+                                }
+                                Key::Char('r') => {
+                                    let ref_runtime = Bench::default()
+                                        .warmup(4)
+                                        .runs(40)
+                                        .benchmark_fn(&reference_fn);
+                                    widget.actionline = Some(format!(
+                                        "reference runtime: {}",
+                                        estimate_mean(ref_runtime, 0.95, "ns")
+                                    ));
                                 }
                                 Key::Char('c') => {
                                     let node = &widget.selector.cursor.node;

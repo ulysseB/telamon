@@ -40,7 +40,10 @@ pub fn estimate_mean(
         *item = (*item - mean).abs();
     }
     data.sort_by(|&x, &y| cmp_f64(x, y));
-    let idx = std::cmp::min((data.len() as f64 * confidence).ceil() as usize, data.len());
+    let idx = std::cmp::min(
+        (data.len() as f64 * confidence).ceil() as usize,
+        data.len() - 1,
+    );
     Estimate {
         value: mean,
         unit,

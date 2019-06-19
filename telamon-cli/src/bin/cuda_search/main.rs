@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use telamon::device::{ArgMap, Context};
 use telamon::explorer::config::Config;
 use telamon::helper::MemInit;
-use telamon_cli::{CommonOpt, ContextBuilder, CublasHandle, Reference};
+use telamon_cli::{Bench, CommonOpt, ContextBuilder, CublasHandle, Reference};
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel};
 
@@ -39,12 +39,10 @@ fn benchmark<'a, K, REF, CB>(
         MemInit::RandomFill,
         &mut context,
     );
-    for _ in 0..4 {
-        reference.eval_reference(&params, &context);
-    }
-    let ref_runtime = (0..NUM_CODE_RUNS)
-        .map(|_| reference.eval_reference(&params, &context))
-        .collect();
+    let ref_runtime = Bench::default()
+        .warmup(4)
+        .runs(NUM_CODE_RUNS)
+        .benchmark_fn(|| reference.eval_reference(&params, &context));
     let mut f =
         std::fs::File::create(config.output_path("benchmark.txt").unwrap()).unwrap();
     writeln!(f, "runtimes: {:?}", runtime).unwrap();
@@ -67,7 +65,7 @@ struct Opt {
     common: CommonOpt,
 }
 
-trait Bench<'a, B, R> {
+trait BenchRun<'a, B, R> {
     fn run(self, config: &Config, builder: B, reference: &R);
 }
 
@@ -97,7 +95,7 @@ where
     }
 }
 
-impl<'a, K, B, R> Bench<'a, B, R> for Benchmark<'a, K>
+impl<'a, K, B, R> BenchRun<'a, B, R> for Benchmark<'a, K>
 where
     K: Kernel<'a>,
     B: ContextBuilder<'a>,
