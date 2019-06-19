@@ -9,6 +9,12 @@ structopt = "0.2"
 cuda-sys = { version = "0.1", optional = true }
 libc = { version = "0.2", optional = true }
 env_logger = "0.5"
+log = "0.4"
+serde_json = "1.0"
+tui = "0.5"
+futures = "0.1"
+termion = "1.5"
+crossbeam = "0.7"
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional = true }
