@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::{fs, io, thread};
 
-use log::debug;
+use log::{debug, warn};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -15,7 +15,6 @@ use tui::style::{Color, Modifier, Style};
 use tui::widgets::{Block, Borders, List, Paragraph, SelectableList, Text, Widget};
 use tui::Terminal;
 
-use log::warn;
 use telamon::codegen;
 use telamon::device::{Context, EvalMode, KernelEvaluator};
 use telamon::explorer::{
