@@ -51,6 +51,44 @@ where
     fn eval_reference(&self, params: &K::Parameters, context: &Self::Context) -> f64;
 }
 
+#[derive(Debug, Clone)]
+pub struct Bench {
+    warmup: usize,
+    runs: usize,
+}
+
+impl Default for Bench {
+    fn default() -> Self {
+        Bench {
+            warmup: 4,
+            runs: 40,
+        }
+    }
+}
+
+impl Bench {
+    pub fn warmup(mut self, warmup: usize) -> Self {
+        self.warmup = warmup;
+        self
+    }
+
+    pub fn runs(mut self, runs: usize) -> Self {
+        self.runs = runs;
+        self
+    }
+
+    pub fn benchmark_fn<F>(&self, f: F) -> Vec<f64>
+    where
+        F: Fn() -> f64,
+    {
+        for _ in 0..self.warmup {
+            f();
+        }
+
+        (0..self.runs).map(|_| f()).collect()
+    }
+}
+
 #[cfg(feature = "cuda")]
 mod cuda_reference {
     use cuda_sys::cublas::*;
