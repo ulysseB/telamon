@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::{fs, io, thread};
 
+use log::debug;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -223,9 +224,12 @@ impl Edge {
         match node_ref {
             Some(node_ref) => node_ref.as_ref().map(Arc::clone),
             None => {
-                let node = env
-                    .apply_action(parent.clone(), self.action.clone())
-                    .map(|c| Arc::new(Node::new(c, env)));
+                let start = std::time::Instant::now();
+                let node = env.apply_action(parent.clone(), self.action.clone());
+                let duration = start.elapsed();
+                debug!("propagation took {:?}", duration);
+
+                let node = node.map(|c| Arc::new(Node::new(c, env)));
                 *node_ref = Some(node.as_ref().map(Arc::clone));
                 node
             }
@@ -497,9 +501,9 @@ impl<'a> Widget for Explorer<'a> {
         Paragraph::new(
             [
                 Text::raw(format!(
-                    "{} (computed in {:?})\n",
+                    "[computed in {:?}] {}\n",
+                    self.selector.cursor.node.bound_compute_time,
                     self.selector.cursor.node.bound,
-                    self.selector.cursor.node.bound_compute_time
                 )),
                 Text::raw(format!(
                     "{:?}",
