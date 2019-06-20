@@ -1,6 +1,6 @@
 use std::cmp::Ord;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::{fs, io, thread};
 
@@ -748,6 +748,10 @@ struct Opt {
     )]
     replay_dir: Option<PathBuf>,
 
+    /// If enabled, no tiling will be performed on the code.
+    #[structopt(long = "untile", hidden = true)]
+    untile: bool,
+
     /// Path to a replay file to load.
     ///
     /// The replay file is a .json file containing a serialized representation of the actions to
@@ -802,7 +806,13 @@ fn main() -> io::Result<()> {
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
-    let params = linalg::FusedMMP::new(256, 256, 256);
+    let mut params = linalg::FusedMMP::new(256, 256, 32);
+
+    if args.untile {
+        params.m_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
+        params.n_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
+        params.k_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
+    }
 
     let (signature, kernel, context) = KernelBuilder::default()
         .build::<linalg::FusedMM<f32>, telamon_cuda::Context>(
@@ -970,6 +980,15 @@ fn main() -> io::Result<()> {
                                     if !node.is_implementation() {
                                         return false;
                                     }
+
+                                    let code = codegen::Function::build(&node.candidate);
+                                    context.device().print(
+                                        &code,
+                                        &mut std::fs::File::create(Path::new(
+                                            "/tmp/code.c",
+                                        ))
+                                        .unwrap(),
+                                    );
 
                                     let candidate = Candidate::new(
                                         node.candidate.clone(),
