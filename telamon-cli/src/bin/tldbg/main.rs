@@ -171,6 +171,7 @@ struct Node {
     bound_compute_time: std::time::Duration,
     candidate: SearchSpace,
     evaluations: RwLock<Vec<Option<f64>>>,
+    benchmarks: RwLock<Vec<f64>>,
 }
 
 impl Node {
@@ -192,6 +193,7 @@ impl Node {
             bound_compute_time: duration,
             candidate,
             evaluations: RwLock::new(Vec::new()),
+            benchmarks: RwLock::new(Vec::new()),
         }
     }
 
@@ -514,6 +516,7 @@ impl<'a> Widget for Explorer<'a> {
         } else {
             Some(estimate_mean(evaluations, 0.95, "ns"))
         };
+        let benchmarks = self.selector.cursor.node.benchmarks.read().unwrap().clone();
         Paragraph::new(
             [
                 Text::raw(format!(
@@ -522,9 +525,14 @@ impl<'a> Widget for Explorer<'a> {
                     self.selector.cursor.node.bound,
                 )),
                 Text::raw(if let Some(estimate) = estimate {
-                    estimate.to_string()
+                    format!("estimate: {}\n", estimate)
                 } else {
                     "".to_string()
+                }),
+                Text::raw(if benchmarks.is_empty() {
+                    "".to_string()
+                } else {
+                    format!("benchmark: {}\n", estimate_mean(benchmarks, 0.95, "ns"))
                 }),
                 Text::raw(format!(
                     "{}\n",
@@ -730,6 +738,10 @@ impl<'a, T: Send> Evaluator<'a, T> {
     }
 }
 
+trait AssertSend: Send {}
+
+impl AssertSend for codegen::Function<'_> {}
+
 /// The Telamon Debugger
 #[derive(Debug, StructOpt)]
 #[structopt(name = "tldbg")]
@@ -863,6 +875,7 @@ fn main() -> io::Result<()> {
                 bound_compute_time: duration,
                 candidate: candidate,
                 evaluations: RwLock::new(Vec::new()),
+                benchmarks: RwLock::new(Vec::new()),
             });
 
             let stdout = io::stdout().into_raw_mode()?;
@@ -906,7 +919,15 @@ fn main() -> io::Result<()> {
                                 Key::Char('/') => command.push('/'),
                                 Key::Char('u') => widget.selector.undo().ignore(),
                                 Key::Char('b') => {
-                                    widget.selector.compute_bound().ignore()
+                                    let node = &widget.selector.cursor.node;
+                                    if node.is_implementation() {
+                                        let code =
+                                            codegen::Function::build(&node.candidate);
+                                        let runtimes = context.benchmark(&code, 40);
+                                        node.benchmarks.write().unwrap().extend(runtimes);
+                                    } else {
+                                        widget.selector.compute_bound().ignore()
+                                    }
                                 }
                                 Key::Char('w') => {
                                     if args.replay_dir.is_some() {
