@@ -845,11 +845,7 @@ fn main() -> io::Result<()> {
         1,
         EvalMode::FindBest,
         |evaluator| {
-            let candidate = kernel
-                .build_body(signature, context)
-                .swap_remove(0)
-                .space
-                .prioritized();
+            let candidate = kernel.build_body(signature, context).swap_remove(0).space;
             let children = env
                 .list_actions(&candidate)
                 .into_iter()
