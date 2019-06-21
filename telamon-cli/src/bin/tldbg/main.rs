@@ -770,6 +770,15 @@ struct Opt {
     /// apply, as saved by the 'w' command in the debugger or the replay tests.
     #[structopt(parse(from_os_str), long = "replay")]
     replay: Option<PathBuf>,
+
+    #[structopt(short = "m", default = "256")]
+    m: i32,
+
+    #[structopt(short = "n", default = "256")]
+    n: i32,
+
+    #[structopt(short = "k", default = "32")]
+    k: i32,
 }
 
 impl Opt {
@@ -818,7 +827,7 @@ fn main() -> io::Result<()> {
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
-    let mut params = linalg::FusedMMP::new(256, 256, 32);
+    let mut params = linalg::FusedMMP::new(args.m, args.n, args.k);
 
     if args.untile {
         params.m_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
