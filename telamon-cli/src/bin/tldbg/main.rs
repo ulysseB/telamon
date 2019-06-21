@@ -1,6 +1,6 @@
 use std::cmp::Ord;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::{fs, io, thread};
 
@@ -171,6 +171,7 @@ struct Node {
     bound_compute_time: std::time::Duration,
     candidate: SearchSpace,
     evaluations: RwLock<Vec<Option<f64>>>,
+    benchmarks: RwLock<Vec<f64>>,
 }
 
 impl Node {
@@ -192,6 +193,7 @@ impl Node {
             bound_compute_time: duration,
             candidate,
             evaluations: RwLock::new(Vec::new()),
+            benchmarks: RwLock::new(Vec::new()),
         }
     }
 
@@ -514,6 +516,7 @@ impl<'a> Widget for Explorer<'a> {
         } else {
             Some(estimate_mean(evaluations, 0.95, "ns"))
         };
+        let benchmarks = self.selector.cursor.node.benchmarks.read().unwrap().clone();
         Paragraph::new(
             [
                 Text::raw(format!(
@@ -522,9 +525,14 @@ impl<'a> Widget for Explorer<'a> {
                     self.selector.cursor.node.bound,
                 )),
                 Text::raw(if let Some(estimate) = estimate {
-                    estimate.to_string()
+                    format!("estimate: {}\n", estimate)
                 } else {
                     "".to_string()
+                }),
+                Text::raw(if benchmarks.is_empty() {
+                    "".to_string()
+                } else {
+                    format!("benchmark: {}\n", estimate_mean(benchmarks, 0.95, "ns"))
                 }),
                 Text::raw(format!(
                     "{}\n",
@@ -730,6 +738,10 @@ impl<'a, T: Send> Evaluator<'a, T> {
     }
 }
 
+trait AssertSend: Send {}
+
+impl AssertSend for codegen::Function<'_> {}
+
 /// The Telamon Debugger
 #[derive(Debug, StructOpt)]
 #[structopt(name = "tldbg")]
@@ -748,12 +760,25 @@ struct Opt {
     )]
     replay_dir: Option<PathBuf>,
 
+    /// If enabled, no tiling will be performed on the code.
+    #[structopt(long = "untile", hidden = true)]
+    untile: bool,
+
     /// Path to a replay file to load.
     ///
     /// The replay file is a .json file containing a serialized representation of the actions to
     /// apply, as saved by the 'w' command in the debugger or the replay tests.
     #[structopt(parse(from_os_str), long = "replay")]
     replay: Option<PathBuf>,
+
+    #[structopt(short = "m", default_value = "256")]
+    m: i32,
+
+    #[structopt(short = "n", default_value = "256")]
+    n: i32,
+
+    #[structopt(short = "k", default_value = "32")]
+    k: i32,
 }
 
 impl Opt {
@@ -802,7 +827,13 @@ fn main() -> io::Result<()> {
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
-    let params = linalg::FusedMMP::new(256, 256, 256);
+    let mut params = linalg::FusedMMP::new(args.m, args.n, args.k);
+
+    if args.untile {
+        params.m_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
+        params.n_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
+        params.k_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
+    }
 
     let (signature, kernel, context) = KernelBuilder::default()
         .build::<linalg::FusedMM<f32>, telamon_cuda::Context>(
@@ -835,11 +866,7 @@ fn main() -> io::Result<()> {
         1,
         EvalMode::FindBest,
         |evaluator| {
-            let candidate = kernel
-                .build_body(signature, context)
-                .swap_remove(0)
-                .space
-                .prioritized();
+            let candidate = kernel.build_body(signature, context).swap_remove(0).space;
             let children = env
                 .list_actions(&candidate)
                 .into_iter()
@@ -857,6 +884,7 @@ fn main() -> io::Result<()> {
                 bound_compute_time: duration,
                 candidate: candidate,
                 evaluations: RwLock::new(Vec::new()),
+                benchmarks: RwLock::new(Vec::new()),
             });
 
             let stdout = io::stdout().into_raw_mode()?;
@@ -900,7 +928,15 @@ fn main() -> io::Result<()> {
                                 Key::Char('/') => command.push('/'),
                                 Key::Char('u') => widget.selector.undo().ignore(),
                                 Key::Char('b') => {
-                                    widget.selector.compute_bound().ignore()
+                                    let node = &widget.selector.cursor.node;
+                                    if node.is_implementation() {
+                                        let code =
+                                            codegen::Function::build(&node.candidate);
+                                        let runtimes = context.benchmark(&code, 40);
+                                        node.benchmarks.write().unwrap().extend(runtimes);
+                                    } else {
+                                        widget.selector.compute_bound().ignore()
+                                    }
                                 }
                                 Key::Char('w') => {
                                     if args.replay_dir.is_some() {
@@ -970,6 +1006,15 @@ fn main() -> io::Result<()> {
                                     if !node.is_implementation() {
                                         return false;
                                     }
+
+                                    let code = codegen::Function::build(&node.candidate);
+                                    context.device().print(
+                                        &code,
+                                        &mut std::fs::File::create(Path::new(
+                                            "/tmp/code.c",
+                                        ))
+                                        .unwrap(),
+                                    );
 
                                     let candidate = Candidate::new(
                                         node.candidate.clone(),
