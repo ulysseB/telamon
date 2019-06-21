@@ -771,13 +771,13 @@ struct Opt {
     #[structopt(parse(from_os_str), long = "replay")]
     replay: Option<PathBuf>,
 
-    #[structopt(short = "m", default = "256")]
+    #[structopt(short = "m", default_value = "256")]
     m: i32,
 
-    #[structopt(short = "n", default = "256")]
+    #[structopt(short = "n", default_value = "256")]
     n: i32,
 
-    #[structopt(short = "k", default = "32")]
+    #[structopt(short = "k", default_value = "32")]
     k: i32,
 }
 
