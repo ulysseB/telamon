@@ -1706,6 +1706,7 @@ where
     P: Atom,
 {
     constant: f64,
+    //ratios: WeightedVecSet<FloatRatio<P>>,
     values: WeightedVecSet<Float<P>>,
 }
 
@@ -1936,9 +1937,7 @@ where
     fn sub(self, other: &'a DiffExpr<P>) -> DiffExpr<P> {
         let result = DiffExpr {
             constant: self.constant - other.constant,
-            values: self
-                .values
-                .union(&other.values.map_weights(|weight| -weight)),
+            values: self.values.union_map(&other.values, |weight| -weight),
         };
 
         #[cfg(verify)]
@@ -2327,43 +2326,64 @@ where
             let mut self_to_remove = Vec::with_capacity(self.values.len());
             let mut other_to_remove = Vec::with_capacity(other.values.len());
 
+            let min = self.min.max(other.min);
+            let max = self.max.max(other.max);
+
+            for (ix, value) in other.values.iter().enumerate() {
+                if value.max_value() <= min {
+                    other_to_remove.push(ix);
+                }
+            }
+
             for (six, lhs) in self.values.iter().enumerate() {
+                if lhs.max_value() <= min {
+                    self_to_remove.push(six);
+                    continue;
+                }
+
+                let mut orp = 0;
                 for (oix, rhs) in other.values.iter().enumerate() {
+                    if orp < other_to_remove.len() && oix == other_to_remove[orp] {
+                        orp += 1;
+                        continue;
+                    }
+
                     let diff = lhs - rhs;
                     if gt_close(diff.min_value(), 0.) {
-                        if let Err(pos) = other_to_remove.binary_search(&oix) {
-                            other_to_remove.insert(pos, oix);
-                        }
+                        other_to_remove.insert(orp, oix);
+                        orp += 1;
                     } else if lt_close(diff.max_value(), 0.) {
                         self_to_remove.push(six);
-                        break;
                     }
                 }
             }
 
-            let min = self.min.max(other.min);
-            let max = self.max.max(other.max);
-
-            let values = VecSet::from_sorted_iter(
-                Union::new(
-                    self.values
-                        .iter()
-                        .enumerate()
-                        .filter(|(ix, value)| {
-                            !self_to_remove.contains(ix) && value.max_value() > min
-                        })
-                        .map(|(_, value)| value),
-                    other
-                        .values
-                        .iter()
-                        .enumerate()
-                        .filter(|(ix, value)| {
-                            !other_to_remove.contains(ix) && value.max_value() > min
-                        })
-                        .map(|(_, value)| value),
+            let values = if self_to_remove.is_empty()
+                && other_to_remove.len() == other.values.len()
+            {
+                self.values.clone()
+            } else if other_to_remove.is_empty()
+                && self_to_remove.len() == self.values.len()
+            {
+                other.values.clone()
+            } else {
+                VecSet::from_sorted_iter(
+                    Union::new(
+                        self.values
+                            .iter()
+                            .enumerate()
+                            .filter(|(ix, _)| !self_to_remove.contains(ix))
+                            .map(|(_, value)| value),
+                        other
+                            .values
+                            .iter()
+                            .enumerate()
+                            .filter(|(ix, _)| !other_to_remove.contains(ix))
+                            .map(|(_, value)| value),
+                    )
+                    .cloned(),
                 )
-                .cloned(),
-            );
+            };
 
             FMaxExpr::new(min, max, values)
         }
@@ -2389,36 +2409,7 @@ where
 
             Ok(self.values.values[0].clone().into())
         } else {
-            let mut to_remove = Vec::with_capacity(self.values.len());
-            /*
-            for (lix, lhs) in self.values.iter().enumerate() {
-                for (rix, rhs) in self.values.iter().enumerate().skip(lix + 1) {
-                    let diff = lhs - rhs;
-                    if gt_close(diff.min_value(), 0.) {
-                        to_remove.push(rix);
-                    } else if lt_close(diff.max_value(), 0.) {
-                        to_remove.push(lix);
-                        break;
-                    }
-                }
-            }
-            */
-
-            if !to_remove.is_empty() {
-                Err(Self::new(
-                    self.min,
-                    self.max,
-                    self.values
-                        .iter()
-                        .enumerate()
-                        .filter(|(ix, _value)| !to_remove.contains(ix))
-                        .map(|(_ix, value)| value)
-                        .cloned()
-                        .collect(),
-                ))
-            } else {
-                Err(self)
-            }
+            Err(self)
         }
     }
 }
@@ -4215,7 +4206,21 @@ prod = {prod}",
 
                 assert_close!(a.min_value().max(b.min_value()), max.min_value());
 
-                assert_close!(a.max_value().max(b.max_value()), max.max_value());
+                assert_close!(
+                    a.max_value().max(b.max_value()),
+                    max.max_value(),
+                    "
+ max: `{}`,
+   a: `{}` [{} <= {}],
+   b: `{}` [{} <= {}]",
+                    max,
+                    a,
+                    a.min_value(),
+                    a.max_value(),
+                    b,
+                    b.min_value(),
+                    b.max_value(),
+                );
 
                 assert_lt_close!(
                     max.min_value(),
@@ -4604,6 +4609,10 @@ where
     {
         hash::MemoizedHash::make_mut(Rc::make_mut(&mut self.values)).iter_mut()
     }
+
+    fn fast_eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.values, &other.values)
+    }
 }
 
 impl<T, I> ops::Index<I> for VecSet<T>
@@ -4703,38 +4712,34 @@ where
     }
 }
 
-struct WeightedUnion<L, R, F>
+struct WeightedUnion<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
     left: std::iter::Peekable<L>,
     right: std::iter::Peekable<R>,
-    combine: F,
 }
 
-impl<T, L, R, F> WeightedUnion<L, R, F>
+impl<T, L, R> WeightedUnion<L, R>
 where
     T: Ord,
     L: Iterator<Item = (f64, T)>,
     R: Iterator<Item = (f64, T)>,
-    F: Fn(f64, f64) -> f64,
 {
-    fn new(left: L, right: R, combine: F) -> Self {
+    fn new(left: L, right: R) -> Self {
         WeightedUnion {
             left: left.peekable(),
             right: right.peekable(),
-            combine,
         }
     }
 }
 
-impl<T, L, R, F> Iterator for WeightedUnion<L, R, F>
+impl<T, L, R> Iterator for WeightedUnion<L, R>
 where
     T: Ord,
     L: Iterator<Item = (f64, T)>,
     R: Iterator<Item = (f64, T)>,
-    F: Fn(f64, f64) -> f64,
 {
     type Item = (f64, T);
 
@@ -4759,7 +4764,7 @@ where
                             let (rweight, _ritem) =
                                 self.right.next().unwrap_or_else(|| unreachable!());
 
-                            let weight = (self.combine)(lweight, rweight);
+                            let weight = lweight + rweight;
 
                             if is_close(weight, 0.) {
                                 continue;
@@ -4949,10 +4954,20 @@ where
             coefficients: self.coefficients.clone(),
         }
     }
-
     fn union(&self, other: &WeightedVecSet<T>) -> WeightedVecSet<T> {
         if self.is_empty() {
             other.clone()
+        } else {
+            self.union_map(other, |rhs| rhs)
+        }
+    }
+
+    fn union_map<F>(&self, other: &WeightedVecSet<T>, map_rhs: F) -> WeightedVecSet<T>
+    where
+        F: Fn(f64) -> f64,
+    {
+        if self.is_empty() {
+            other.map_weights(map_rhs)
         } else if other.is_empty() {
             self.clone()
         } else if self.coefficients == other.coefficients {
@@ -4966,7 +4981,7 @@ where
                 .zip(other.weights.iter().cloned())
                 .enumerate()
             {
-                let sum = lhs + rhs;
+                let sum = lhs + map_rhs(rhs);
                 if is_close(sum, 0.) {
                     to_remove.push(ix);
                 } else {
@@ -5001,22 +5016,14 @@ where
                 coefficients,
             }
         } else {
-            self.union_sorted(other.iter())
-        }
-    }
-
-    fn union_sorted<'a, II>(&'a self, other: II) -> WeightedVecSet<T>
-    where
-        II: IntoIterator<Item = (f64, &'a T)>,
-        T: 'a,
-    {
-        let other = other.into_iter();
-        if other.size_hint().1 == Some(0) {
-            self.clone()
-        } else {
             WeightedVecSet::from_sorted_iter(
-                WeightedUnion::new(self.iter(), other, |lhs, rhs| lhs + rhs)
-                    .map(|(weight, item)| (weight, item.clone())),
+                WeightedUnion::new(
+                    self.iter(),
+                    other
+                        .iter()
+                        .map(move |(weight, item)| (map_rhs(weight), item)),
+                )
+                .map(|(weight, item)| (weight, item.clone())),
             )
         }
     }
