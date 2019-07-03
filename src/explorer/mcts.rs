@@ -1415,6 +1415,9 @@ impl<N, E> TreePolicy<N, E> for NewNodeOrder {
     }
 }
 
+/// For an explanation of the strategy, refer to the documentation of
+/// [config::TreePolicy::UCT].
+///
 /// TODO(bclement):  The UCT formula is wrong, because 1) we are optimising as a reward while we
 /// actually have a cost and 2) the scale is wrong (evaluations are in the e6+ range but we do as
 /// if they were in 0-1).
@@ -1800,6 +1803,8 @@ impl UCTStats {
     }
 }
 
+/// For an explanation of the strategy, refer to the documentation of
+/// [config::TreePolicy::TAG].
 pub struct TAGPolicy {
     delta: f64,
     topk: usize,
@@ -2045,6 +2050,8 @@ impl<'a> IntoIterator for &'a Evaluations {
     }
 }
 
+/// For an explanation of the strategy, refer to the documentation of
+/// [config::TreePolicy::RoundRobin].
 pub struct RoundRobinPolicy;
 
 impl<N> TreePolicy<N, CommonStats> for RoundRobinPolicy {
