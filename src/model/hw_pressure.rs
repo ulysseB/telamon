@@ -33,7 +33,6 @@ pub type FastBound = ExplainedBound<Rc<FastOrigin>>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bound {
     value: f64,
-    pub lol: String,
     size: usize,
     origin: Origin,
 }
@@ -125,7 +124,6 @@ impl FastBound {
         debug!("bound is {}", self.value);
         Bound {
             value: self.value.min_value(), // TODO:?
-            lol: "".to_string(), // self.value.to_string(),   // format!("{}", self.value),
             origin,
             size: self.size,
         }
@@ -232,7 +230,6 @@ impl Bound {
     pub fn from_actual_time(value: f64) -> Self {
         Bound {
             value,
-            lol: format!("{}", value),
             origin: Origin::HardwareEvaluation,
             size: 1,
         }
@@ -462,13 +459,11 @@ impl Origin {
                 } else {
                     let before = Bound {
                         value: before.value,
-                        lol: before.lol,
                         origin: before_origin,
                         size: before.size,
                     };
                     let after = Bound {
                         value: after.value,
-                        lol: after.lol,
                         origin: after_origin,
                         size: before.size,
                     };

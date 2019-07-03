@@ -83,6 +83,7 @@ where
     T: Ord + Hash + ?Sized,
     S: BuildHasher,
 {
+    #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         MemoizedHash::get_hash(self)
             .cmp(&MemoizedHash::get_hash(other))
@@ -108,6 +109,10 @@ where
         S: Default,
     {
         MemoizedHash::with_hasher(value, S::default())
+    }
+
+    pub fn fast_ne(this: &Self, other: &Self) -> bool {
+        MemoizedHash::get_hash(this) != MemoizedHash::get_hash(other)
     }
 }
 
