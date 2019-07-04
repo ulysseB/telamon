@@ -2719,7 +2719,7 @@ where
                 }
                 // TODO: This should be a check on factors!
                 (IntInner::Mul(ratio), None)
-                    => // if ratio.gcd_value().is_multiple_of(&rhs.into()) =>
+                    if ratio.gcd_value().is_multiple_of(&rhs.into()) =>
                 {
                     Float::ratio(
                         ratio.inner.factor.to_u64().unwrap() as f64 / f64::from(rhs),
