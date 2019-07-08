@@ -1,11 +1,154 @@
+use std::borrow::Cow;
 use std::io;
 use std::path::PathBuf;
+use std::sync::{atomic, Arc, Mutex};
 
 use serde_json;
 use structopt::StructOpt;
 
-use telamon::explorer::{choice::ActionEx as Action, eventlog::EventLog, mcts};
+use telamon::device;
+use telamon::explorer::{
+    self,
+    choice::{ActionEx as Action, Choice},
+    config,
+    eventlog::EventLog,
+    mcts, Candidate,
+};
+use telamon::model::Bound;
 use telamon::offline_analysis::tree::CandidateTree;
+use telamon::search_space::SearchSpace;
+use telamon_kernels::{linalg, Kernel, KernelBuilder};
+
+/// Compute bounds.csv
+#[derive(StructOpt)]
+struct Bounds {
+    #[structopt(long = "order")]
+    order: Option<config::ChoiceOrdering>,
+
+    #[structopt(long = "num-runs", default_value = "500")]
+    num_runs: usize,
+}
+
+/// Ignore candidates with a too big bound in tests.
+const CUT: f64 = 2e8f64;
+
+impl Bounds {
+    fn next_choice(&self, space: &SearchSpace) -> Option<Choice> {
+        if let Some(order) = &self.order {
+            explorer::choice::list(order, space).next()
+        } else {
+            explorer::choice::default_list(space).next()
+        }
+    }
+
+    /// Descend along a path in the search tree and stores the bounds encountered on the way.
+    fn random_descent(
+        &self,
+        candidates: &[Candidate],
+        context: &dyn device::Context,
+    ) -> Option<(Candidate, Vec<Bound>)> {
+        let order = explorer::config::NewNodeOrder::Random;
+        let mut candidates = Cow::Borrowed(candidates);
+        let mut bounds = Vec::new();
+        loop {
+            let idx = if let Some(idx) = order.pick_candidate(&candidates, CUT) {
+                idx
+            } else {
+                break None;
+            };
+            bounds.push(candidates[idx].bound.clone());
+            let choice_opt = self.next_choice(&candidates[idx].space);
+            if let Some(choice) = choice_opt {
+                let new_nodes = candidates[idx]
+                    .apply_choice(context, choice)
+                    .into_iter()
+                    .filter(|x| x.bound.value() < CUT)
+                    .collect::<Vec<_>>();
+                candidates = std::borrow::Cow::Owned(new_nodes);
+            } else {
+                break Some((
+                    match candidates {
+                        Cow::Borrowed(candidates) => candidates[idx].clone(),
+                        Cow::Owned(mut candidates) => candidates.swap_remove(idx),
+                    },
+                    bounds,
+                ));
+            }
+        }
+    }
+
+    fn test_bound(
+        &self,
+        candidates: Vec<Candidate>,
+        context: &dyn device::Context,
+    ) -> Vec<(f64, Vec<f64>)> {
+        let leaves = Mutex::new(Vec::new());
+        let num_tested = atomic::AtomicUsize::new(0);
+        let stabilizer = &context.stabilizer();
+        context.async_eval(
+            1, // TODO: num_cpus
+            device::EvalMode::TestBound,
+            &|evaluator| loop {
+                if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= self.num_runs {
+                    if num_tested.fetch_sub(1, atomic::Ordering::SeqCst) > self.num_runs {
+                        break;
+                    }
+                }
+
+                if let Some((leaf, mut bounds)) =
+                    self.random_descent(&candidates, context)
+                {
+                    evaluator.add_kernel(leaf, {
+                        let leaves = &leaves;
+                        move |leaf, kernel| {
+                            let bound = leaf.bound.clone();
+                            let runtime = stabilizer
+                                .wrap(kernel)
+                                .bound(Some(bound.value()))
+                                .evaluate()
+                                .unwrap();
+                            let mut leaves = leaves.lock().unwrap();
+                            bounds.push(bound);
+                            leaves.push((
+                                runtime,
+                                bounds.into_iter().map(|bound| bound.value()).collect(),
+                            ));
+                        }
+                    });
+                } else {
+                    num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
+                }
+            },
+        );
+        leaves.into_inner().unwrap()
+    }
+
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let executor = telamon_cuda::Executor::init();
+        let mut context = telamon_cuda::Context::new(&executor);
+        let params = linalg::FusedMMP::new(256, 256, 32);
+
+        let (signature, kernel, context) = KernelBuilder::default()
+            .build::<linalg::FusedMM<f32>, telamon_cuda::Context>(
+                params.clone(),
+                &mut context,
+            );
+        let signature = Arc::new(signature);
+        let expected = kernel.get_expected_output(context);
+
+        for (runtime, bounds) in
+            self.test_bound(kernel.build_body(signature, context), context)
+        {
+            print!("matmul,{}", runtime);
+            for bound in bounds {
+                print!(",{}", bound);
+            }
+            print!("\n");
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(StructOpt)]
 struct Rebuild {
@@ -72,6 +215,9 @@ impl Rebuild {
 enum Command {
     #[structopt(name = "rebuild")]
     Rebuild(Rebuild),
+
+    #[structopt(name = "bounds")]
+    Bounds(Bounds),
 }
 
 #[derive(StructOpt)]
@@ -87,5 +233,6 @@ fn main() -> io::Result<()> {
 
     match &args.command {
         Command::Rebuild(rebuild) => rebuild.run(&args),
+        Command::Bounds(bounds) => bounds.run(&args),
     }
 }

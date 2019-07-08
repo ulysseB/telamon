@@ -855,6 +855,17 @@ fn main() -> io::Result<()> {
 
     let stabilizer = &context.stabilizer();
     let mut config = explorer::Config::default();
+    match &mut config.algorithm {
+        explorer::SearchAlgorithm::Mcts(bconfig) => {
+            () /*
+               bconfig.choice_ordering =
+                   "lower_layout,dim_kind,dim_map,mem_space,order,inst_flag,size"
+                       .parse()
+                       .unwrap();
+                       */
+        }
+        _ => unreachable!(),
+    }
     config.output_dir = "/tmp".to_string();
     config.max_evaluations = Some(10);
 

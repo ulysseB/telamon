@@ -4,7 +4,7 @@ use crate::explorer::choice::ActionEx;
 use crate::model::{bound, Bound};
 use crate::search_space::SearchSpace;
 
-use log::{debug, info, trace};
+use log::{debug, info, trace, warn};
 use rpds::List;
 use std;
 use std::cmp::{Ordering, PartialOrd};
@@ -111,7 +111,9 @@ impl Candidate {
                 ref ld_dims,
             } => space.lower_layout(mem, st_dims, ld_dims),
         }?;
+        let start = std::time::Instant::now();
         let bound = bound(&space, context);
+        let duration = start.elapsed();
         let delta = 1.0e-2 * self.bound.value();
         if bound.value() + delta < self.bound.value() {
             debug!(
@@ -120,6 +122,15 @@ impl Candidate {
             );
         }
         let actions = self.actions.push_front(action);
+        if duration > std::time::Duration::from_secs(1) {
+            let mut actions_wrong_order_fuck_you = actions.iter().collect::<Vec<_>>();
+            actions_wrong_order_fuck_you.reverse();
+            warn!(
+                "bound computed in {:?} for actions: {}",
+                duration,
+                serde_json::to_string(&actions_wrong_order_fuck_you).unwrap()
+            );
+        }
         Ok(Candidate {
             space,
             bound,

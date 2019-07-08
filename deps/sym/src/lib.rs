@@ -1,5 +1,9 @@
 use log::{info, trace};
+use std::borrow::Borrow;
+use std::cell::Cell;
 use std::cmp::Ordering;
+use std::convert::{TryFrom, TryInto};
+use std::error::Error;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -9,7 +13,10 @@ use std::rc::Rc;
 use itertools::Itertools;
 use num::{BigUint, Integer, One, ToPrimitive, Zero};
 
+use hash::MemoizedHash;
+
 mod hash;
+mod memo;
 
 fn is_close(lhs: f64, rhs: f64) -> bool {
     (lhs - rhs).abs() < 1e-8 + 1e-5 * rhs.abs()
@@ -27,6 +34,189 @@ pub trait Range<N = u64> {
     fn min_value(&self) -> N;
 
     fn max_value(&self) -> N;
+}
+
+#[derive(Clone, Default)]
+struct MemoizedRange<T: ?Sized, N = f64> {
+    inner: memo::Memoized<T, (Cell<Option<N>>, Cell<Option<N>>)>,
+}
+
+impl<T, N> From<T> for MemoizedRange<T, N> {
+    fn from(value: T) -> Self {
+        MemoizedRange {
+            inner: value.into(),
+        }
+    }
+}
+
+impl<T, N> fmt::Debug for MemoizedRange<T, N>
+where
+    T: fmt::Debug + ?Sized,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, fmt)
+    }
+}
+
+impl<T, N> fmt::Display for MemoizedRange<T, N>
+where
+    T: fmt::Display + ?Sized,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, fmt)
+    }
+}
+
+impl<T, N> PartialEq for MemoizedRange<T, N>
+where
+    T: PartialEq + ?Sized,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl<T, N> Eq for MemoizedRange<T, N> where T: Eq + ?Sized {}
+
+impl<T, N> PartialOrd for MemoizedRange<T, N>
+where
+    T: PartialOrd + ?Sized,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+impl<T, N> Ord for MemoizedRange<T, N>
+where
+    T: Ord + ?Sized,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.inner.cmp(&other.inner)
+    }
+}
+
+impl<T, N> Hash for MemoizedRange<T, N>
+where
+    T: Hash + ?Sized,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
+    }
+}
+
+impl<T, N> Borrow<T> for MemoizedRange<T, N>
+where
+    T: ?Sized,
+{
+    fn borrow(&self) -> &T {
+        &*self
+    }
+}
+
+impl<T, N> Borrow<T> for &'_ MemoizedRange<T, N>
+where
+    T: ?Sized,
+{
+    fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+impl<T, N> AsRef<T> for MemoizedRange<T, N>
+where
+    T: ?Sized,
+{
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
+impl<T, N> ops::Deref for MemoizedRange<T, N>
+where
+    T: ?Sized,
+{
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.inner
+    }
+}
+
+impl<T, N> Range<N> for MemoizedRange<T, N>
+where
+    T: Range<N>,
+    N: Copy,
+{
+    fn min_value(&self) -> N {
+        let min_cache = &memo::Memoized::memo(&self.inner).0;
+        match min_cache.get() {
+            None => {
+                let min_value = self.inner.min_value();
+                min_cache.set(Some(min_value));
+                min_value
+            }
+            Some(min_value) => min_value,
+        }
+    }
+
+    fn max_value(&self) -> N {
+        let max_cache = &memo::Memoized::memo(&self.inner).1;
+        match max_cache.get() {
+            None => {
+                let max_value = self.inner.max_value();
+                max_cache.set(Some(max_value));
+                max_value
+            }
+            Some(max_value) => max_value,
+        }
+    }
+}
+
+#[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct MemoizedTerm<T: ?Sized>
+where
+    T: Hash,
+{
+    inner: MemoizedRange<MemoizedHash<T>>,
+}
+
+impl<T> fmt::Debug for MemoizedTerm<T>
+where
+    T: fmt::Debug + Hash + ?Sized,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, fmt)
+    }
+}
+
+impl<T> fmt::Display for MemoizedTerm<T>
+where
+    T: fmt::Display + Hash + ?Sized,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, fmt)
+    }
+}
+
+impl<T> AsRef<T> for MemoizedTerm<T>
+where
+    T: Hash,
+{
+    fn as_ref(&self) -> &T {
+        &*self
+    }
+}
+
+impl<T> ops::Deref for MemoizedTerm<T>
+where
+    T: Hash,
+{
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &**self.inner
+    }
 }
 
 pub trait Factor<N = u64> {
@@ -254,13 +444,214 @@ macro_rules! forward_binop_to_ref_val_commutative {
     };
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Katio<P> {
+    numer: Rc<Vec<P>>,
+    denom: Rc<Vec<P>>,
+}
+
+impl<P> Default for Katio<P> {
+    fn default() -> Self {
+        Katio {
+            numer: Rc::default(),
+            denom: Rc::default(),
+        }
+    }
+}
+
+impl<P> fmt::Display for Katio<P>
+where
+    P: fmt::Display,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        if self.numer.is_empty() {
+            write!(fmt, "1")?;
+        } else {
+            write!(fmt, "{}", self.numer.iter().format("*"))?;
+        }
+
+        if !self.denom.is_empty() {
+            if self.denom.len() == 1 {
+                write!(fmt, "/{}", self.denom[0])?;
+            } else {
+                write!(fmt, "/({})", self.denom.iter().format("*"))?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a, 'b, P> ops::Mul<&'a Katio<P>> for &'b Katio<P>
+where
+    P: Atom,
+{
+    type Output = Katio<P>;
+
+    fn mul(self, other: &'a Katio<P>) -> Katio<P> {
+        let (self_numer, other_denom): (Vec<_>, Vec<_>) = self
+            .numer
+            .iter()
+            .merge_join_by(other.denom.iter(), |lhs, rhs| lhs.cmp(rhs))
+            .filter_map(|either| {
+                use itertools::{Either, EitherOrBoth::*};
+
+                match either {
+                    Left(numer) => Some(Either::Left(numer)),
+                    Right(denom) => Some(Either::Right(denom)),
+                    Both(_, _) => None,
+                }
+            })
+            .partition_map(|either| either);
+
+        let (self_denom, other_numer): (Vec<_>, Vec<_>) = self
+            .denom
+            .iter()
+            .merge_join_by(other.numer.iter(), |lhs, rhs| lhs.cmp(rhs))
+            .filter_map(|either| {
+                use itertools::{Either, EitherOrBoth::*};
+
+                match either {
+                    Left(denom) => Some(Either::Left(denom)),
+                    Right(numer) => Some(Either::Right(numer)),
+                    Both(_, _) => None,
+                }
+            })
+            .partition_map(|either| either);
+
+        let numer = if self_numer.is_empty() {
+            if other_numer.is_empty() {
+                Rc::default()
+            } else if other_numer.len() == other.numer.len() {
+                other.numer.clone()
+            } else {
+                Rc::new(other_numer.into_iter().cloned().collect())
+            }
+        } else if other_numer.is_empty() {
+            if self_numer.len() == self.numer.len() {
+                self.numer.clone()
+            } else {
+                Rc::new(self_numer.into_iter().cloned().collect())
+            }
+        } else {
+            Rc::new(
+                self_numer
+                    .into_iter()
+                    .merge(other_numer.into_iter())
+                    .cloned()
+                    .collect(),
+            )
+        };
+
+        let denom = if self_denom.is_empty() {
+            if other_denom.is_empty() {
+                Rc::default()
+            } else if other_denom.len() == other.denom.len() {
+                other.denom.clone()
+            } else {
+                Rc::new(other_denom.into_iter().cloned().collect())
+            }
+        } else if other_denom.is_empty() {
+            if self_denom.len() == self.denom.len() {
+                self.denom.clone()
+            } else {
+                Rc::new(self_denom.into_iter().cloned().collect())
+            }
+        } else {
+            Rc::new(
+                self_denom
+                    .into_iter()
+                    .merge(other_denom.into_iter())
+                    .cloned()
+                    .collect(),
+            )
+        };
+
+        Katio { numer, denom }
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Mul<Output = Katio<P>>, mul for Katio<P>, Katio<P>);
+
+impl<P> Katio<P>
+where
+    P: Atom,
+{
+    fn new(numer: Rc<Vec<P>>, denom: Rc<Vec<P>>) -> Self {
+        Katio { numer, denom }
+    }
+
+    fn is_one(&self) -> bool {
+        self.numer.is_empty() && self.denom.is_empty()
+    }
+
+    pub fn min_value(&self) -> f64 {
+        self.denom.iter().fold(
+            self.numer
+                .iter()
+                .fold(1., |min, n| min * n.min_value() as f64),
+            |min, d| min / d.max_value() as f64,
+        )
+    }
+
+    pub fn max_value(&self) -> f64 {
+        self.denom.iter().fold(
+            self.numer
+                .iter()
+                .fold(1., |max, n| max * n.max_value() as f64),
+            |max, d| max / d.min_value() as f64,
+        )
+    }
+}
+
+trait Recip {
+    type Output;
+
+    fn recip(self) -> Self::Output;
+}
+
+impl<P> Recip for &'_ Katio<P>
+where
+    P: Atom,
+{
+    type Output = Katio<P>;
+
+    fn recip(self) -> Katio<P> {
+        Katio::new(self.denom.clone(), self.numer.clone())
+    }
+}
+
+impl<P> Recip for Katio<P>
+where
+    P: Atom,
+{
+    type Output = Katio<P>;
+
+    fn recip(mut self) -> Katio<P> {
+        self.recip_assign();
+        self
+    }
+}
+
+trait RecipAssign {
+    fn recip_assign(&mut self);
+}
+
+impl<P> RecipAssign for Katio<P>
+where
+    P: Atom,
+{
+    fn recip_assign(&mut self) {
+        std::mem::swap(&mut self.numer, &mut self.denom);
+    }
+}
+
 // Integer division of parameters.  There is the assumption that whatever values of the
 // parameters are chosen, the ratio is an integer.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct RatioInner<P> {
     factor: BigUint,
-    numer: Vec<P>,
-    denom: Vec<P>,
+    ratio: Katio<P>,
 }
 
 impl<P> fmt::Display for RatioInner<P>
@@ -268,18 +659,14 @@ where
     P: Atom + fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if self.numer.is_empty() {
+        if self.ratio.is_one() {
             write!(fmt, "{}", self.factor)?;
         } else {
             if !self.factor.is_one() {
                 write!(fmt, "{}*", self.factor)?;
             }
 
-            write!(fmt, "{}", self.numer.iter().format("*"))?;
-        }
-
-        if !self.denom.is_empty() {
-            write!(fmt, "/{}", self.denom.iter().format("/"))?;
+            write!(fmt, "{}", self.ratio)?;
         }
 
         Ok(())
@@ -298,8 +685,7 @@ where
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Ratio")
             .field("factor", &self.inner.factor)
-            .field("numer", &self.inner.numer)
-            .field("denom", &self.inner.denom)
+            .field("ratio", &self.inner.ratio)
             .finish()
     }
 }
@@ -352,14 +738,17 @@ impl<P> Ratio<P>
 where
     P: Atom,
 {
+    pub fn raw(factor: BigUint, ratio: Katio<P>) -> Self {
+        RatioInner { factor, ratio }.into()
+    }
+
     pub fn new(factor: BigUint, mut numer: Vec<P>, mut denom: Vec<P>) -> Self {
         numer.sort();
         denom.sort();
 
         RatioInner {
             factor,
-            numer,
-            denom,
+            ratio: Katio::new(Rc::new(numer), Rc::new(denom)),
         }
         .into()
     }
@@ -369,11 +758,15 @@ where
     }
 
     pub fn to_symbolic_float(&self) -> Float<P> {
-        FloatInner::Mul(self.clone().into(), Vec::new()).into()
+        DiffExpr::product(
+            self.inner.factor.to_u64().unwrap() as f64,
+            Product::from(self.inner.ratio.clone()),
+        )
+        .into()
     }
 
     fn to_u32(&self) -> Option<u32> {
-        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
+        if self.inner.ratio.is_one() {
             Some(
                 self.inner
                     .factor
@@ -386,7 +779,7 @@ where
     }
 
     fn as_biguint(&self) -> Option<&BigUint> {
-        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
+        if self.inner.ratio.is_one() {
             Some(&self.inner.factor)
         } else {
             None
@@ -400,9 +793,10 @@ where
             (self.inner.factor.clone(), other.inner.factor.clone());
         let (left_gcd, right_lcm) = self
             .inner
+            .ratio
             .numer
             .iter()
-            .merge_join_by(&other.inner.numer, |lhs, rhs| lhs.cmp(rhs))
+            .merge_join_by(other.inner.ratio.numer.iter(), |lhs, rhs| lhs.cmp(rhs))
             .fold(
                 (left_gcd, right_lcm),
                 |(left_gcd, right_lcm), either| match either {
@@ -413,9 +807,10 @@ where
             );
         let (left_gcd, right_lcm) = self
             .inner
+            .ratio
             .denom
             .iter()
-            .merge_join_by(&other.inner.denom, |lhs, rhs| lhs.cmp(rhs))
+            .merge_join_by(other.inner.ratio.denom.iter(), |lhs, rhs| lhs.cmp(rhs))
             .fold(
                 (left_gcd, right_lcm),
                 |(left_gcd, right_lcm), either| match either {
@@ -427,6 +822,70 @@ where
         left_gcd.is_multiple_of(&right_lcm)
     }
 
+    fn partial_compare(&self, other: &Ratio<P>) -> Option<Ordering> {
+        use itertools::EitherOrBoth::*;
+
+        // Fast path when pointers are identical
+        if Rc::ptr_eq(&self.inner, &other.inner) {
+            return Some(Ordering::Equal);
+        }
+
+        let mut lmin = self.inner.factor.clone();
+        let mut lmax = lmin.clone();
+        let mut rmin = other.inner.factor.clone();
+        let mut rmax = rmin.clone();
+
+        for either in self
+            .inner
+            .ratio
+            .numer
+            .iter()
+            .merge_join_by(other.inner.ratio.numer.iter(), |lhs, rhs| lhs.cmp(rhs))
+        {
+            match either {
+                Left(lhs) => {
+                    lmin *= lhs.min_value();
+                    lmax *= lhs.max_value();
+                }
+                Right(rhs) => {
+                    rmin *= rhs.min_value();
+                    rmax *= rhs.max_value();
+                }
+                Both(..) => (),
+            }
+        }
+
+        for either in self
+            .inner
+            .ratio
+            .denom
+            .iter()
+            .merge_join_by(other.inner.ratio.denom.iter(), |lhs, rhs| lhs.cmp(rhs))
+        {
+            match either {
+                Left(lhs) => {
+                    lmin /= lhs.max_value();
+                    lmax /= lhs.min_value();
+                }
+                Right(rhs) => {
+                    rmin /= rhs.max_value();
+                    rmax /= rhs.min_value();
+                }
+                Both(..) => (),
+            }
+        }
+
+        if lmin >= rmax {
+            Some(Ordering::Greater)
+        } else if lmax <= rmin {
+            Some(Ordering::Less)
+        } else if lmin == rmin && lmax == rmax && self == other {
+            Some(Ordering::Equal)
+        } else {
+            None
+        }
+    }
+
     fn is_greater_than(&self, other: &Ratio<P>) -> bool {
         use itertools::EitherOrBoth::*;
 
@@ -434,9 +893,10 @@ where
             (self.inner.factor.clone(), other.inner.factor.clone());
         let (left_min, right_max) = self
             .inner
+            .ratio
             .numer
             .iter()
-            .merge_join_by(&other.inner.numer, |lhs, rhs| lhs.cmp(rhs))
+            .merge_join_by(other.inner.ratio.numer.iter(), |lhs, rhs| lhs.cmp(rhs))
             .fold(
                 (left_min, right_max),
                 |(left_min, right_max), either| match either {
@@ -447,9 +907,10 @@ where
             );
         let (left_min, right_max) = self
             .inner
+            .ratio
             .denom
             .iter()
-            .merge_join_by(&other.inner.denom, |lhs, rhs| lhs.cmp(rhs))
+            .merge_join_by(other.inner.ratio.denom.iter(), |lhs, rhs| lhs.cmp(rhs))
             .fold(
                 (left_min, right_max),
                 |(left_min, right_max), either| match either {
@@ -476,8 +937,18 @@ where
             .factor
             .to_u64()
             .unwrap_or_else(|| panic!("Unable to represent factor as u64"));
-        let numer_min = self.numer.iter().map(Range::min_value).product::<u64>();
-        let denom_max = self.denom.iter().map(Range::max_value).product::<u64>();
+        let numer_min = self
+            .ratio
+            .numer
+            .iter()
+            .map(Range::min_value)
+            .product::<u64>();
+        let denom_max = self
+            .ratio
+            .denom
+            .iter()
+            .map(Range::max_value)
+            .product::<u64>();
         (factor * numer_min) / denom_max
     }
 
@@ -486,8 +957,18 @@ where
             .factor
             .to_u64()
             .unwrap_or_else(|| panic!("Unable to represent factor as u64"));
-        let numer_max = self.numer.iter().map(Range::max_value).product::<u64>();
-        let denom_min = self.denom.iter().map(Range::min_value).product::<u64>();
+        let numer_max = self
+            .ratio
+            .numer
+            .iter()
+            .map(Range::max_value)
+            .product::<u64>();
+        let denom_min = self
+            .ratio
+            .denom
+            .iter()
+            .map(Range::min_value)
+            .product::<u64>();
         (factor * numer_max) / denom_min
     }
 }
@@ -501,8 +982,18 @@ where
             .factor
             .to_u64()
             .unwrap_or_else(|| panic!("Unable to represent factor as u64"));
-        let numer_gcd = self.numer.iter().map(Factor::gcd_value).product::<u64>();
-        let denom_lcm = self.denom.iter().map(Factor::lcm_value).product::<u64>();
+        let numer_gcd = self
+            .ratio
+            .numer
+            .iter()
+            .map(Factor::gcd_value)
+            .product::<u64>();
+        let denom_lcm = self
+            .ratio
+            .denom
+            .iter()
+            .map(Factor::lcm_value)
+            .product::<u64>();
         assert!((factor * numer_gcd).is_multiple_of(&denom_lcm));
 
         (factor * numer_gcd) / denom_lcm
@@ -513,8 +1004,18 @@ where
             .factor
             .to_u64()
             .unwrap_or_else(|| panic!("Unable to represent factor as u64"));
-        let numer_lcm = self.numer.iter().map(Factor::lcm_value).product::<u64>();
-        let denom_gcd = self.denom.iter().map(Factor::gcd_value).product::<u64>();
+        let numer_lcm = self
+            .ratio
+            .numer
+            .iter()
+            .map(Factor::lcm_value)
+            .product::<u64>();
+        let denom_gcd = self
+            .ratio
+            .denom
+            .iter()
+            .map(Factor::gcd_value)
+            .product::<u64>();
         assert!((factor * numer_lcm).is_multiple_of(&denom_gcd));
 
         (factor * numer_lcm) / denom_gcd
@@ -554,11 +1055,7 @@ where
     type Output = Ratio<P>;
 
     fn mul(self, other: &'a BigUint) -> Ratio<P> {
-        Ratio::new(
-            &self.inner.factor * other,
-            self.inner.numer.clone(),
-            self.inner.denom.clone(),
-        )
+        Ratio::raw(&self.inner.factor * other, self.inner.ratio.clone())
     }
 }
 
@@ -580,40 +1077,10 @@ where
     type Output = Ratio<P>;
 
     fn mul(self, other: &'a Ratio<P>) -> Ratio<P> {
-        use itertools::EitherOrBoth::*;
-
-        let mut numer =
-            Vec::with_capacity(self.inner.numer.len() + other.inner.numer.len());
-        let mut denom =
-            Vec::with_capacity(other.inner.denom.len() + self.inner.denom.len());
-        for either in self
-            .inner
-            .numer
-            .iter()
-            .merge_join_by(other.inner.denom.iter(), |lhs, rhs| lhs.cmp(rhs))
-        {
-            match either {
-                Left(lhs) => numer.push(lhs.clone()),
-                Right(rhs) => denom.push(rhs.clone()),
-                Both(_, _) => (),
-            }
-        }
-
-        for either in self
-            .inner
-            .denom
-            .iter()
-            .merge_join_by(other.inner.numer.iter(), |lhs, rhs| lhs.cmp(rhs))
-        {
-            match either {
-                Left(lhs) => denom.push(lhs.clone()),
-                Right(rhs) => numer.push(rhs.clone()),
-                Both(_, _) => (),
-            }
-        }
-
-        // Ratio::new sorts its arguments
-        Ratio::new(&self.inner.factor * &other.inner.factor, numer, denom)
+        Ratio::raw(
+            &self.inner.factor * &other.inner.factor,
+            &self.inner.ratio * &other.inner.ratio,
+        )
     }
 }
 
@@ -624,23 +1091,26 @@ where
     fn mul_assign(&mut self, rhs: &'_ Ratio<P>) {
         let lhs = Rc::make_mut(&mut self.inner);
         lhs.factor *= &rhs.inner.factor;
-        for numer in rhs.inner.numer.iter() {
-            if let Some(pos) = lhs.denom.iter().position(|d| d == numer) {
-                lhs.denom.swap_remove(pos);
+        let rnumer = Rc::make_mut(&mut lhs.ratio.numer);
+        let rdenom = Rc::make_mut(&mut lhs.ratio.denom);
+
+        for numer in rhs.inner.ratio.numer.iter() {
+            if let Some(pos) = rdenom.iter().position(|d| d == numer) {
+                rdenom.swap_remove(pos);
             } else {
-                lhs.numer.push(numer.clone());
+                rnumer.push(numer.clone());
             }
         }
-        for denom in rhs.inner.denom.iter() {
-            if let Some(pos) = lhs.numer.iter().position(|n| n == denom) {
-                lhs.numer.swap_remove(pos);
+        for denom in rhs.inner.ratio.denom.iter() {
+            if let Some(pos) = rnumer.iter().position(|n| n == denom) {
+                rnumer.swap_remove(pos);
             } else {
-                lhs.denom.push(denom.clone());
+                rdenom.push(denom.clone());
             }
         }
 
-        lhs.numer.sort();
-        lhs.denom.sort();
+        rnumer.sort();
+        rdenom.sort();
     }
 }
 
@@ -1019,12 +1489,10 @@ where
 
                 let mut to_remove = vec![];
                 for (ix, arg) in args.iter().enumerate() {
-                    if arg.is_less_than(&elem) {
-                        continue 'elem;
-                    }
-
-                    if elem.is_less_than(&arg) {
-                        to_remove.push(ix);
+                    match arg.partial_compare(&elem) {
+                        Some(Ordering::Less) | Some(Ordering::Equal) => continue 'elem,
+                        Some(Ordering::Greater) => to_remove.push(ix),
+                        None => (),
                     }
                 }
 
@@ -1062,10 +1530,12 @@ where
                     emin.max.to_u32().unwrap() as f64,
                     emin.values
                         .iter()
-                        .cloned()
-                        .map(FloatRatioInner::from)
-                        .map(FloatRatio::from)
-                        .map(DiffExpr::from)
+                        .map(|ratio| {
+                            DiffExpr::product(
+                                ratio.inner.factor.to_u64().unwrap() as f64,
+                                Product::from(ratio.inner.ratio.clone()),
+                            )
+                        })
                         .collect(),
                 ))
                 .into()
@@ -1447,12 +1917,341 @@ where
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DivCeilExpr<P>
+where
+    P: Atom,
+{
+    numer: Int<P>,
+    denom: u32,
+}
+
+impl<P> fmt::Display for DivCeilExpr<P>
+where
+    P: Atom,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "div_ceil({}, {})", self.numer, self.denom)
+    }
+}
+
+impl<P> DivCeilExpr<P>
+where
+    P: Atom,
+{
+    pub fn new(numer: Int<P>, denom: u32) -> Self {
+        DivCeilExpr { numer, denom }
+    }
+
+    pub fn min_value(&self) -> f64 {
+        let denom = u64::from(self.denom);
+        // TODO: should take gcd?
+        ((self.numer.min_value() + denom - 1) / denom) as f64
+    }
+
+    pub fn max_value(&self) -> f64 {
+        // TODO: should take lcm?
+        let denom = u64::from(self.denom);
+        ((self.numer.max_value() + denom - 1) / denom) as f64
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Product<P>
+where
+    P: Atom,
+{
+    ratio: Katio<P>,
+    divceils: Rc<Vec<DivCeilExpr<P>>>,
+    others: Rc<Vec<Float<P>>>,
+}
+
+impl<P> Default for Product<P>
+where
+    P: Atom,
+{
+    fn default() -> Self {
+        Product {
+            ratio: Katio::default(),
+            divceils: Rc::default(),
+            others: Rc::default(),
+        }
+    }
+}
+
+impl<P> fmt::Display for Product<P>
+where
+    P: Atom,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.ratio)?;
+
+        if !self.divceils.is_empty() {
+            write!(fmt, "*[{}]", self.divceils.iter().format("*"))?;
+        }
+
+        if !self.others.is_empty() {
+            write!(fmt, "*{{{}}}", self.others.iter().format("*"))?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a, 'b, P> ops::Mul<&'a Product<P>> for &'b Product<P>
+where
+    P: Atom,
+{
+    type Output = Product<P>;
+
+    fn mul(self, other: &'a Product<P>) -> Product<P> {
+        let ratio = if other.ratio.is_one() {
+            self.ratio.clone()
+        } else if self.ratio.is_one() {
+            other.ratio.clone()
+        } else {
+            &self.ratio * &other.ratio
+        };
+
+        let divceils = if other.divceils.is_empty() {
+            self.divceils.clone()
+        } else if self.divceils.is_empty() {
+            other.divceils.clone()
+        } else {
+            Rc::new(
+                self.divceils
+                    .iter()
+                    .merge(other.divceils.iter())
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            )
+        };
+
+        let others = if other.others.is_empty() {
+            self.others.clone()
+        } else if self.others.is_empty() {
+            other.others.clone()
+        } else {
+            Rc::new(
+                self.others
+                    .iter()
+                    .merge(other.others.iter())
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            )
+        };
+
+        Product {
+            ratio,
+            divceils,
+            others,
+        }
+    }
+}
+
+forward_binop_to_ref_ref!(impl(P: Atom) Mul<Output = Product<P>>, mul for Product<P>, Product<P>);
+
+impl<P> From<Katio<P>> for Product<P>
+where
+    P: Atom,
+{
+    fn from(ratio: Katio<P>) -> Self {
+        Product {
+            ratio,
+            divceils: Default::default(),
+            others: Default::default(),
+        }
+    }
+}
+
+impl<P> From<Float<P>> for Product<P>
+where
+    P: Atom,
+{
+    fn from(float: Float<P>) -> Self {
+        match &*float {
+            FloatInner::DivCeil(divceil) => Product {
+                ratio: Default::default(),
+                divceils: Rc::new(vec![divceil.clone()]),
+                others: Default::default(),
+            },
+            _ => Product {
+                ratio: Default::default(),
+                divceils: Default::default(),
+                others: Rc::new(vec![float]),
+            },
+        }
+    }
+}
+
+impl<P> Product<P>
+where
+    P: Atom,
+{
+    fn is_ratio(&self) -> bool {
+        self.divceils.is_empty() && self.others.is_empty()
+    }
+
+    fn is_one(&self) -> bool {
+        self.is_ratio() && self.ratio.is_one()
+    }
+
+    fn new_divceil(divceil: DivCeilExpr<P>) -> Self {
+        Product {
+            ratio: Default::default(),
+            divceils: Rc::new(vec![divceil]),
+            others: Default::default(),
+        }
+    }
+
+    fn new_other(value: Float<P>) -> Self {
+        match &*value {
+            FloatInner::DivCeil(divceil) => Product::new_divceil(divceil.clone()),
+            _ => Product {
+                ratio: Default::default(),
+                divceils: Default::default(),
+                others: Rc::new(vec![value]),
+            },
+        }
+    }
+
+    fn dmin(&self) -> f64 {
+        // Fraction outside of the divceils
+        //
+        // Note: Those are kept sorted.
+        let mut numers = self.ratio.numer.as_ref().clone();
+        let mut denoms = self.ratio.denom.as_ref().clone();
+
+        let mut val = 1.;
+
+        for divceil in self.divceils.iter() {
+            match &*divceil.numer.inner {
+                IntInner::Mul(ratio) => {
+                    let mut dnumer_val = ratio.inner.factor.clone();
+                    for dnumer in ratio.inner.ratio.numer.iter() {
+                        if let Ok(pos) = denoms.binary_search(&dnumer) {
+                            // Make sure we don't match it twice
+                            denoms.remove(pos);
+
+                            let lcm_value = dnumer.lcm_value();
+                            val /= lcm_value as f64;
+                            dnumer_val *= lcm_value;
+                        } else {
+                            dnumer_val *= dnumer.gcd_value();
+                        }
+                    }
+
+                    let mut ddenom_val = BigUint::from(divceil.denom);
+                    for ddenom in ratio.inner.ratio.denom.iter() {
+                        if let Ok(pos) = numers.binary_search(&ddenom) {
+                            // Make sure we don't match it twice
+                            numers.remove(pos);
+
+                            let gcd_value = ddenom.gcd_value();
+                            val *= gcd_value as f64;
+                            ddenom_val *= gcd_value;
+                        } else {
+                            ddenom_val *= ddenom.lcm_value();
+                        }
+                    }
+
+                    val *= ((dnumer_val + &ddenom_val - 1u32) / ddenom_val)
+                        .to_u64()
+                        .unwrap() as f64;
+                }
+                _ => unimplemented!("min_value containing {}", divceil),
+            }
+        }
+
+        for numer in numers.into_iter() {
+            val *= numer.min_value() as f64;
+        }
+
+        for denom in denoms.into_iter() {
+            val /= denom.max_value() as f64;
+        }
+
+        val
+    }
+
+    fn dmax(&self) -> f64 {
+        // Fraction outside of the divceils
+        //
+        // Note: Those are kept sorted.
+        let mut numers = self.ratio.numer.as_ref().clone();
+        let mut denoms = self.ratio.denom.as_ref().clone();
+
+        let mut val = 1.;
+
+        for divceil in self.divceils.iter() {
+            match &*divceil.numer.inner {
+                IntInner::Mul(ratio) => {
+                    let mut dnumer_val = ratio.inner.factor.clone();
+                    for dnumer in ratio.inner.ratio.numer.iter() {
+                        if let Ok(pos) = denoms.binary_search(&dnumer) {
+                            // Make sure we don't match it twice
+                            denoms.remove(pos);
+
+                            let gcd_value = dnumer.gcd_value();
+                            val /= gcd_value as f64;
+                            dnumer_val *= gcd_value;
+                        } else {
+                            dnumer_val *= dnumer.lcm_value();
+                        }
+                    }
+
+                    let mut ddenom_val = BigUint::from(divceil.denom);
+                    for ddenom in ratio.inner.ratio.denom.iter() {
+                        if let Ok(pos) = numers.binary_search(&ddenom) {
+                            // Make sure we don't match it twice
+                            numers.remove(pos);
+
+                            let lcm_value = ddenom.lcm_value();
+                            val *= lcm_value as f64;
+                            ddenom_val *= lcm_value;
+                        } else {
+                            ddenom_val *= ddenom.gcd_value();
+                        }
+                    }
+
+                    val *= ((dnumer_val + &ddenom_val - 1u32) / ddenom_val)
+                        .to_u64()
+                        .unwrap() as f64;
+                }
+                _ => unimplemented!("min_value containing {}", divceil),
+            }
+        }
+
+        for numer in numers.into_iter() {
+            val *= numer.max_value() as f64;
+        }
+
+        for denom in denoms.into_iter() {
+            val /= denom.min_value() as f64;
+        }
+
+        val
+    }
+}
+
+impl<P> Range<f64> for Product<P>
+where
+    P: Atom,
+{
+    fn min_value(&self) -> f64 {
+        self.dmin() * self.others.iter().map(Float::min_value).product::<f64>()
+    }
+
+    fn max_value(&self) -> f64 {
+        self.dmax() * self.others.iter().map(Float::max_value).product::<f64>()
+    }
+}
+
 // factor * float(numer) / float(denom)
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct FloatRatioInner<P> {
     factor: f64,
-    numer: Vec<P>,
-    denom: Vec<P>,
+    ratio: Katio<P>,
     // should be: factor * float(numer/denom) * float(numer)/float(denom)
 }
 
@@ -1464,8 +2263,7 @@ where
         // TODO: This is no longer an integer ratio!
         FloatRatioInner {
             factor: ratio.inner.factor.to_u64().unwrap() as f64,
-            numer: ratio.inner.numer.clone(),
-            denom: ratio.inner.denom.clone(),
+            ratio: ratio.inner.ratio.clone(),
         }
     }
 }
@@ -1490,8 +2288,7 @@ where
         H: Hasher,
     {
         self.factor.to_bits().hash(state);
-        self.numer.hash(state);
-        self.denom.hash(state);
+        self.ratio.hash(state);
     }
 }
 
@@ -1501,23 +2298,7 @@ where
 {
     fn mul_assign(&mut self, rhs: &'a FloatRatioInner<P>) {
         self.factor *= &rhs.factor;
-        for numer in rhs.numer.iter() {
-            if let Some(pos) = self.denom.iter().position(|d| d == numer) {
-                self.denom.swap_remove(pos);
-            } else {
-                self.numer.push(numer.clone());
-            }
-        }
-        for denom in rhs.denom.iter() {
-            if let Some(pos) = self.numer.iter().position(|n| n == denom) {
-                self.numer.swap_remove(pos);
-            } else {
-                self.denom.push(denom.clone());
-            }
-        }
-
-        self.numer.sort();
-        self.denom.sort();
+        self.ratio = &self.ratio * &rhs.ratio;
     }
 }
 
@@ -1528,201 +2309,36 @@ where
     P: Atom + fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if self.numer.is_empty() {
+        if self.ratio.is_one() {
             write!(fmt, "{}", self.factor)?;
         } else {
             if !self.factor.is_one() {
                 write!(fmt, "{}*", self.factor)?;
             }
 
-            write!(fmt, "{}", self.numer.iter().format("*"))?;
-        }
-
-        if !self.denom.is_empty() {
-            write!(fmt, "/{}", self.denom.iter().format("/"))?;
+            write!(fmt, "{}", self.ratio)?;
         }
 
         Ok(())
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FloatRatio<P> {
-    inner: Rc<FloatRatioInner<P>>,
-}
-
-impl<P> From<Ratio<P>> for FloatRatio<P>
+impl<P> FloatRatioInner<P>
 where
     P: Atom,
 {
-    fn from(ratio: Ratio<P>) -> Self {
-        FloatRatio {
-            inner: Rc::new(ratio.into()),
-        }
-    }
-}
-
-impl<P> Clone for FloatRatio<P> {
-    fn clone(&self) -> Self {
-        FloatRatio {
-            inner: Rc::clone(&self.inner),
-        }
-    }
-}
-
-impl<'a, 'b, P> Mul<&'a f64> for &'b FloatRatio<P>
-where
-    P: Atom,
-{
-    type Output = FloatRatio<P>;
-
-    fn mul(self, other: &'a f64) -> FloatRatio<P> {
-        FloatRatio::new(
-            self.inner.factor * other,
-            self.inner.numer.clone(),
-            self.inner.denom.clone(),
-        )
-    }
-}
-
-impl<P> MulAssign<&'_ f64> for FloatRatio<P>
-where
-    P: Atom,
-{
-    fn mul_assign(&mut self, other: &'_ f64) {
-        Rc::make_mut(&mut self.inner).factor *= other;
-    }
-}
-
-forward_binop!(impl(P: Atom) Mul, mul for FloatRatio<P>, f64, MulAssign, mul_assign);
-
-impl<'a, P> MulAssign<&'a FloatRatio<P>> for FloatRatio<P>
-where
-    P: Atom,
-{
-    fn mul_assign(&mut self, rhs: &'a FloatRatio<P>) {
-        *Rc::make_mut(&mut self.inner) *= &*rhs.inner;
-    }
-}
-
-forward_binop_to_op_assign_commutative!(impl(P: Atom) Mul, mul for FloatRatio<P>, FloatRatio<P>, MulAssign, mul_assign);
-
-impl<P> fmt::Debug for FloatRatio<P>
-where
-    P: fmt::Debug,
-{
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.inner, fmt)
-    }
-}
-
-impl<P> fmt::Display for FloatRatio<P>
-where
-    P: Atom + fmt::Display,
-{
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, fmt)
-    }
-}
-
-impl<P> From<FloatRatioInner<P>> for FloatRatio<P>
-where
-    P: Atom,
-{
-    fn from(inner: FloatRatioInner<P>) -> Self {
-        FloatRatio {
-            inner: Rc::new(inner),
-        }
-    }
-}
-
-impl<P> From<f64> for FloatRatioInner<P>
-where
-    P: Atom,
-{
-    fn from(constant: f64) -> Self {
-        FloatRatioInner {
-            factor: constant,
-            numer: Vec::new(),
-            denom: Vec::new(),
-        }
-    }
-}
-
-impl<P> From<f64> for FloatRatio<P>
-where
-    P: Atom,
-{
-    fn from(constant: f64) -> Self {
-        FloatRatioInner::from(constant).into()
-    }
-}
-
-impl<P> FloatRatio<P>
-where
-    P: Atom,
-{
-    fn new_constant(factor: f64) -> Self {
-        FloatRatio::new(factor, Vec::new(), Vec::new())
-    }
-
-    fn new(factor: f64, numer: Vec<P>, denom: Vec<P>) -> Self {
-        FloatRatioInner {
-            factor,
-            numer,
-            denom,
-        }
-        .into()
-    }
-
-    fn is_one(&self) -> bool {
-        self.inner.factor == 1f64
-            && self.inner.numer.is_empty()
-            && self.inner.denom.is_empty()
-    }
-
-    fn as_f64(&self) -> Option<f64> {
-        if self.inner.numer.is_empty() && self.inner.denom.is_empty() {
-            Some(self.inner.factor)
-        } else {
-            None
-        }
-    }
-
-    fn to_f64(&self) -> Option<f64> {
-        self.as_f64()
-    }
-
     fn min_value(&self) -> f64
     where
         P: Atom,
     {
-        let min = self.inner.factor;
-        let min = self
-            .inner
-            .numer
-            .iter()
-            .fold(min, |min, n| min * n.min_value() as f64);
-        self.inner
-            .denom
-            .iter()
-            .fold(min, |min, d| min / d.max_value() as f64)
+        self.factor * self.ratio.min_value()
     }
 
     fn max_value(&self) -> f64
     where
         P: Atom,
     {
-        let max = self.inner.factor;
-        let max = self
-            .inner
-            .numer
-            .iter()
-            .fold(max, |max, n| max * n.max_value() as f64);
-        self.inner
-            .denom
-            .iter()
-            .fold(max, |max, d| max / d.min_value() as f64)
+        self.factor * self.ratio.max_value()
     }
 }
 
@@ -1732,8 +2348,7 @@ where
     P: Atom,
 {
     constant: f64,
-    ratios: WeightedVecSet<FloatRatio<P>>,
-    values: WeightedVecSet<Float<P>>,
+    terms: WeightedVecSet<MemoizedHash<MemoizedRange<Product<P>, f64>>, f64>,
 }
 
 impl<P> Eq for DiffExpr<P> where P: Atom + Eq {}
@@ -1791,14 +2406,9 @@ where
     P: Atom + PartialOrd,
 {
     fn partial_cmp(&self, other: &DiffExpr<P>) -> Option<Ordering> {
-        // TODO: Should compare (ratios.coefficients, values.coefficients) before both sets of
-        // weights
-        match self.ratios.partial_cmp(&other.ratios) {
-            Some(Ordering::Equal) => self.values.partial_cmp(&other.values).map(|ord| {
-                ord.then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
-            }),
-            ord => ord,
-        }
+        self.terms.partial_cmp(&other.terms).map(|ord| {
+            ord.then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
+        })
     }
 }
 
@@ -1807,13 +2417,9 @@ where
     P: Atom + Ord,
 {
     fn cmp(&self, other: &DiffExpr<P>) -> Ordering {
-        // TODO: Should compare (ratios.coefficients, values.coefficients) before both sets of
-        // weights
-        self.ratios.cmp(&other.ratios).then_with(|| {
-            self.values
-                .cmp(&other.values)
-                .then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
-        })
+        self.terms
+            .cmp(&other.terms)
+            .then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
     }
 }
 
@@ -1826,8 +2432,7 @@ where
         H: Hasher,
     {
         self.constant.to_bits().hash(state);
-        self.ratios.hash(state);
-        self.values.hash(state);
+        self.terms.hash(state);
     }
 }
 
@@ -1836,20 +2441,15 @@ where
     P: Atom + fmt::Display,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if self.ratios.is_empty() && self.values.is_empty() {
+        if self.terms.is_empty() {
             write!(fmt, "{}", self.constant)
         } else {
             write!(fmt, "(")?;
 
             let (positive, negative) = self
-                .ratios
+                .terms
                 .iter()
                 .map(|(weight, item)| (weight, format!("{}", item)))
-                .chain(
-                    self.values
-                        .iter()
-                        .map(|(weight, item)| (weight, format!("{}", item))),
-                )
                 .partition::<Vec<_>, _>(|(weight, _)| weight > &0.);
 
             let mut has_written = false;
@@ -1899,23 +2499,23 @@ where
     type Output = DiffExpr<P>;
 
     fn add(self, other: &'a f64) -> DiffExpr<P> {
-        let result = DiffExpr {
+        DiffExpr {
             constant: self.constant + other,
-            ratios: self.ratios.clone(),
-            values: self.values.clone(),
-        };
-
-        #[cfg(verify)]
-        {
-            assert!(is_close(self.min_value() + other, result.min_value()));
-            assert!(is_close(self.max_value() + other, result.max_value()));
+            terms: self.terms.clone(),
         }
-
-        result
     }
 }
 
-forward_binop_to_ref_ref!(impl(P: Atom) Add<Output = DiffExpr<P>>, add for DiffExpr<P>, f64);
+impl<P> ops::AddAssign<&'_ f64> for DiffExpr<P>
+where
+    P: Atom,
+{
+    fn add_assign(&mut self, other: &'_ f64) {
+        self.constant += other;
+    }
+}
+
+forward_binop!(impl(P: Atom) Add, add for DiffExpr<P>, f64, AddAssign, add_assign);
 
 impl<'a, 'b, P> ops::Add<&'a DiffExpr<P>> for &'b DiffExpr<P>
 where
@@ -1926,8 +2526,7 @@ where
     fn add(self, other: &'a DiffExpr<P>) -> DiffExpr<P> {
         let result = DiffExpr {
             constant: self.constant + other.constant,
-            ratios: self.ratios.union(&other.ratios),
-            values: self.values.union(&other.values),
+            terms: self.terms.union(&other.terms),
         };
 
         #[cfg(verify)]
@@ -1946,7 +2545,17 @@ where
     }
 }
 
-forward_binop_to_ref_ref!(impl(P: Atom) Add<Output = DiffExpr<P>>, add for DiffExpr<P>, DiffExpr<P>);
+impl<P> ops::AddAssign<&'_ DiffExpr<P>> for DiffExpr<P>
+where
+    P: Atom,
+{
+    fn add_assign(&mut self, other: &'_ DiffExpr<P>) {
+        self.constant += other.constant;
+        self.terms.union_assign(&other.terms);
+    }
+}
+
+forward_binop!(impl(P: Atom) Add, add for DiffExpr<P>, DiffExpr<P>, AddAssign, add_assign);
 
 impl<'a, 'b, P> ops::Sub<&'a f64> for &'b DiffExpr<P>
 where
@@ -1957,8 +2566,7 @@ where
     fn sub(self, other: &'a f64) -> DiffExpr<P> {
         let result = DiffExpr {
             constant: self.constant - other,
-            ratios: self.ratios.clone(),
-            values: self.values.clone(),
+            terms: self.terms.clone(),
         };
 
         #[cfg(verify)]
@@ -1982,8 +2590,7 @@ where
     fn sub(self, other: &'a DiffExpr<P>) -> DiffExpr<P> {
         let result = DiffExpr {
             constant: self.constant - other.constant,
-            ratios: self.ratios.union_map(&other.ratios, |weight| -weight),
-            values: self.values.union_map(&other.values, |weight| -weight),
+            terms: self.terms.union_map(&other.terms, |weight| -weight),
         };
 
         #[cfg(verify)]
@@ -2013,8 +2620,7 @@ where
     fn mul(self, other: &'a f64) -> DiffExpr<P> {
         let result = DiffExpr {
             constant: self.constant * other,
-            ratios: self.ratios.map_weights(|weight| weight * other),
-            values: self.values.map_weights(|weight| weight * other),
+            terms: self.terms.map_coefficients(|coeff| coeff * other),
         };
 
         #[cfg(verify)]
@@ -2034,41 +2640,163 @@ where
 
 forward_binop_to_ref_ref!(impl(P: Atom) Mul<Output = DiffExpr<P>>, mul for DiffExpr<P>, f64);
 
-impl<'a, 'b, P> ops::Mul<&'a FloatRatio<P>> for &'b DiffExpr<P>
+impl<'a, 'b, P> ops::Mul<&'a Product<P>> for &'b DiffExpr<P>
 where
     P: Atom,
 {
     type Output = DiffExpr<P>;
 
-    fn mul(self, other: &'a FloatRatio<P>) -> DiffExpr<P> {
+    fn mul(self, other: &'a Product<P>) -> DiffExpr<P> {
+        let mut terms: Vec<_> = self
+            .num_factor()
+            .into_iter()
+            .map(|factor| (factor, other.clone()))
+            .chain(
+                self.terms
+                    .iter()
+                    .map(|(weight, product)| (weight, product.as_ref().as_ref() * other)),
+            )
+            .map(|(weight, product)| {
+                (weight, MemoizedHash::from(MemoizedRange::from(product)))
+            })
+            .collect();
+
+        let mut to_remove = Vec::new();
+        let mut result = DiffExpr::from(0.);
+        for (ix, (weight, prod)) in terms.iter().enumerate() {
+            if prod.is_one() {
+                result += weight;
+                to_remove.push(ix);
+            } else if prod.ratio.is_one() && prod.others.len() == 1 {
+                match &*prod.others[0] {
+                    FloatInner::Diff(diff) => {
+                        result = result + diff * weight;
+                        to_remove.push(ix);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        if to_remove.len() != terms.len() {
+            for ix in to_remove.into_iter().rev() {
+                terms.swap_remove(ix);
+            }
+            terms.sort_by(|(_, lhs), (_, rhs)| lhs.cmp(rhs));
+            result += DiffExpr {
+                constant: 0.,
+                terms: WeightedVecSet::from_sorted_iter(terms.into_iter()),
+            };
+        }
+
+        result
+    }
+}
+
+impl<'a, 'b, P> ops::Mul<&'a DiffExpr<P>> for &'b DiffExpr<P>
+where
+    P: Atom,
+{
+    type Output = DiffExpr<P>;
+
+    fn mul(self, other: &'a DiffExpr<P>) -> DiffExpr<P> {
         if let Some(value) = other.as_f64() {
             self * value
+        } else if let Some(value) = self.as_f64() {
+            other * value
         } else {
-            let factor = other.inner.factor;
-            let naked_ratio =
-                FloatRatio::new(1., other.inner.numer.clone(), other.inner.denom.clone());
-            let naked = Float::from(FloatInner::Mul(naked_ratio.clone(), Vec::new()));
+            assert!(
+                !self.terms.is_empty() && !other.terms.is_empty(),
+                "unexpected non-constant series without terms"
+            );
 
-            // TODO: We could create a constant in `ratios` here.
-            DiffExpr {
-                constant: 0f64,
-                ratios: if self.constant.is_zero() {
-                    None
-                } else {
-                    Some((factor * self.constant, naked_ratio.clone()))
-                }
-                .into_iter()
-                .chain(
-                    self.ratios
+            let mut pairs = Vec::with_capacity(
+                self.terms.len() * other.terms.len()
+                    + if other.constant.is_zero() {
+                        0
+                    } else {
+                        self.terms.len()
+                    }
+                    + if self.constant.is_zero() {
+                        0
+                    } else {
+                        other.terms.len()
+                    },
+            );
+
+            pairs.extend(WeightedUnion::new(
+                other.num_factor().into_iter().flat_map(|factor| {
+                    self.terms
                         .iter()
-                        .map(|(weight, item)| (weight * factor, item * &naked_ratio)),
-                )
-                .collect(),
-                values: self
-                    .values
-                    .iter()
-                    .map(|(weight, item)| (weight * factor, item * &naked))
-                    .collect(),
+                        .map(move |(weight, prod)| (weight * factor, prod.clone()))
+                }),
+                self.num_factor().into_iter().flat_map(|factor| {
+                    other
+                        .terms
+                        .iter()
+                        .map(move |(weight, prod)| (weight * factor, prod.clone()))
+                }),
+            ));
+
+            for (lweight, lprod) in self.terms.iter() {
+                for (rweight, rprod) in other.terms.iter() {
+                    let weight = lweight * rweight;
+                    let prod = &***lprod * &***rprod;
+
+                    // TODO(bclement): the binary search here might be too expensive, and it could
+                    // be worth it to sort & "deduplicate" once at the end instead, as it would
+                    // mean moving memory around less.
+                    match pairs.binary_search_by_key(&&prod, |(_, prod)| &**prod) {
+                        Ok(pos) => {
+                            pairs[pos].0 += weight;
+                            if is_close(pairs[pos].0, 0.) {
+                                pairs.remove(pos);
+                            }
+                        }
+                        Err(pos) => pairs.insert(
+                            pos,
+                            (weight, MemoizedHash::from(MemoizedRange::from(prod))),
+                        ),
+                    }
+                }
+            }
+
+            let mut constant = self.constant * other.constant;
+            let mut to_remove = Vec::new();
+            let mut extra: Option<DiffExpr<P>> = None;
+            for (ix, (weight, prod)) in pairs.iter().enumerate() {
+                if prod.is_one() {
+                    constant += weight;
+                    to_remove.push(ix);
+                } else if prod.ratio.is_one() && prod.others.len() == 1 {
+                    match &*prod.others[0] {
+                        FloatInner::Diff(diff) => {
+                            if let Some(ediff) = extra {
+                                extra = Some(ediff + diff * weight)
+                            } else {
+                                extra = Some(diff * weight)
+                            }
+                            to_remove.push(ix);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+
+            // Remove in reverse
+            for ix in to_remove.into_iter().rev() {
+                pairs.remove(ix);
+            }
+
+            let result = DiffExpr {
+                constant,
+                terms: WeightedVecSet::from_sorted_iter(pairs.into_iter()),
+            };
+
+            if let Some(extra) = extra {
+                result + extra
+            } else {
+                result
             }
         }
     }
@@ -2081,31 +2809,7 @@ where
     fn from(constant: f64) -> Self {
         DiffExpr {
             constant,
-            ratios: Default::default(),
-            values: Default::default(),
-        }
-    }
-}
-
-impl<P> From<FloatRatio<P>> for DiffExpr<P>
-where
-    P: Atom,
-{
-    fn from(ratio: FloatRatio<P>) -> Self {
-        match ratio.as_f64() {
-            Some(value) => value.into(),
-            None => DiffExpr {
-                constant: 0.,
-                ratios: WeightedVecSet::from_sorted_iter(iter::once((
-                    ratio.inner.factor,
-                    FloatRatio::new(
-                        1.,
-                        ratio.inner.numer.clone(),
-                        ratio.inner.denom.clone(),
-                    ),
-                ))),
-                values: Default::default(),
-            },
+            terms: Default::default(),
         }
     }
 }
@@ -2119,39 +2823,11 @@ where
             Some(val) => val.into(),
             None => match &*value {
                 FloatInner::Diff(ediff) => ediff.clone(),
-                FloatInner::Mul(ratio, args) if args.is_empty() => DiffExpr {
-                    constant: 0.,
-                    ratios: WeightedVecSet::from_sorted_iter(iter::once((
-                        ratio.inner.factor,
-                        FloatRatio::new(
-                            1.,
-                            ratio.inner.numer.clone(),
-                            ratio.inner.denom.clone(),
-                        ),
-                    ))),
-                    values: Default::default(),
-                },
-                FloatInner::Mul(ratio, args) => DiffExpr {
-                    constant: 0.,
-                    ratios: Default::default(),
-                    values: WeightedVecSet::from_sorted_iter(iter::once((
-                        ratio.inner.factor,
-                        FloatInner::Mul(
-                            FloatRatio::new(
-                                1.,
-                                ratio.inner.numer.clone(),
-                                ratio.inner.denom.clone(),
-                            ),
-                            args.clone(),
-                        )
-                        .into(),
-                    ))),
-                },
-                _ => DiffExpr {
-                    constant: 0.,
-                    ratios: Default::default(),
-                    values: WeightedVecSet::from_sorted_iter(iter::once((1., value))),
-                },
+                FloatInner::DivCeil(divceil) => {
+                    DiffExpr::product(1., Product::new_divceil(divceil.clone()))
+                }
+                // TODO: perform factorisation?
+                _ => DiffExpr::product(1., Product::new_other(value)),
             },
         }
     }
@@ -2161,34 +2837,106 @@ impl<P> DiffExpr<P>
 where
     P: Atom,
 {
-    fn has_only_ratios(&self) -> bool {
-        self.values.is_empty()
+    fn num_factor(&self) -> Option<f64> {
+        if self.constant.is_zero() {
+            None
+        } else {
+            Some(self.constant)
+        }
     }
 
+    fn is_one(&self) -> bool {
+        self.terms.is_empty() && self.constant.is_one()
+    }
+
+    fn is_zero(&self) -> bool {
+        self.terms.is_empty() && self.constant.is_zero()
+    }
+
+    fn is_product(&self) -> bool {
+        self.constant.is_zero() && self.terms.len() == 1
+    }
+
+    fn as_f64(&self) -> Option<f64> {
+        if self.terms.is_empty() {
+            Some(self.constant)
+        } else {
+            None
+        }
+    }
+
+    fn partial_compare(&self, other: &DiffExpr<P>) -> Option<Ordering> {
+        // This computes the min and max values of `self - other` in one go, avoiding intermediate
+        // allocations.
+        let constant = self.constant - other.constant;
+        let (min, max) = WeightedUnion::new(
+            self.terms.iter(),
+            other.terms.iter().map(|(weight, term)| (-weight, term)),
+        )
+        .map(|(weight, term)| (weight, (term.min_value(), term.max_value())))
+        .map(|(weight, (min, max))| {
+            (weight, if weight < 0. { (max, min) } else { (min, max) })
+        })
+        .map(|(weight, (min, max))| (weight * min, weight * max))
+        .fold((constant, constant), |(min, max), (rmin, rmax)| {
+            (min + rmin, max + rmax)
+        });
+
+        assert!(lt_close(min, max) && gt_close(max, min));
+
+        if is_close(min, 0.) {
+            if is_close(max, 0.) {
+                Some(Ordering::Equal)
+            } else {
+                Some(Ordering::Greater)
+            }
+        } else if is_close(max, 0.) {
+            Some(Ordering::Less)
+        } else if min > 0. {
+            Some(Ordering::Greater)
+        } else if max < 0. {
+            Some(Ordering::Less)
+        } else {
+            None
+        }
+    }
+
+    fn nterms(&self) -> usize {
+        self.terms.len() + if self.constant.is_zero() { 0 } else { 1 }
+    }
+
+    fn product(coeff: f64, product: Product<P>) -> Self {
+        if product.is_one() {
+            coeff.into()
+        } else {
+            DiffExpr {
+                constant: 0.,
+                terms: WeightedVecSet::from_sorted_iter(iter::once((
+                    coeff,
+                    MemoizedHash::from(MemoizedRange::from(product)),
+                ))),
+            }
+        }
+    }
+}
+
+impl<P> Range<f64> for DiffExpr<P>
+where
+    P: Atom,
+{
     fn min_value(&self) -> f64
     where
         P: Atom,
     {
         self.constant
             + self
-                .ratios
+                .terms
                 .iter()
-                .map(|(weight, value)| {
+                .map(|(weight, term)| {
                     if weight < 0. {
-                        weight * value.max_value()
+                        weight * term.max_value()
                     } else {
-                        weight * value.min_value()
-                    }
-                })
-                .sum::<f64>()
-            + self
-                .values
-                .iter()
-                .map(|(weight, value)| {
-                    if weight < 0. {
-                        weight * value.max_value()
-                    } else {
-                        weight * value.min_value()
+                        weight * term.min_value()
                     }
                 })
                 .sum::<f64>()
@@ -2200,24 +2948,13 @@ where
     {
         self.constant
             + self
-                .ratios
+                .terms
                 .iter()
-                .map(|(weight, value)| {
+                .map(|(weight, term)| {
                     if weight < 0. {
-                        weight * value.min_value()
+                        weight * term.min_value()
                     } else {
-                        weight * value.max_value()
-                    }
-                })
-                .sum::<f64>()
-            + self
-                .values
-                .iter()
-                .map(|(weight, value)| {
-                    if weight < 0. {
-                        weight * value.min_value()
-                    } else {
-                        weight * value.max_value()
+                        weight * term.max_value()
                     }
                 })
                 .sum::<f64>()
@@ -2231,7 +2968,7 @@ where
 {
     min: f64,
     max: f64,
-    values: VecSet<DiffExpr<P>>,
+    values: VecSet<MemoizedHash<MemoizedRange<DiffExpr<P>, f64>>>,
 }
 
 impl<P> Eq for FMaxExpr<P> where P: Atom + Eq {}
@@ -2272,7 +3009,7 @@ where
             let maxmin = self
                 .values
                 .iter()
-                .map(DiffExpr::min_value)
+                .map(|diff| diff.min_value())
                 .fold(std::f64::NEG_INFINITY, f64::max);
             assert!(maxmin.is_finite());
 
@@ -2330,7 +3067,9 @@ where
                 _ => FMaxExpr::new(
                     value.min_value(),
                     value.max_value(),
-                    VecSet::new(DiffExpr::from(value)),
+                    VecSet::new(MemoizedHash::from(MemoizedRange::from(DiffExpr::from(
+                        value,
+                    )))),
                 ),
             },
         }
@@ -2347,7 +3086,12 @@ where
         FMaxExpr::new(
             self.min + other,
             self.max + other,
-            self.values.iter().map(|item| item + other).collect(),
+            self.values
+                .iter()
+                .map(|item| &***item + other)
+                .map(MemoizedRange::from)
+                .map(MemoizedHash::from)
+                .collect(),
         )
     }
 }
@@ -2365,7 +3109,9 @@ where
             self.values
                 .iter()
                 .cartesian_product(other.values.iter())
-                .map(|(lhs, rhs)| lhs + rhs)
+                .map(|(lhs, rhs)| &***lhs + &***rhs)
+                .map(MemoizedRange::from)
+                .map(MemoizedHash::from)
                 .collect(),
         )
     }
@@ -2383,28 +3129,39 @@ where
         FMaxExpr::new(
             self.min * other,
             self.max * other,
-            self.values.iter().map(|item| item * other).collect(),
+            self.values
+                .iter()
+                .map(|item| &***item * other)
+                .map(MemoizedRange::from)
+                .map(MemoizedHash::from)
+                .collect(),
         )
     }
 }
 
-impl<'a, 'b, P> ops::Mul<&'a FloatRatio<P>> for &'b FMaxExpr<P>
+impl<'a, 'b, P> ops::Mul<&'a DiffExpr<P>> for &'b FMaxExpr<P>
 where
     P: Atom,
 {
     type Output = FMaxExpr<P>;
 
-    fn mul(self, other: &'a FloatRatio<P>) -> FMaxExpr<P> {
+    fn mul(self, other: &'a DiffExpr<P>) -> FMaxExpr<P> {
         assert!(other.min_value() > 0.);
 
-        let args: VecSet<_> = self.values.iter().map(|item| item * other).collect();
+        let args: VecSet<_> = self
+            .values
+            .iter()
+            .map(|item| &***item * other)
+            .map(MemoizedRange::from)
+            .map(MemoizedHash::from)
+            .collect();
         let min = args
             .iter()
-            .map(DiffExpr::min_value)
+            .map(|diff| diff.min_value())
             .fold(self.min * other.min_value(), f64::max);
         let max = args
             .iter()
-            .map(DiffExpr::max_value)
+            .map(|diff| diff.max_value())
             .fold(self.max * other.max_value(), f64::max);
 
         FMaxExpr::new(min, max, args)
@@ -2415,7 +3172,11 @@ impl<P> FMaxExpr<P>
 where
     P: Atom,
 {
-    fn new(min: f64, max: f64, values: VecSet<DiffExpr<P>>) -> Self {
+    fn new(
+        min: f64,
+        max: f64,
+        values: VecSet<MemoizedHash<MemoizedRange<DiffExpr<P>>>>,
+    ) -> Self {
         assert!(min.is_finite() && max.is_finite());
         assert!(min <= max);
 
@@ -2446,6 +3207,7 @@ where
                     continue;
                 }
 
+                /*
                 let mut orp = 0;
                 for (oix, rhs) in other.values.iter().enumerate() {
                     if orp < other_to_remove.len() && oix == other_to_remove[orp] {
@@ -2453,15 +3215,24 @@ where
                         continue;
                     }
 
-                    let diff = lhs - rhs;
-                    if gt_close(diff.min_value(), 0.) {
-                        other_to_remove.insert(orp, oix);
-                        orp += 1;
-                    } else if lt_close(diff.max_value(), 0.) {
-                        self_to_remove.push(six);
-                        break;
+                    match lhs.partial_compare(rhs) {
+                        Some(Ordering::Greater) => {
+                            other_to_remove.insert(orp, oix);
+                            orp += 1;
+                        }
+                        Some(Ordering::Less) => {
+                            self_to_remove.push(six);
+                            break;
+                        }
+                        Some(Ordering::Equal) => {
+                            trace!("true {} ~~ {}", lhs, rhs);
+                            self_to_remove.push(six);
+                            break;
+                        }
+                        None => (),
                     }
                 }
+                */
             }
 
             let values = if self_to_remove.is_empty()
@@ -2513,7 +3284,7 @@ where
         } else if self.is_single_value() {
             debug_assert!(self.values.len() == 1);
 
-            Ok(self.values.values[0].clone().into())
+            Ok(self.values.values[0].as_ref().as_ref().clone().into())
         } else {
             Err(self)
         }
@@ -2525,14 +3296,11 @@ pub enum FloatInner<P>
 where
     P: Atom,
 {
-    /// Product of all arguments.  We keep the `FloatRatio` separate to make simplifications
-    /// easier.
-    Mul(FloatRatio<P>, Vec<Float<P>>),
     Min(FMinExpr<P>),
     Max(FMaxExpr<P>),
     Diff(DiffExpr<P>),
     // Ceil division: ceil(numer / denom)
-    DivCeil(Int<P>, u32),
+    DivCeil(DivCeilExpr<P>),
 }
 
 impl<P> fmt::Display for FloatInner<P>
@@ -2543,18 +3311,10 @@ where
         use FloatInner::*;
 
         match self {
-            DivCeil(numer, denom) => write!(fmt, "div_ceil({}, {})", numer, denom),
-            Mul(ratio, args) if args.is_empty() => write!(fmt, "{}", ratio),
-            Mul(ratio, args) => {
-                if !ratio.is_one() {
-                    write!(fmt, "{}*", ratio)?;
-                }
-
-                write!(fmt, "{}", args.iter().format("*"))
-            }
-            Min(emin) => write!(fmt, "{}", emin),
-            Max(emax) => write!(fmt, "{}", emax),
-            Diff(diff) => write!(fmt, "{}", diff),
+            DivCeil(divceil) => fmt::Display::fmt(divceil, fmt),
+            Min(emin) => fmt::Display::fmt(emin, fmt),
+            Max(emax) => fmt::Display::fmt(emax, fmt),
+            Diff(diff) => fmt::Display::fmt(diff, fmt),
         }
     }
 }
@@ -2564,7 +3324,7 @@ pub struct Float<P>
 where
     P: Atom,
 {
-    inner: Rc<hash::MemoizedHash<FloatInner<P>>>,
+    inner: Rc<MemoizedHash<FloatInner<P>>>,
 }
 
 impl<P> PartialOrd for Float<P>
@@ -2647,27 +3407,7 @@ where
     P: Atom,
 {
     fn from(diff: DiffExpr<P>) -> Self {
-        if diff.values.is_empty() {
-            if diff.ratios.is_empty() {
-                diff.constant.into()
-            } else if diff.ratios.len() == 1 && diff.constant == 0. {
-                let weight = diff.ratios.weights[0];
-                let ratio = diff.ratios.coefficients[0].clone();
-                FloatInner::Mul(ratio * weight, Vec::new()).into()
-            } else {
-                FloatInner::Diff(diff).into()
-            }
-        } else if diff.ratios.is_empty() {
-            if diff.values.len() == 1 && diff.constant == 0. {
-                let weight = diff.values.weights[0];
-                let item = diff.values.coefficients[0].clone();
-                item * weight
-            } else {
-                FloatInner::Diff(diff).into()
-            }
-        } else {
-            FloatInner::Diff(diff).into()
-        }
+        FloatInner::Diff(diff).into()
     }
 }
 
@@ -2677,7 +3417,7 @@ where
 {
     fn from(inner: FloatInner<P>) -> Self {
         Float {
-            inner: Rc::new(hash::MemoizedHash::new(inner)),
+            inner: Rc::new(MemoizedHash::new(inner)),
         }
     }
 }
@@ -2687,7 +3427,7 @@ where
     P: Atom,
 {
     fn from(constant: f64) -> Self {
-        FloatInner::Mul(constant.into(), Vec::new()).into()
+        DiffExpr::from(constant).into()
     }
 }
 
@@ -2695,18 +3435,6 @@ impl<P> Float<P>
 where
     P: Atom,
 {
-    fn ratio(factor: f64, numer: Vec<P>, denom: Vec<P>, args: Vec<Float<P>>) -> Self {
-        FloatInner::Mul(
-            FloatRatio::from(FloatRatioInner {
-                factor,
-                numer,
-                denom,
-            }),
-            args,
-        )
-        .into()
-    }
-
     pub fn div_ceil(lhs: &Int<P>, rhs: u32) -> Self {
         if lhs.max_value() <= u64::from(rhs) {
             assert!(lhs.min_value() > 0);
@@ -2721,21 +3449,21 @@ where
                 (IntInner::Mul(ratio), None)
                     if ratio.gcd_value().is_multiple_of(&rhs.into()) =>
                 {
-                    Float::ratio(
-                        ratio.inner.factor.to_u64().unwrap() as f64 / f64::from(rhs),
-                        ratio.inner.numer.clone(),
-                        ratio.inner.denom.clone(),
-                        Vec::new(),
-                    )
+                    let coeff =
+                        ratio.inner.factor.to_u64().unwrap() as f64 / f64::from(rhs);
+                    let ratio = ratio.inner.ratio.clone();
+                    DiffExpr::product(coeff, Product::from(ratio)).into()
                 }
-                (_, None) => FloatInner::DivCeil(lhs.clone(), rhs).into(),
+                (_, None) => {
+                    FloatInner::DivCeil(DivCeilExpr::new(lhs.clone(), rhs)).into()
+                }
             }
         }
     }
 
     fn is_one(&self) -> bool {
         match &**self {
-            FloatInner::Mul(ratio, args) if args.is_empty() => ratio.is_one(),
+            FloatInner::Diff(diff) => diff.is_one(),
             _ => false,
         }
     }
@@ -2778,26 +3506,8 @@ where
 
     pub fn as_f64(&self) -> Option<f64> {
         match &**self {
-            FloatInner::Mul(ratio, args) if args.is_empty() => ratio.as_f64(),
+            FloatInner::Diff(diff) => diff.as_f64(),
             _ => None,
-        }
-    }
-
-    pub fn to_f64(&self) -> Option<f64> {
-        match &**self {
-            FloatInner::DivCeil(lhs, rhs) => {
-                lhs.to_u32().map(|lhs| ((lhs + rhs - 1) / rhs) as f64)
-            }
-            FloatInner::Mul(ratio, args) => ratio.to_f64().and_then(|ratio| {
-                args.iter()
-                    .map(|arg| arg.to_f64().ok_or(()))
-                    .product::<Result<f64, ()>>()
-                    .ok()
-                    .map(|result| ratio * result)
-            }),
-            FloatInner::Max(emax) => unimplemented!("to_f64 for {}", emax),
-            FloatInner::Min(emin) => unimplemented!("to_f64 for {}", emin),
-            FloatInner::Diff(diff) => unimplemented!("to_f64 for {}", diff),
         }
     }
 
@@ -2805,129 +3515,7 @@ where
         info!("min_value for {}", self);
 
         match &**self {
-            FloatInner::DivCeil(numer, denom) => {
-                let numer_min = numer.min_value();
-                let denom = u64::from(*denom);
-                // TODO: should take gcd for le min
-                ((numer_min + denom - 1) / denom) as f64
-            }
-            FloatInner::Mul(ratio, args) => {
-                // Find the DivCeils and collect theirs factors
-                let (divceils, others) = args.iter().fold(
-                    (
-                        Vec::with_capacity(args.len()),
-                        Vec::with_capacity(args.len()),
-                    ),
-                    |(mut divceils, mut others), arg| {
-                        match &**arg {
-                            FloatInner::DivCeil(numer, denom) => match &*numer.inner {
-                                IntInner::Mul(ratio) => divceils.push((
-                                    &ratio.inner.factor,
-                                    &ratio.inner.numer,
-                                    &ratio.inner.denom,
-                                    denom,
-                                )),
-                                _ => unimplemented!("min_value containing {}", arg),
-                            },
-                            _ => others.push(arg),
-                        };
-                        (divceils, others)
-                    },
-                );
-
-                let min = ratio.inner.factor.clone();
-
-                let min = if divceils.len() == 1 {
-                    let (dcfactor, dcnumer, dcdenom, dcdivisor) = divceils[0];
-
-                    // numer is only on the ratio numerator
-                    let mut numer = ratio.inner.numer.iter().collect::<Vec<_>>();
-                    // denom is only on the ratio denominator
-                    let mut denom = ratio.inner.denom.iter().collect::<Vec<_>>();
-                    // dconly is only on the lcm numer
-                    let mut dc_numer_value = dcfactor.clone();
-                    let mut dc_denom_value = BigUint::from(*dcdivisor);
-
-                    let mut min = min;
-                    for dcn in dcnumer {
-                        if let Some(pos) = denom.iter().position(|elem| *elem == dcn) {
-                            // Don't use it twice!
-                            denom.swap_remove(pos);
-
-                            let lcm_value = dcn.lcm_value();
-                            dc_numer_value *= lcm_value;
-                            min /= lcm_value as f64;
-                        } else {
-                            dc_numer_value *= dcn.gcd_value();
-                        }
-                    }
-
-                    for dcd in dcdenom {
-                        if let Some(pos) = numer.iter().position(|elem| *elem == dcd) {
-                            // Don't use it twice!
-                            numer.swap_remove(pos);
-
-                            let gcd_value = dcd.gcd_value();
-                            dc_denom_value *= gcd_value;
-                            min *= gcd_value as f64;
-                        } else {
-                            dc_denom_value *= dcd.lcm_value();
-                        }
-                    }
-
-                    let min = min
-                        * ((dc_numer_value + &dc_denom_value - 1u32) / dc_denom_value)
-                            .to_u64()
-                            .unwrap() as f64;
-
-                    let min = numer
-                        .into_iter()
-                        .fold(min, |min, num| min * num.min_value() as f64);
-
-                    denom
-                        .into_iter()
-                        .fold(min, |min, denom| min / denom.max_value() as f64)
-
-                // dcnumer_only -> min (gcd?)
-                // common -> lcm
-                // denom_only -> max
-                } else {
-                    let min = divceils.into_iter().fold(
-                        min,
-                        |min, (dcfactor, dcnumer, dcdenom, dcdivisor)| {
-                            let dcnumer = dcnumer
-                                .into_iter()
-                                .fold(dcfactor.clone(), |factor, num| {
-                                    factor * num.gcd_value()
-                                });
-                            let dcdenom = dcdenom
-                                .into_iter()
-                                .fold(BigUint::from(*dcdivisor), |div, denom| {
-                                    div * denom.lcm_value()
-                                });
-                            min * ((&dcnumer + &dcdenom - 1u32) / dcdenom)
-                                .to_u64()
-                                .unwrap() as f64
-                        },
-                    );
-
-                    let min = ratio
-                        .inner
-                        .numer
-                        .iter()
-                        .fold(min, |min, num| min * num.min_value() as f64);
-
-                    ratio
-                        .inner
-                        .denom
-                        .iter()
-                        .fold(min, |min, denom| min / denom.max_value() as f64)
-                };
-
-                others
-                    .into_iter()
-                    .fold(min, |min, other| min * other.min_value())
-            }
+            FloatInner::DivCeil(divceil) => divceil.min_value(),
             FloatInner::Max(emax) => emax.min,
             FloatInner::Min(emin) => emin.min,
             FloatInner::Diff(diff) => diff.min_value(),
@@ -2938,17 +3526,7 @@ where
         info!("max_value for {}", self);
 
         match &**self {
-            FloatInner::DivCeil(numer, denom) => {
-                let denom = u64::from(*denom);
-                ((numer.max_value() + denom - 1) / denom) as f64
-            }
-            FloatInner::Mul(ratio, args) => {
-                let mut max = ratio.max_value();
-                for arg in args.iter() {
-                    max *= arg.max_value();
-                }
-                max
-            }
+            FloatInner::DivCeil(divceil) => divceil.max_value(),
             FloatInner::Max(emax) => emax.max,
             FloatInner::Min(emin) => emin.max,
             FloatInner::Diff(diff) => diff.max_value(),
@@ -2988,14 +3566,9 @@ where
             None if other.is_one() => self.clone(),
             None if other.is_zero() => 0f64.into(),
             None => match &**self {
-                Mul(ratio, args) => {
-                    let mut ratio = ratio.clone();
-                    ratio *= FloatRatio::new_constant(*other);
-                    Mul(ratio, args.clone()).into()
-                }
                 Diff(ediff) => (ediff * other).into(),
                 Max(emax) => (emax * other).into(),
-                _ => Mul((*other).into(), vec![self.clone()]).into(),
+                _ => Diff(DiffExpr::product(*other, Product::from(self.clone()))).into(),
             },
         };
 
@@ -3016,32 +3589,6 @@ where
 
 forward_binop_to_ref_ref!(impl(P: Atom) Mul<Output = Float<P>>, mul for Float<P>, f64);
 
-impl<'a, 'b, P> Mul<&'a FloatRatio<P>> for &'b Float<P>
-where
-    P: Atom,
-{
-    type Output = Float<P>;
-
-    fn mul(self, other: &'a FloatRatio<P>) -> Float<P> {
-        use FloatInner::*;
-
-        if let Some(val) = other.as_f64() {
-            self * val
-        } else if let Some(val) = self.as_f64() {
-            Mul(other * val, Vec::new()).into()
-        } else {
-            match &**self {
-                Mul(lhs_ratio, lhs_args) => {
-                    Mul(lhs_ratio * other, lhs_args.clone()).into()
-                }
-                Diff(ediff) => (ediff * other).into(),
-                Max(max) => (max * other).into(),
-                Min(..) | DivCeil(..) => Mul(other.clone(), vec![self.clone()]).into(),
-            }
-        }
-    }
-}
-
 impl<'a, 'b, P> Mul<&'a Float<P>> for &'b Float<P>
 where
     P: Atom,
@@ -3060,102 +3607,38 @@ where
         } else if let Some(value) = self.as_f64() {
             result = ops::Mul::mul(other, value)
         } else {
-            result =
-                match (&**self, &**other) {
-                    (Mul(lhs_ratio, lhs_args), Mul(rhs_ratio, rhs_args)) => {
-                        let mut args = lhs_args.clone();
-                        args.extend(rhs_args.iter().cloned());
-                        Mul(lhs_ratio * rhs_ratio, args).into()
-                    }
-                    (Mul(lhs_ratio, lhs_args), Diff(ediff))
-                    | (Diff(ediff), Mul(lhs_ratio, lhs_args)) => {
-                        let factor = lhs_ratio.inner.factor;
-                        let naked_ratio = FloatRatio::new(
-                            1.,
-                            lhs_ratio.inner.numer.clone(),
-                            lhs_ratio.inner.denom.clone(),
-                        );
-
-                        if lhs_args.is_empty() {
-                            let (cratios, ratios): (Vec<_>, Vec<_>) = if ediff
-                                .constant
-                                .is_zero()
-                            {
-                                None
-                            } else {
-                                Some((factor * ediff.constant, naked_ratio.clone()))
-                            }
-                            .into_iter()
-                            .chain(ediff.ratios.iter().map(|(weight, ratio)| {
-                                (weight * factor, ratio * &naked_ratio)
-                            }))
-                            .partition_map(|(weight, ratio)| {
-                                use itertools::Either::*;
-
-                                if ratio.is_one() {
-                                    Left(weight)
-                                } else {
-                                    Right((weight, ratio))
-                                }
-                            });
-
-                            let constant = cratios.into_iter().sum::<f64>();
-
-                            let values = ediff.values.iter().map(|(weight, item)| {
-                                (weight * factor, item * &naked_ratio)
-                            });
-
-                            DiffExpr {
-                                constant,
-                                ratios: ratios.into_iter().collect(),
-                                values: values.collect(),
-                            }
-                        } else {
-                            let naked = Float::from(FloatInner::Mul(
-                                naked_ratio.clone(),
-                                lhs_args.clone(),
-                            ));
-
-                            let values =
-                                if ediff.constant.is_zero() {
-                                    None
-                                } else {
-                                    Some((factor * ediff.constant, naked.clone()))
-                                }
-                                .into_iter()
-                                .chain(ediff.ratios.iter().map(|(weight, ratio)| {
-                                    (weight * factor, &naked * ratio)
-                                }))
-                                .chain(
-                                    ediff.values.iter().map(|(weight, item)| {
-                                        (weight * factor, item * &naked)
-                                    }),
-                                );
-
-                            DiffExpr {
-                                constant: 0f64,
-                                ratios: Default::default(),
-                                values: values.into_iter().collect(),
-                            }
-                        }
-                        .into()
-                    }
-                    (Mul(ratio, args), Max(max)) | (Max(max), Mul(ratio, args))
-                        if args.is_empty() =>
-                    {
-                        (max * ratio).into()
-                    }
-                    (Mul(lhs_ratio, lhs_args), _) => {
-                        let mut args = lhs_args.clone();
-                        args.push(other.clone());
-                        Mul(lhs_ratio.clone(), args).into()
-                    }
-                    (_, Mul(_, _)) => ops::Mul::mul(other, self),
-                    (_, _) => {
-                        trace!("true mul: {:?} and {:?}", self, other);
-                        Mul(1f64.into(), vec![self.clone(), other.clone()]).into()
-                    }
+            result = match (&**self, &**other) {
+                (Diff(lhs), Diff(rhs))
+                    if (lhs.nterms() <= 1 && rhs.constant >= 0.)
+                        || (rhs.nterms() <= 1 && lhs.constant >= 0.) =>
+                {
+                    (lhs * rhs).into()
                 }
+                (Diff(diff), Max(max)) | (Max(max), Diff(diff)) if diff.nterms() <= 1 => {
+                    (max * diff).into()
+                }
+                (Diff(lhs), _) if lhs.constant.is_zero() && lhs.terms.len() == 1 => {
+                    DiffExpr::product(
+                        lhs.terms.coefficients[0],
+                        lhs.terms.keys[0].as_ref().as_ref().clone()
+                            * Product::from(other.clone()),
+                    )
+                    .into()
+                }
+                (_, Diff(rhs)) if rhs.constant.is_zero() && rhs.terms.len() == 1 => {
+                    DiffExpr::product(
+                        rhs.terms.coefficients[0],
+                        rhs.terms.keys[0].as_ref().as_ref().clone()
+                            * Product::from(self.clone()),
+                    )
+                    .into()
+                }
+                _ => DiffExpr::product(
+                    1.,
+                    Product::from(self.clone()) * Product::from(other.clone()),
+                )
+                .into(),
+            }
         }
 
         trace!("mul out: {}", result);
@@ -3288,15 +3771,10 @@ where
 
         match &*rhs.inner {
             IntInner::Mul(ratio) => {
-                let mut flt_ratio = FloatRatioInner::from(ratio.clone());
-                std::mem::swap(&mut flt_ratio.numer, &mut flt_ratio.denom);
-                flt_ratio.factor = flt_ratio.factor.recip();
-                *self *= Float::from(FloatInner::Mul(
-                    FloatRatio {
-                        inner: Rc::new(flt_ratio),
-                    },
-                    vec![],
-                ));
+                let factor = (ratio.inner.factor.to_u64().unwrap() as f64).recip();
+                let ratio = (&ratio.inner.ratio).recip();
+                *self =
+                    &*self * Float::from(DiffExpr::product(factor, Product::from(ratio)));
             }
             _ => unimplemented!("{} / {}", self, rhs),
         }
@@ -3415,6 +3893,7 @@ where
 mod tests {
     use std::borrow::Cow;
     use std::fmt;
+    use std::rc::Rc;
 
     use num::{pow::pow, BigUint, Integer, One, ToPrimitive, Zero};
     use proptest::prelude::*;
@@ -3609,8 +4088,7 @@ mod tests {
                 (
                     super::RatioInner {
                         factor,
-                        numer,
-                        denom,
+                        ratio: super::Katio::new(Rc::new(numer), Rc::new(denom)),
                     },
                     value,
                 )
@@ -4022,22 +4500,17 @@ mod tests {
             .prop_map(|(ratio, val)| (ratio.into(), val.to_u64().unwrap() as f64))
     }
 
-    fn arb_float_ratio<P>(
-        sizes: Vec<(P, u64)>,
-    ) -> impl Strategy<Value = (super::FloatRatio<P>, f64)>
-    where
-        P: super::Atom,
-    {
-        arb_float_ratio_inner(sizes).prop_map(|(fratio, val)| (fratio.into(), val))
-    }
-
     fn arb_float<P>(sizes: Vec<(P, u64)>) -> impl Strategy<Value = (super::Float<P>, f64)>
     where
         P: super::Atom + 'static,
     {
         prop_oneof![
-            arb_float_ratio(sizes.clone()).prop_map(|(fratio, val)| (
-                super::FloatInner::Mul(fratio, Vec::new()).into(),
+            arb_float_ratio_inner(sizes.clone()).prop_map(|(fratio, val)| (
+                super::DiffExpr::product(
+                    fratio.factor,
+                    super::Product::from(fratio.ratio),
+                )
+                .into(),
                 val
             )),
             (arb_ratio(sizes.clone()), 2..=8u32).prop_map(|((ratio, val), denom)| (
@@ -4055,36 +4528,51 @@ mod tests {
             move |inner| {
                 prop_oneof![
                     (
-                        arb_float_ratio(sizes.clone()),
+                        arb_float_ratio_inner(sizes.clone()),
                         prop::collection::vec(inner.clone(), 1..=1)
                     )
                         .prop_map(|((fratio, rval), args)| {
+                            assert!(
+                                fratio.min_value() <= rval && rval <= fratio.max_value()
+                            );
                             let (args, avals): (Vec<_>, Vec<_>) =
                                 args.into_iter().unzip();
-                            (
-                                super::FloatInner::Mul(fratio, args).into(),
+                            let (a, b): (super::Float<_>, _) = (
+                                super::DiffExpr::product(
+                                    fratio.factor,
+                                    super::Product::from(fratio.ratio)
+                                        * super::Product {
+                                            ratio: Default::default(),
+                                            divceils: Default::default(),
+                                            others: Rc::new(args),
+                                        },
+                                )
+                                .into(),
                                 rval * avals.into_iter().product::<f64>(),
-                            )
+                            );
+                            assert_gt_close!(b, a.min_value());
+                            assert_lt_close!(b, a.max_value());
+                            (a, b)
                         }),
                     (
                         1..200u32,
                         prop::collection::vec(
-                            (1..100u32, arb_float_ratio(sizes.clone())),
+                            (1..100u32, arb_float_ratio_inner(sizes.clone())),
                             1..10
                         ),
                         prop::collection::vec((1..100u32, inner.clone()), 1..10)
                     )
                         .prop_map(|(constant, ratios, args)| {
                             let constant = (f64::from(constant) - 100.5) / 100.;
-                            let (args, vals): (super::WeightedVecSet<_>, Vec<_>) = args
-                                .into_iter()
-                                .map(|(weight, (flt, val))| {
-                                    let weight = f64::from(weight);
-                                    ((weight, flt), (weight * val))
-                                })
-                                .unzip();
+                            let (args, vals): (super::WeightedVecSet<_, _>, Vec<_>) =
+                                args.into_iter()
+                                    .map(|(weight, (flt, val))| {
+                                        let weight = f64::from(weight);
+                                        ((weight, flt), (weight * val))
+                                    })
+                                    .unzip();
                             let (argratios, valratios): (
-                                super::WeightedVecSet<_>,
+                                super::WeightedVecSet<_, _>,
                                 Vec<_>,
                             ) = ratios
                                 .into_iter()
@@ -4106,19 +4594,41 @@ mod tests {
                             } else {
                                 constant
                             };
-                            (
+                            let terms: super::WeightedVecSet<_> = argratios
+                                .iter()
+                                .map(|(weight, fratio)| {
+                                    (
+                                        weight * fratio.factor,
+                                        super::Product::from(fratio.ratio.clone()),
+                                    )
+                                })
+                                .chain(args.iter().map(|(weight, flt)| {
+                                    (weight, super::Product::new_other(flt.clone()))
+                                }))
+                                .map(|(weight, product)| {
+                                    (
+                                        weight,
+                                        super::hash::MemoizedHash::from(
+                                            super::MemoizedRange::from(product),
+                                        ),
+                                    )
+                                })
+                                .collect();
+                            let (a, b): (super::Float<_>, _) = (
                                 {
                                     super::FloatInner::Diff(super::DiffExpr {
                                         constant,
-                                        ratios: argratios,
-                                        values: args,
+                                        terms: terms,
                                     })
                                     .into()
                                 },
                                 constant
                                     + valratios.into_iter().sum::<f64>()
                                     + vals.into_iter().sum::<f64>(),
-                            )
+                            );
+                            assert_lt_close!(a.min_value(), b);
+                            assert_gt_close!(a.max_value(), b);
+                            (a, b)
                         }),
                     prop::collection::vec(inner.clone(), 1..10).prop_map(|args| {
                         let (args, vals): (Vec<_>, Vec<_>) = args
@@ -4139,7 +4649,10 @@ mod tests {
                             super::FloatInner::Max(super::FMaxExpr::new(
                                 min,
                                 max,
-                                args.into_iter().collect(),
+                                args.into_iter()
+                                    .map(super::MemoizedRange::from)
+                                    .map(super::hash::MemoizedHash::from)
+                                    .collect(),
                             ))
                             .into(),
                             vals.into_iter().fold(std::f64::NEG_INFINITY, f64::max),
@@ -4210,8 +4723,8 @@ mod tests {
                         sum.max_value()
                     );
 
-                    assert!(
-                        sum.min_value() <= av + bv,
+                    assert_lt_close!(
+                        sum.min_value(), av + bv,
                         "assertion failed: ({} + {:e} = {}).min_value() <= {} + {:e} ({:e} > {:e})",
                         a,
                         bv,
@@ -4221,8 +4734,8 @@ mod tests {
                         sum.min_value(),
                         av + bv,
                     );
-                    assert!(
-                        av + bv <= sum.max_value(),
+                    assert_gt_close!(
+                        sum.max_value(), av + bv,
                         "assertion failed: {:e} + {:e} <= ({} + {:e} = {}).max_value() ({:e} > {:e})",
                         av,
                         bv,
@@ -4269,7 +4782,7 @@ bv = {bv} [{bv:?}]",
 
                 assert_close!(sum.max_value(), a.max_value() + b.max_value());
 
-                assert_lt_close!(sum.min_value(), av + bv,);
+                assert_lt_close!(sum.min_value(), av + bv);
                 assert_gt_close!(sum.max_value(), av + bv);
 
                 Ok(())
@@ -4297,10 +4810,10 @@ bv = {bv} [{bv:?}]",
 
     #[test]
     fn test_flt_mul_flt() {
-        use proptest::test_runner::{TestError, TestRunner};
+        use proptest::test_runner::{Config, TestError, TestRunner};
 
-        let mut runner = TestRunner::default();
-        let result = runner.run(
+        let mut runner = TestRunner::new(Config::with_source_file(file!()));
+        match runner.run(
             &arb_size_values(1..10)
                 .prop_flat_map(|sizes| (arb_float(sizes.clone()), arb_float(sizes))),
             |((a, av), (b, bv))| {
@@ -4329,9 +4842,7 @@ bv = {bv} [{bv:?}]",
 
                 Ok(())
             },
-        );
-
-        match result {
+        ) {
             Ok(()) => (),
             Err(TestError::Fail(_, ((a, av), (b, bv)))) => {
                 panic!(
@@ -4340,15 +4851,16 @@ a = {a} [{a:?}]
 av = {av}
 b = {b} [{b:?}]
 bv = {bv}
-prod = {prod}",
+prod = {prod}\n{runner}",
                     a = &a,
                     av = av,
                     b = &b,
                     bv = bv,
                     prod = &a * &b,
+                    runner = runner,
                 );
             }
-            Err(err) => panic!("Unexpected error: {:?}", err),
+            Err(e) => panic!("Unexpected error: {}\n{}", e, runner),
         }
     }
 
@@ -4454,7 +4966,27 @@ prod = {prod}",
                     av,
                     bv
                 );
-                assert_lt_close!(av.max(bv), max.max_value());
+                assert_lt_close!(
+                    av.max(bv),
+                    max.max_value(),
+                    "
+ max: `{}` [{} <= {}]
+   a: `{}` [{} <= {}]
+  av: `{}`
+   b: `{}` [{} <= {}]
+  bv: `{}`",
+                    max,
+                    max.min_value(),
+                    max.max_value(),
+                    a,
+                    a.min_value(),
+                    a.max_value(),
+                    av,
+                    b,
+                    b.min_value(),
+                    b.max_value(),
+                    bv
+                );
 
                 Ok(())
             },
@@ -4594,16 +5126,21 @@ prod = {prod}",
 
     #[test]
     fn prout() {
-        let (x, _invx) = make("%4", 2, 4);
+        let (x, invx) = make("%4", 2, 16);
 
-        let a = x.to_symbolic_float() * 445.945945945946
-            + super::Float::from(93.62934362934362);
-        let b = x.to_symbolic_float() * 484.5559845559846
-            + super::Float::from(16.409266409266394);
-        let c = x.to_symbolic_float() * 484.5559845559846
-            + super::Float::from(16.409266409266408);
+        let a = x.to_symbolic_float() * 5.7915057915057915
+            + super::Float::from(10.617760617760617);
+        let c = invx.to_symbolic_float() * 185.32818532818533
+            + super::Float::from(40.54054054054054);
+        let b = invx.to_symbolic_float() * 1142.857142857143;
 
-        eprintln!("diff: {}", (&a - &b).max_value());
+        let diff = &a - &b;
+        eprintln!(
+            "diff: {} [{} <= {}]",
+            diff,
+            diff.min_value(),
+            diff.max_value()
+        );
         assert_lt_close!((&a - &b).max_value(), 0.);
 
         let amax = super::FMaxExpr::from(a.clone());
@@ -4611,8 +5148,11 @@ prod = {prod}",
         assert!(amax.is_single_value() && bmax.is_single_value());
 
         let mut expr = a.clone();
+        expr.max_assign(&c);
+        eprintln!("rhs: {}", expr);
         expr.max_assign(&b);
         // expr.max_assign(&c);
+        eprintln!("max: {}", expr);
 
         assert_lt_close!(expr.max_value(), -1., "{}", expr);
     }
@@ -4752,7 +5292,7 @@ struct VecSet<T>
 where
     T: Hash,
 {
-    values: Rc<hash::MemoizedHash<Vec<T>>>,
+    values: Rc<MemoizedHash<Vec<T>>>,
 }
 
 impl<T> PartialOrd for VecSet<T>
@@ -4803,7 +5343,7 @@ where
         values.dedup();
 
         VecSet {
-            values: Rc::new(hash::MemoizedHash::new(values)),
+            values: Rc::new(MemoizedHash::new(values)),
         }
     }
 }
@@ -4828,7 +5368,7 @@ where
     where
         T: Clone,
     {
-        hash::MemoizedHash::make_mut(Rc::make_mut(&mut self.values)).iter_mut()
+        MemoizedHash::make_mut(Rc::make_mut(&mut self.values)).iter_mut()
     }
 
     fn fast_eq(&self, other: &Self) -> bool {
@@ -4919,7 +5459,7 @@ where
 {
     fn new(value: T) -> Self {
         VecSet {
-            values: Rc::new(hash::MemoizedHash::new(vec![value])),
+            values: Rc::new(MemoizedHash::new(vec![value])),
         }
     }
 
@@ -4928,7 +5468,7 @@ where
         II: IntoIterator<Item = T>,
     {
         VecSet {
-            values: Rc::new(hash::MemoizedHash::new(values.into_iter().collect())),
+            values: Rc::new(MemoizedHash::new(values.into_iter().collect())),
         }
     }
 }
@@ -5014,13 +5554,132 @@ where
     }
 }
 
+#[derive(Copy, Clone, Default, PartialEq)]
+struct FiniteF64 {
+    inner: f64,
+}
+
+impl Eq for FiniteF64 {}
+
+impl Hash for FiniteF64 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.inner.to_bits().hash(state)
+    }
+}
+
+impl PartialOrd for FiniteF64 {
+    fn partial_cmp(&self, other: &FiniteF64) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FiniteF64 {
+    fn cmp(&self, other: &FiniteF64) -> Ordering {
+        if self.inner < other.inner {
+            Ordering::Less
+        } else if self.inner > other.inner {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+macro_rules! forward_impls {
+    (impl .. for $t:ty { $inner:ident : $innerty:ty } {
+        $([$imp:path] { $(fn $method:ident(&self $(, $name:ident : $ty:ty)*) -> $out:ty;)* })*
+    }) => {$(
+        impl $imp for $t {$(
+            fn $method(&self $(, $name : $ty)*) -> $out {
+                <$innerty as $imp>::$method(&self.$inner $(, $name)*)
+            }
+        )*}
+    )*};
+}
+
+forward_impls!(impl .. for FiniteF64 { inner: f64 } {
+    [fmt::Debug]    { fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result; }
+    [fmt::Display]  { fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result; }
+    [fmt::LowerExp] { fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result; }
+    [fmt::UpperExp] { fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result; }
+});
+
+impl From<FiniteF64> for f64 {
+    fn from(finite: FiniteF64) -> f64 {
+        finite.inner
+    }
+}
+
+impl TryFrom<f64> for FiniteF64 {
+    type Error = TryFromFloatError;
+
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        if value.is_finite() {
+            Ok(Self::new_unchecked(value))
+        } else {
+            Err(TryFromFloatError(()))
+        }
+    }
+}
+
+impl<'a, 'b> ops::Mul<&'a FiniteF64> for &'b FiniteF64 {
+    type Output = f64;
+
+    fn mul(self, other: &'a FiniteF64) -> f64 {
+        self.inner * other.inner
+    }
+}
+
+impl<'a, 'b> ops::Mul<&'a f64> for &'b FiniteF64 {
+    type Output = f64;
+
+    fn mul(self, other: &'a f64) -> f64 {
+        self.inner * other
+    }
+}
+
+impl FiniteF64 {
+    fn new_unchecked(value: f64) -> Self {
+        FiniteF64 { inner: value }
+    }
+
+    pub fn new(value: f64) -> Self {
+        assert!(value.is_finite());
+
+        Self::new_unchecked(value)
+    }
+
+    pub fn one() -> Self {
+        FiniteF64::new_unchecked(1.)
+    }
+
+    pub fn is_one(self) -> bool {
+        self.inner.is_one()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TryFromFloatError(());
+
+impl fmt::Display for TryFromFloatError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(fmt)
+    }
+}
+
+impl Error for TryFromFloatError {
+    fn description(&self) -> &str {
+        "infinite or NaN float type conversion attempted"
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
-struct WeightedVecSet<T>
+struct WeightedVecSet<T, W = f64>
 where
     T: Hash,
 {
-    coefficients: VecSet<T>,
-    weights: Rc<Vec<f64>>,
+    keys: VecSet<T>,
+    coefficients: Rc<Vec<W>>,
 }
 
 impl<T> Default for WeightedVecSet<T>
@@ -5029,8 +5688,8 @@ where
 {
     fn default() -> Self {
         WeightedVecSet {
-            coefficients: VecSet::default(),
-            weights: Rc::default(),
+            keys: VecSet::default(),
+            coefficients: Rc::default(),
         }
     }
 }
@@ -5051,8 +5710,8 @@ where
     T: Ord + Hash,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.coefficients.cmp(&other.coefficients).then_with(|| {
-            for (lhs, rhs) in self.weights.iter().zip(other.weights.iter()) {
+        self.keys.cmp(&other.keys).then_with(|| {
+            for (lhs, rhs) in self.coefficients.iter().zip(other.coefficients.iter()) {
                 if lhs < rhs {
                     return Ordering::Less;
                 } else if lhs > rhs {
@@ -5084,15 +5743,15 @@ where
     T: Hash,
 {
     fn len(&self) -> usize {
-        self.coefficients.len()
+        self.keys.len()
     }
 
     fn is_empty(&self) -> bool {
-        self.coefficients.is_empty()
+        self.keys.is_empty()
     }
 
     fn iter<'a>(&'a self) -> impl Iterator<Item = (f64, &'a T)> {
-        self.weights.iter().cloned().zip(self.coefficients.iter())
+        self.coefficients.iter().cloned().zip(self.keys.iter())
     }
 }
 
@@ -5104,30 +5763,22 @@ where
     where
         II: IntoIterator<Item = (f64, T)>,
     {
-        let weights = Rc::make_mut(&mut self.weights);
+        let coefficients = Rc::make_mut(&mut self.coefficients);
 
         for (weight, elem) in iter {
-            match self
-                .coefficients
-                .values
-                .binary_search_by(|value| value.cmp(&elem))
-            {
+            match self.keys.values.binary_search_by(|value| value.cmp(&elem)) {
                 Ok(pos) => {
-                    weights[pos] += weight;
-                    if is_close(weights[pos], 0.) {
-                        weights.remove(pos);
-                        hash::MemoizedHash::make_mut(Rc::make_mut(
-                            &mut self.coefficients.values,
-                        ))
-                        .remove(pos);
+                    coefficients[pos] += weight;
+                    if is_close(coefficients[pos], 0.) {
+                        coefficients.remove(pos);
+                        MemoizedHash::make_mut(Rc::make_mut(&mut self.keys.values))
+                            .remove(pos);
                     }
                 }
                 Err(pos) => {
-                    weights.insert(pos, weight);
-                    hash::MemoizedHash::make_mut(Rc::make_mut(
-                        &mut self.coefficients.values,
-                    ))
-                    .insert(pos, elem);
+                    coefficients.insert(pos, weight);
+                    MemoizedHash::make_mut(Rc::make_mut(&mut self.keys.values))
+                        .insert(pos, elem);
                 }
             }
         }
@@ -5159,22 +5810,29 @@ where
     where
         II: IntoIterator<Item = (f64, T)>,
     {
-        let (weights, coefficients): (Vec<_>, Vec<_>) = values.into_iter().unzip();
+        let (coefficients, keys): (Vec<_>, Vec<_>) = values.into_iter().unzip();
         WeightedVecSet {
-            weights: Rc::new(weights),
-            coefficients: VecSet::from_sorted_iter(coefficients),
+            coefficients: Rc::new(coefficients),
+            keys: VecSet::from_sorted_iter(keys),
         }
     }
 
-    fn map_weights<F>(&self, f: F) -> WeightedVecSet<T>
+    fn map_coefficients<F>(&self, f: F) -> WeightedVecSet<T>
     where
         F: FnMut(f64) -> f64,
     {
         WeightedVecSet {
-            weights: Rc::new(self.weights.iter().cloned().map(f).collect()),
-            coefficients: self.coefficients.clone(),
+            coefficients: Rc::new(self.coefficients.iter().cloned().map(f).collect()),
+            keys: self.keys.clone(),
         }
     }
+
+    fn union_assign(&mut self, other: &WeightedVecSet<T>) {
+        if !other.is_empty() {
+            *self = self.union(other);
+        }
+    }
+
     fn union(&self, other: &WeightedVecSet<T>) -> WeightedVecSet<T> {
         if self.is_empty() {
             other.clone()
@@ -5188,33 +5846,33 @@ where
         F: Fn(f64) -> f64,
     {
         if self.is_empty() {
-            other.map_weights(map_rhs)
+            other.map_coefficients(map_rhs)
         } else if other.is_empty() {
             self.clone()
-        } else if self.coefficients == other.coefficients {
-            let mut weights = Vec::with_capacity(self.weights.len());
+        } else if self.keys == other.keys {
+            let mut coefficients = Vec::with_capacity(self.coefficients.len());
             let mut to_remove = Vec::new();
 
             for (ix, (lhs, rhs)) in self
-                .weights
+                .coefficients
                 .iter()
                 .cloned()
-                .zip(other.weights.iter().cloned())
+                .zip(other.coefficients.iter().cloned())
                 .enumerate()
             {
                 let sum = lhs + map_rhs(rhs);
                 if is_close(sum, 0.) {
                     to_remove.push(ix);
                 } else {
-                    weights.push(sum);
+                    coefficients.push(sum);
                 }
             }
 
-            let coefficients = if to_remove.is_empty() {
-                self.coefficients.clone()
+            let keys = if to_remove.is_empty() {
+                self.keys.clone()
             } else {
                 VecSet::from_sorted_iter(
-                    self.coefficients
+                    self.keys
                         .iter()
                         .enumerate()
                         .merge_join_by(&to_remove, |(ix, _), rix| ix.cmp(rix))
@@ -5233,8 +5891,8 @@ where
             };
 
             WeightedVecSet {
-                weights: Rc::new(weights),
-                coefficients,
+                coefficients: Rc::new(coefficients),
+                keys,
             }
         } else {
             WeightedVecSet::from_sorted_iter(

@@ -6,7 +6,7 @@ use std::fmt;
 use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 use std::ops::Deref;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Memoized<T: ?Sized, M> {
     memo: M,
     value: T,
@@ -34,6 +34,15 @@ where
 {
     fn from(value: T) -> Self {
         Self::new(value)
+    }
+}
+
+impl<T: ?Sized, M> fmt::Debug for Memoized<T, M>
+where
+    T: fmt::Debug,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.value, fmt)
     }
 }
 
