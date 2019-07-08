@@ -20,6 +20,7 @@ use std::sync::{
 };
 use std::{cmp, iter, ops, slice};
 
+use log::{log_enabled, trace, Level};
 use rand::distributions::{Weighted, WeightedChoice};
 use rand::prelude::*;
 use rpds::List;
@@ -540,7 +541,30 @@ impl<'a> Tree<'a> {
                     }),
                 })
                 .collect();
+            let start = std::time::Instant::now();
             bound = Some(self.env.bound(candidate));
+            let actions = if let Some((node, index)) = parent {
+                use crate::ir::IrDisplay;
+                use itertools::Itertools;
+                format!(
+                    "{}\n{}",
+                    node.actions()
+                        .into_iter()
+                        .map(|action| format!(
+                            "{}",
+                            action.display(candidate.ir_instance())
+                        ))
+                        .format("\n"),
+                    node[index].action().display(candidate.ir_instance())
+                )
+            } else {
+                "[]".to_string()
+            };
+            trace!(
+                "[bound] computed in {:?} for actions {}",
+                start.elapsed(),
+                actions
+            );
         } else {
             children = Vec::new();
             bound = None;
@@ -1266,7 +1290,8 @@ where
     type Event = Message;
 
     fn update_cut(&self, new_cut: f64) {
-        *self.cut.write().expect("cut: poisoned") = new_cut;
+        let mut cut_mut = self.cut.write().expect("cut: poisoned");
+        *cut_mut = new_cut.min(*cut_mut);
         self.cut_epoch.fetch_add(1, Ordering::Relaxed);
 
         // TODO: trim the tree?
