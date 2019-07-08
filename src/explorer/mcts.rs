@@ -1290,7 +1290,8 @@ where
     type Event = Message;
 
     fn update_cut(&self, new_cut: f64) {
-        *self.cut.write().expect("cut: poisoned") = new_cut;
+        let mut cut_mut = self.cut.write().expect("cut: poisoned");
+        *cut_mut = new_cut.min(*cut_mut);
         self.cut_epoch.fetch_add(1, Ordering::Relaxed);
 
         // TODO: trim the tree?
