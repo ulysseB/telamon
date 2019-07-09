@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
@@ -353,3 +355,152 @@ mod cuda_reference {
 
 #[cfg(feature = "cuda")]
 pub use cuda_reference::CublasHandle;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KernelParam {
+    Axpy { n: i32 },
+    MatVec { m: i32, n: i32 },
+    Gesummv { m: i32, n: i32 },
+    Gemm { m: i32, n: i32, k: i32 },
+    BatchMM { b: i32, m: i32, n: i32, k: i32 },
+}
+
+/// An error which can be returned when parsing a kernel.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseKernelError {
+    kind: KernelErrorKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KernelErrorKind {
+    /// Value being parsed is empty.
+    ///
+    /// Among other things, this variant will be constructed when parsing an empty string.
+    Empty,
+
+    /// Invalid kernel name provided.
+    InvalidName,
+
+    /// Kernel name is too short and a parameter was missing
+    MissingParameter,
+
+    /// Kernel name is too long and has extra parameters.
+    UnexpectedParameter,
+
+    /// A non-integer value was found where an integer value was expected.
+    IntError(std::num::ParseIntError),
+}
+
+impl ParseKernelError {
+    /// Outputs the detailed cause of parsing a kernel failing
+    pub fn kind(&self) -> &KernelErrorKind {
+        &self.kind
+    }
+}
+
+impl fmt::Display for ParseKernelError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+impl Error for ParseKernelError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match &self.kind {
+            KernelErrorKind::IntError(error) => Some(error),
+            _ => None,
+        }
+    }
+
+    fn description(&self) -> &str {
+        match &self.kind {
+            KernelErrorKind::Empty => "cannot parse kernel from empty string",
+            KernelErrorKind::InvalidName => "invalid kernel name",
+            KernelErrorKind::MissingParameter => "missing kernel parameter",
+            KernelErrorKind::UnexpectedParameter => {
+                "extraneous unexpected kernel parameter"
+            }
+            KernelErrorKind::IntError(error) => error.description(),
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for ParseKernelError {
+    fn from(error: std::num::ParseIntError) -> ParseKernelError {
+        ParseKernelError {
+            kind: KernelErrorKind::IntError(error),
+        }
+    }
+}
+
+impl std::str::FromStr for KernelParam {
+    type Err = ParseKernelError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use KernelParam::*;
+
+        fn parse_i32(s: &str) -> Result<i32, std::num::ParseIntError> {
+            if let Some(pos) = s.find("p") {
+                let (base, exp) = s.split_at(pos);
+                Ok(base.parse::<i32>()?.pow(exp[1..].parse::<u32>()?))
+            } else {
+                s.parse::<i32>()
+            }
+        }
+
+        fn next_part<'a, I>(parts: &mut I) -> Result<&'a str, ParseKernelError>
+        where
+            I: Iterator<Item = &'a str>,
+        {
+            parts.next().ok_or(ParseKernelError {
+                kind: KernelErrorKind::MissingParameter,
+            })
+        }
+
+        let mut parts = s.split('_');
+        let name = next_part(&mut parts)?;
+
+        let result = match name {
+            "axpy" => {
+                let n = parse_i32(next_part(&mut parts)?)?;
+                Axpy { n }
+            }
+            "matvec" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                MatVec { m, n }
+            }
+            "gesummv" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                Gesummv { m, n }
+            }
+            "matmul" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                Gemm { m, n, k }
+            }
+            "batchmm" => {
+                let b = parse_i32(next_part(&mut parts)?)?;
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                BatchMM { b, m, n, k }
+            }
+            _ => {
+                return Err(ParseKernelError {
+                    kind: KernelErrorKind::InvalidName,
+                })
+            }
+        };
+
+        if parts.next().is_some() {
+            Err(ParseKernelError {
+                kind: KernelErrorKind::UnexpectedParameter,
+            })
+        } else {
+            Ok(result)
+        }
+    }
+}
