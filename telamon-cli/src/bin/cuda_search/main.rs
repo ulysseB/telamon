@@ -4,7 +4,9 @@ use std::io::{self, Write};
 use telamon::device::{ArgMap, Context};
 use telamon::explorer::config::Config;
 use telamon::helper::MemInit;
-use telamon_cli::{Bench, CommonOpt, ContextBuilder, CublasHandle, Reference};
+use telamon_cli::{
+    Bench, CommonOpt, ContextBuilder, CublasHandle, KernelParam, Reference,
+};
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel};
 
@@ -63,6 +65,12 @@ fn benchmark<'a, K, REF, CB>(
 struct Opt {
     #[structopt(flatten)]
     common: CommonOpt,
+
+    #[structopt(short = "r", long = "repeat", default_value = "10")]
+    repeat: usize,
+
+    #[structopt(short = "k", long = "kernel")]
+    kernels: Vec<KernelParam>,
 }
 
 trait BenchRun<'a, B, R> {
@@ -113,7 +121,7 @@ where
 }
 
 macro_rules! benchmark {
-    (Sgemm($m:literal, $n:literal, $k:literal)[$iter:expr]) => {{
+    (Sgemm($m:expr, $n:expr, $k:expr)[$iter:expr]) => {{
         self::Benchmark::<'_, linalg::FusedMM<'_, f32>>::new(
             linalg::FusedMMP::new($m, $n, $k),
             format!("Sgemm_{}_{}_{}", $m, $n, $k),
@@ -121,9 +129,9 @@ macro_rules! benchmark {
         )
     }};
 
-    (BatchMM($b:literal, $m:literal, $n:literal, $k:literal)[$iter:expr]) => {{
+    (BatchMM($b:expr, $m:expr, $n:expr, $k:expr)[$iter:expr]) => {{
         self::Benchmark::<'_, linalg::BatchMM<'_, f32>>::new(
-            lnialg::BatchMMP::new($b, $m, $n, $k),
+            linalg::BatchMMP::new($b, $m, $n, $k),
             format!("BatchMM_{}_{}_{}_{}", $b, $m, $n, $k),
             $iter,
         )
@@ -139,8 +147,44 @@ fn main() {
 
     let config = args.common.config().unwrap();
 
-    // Repeat 10 times (!)
-    for idx in 0..10 {
+    for idx in 0..args.repeat {
+        for kernel in &args.kernels {
+            use KernelParam::*;
+
+            match *kernel {
+                Axpy { n } => Benchmark::<'_, linalg::Axpy<f32>>::new(
+                    (n, true),
+                    format!("Axpy_{}", n),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                MatVec { m, n } => Benchmark::<'_, linalg::MatVec<f32>>::new(
+                    (m, n, true),
+                    format!("Sgemv_{}_{}", m, n),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                Gesummv { m, n } => Benchmark::<'_, linalg::Gesummv<f32>>::new(
+                    (m, n, true),
+                    format!("Gesummv_{}_{}", m, n),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                Gemm { m, n, k } => Benchmark::<'_, linalg::FusedMM<'_, f32>>::new(
+                    linalg::FusedMMP::new(m, n, k),
+                    format!("Sgemm_{}_{}_{}", m, n, k),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                BatchMM { b, m, n, k } => Benchmark::<'_, linalg::BatchMM<'_, f32>>::new(
+                    linalg::BatchMMP::new(b, m, n, k),
+                    format!("BatchMM_{}_{}_{}_{}", b, m, n, k),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+            }
+        }
+
         /*
         benchmark!(Axpy(26)[idx]).run(&config, &executor, &cublas)
         benchmark::<linalg::Axpy<f32>, _>(
@@ -151,7 +195,7 @@ fn main() {
         );
         */
 
-        benchmark!(Sgemm(256, 256, 32)[idx]).run(&config, &executor, &reference);
+        //benchmark!(Sgemm(256, 256, 32)[idx]).run(&config, &executor, &reference);
 
         /* TODO(bclement): Fix this.
         let params = linalg::FusedMMP::new(1024, 1024, 1024).stride_a(32);
@@ -160,7 +204,7 @@ fn main() {
         });
         */
 
-        benchmark!(Sgemm(1024, 1024, 1024)[idx]).run(&config, &executor, &reference);
+        //benchmark!(Sgemm(1024, 1024, 1024)[idx]).run(&config, &executor, &reference);
 
         /*
         let mut params = linalg::FusedMMP::new(4096, 4096, 4096);
