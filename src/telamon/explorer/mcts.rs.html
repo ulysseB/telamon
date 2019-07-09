@@ -2073,6 +2073,13 @@
 <span id="2073">2073</span>
 <span id="2074">2074</span>
 <span id="2075">2075</span>
+<span id="2076">2076</span>
+<span id="2077">2077</span>
+<span id="2078">2078</span>
+<span id="2079">2079</span>
+<span id="2080">2080</span>
+<span id="2081">2081</span>
+<span id="2082">2082</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Search space exploration using MCTS-style algorithm</span>
 <span class="doccomment">//!</span>
@@ -3491,6 +3498,9 @@
     }
 }
 
+<span class="doccomment">/// For an explanation of the strategy, refer to the documentation of</span>
+<span class="doccomment">/// [config::TreePolicy::UCT].</span>
+<span class="doccomment">///</span>
 <span class="doccomment">/// TODO(bclement):  The UCT formula is wrong, because 1) we are optimising as a reward while we</span>
 <span class="doccomment">/// actually have a cost and 2) the scale is wrong (evaluations are in the e6+ range but we do as</span>
 <span class="doccomment">/// if they were in 0-1).</span>
@@ -3876,6 +3886,8 @@
     }
 }
 
+<span class="doccomment">/// For an explanation of the strategy, refer to the documentation of</span>
+<span class="doccomment">/// [config::TreePolicy::TAG].</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TAGPolicy</span> {
     <span class="ident">delta</span>: <span class="ident">f64</span>,
     <span class="ident">topk</span>: <span class="ident">usize</span>,
@@ -4121,6 +4133,8 @@
     }
 }
 
+<span class="doccomment">/// For an explanation of the strategy, refer to the documentation of</span>
+<span class="doccomment">/// [config::TreePolicy::RoundRobin].</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RoundRobinPolicy</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">N</span><span class="op">&gt;</span> <span class="ident">TreePolicy</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">CommonStats</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RoundRobinPolicy</span> {
