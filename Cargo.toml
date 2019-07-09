@@ -78,6 +78,7 @@ format_exh = []
 lex = []
 cuda = ["telamon-cuda/real_gpu"]
 mppa = ["telajax"]
+fastsym = ["sym/ignore_collisions"]
 
 [workspace]
 members = [
