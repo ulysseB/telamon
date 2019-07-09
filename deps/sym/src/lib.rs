@@ -1,6 +1,6 @@
 use log::{info, trace};
 use std::borrow::Borrow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
@@ -17,6 +17,7 @@ use hash::MemoizedHash;
 
 mod hash;
 mod memo;
+mod ord;
 
 fn is_close(lhs: f64, rhs: f64) -> bool {
     (lhs - rhs).abs() < 1e-8 + 1e-5 * rhs.abs()
@@ -1123,7 +1124,7 @@ where
 {
     gcd: BigUint,
     lcm: BigUint,
-    args: VecSet<Ratio<P>>,
+    args: RcVecSet<Ratio<P>>,
 }
 
 impl<P> fmt::Display for LcmExpr<P>
@@ -1158,7 +1159,7 @@ where
         LcmExpr {
             gcd: value.gcd_value().into(),
             lcm: value.lcm_value().into(),
-            args: VecSet::from_sorted_iter(iter::once(value)),
+            args: RcVecSet::from_sorted_iter(iter::once(value)),
         }
     }
 }
@@ -1185,7 +1186,8 @@ where
     fn mul_assign(&mut self, other: &'_ BigUint) {
         self.gcd *= other;
         self.lcm *= other;
-        self.args.iter_mut().for_each(|arg| *arg *= other);
+        self.args.unchecked_iter_mut().for_each(|arg| *arg *= other);
+        self.args.sort();
     }
 }
 
@@ -1220,7 +1222,8 @@ where
         } else {
             self.gcd *= other.gcd_value();
             self.lcm *= other.lcm_value();
-            self.args.iter_mut().for_each(|arg| *arg *= other);
+            self.args.unchecked_iter_mut().for_each(|arg| *arg *= other);
+            self.args.sort();
         }
     }
 }
@@ -1281,7 +1284,7 @@ where
         LcmExpr {
             gcd: 1u32.into(),
             lcm: 1u32.into(),
-            args: VecSet::default(),
+            args: RcVecSet::default(),
         }
     }
 
@@ -1313,7 +1316,7 @@ where
         if self.is_constant() {
             Ok(Ratio::new(self.gcd, Vec::new(), Vec::new()))
         } else if self.is_single_value() {
-            Ok(self.args.values[0].clone())
+            Ok(self.args[0].clone())
         } else {
             Err(self)
         }
@@ -1327,7 +1330,7 @@ where
 {
     min: BigUint,
     max: BigUint,
-    values: VecSet<Ratio<P>>,
+    values: RcVecSet<Ratio<P>>,
 }
 
 impl<P> fmt::Display for MinExpr<P>
@@ -1383,7 +1386,7 @@ where
         MinExpr {
             min: value.min_value().into(),
             max: value.max_value().into(),
-            values: VecSet::from_sorted_iter(iter::once(value)),
+            values: RcVecSet::from_sorted_iter(iter::once(value)),
         }
     }
 }
@@ -1396,7 +1399,7 @@ where
         MinExpr {
             min: constant.into(),
             max: constant.into(),
-            values: VecSet::default(),
+            values: RcVecSet::default(),
         }
     }
 }
@@ -1423,7 +1426,10 @@ where
     fn mul_assign(&mut self, other: &'_ BigUint) {
         self.min *= other;
         self.max *= other;
-        self.values.iter_mut().for_each(|arg| *arg *= other);
+        self.values
+            .unchecked_iter_mut()
+            .for_each(|arg| *arg *= other);
+        self.values.sort();
     }
 }
 
@@ -1458,7 +1464,10 @@ where
         } else {
             self.min *= other.min_value();
             self.max *= other.max_value();
-            self.values.iter_mut().for_each(|arg| *arg *= other);
+            self.values
+                .unchecked_iter_mut()
+                .for_each(|arg| *arg *= other);
+            self.values.sort();
         }
     }
 }
@@ -1572,7 +1581,7 @@ where
         } else if self.is_single_value() {
             debug_assert!(self.values.len() == 1);
 
-            Ok(self.values.values[0].clone())
+            Ok(self.values[0].clone())
         } else {
             Err(self)
         }
@@ -2401,14 +2410,25 @@ where
 }
 */
 
+fn log_ord(ord: Ordering) -> Ordering {
+    ORD_TRIES.with(|x| *x.borrow_mut() += 1);
+    if let Ordering::Equal = ord {
+        ORD_EQ.with(|x| *x.borrow_mut() += 1);
+    }
+    ord
+}
+
 impl<P> PartialOrd for DiffExpr<P>
 where
     P: Atom + PartialOrd,
 {
     fn partial_cmp(&self, other: &DiffExpr<P>) -> Option<Ordering> {
-        self.terms.partial_cmp(&other.terms).map(|ord| {
-            ord.then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
-        })
+        self.terms
+            .partial_cmp(&other.terms)
+            .map(|ord| {
+                ord.then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
+            })
+            .map(log_ord)
     }
 }
 
@@ -2417,9 +2437,11 @@ where
     P: Atom + Ord,
 {
     fn cmp(&self, other: &DiffExpr<P>) -> Ordering {
-        self.terms
-            .cmp(&other.terms)
-            .then_with(|| self.constant.partial_cmp(&other.constant).unwrap())
+        log_ord(
+            self.terms
+                .cmp(&other.terms)
+                .then_with(|| self.constant.partial_cmp(&other.constant).unwrap()),
+        )
     }
 }
 
@@ -2968,7 +2990,7 @@ where
 {
     min: f64,
     max: f64,
-    values: VecSet<MemoizedHash<MemoizedRange<DiffExpr<P>, f64>>>,
+    values: RcVecSet<MemoizedHash<MemoizedRange<DiffExpr<P>, f64>>>,
 }
 
 impl<P> Eq for FMaxExpr<P> where P: Atom + Eq {}
@@ -3051,7 +3073,7 @@ where
     P: Atom,
 {
     fn from(constant: f64) -> Self {
-        Self::new(constant, constant, VecSet::default())
+        Self::new(constant, constant, RcVecSet::default())
     }
 }
 
@@ -3067,9 +3089,9 @@ where
                 _ => FMaxExpr::new(
                     value.min_value(),
                     value.max_value(),
-                    VecSet::new(MemoizedHash::from(MemoizedRange::from(DiffExpr::from(
-                        value,
-                    )))),
+                    RcVecSet::new(MemoizedHash::from(MemoizedRange::from(
+                        DiffExpr::from(value),
+                    ))),
                 ),
             },
         }
@@ -3148,7 +3170,7 @@ where
     fn mul(self, other: &'a DiffExpr<P>) -> FMaxExpr<P> {
         assert!(other.min_value() > 0.);
 
-        let args: VecSet<_> = self
+        let args: RcVecSet<_> = self
             .values
             .iter()
             .map(|item| &***item * other)
@@ -3175,7 +3197,7 @@ where
     fn new(
         min: f64,
         max: f64,
-        values: VecSet<MemoizedHash<MemoizedRange<DiffExpr<P>>>>,
+        values: RcVecSet<MemoizedHash<MemoizedRange<DiffExpr<P>>>>,
     ) -> Self {
         assert!(min.is_finite() && max.is_finite());
         assert!(min <= max);
@@ -3204,35 +3226,91 @@ where
             for (six, lhs) in self.values.iter().enumerate() {
                 if lhs.max_value() <= min {
                     self_to_remove.push(six);
-                    continue;
                 }
+            }
 
-                /*
-                let mut orp = 0;
-                for (oix, rhs) in other.values.iter().enumerate() {
-                    if orp < other_to_remove.len() && oix == other_to_remove[orp] {
-                        orp += 1;
+            let use_fast = true;
+            if use_fast {
+                let (mut srp, mut orp) = (0, 0);
+                for either in self.values.iter().enumerate().merge_join_by(
+                    other.values.iter().enumerate(),
+                    |(_, lhs), (_, rhs)| lhs.terms.keys.cmp(&rhs.terms.keys),
+                ) {
+                    use itertools::EitherOrBoth::*;
+                    match either {
+                        Left((six, _)) => {
+                            if self_to_remove.get(srp) == Some(&six) {
+                                srp += 1;
+                                continue;
+                            }
+                        }
+                        Right((oix, _)) => {
+                            if other_to_remove.get(orp) == Some(&oix) {
+                                orp += 1;
+                                continue;
+                            }
+                        }
+                        Both((six, lhs), (oix, rhs)) => {
+                            if self_to_remove.get(srp) == Some(&six) {
+                                srp += 1;
+                                continue;
+                            }
+                            if other_to_remove.get(orp) == Some(&oix) {
+                                orp += 1;
+                                continue;
+                            }
+
+                            match lhs.partial_compare(rhs) {
+                                Some(Ordering::Greater) => {
+                                    other_to_remove.insert(orp, oix);
+                                    orp += 1;
+                                }
+                                Some(Ordering::Less) => {
+                                    self_to_remove.insert(srp, six);
+                                    srp += 1;
+                                }
+                                Some(Ordering::Equal) => {
+                                    self_to_remove.insert(srp, six);
+                                    srp += 1;
+                                }
+                                None => (),
+                            }
+                        }
+                    }
+                }
+            } else {
+                let mut srp = 0;
+                for (six, lhs) in self.values.iter().enumerate() {
+                    if self_to_remove.get(srp) == Some(&six) {
+                        srp += 1;
                         continue;
                     }
 
-                    match lhs.partial_compare(rhs) {
-                        Some(Ordering::Greater) => {
-                            other_to_remove.insert(orp, oix);
+                    let mut orp = 0;
+                    for (oix, rhs) in other.values.iter().enumerate() {
+                        if other_to_remove.get(orp) == Some(&oix) {
                             orp += 1;
+                            continue;
                         }
-                        Some(Ordering::Less) => {
-                            self_to_remove.push(six);
-                            break;
+
+                        match lhs.partial_compare(rhs) {
+                            Some(Ordering::Greater) => {
+                                other_to_remove.insert(orp, oix);
+                                orp += 1;
+                            }
+                            Some(Ordering::Less) => {
+                                self_to_remove.push(six);
+                                break;
+                            }
+                            Some(Ordering::Equal) => {
+                                trace!("true {} ~~ {}", lhs, rhs);
+                                self_to_remove.push(six);
+                                break;
+                            }
+                            None => (),
                         }
-                        Some(Ordering::Equal) => {
-                            trace!("true {} ~~ {}", lhs, rhs);
-                            self_to_remove.push(six);
-                            break;
-                        }
-                        None => (),
                     }
                 }
-                */
             }
 
             let values = if self_to_remove.is_empty()
@@ -3244,7 +3322,12 @@ where
             {
                 other.values.clone()
             } else {
-                VecSet::from_sorted_iter(
+                let mut collected_vec = Vec::with_capacity(
+                    self.values.len() + other.values.len()
+                        - self_to_remove.len()
+                        - other_to_remove.len(),
+                );
+                collected_vec.extend(
                     Union::new(
                         self.values
                             .iter()
@@ -3259,7 +3342,8 @@ where
                             .map(|(_, value)| value),
                     )
                     .cloned(),
-                )
+                );
+                RcVecSet::from_sorted_iter(collected_vec)
             };
 
             FMaxExpr::new(min, max, values)
@@ -3284,7 +3368,7 @@ where
         } else if self.is_single_value() {
             debug_assert!(self.values.len() == 1);
 
-            Ok(self.values.values[0].as_ref().as_ref().clone().into())
+            Ok(self.values[0].as_ref().as_ref().clone().into())
         } else {
             Err(self)
         }
@@ -3319,12 +3403,38 @@ where
     }
 }
 
-#[derive(PartialEq, Eq, Hash)]
+thread_local! {
+    static FLOAT_FAST_EQ_TRIES: RefCell<u32> = RefCell::new(0);
+    static FLOAT_SLOW_EQ_TRIES: RefCell<u32> = RefCell::new(0);
+    static FLOAT_FAST_EQ_MISSES: RefCell<u32> = RefCell::new(0);
+    static ORD_TRIES: RefCell<u32> = RefCell::new(0);
+    static ORD_EQ: RefCell<u32> = RefCell::new(0);
+}
+
+#[derive(Eq, Hash)]
 pub struct Float<P>
 where
     P: Atom,
 {
     inner: Rc<MemoizedHash<FloatInner<P>>>,
+}
+
+impl<P: Atom> PartialEq for Float<P> {
+    fn eq(&self, other: &Float<P>) -> bool {
+        FLOAT_FAST_EQ_TRIES.with(|fast_eq_tries| *fast_eq_tries.borrow_mut() += 1);
+        if Rc::ptr_eq(&self.inner, &other.inner) {
+            true
+        } else {
+            FLOAT_SLOW_EQ_TRIES.with(|slow_eq_tries| *slow_eq_tries.borrow_mut() += 1);
+            if *self.inner == *other.inner {
+                FLOAT_FAST_EQ_MISSES
+                    .with(|fast_eq_misses| *fast_eq_misses.borrow_mut() += 1);
+                true
+            } else {
+                false
+            }
+        }
+    }
 }
 
 impl<P> PartialOrd for Float<P>
@@ -3431,10 +3541,35 @@ where
     }
 }
 
-impl<P> Float<P>
-where
-    P: Atom,
-{
+pub fn reset_counters() {
+    FLOAT_FAST_EQ_TRIES.with(|x| *x.borrow_mut() = 0);
+    FLOAT_FAST_EQ_MISSES.with(|x| *x.borrow_mut() = 0);
+    FLOAT_SLOW_EQ_TRIES.with(|x| *x.borrow_mut() = 0);
+    ORD_TRIES.with(|x| *x.borrow_mut() = 0);
+    ORD_EQ.with(|x| *x.borrow_mut() = 0);
+}
+
+pub fn fast_eq_tries() -> u32 {
+    FLOAT_FAST_EQ_TRIES.with(|fast_eq_tries| *fast_eq_tries.borrow())
+}
+
+pub fn fast_eq_misses() -> u32 {
+    FLOAT_FAST_EQ_MISSES.with(|fast_eq_misses| *fast_eq_misses.borrow())
+}
+
+pub fn slow_eq_tries() -> u32 {
+    FLOAT_SLOW_EQ_TRIES.with(|slow_eq_tries| *slow_eq_tries.borrow())
+}
+
+pub fn ord_tries() -> u32 {
+    ORD_TRIES.with(|x| *x.borrow())
+}
+
+pub fn ord_eq() -> u32 {
+    ORD_EQ.with(|x| *x.borrow())
+}
+
+impl<P: Atom> Float<P> {
     pub fn div_ceil(lhs: &Int<P>, rhs: u32) -> Self {
         if lhs.max_value() <= u64::from(rhs) {
             assert!(lhs.min_value() > 0);
@@ -5288,113 +5423,110 @@ prod = {prod}\n{runner}",
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct VecSet<T>
+struct RcVecSet<T>
 where
     T: Hash,
 {
-    values: Rc<MemoizedHash<Vec<T>>>,
+    inner: Rc<MemoizedHash<ord::VecSet<T>>>,
 }
 
-impl<T> PartialOrd for VecSet<T>
+impl<T> Default for RcVecSet<T>
 where
-    T: PartialOrd + Hash,
+    T: Ord + Hash,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if Rc::ptr_eq(&self.values, &other.values) {
-            Some(Ordering::Equal)
-        } else {
-            self.values.partial_cmp(&other.values)
+    fn default() -> Self {
+        RcVecSet {
+            inner: Rc::default(),
         }
     }
 }
 
-impl<T> Ord for VecSet<T>
+impl<T> PartialOrd for RcVecSet<T>
+where
+    T: Ord + Hash,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for RcVecSet<T>
 where
     T: Ord + Hash,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        if Rc::ptr_eq(&self.values, &other.values) {
+        if Rc::ptr_eq(&self.inner, &other.inner) {
             Ordering::Equal
         } else {
-            self.values.cmp(&other.values)
+            self.inner.cmp(&other.inner)
         }
     }
 }
 
-impl<T> Default for VecSet<T>
+impl<T> iter::FromIterator<T> for RcVecSet<T>
 where
-    T: Ord + Clone + Hash,
-{
-    fn default() -> Self {
-        iter::empty().collect()
-    }
-}
-
-impl<T> iter::FromIterator<T> for VecSet<T>
-where
-    T: Ord + Clone + Hash,
+    T: Ord + Hash,
 {
     fn from_iter<II>(iter: II) -> Self
     where
         II: IntoIterator<Item = T>,
     {
-        let mut values = Vec::from_iter(iter);
-        values.sort();
-        values.dedup();
-
-        VecSet {
-            values: Rc::new(MemoizedHash::new(values)),
+        RcVecSet {
+            inner: Rc::new(MemoizedHash::new(<ord::VecSet<T> as iter::FromIterator<
+                T,
+            >>::from_iter(iter))),
         }
     }
 }
 
-impl<T> VecSet<T>
+impl<T> ops::Deref for RcVecSet<T>
 where
     T: Hash,
 {
-    fn len(&self) -> usize {
-        self.values.len()
-    }
+    type Target = ord::VecSet<T>;
 
-    fn is_empty(&self) -> bool {
-        self.values.is_empty()
+    fn deref(&self) -> &ord::VecSet<T> {
+        &**self.inner
     }
+}
 
-    fn iter(&self) -> std::slice::Iter<'_, T> {
-        self.values.iter()
+impl<T> AsRef<ord::VecSet<T>> for RcVecSet<T>
+where
+    T: Hash,
+{
+    fn as_ref(&self) -> &ord::VecSet<T> {
+        self
     }
+}
 
-    fn iter_mut(&mut self) -> std::slice::IterMut<'_, T>
+impl<T> RcVecSet<T>
+where
+    T: Hash,
+{
+    fn unchecked_iter_mut(&mut self) -> std::slice::IterMut<'_, T>
     where
         T: Clone,
     {
-        MemoizedHash::make_mut(Rc::make_mut(&mut self.values)).iter_mut()
+        MemoizedHash::make_mut(Rc::make_mut(&mut self.inner)).unchecked_iter_mut()
     }
 
-    fn fast_eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.values, &other.values)
-    }
-}
-
-impl<T, I> ops::Index<I> for VecSet<T>
-where
-    T: Hash,
-    Vec<T>: ops::Index<I>,
-{
-    type Output = <Vec<T> as ops::Index<I>>::Output;
-
-    fn index(&self, index: I) -> &Self::Output {
-        ops::Index::index(self.values.as_ref().as_ref(), index)
+    fn sort(&mut self)
+    where
+        T: Clone + Ord,
+    {
+        MemoizedHash::make_mut(Rc::make_mut(&mut self.inner)).sort()
     }
 }
 
+#[must_use = "iterator are lazy and do nothing unless consumed"]
 struct Union<L, R>
 where
     L: Iterator,
     R: Iterator,
 {
-    left: std::iter::Peekable<L>,
-    right: std::iter::Peekable<R>,
+    left: itertools::structs::PutBack<L>,
+    right: itertools::structs::PutBack<R>,
+    fused: Option<bool>,
 }
 
 impl<T, L, R> Union<L, R>
@@ -5405,8 +5537,9 @@ where
 {
     fn new(left: L, right: R) -> Self {
         Union {
-            left: left.peekable(),
-            right: right.peekable(),
+            left: itertools::put_back(left),
+            right: itertools::put_back(right),
+            fused: None,
         }
     }
 }
@@ -5420,25 +5553,32 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        if let Some(litem) = self.left.peek() {
-            if let Some(ritem) = self.right.peek() {
-                match litem.cmp(ritem) {
-                    Ordering::Less => {
-                        Some(self.left.next().unwrap_or_else(|| unreachable!()))
+        match self.fused {
+            Some(true) => self.left.next(),
+            Some(false) => self.right.next(),
+            None => {
+                if let Some(litem) = self.left.next() {
+                    if let Some(ritem) = self.right.next() {
+                        match litem.cmp(&ritem) {
+                            Ordering::Less => {
+                                self.right.put_back(ritem);
+                                Some(litem)
+                            }
+                            Ordering::Greater => {
+                                self.left.put_back(litem);
+                                Some(ritem)
+                            }
+                            Ordering::Equal => Some(litem),
+                        }
+                    } else {
+                        self.fused = Some(true);
+                        Some(litem)
                     }
-                    Ordering::Greater => {
-                        Some(self.right.next().unwrap_or_else(|| unreachable!()))
-                    }
-                    Ordering::Equal => {
-                        self.left.next().unwrap_or_else(|| unreachable!());
-                        Some(self.right.next().unwrap_or_else(|| unreachable!()))
-                    }
+                } else {
+                    self.fused = Some(false);
+                    self.right.next()
                 }
-            } else {
-                Some(self.left.next().unwrap_or_else(|| unreachable!()))
             }
-        } else {
-            self.right.next()
         }
     }
 
@@ -5447,19 +5587,19 @@ where
         let (rlow, rhigh) = self.right.size_hint();
 
         (
-            llow.min(rlow),
-            lhigh.and_then(|lhigh| rhigh.map(|rhigh| lhigh + rhigh)),
+            llow.max(rlow),
+            lhigh.and_then(|lhigh| rhigh.and_then(|rhigh| lhigh.checked_add(rhigh))),
         )
     }
 }
 
-impl<T> VecSet<T>
+impl<T> RcVecSet<T>
 where
     T: Ord + Clone + Hash,
 {
     fn new(value: T) -> Self {
-        VecSet {
-            values: Rc::new(MemoizedHash::new(vec![value])),
+        RcVecSet {
+            inner: Rc::new(MemoizedHash::new(ord::VecSet::singleton(value))),
         }
     }
 
@@ -5467,8 +5607,8 @@ where
     where
         II: IntoIterator<Item = T>,
     {
-        VecSet {
-            values: Rc::new(MemoizedHash::new(values.into_iter().collect())),
+        RcVecSet {
+            inner: Rc::new(MemoizedHash::new(ord::VecSet::from_sorted_iter(values))),
         }
     }
 }
@@ -5678,7 +5818,7 @@ struct WeightedVecSet<T, W = f64>
 where
     T: Hash,
 {
-    keys: VecSet<T>,
+    keys: RcVecSet<T>,
     coefficients: Rc<Vec<W>>,
 }
 
@@ -5688,7 +5828,7 @@ where
 {
     fn default() -> Self {
         WeightedVecSet {
-            keys: VecSet::default(),
+            keys: RcVecSet::default(),
             coefficients: Rc::default(),
         }
     }
@@ -5766,19 +5906,26 @@ where
         let coefficients = Rc::make_mut(&mut self.coefficients);
 
         for (weight, elem) in iter {
-            match self.keys.values.binary_search_by(|value| value.cmp(&elem)) {
+            match self
+                .keys
+                .inner
+                .as_ref()
+                .as_ref()
+                .as_ref()
+                .binary_search_by(|value| value.cmp(&elem))
+            {
                 Ok(pos) => {
                     coefficients[pos] += weight;
                     if is_close(coefficients[pos], 0.) {
                         coefficients.remove(pos);
-                        MemoizedHash::make_mut(Rc::make_mut(&mut self.keys.values))
-                            .remove(pos);
+                        MemoizedHash::make_mut(Rc::make_mut(&mut self.keys.inner))
+                            .unchecked_remove(pos);
                     }
                 }
                 Err(pos) => {
                     coefficients.insert(pos, weight);
-                    MemoizedHash::make_mut(Rc::make_mut(&mut self.keys.values))
-                        .insert(pos, elem);
+                    MemoizedHash::make_mut(Rc::make_mut(&mut self.keys.inner))
+                        .unchecked_insert(pos, elem);
                 }
             }
         }
@@ -5813,7 +5960,7 @@ where
         let (coefficients, keys): (Vec<_>, Vec<_>) = values.into_iter().unzip();
         WeightedVecSet {
             coefficients: Rc::new(coefficients),
-            keys: VecSet::from_sorted_iter(keys),
+            keys: RcVecSet::from_sorted_iter(keys),
         }
     }
 
@@ -5871,7 +6018,7 @@ where
             let keys = if to_remove.is_empty() {
                 self.keys.clone()
             } else {
-                VecSet::from_sorted_iter(
+                RcVecSet::from_sorted_iter(
                     self.keys
                         .iter()
                         .enumerate()
@@ -5915,7 +6062,7 @@ where
 {
     min: f64,
     max: f64,
-    values: VecSet<DiffExpr<P>>,
+    values: RcVecSet<DiffExpr<P>>,
 }
 
 impl<P> Eq for FMinExpr<P> where P: Atom + Eq {}
@@ -5999,7 +6146,7 @@ where
     P: Atom,
 {
     fn from(constant: f64) -> Self {
-        Self::new(constant, constant, VecSet::default())
+        Self::new(constant, constant, RcVecSet::default())
     }
 }
 
@@ -6015,7 +6162,7 @@ where
                 _ => FMinExpr::new(
                     value.min_value(),
                     value.max_value(),
-                    VecSet::new(DiffExpr::from(value)),
+                    RcVecSet::new(DiffExpr::from(value)),
                 ),
             },
         }
@@ -6041,7 +6188,7 @@ impl<P> FMinExpr<P>
 where
     P: Atom,
 {
-    fn new(min: f64, max: f64, values: VecSet<DiffExpr<P>>) -> Self {
+    fn new(min: f64, max: f64, values: RcVecSet<DiffExpr<P>>) -> Self {
         assert!(min.is_finite() && max.is_finite());
         assert!(min <= max);
 
@@ -6057,7 +6204,7 @@ where
             let min = self.min.min(other.min);
             let max = self.max.min(other.max);
 
-            let values = VecSet::from_sorted_iter(
+            let values = RcVecSet::from_sorted_iter(
                 Union::new(
                     self.values.iter().filter(|value| value.min_value() < max),
                     other.values.iter().filter(|value| value.min_value() < max),
@@ -6087,7 +6234,7 @@ where
         } else if self.is_single_value() {
             debug_assert!(self.values.len() == 1);
 
-            Ok(self.values.values[0].clone().into())
+            Ok(self.values[0].clone().into())
         } else {
             Err(self)
         }

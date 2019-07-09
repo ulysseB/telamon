@@ -1,5 +1,5 @@
 use fxhash::FxHasher;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
@@ -72,7 +72,13 @@ where
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match MemoizedHash::get_hash(self).cmp(&MemoizedHash::get_hash(other)) {
             Ordering::Less => Some(Ordering::Less),
-            Ordering::Equal => self.value.partial_cmp(&other.value),
+            Ordering::Equal => {
+                if cfg!(feature = "ignore_collisions") {
+                    Some(Ordering::Equal)
+                } else {
+                    self.value.partial_cmp(&other.value)
+                }
+            }
             Ordering::Greater => Some(Ordering::Greater),
         }
     }
@@ -87,7 +93,13 @@ where
     fn cmp(&self, other: &Self) -> Ordering {
         MemoizedHash::get_hash(self)
             .cmp(&MemoizedHash::get_hash(other))
-            .then_with(|| self.value.cmp(&other.value))
+            .then_with(|| {
+                if cfg!(feature = "ignore_collisions") {
+                    Ordering::Equal
+                } else {
+                    self.value.cmp(&other.value)
+                }
+            })
     }
 }
 

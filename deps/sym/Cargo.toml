@@ -16,4 +16,5 @@ proptest = "0.9"
 
 [features]
 default = []
+ignore_collisions = []
 verify = []
