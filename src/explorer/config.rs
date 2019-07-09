@@ -65,7 +65,7 @@ impl Config {
     }
 
     /// Create a new configuration from the hardcoded `Settings.toml` configuration file if it
-    /// exisst.
+    /// exists.
     pub fn from_settings_toml() -> Self {
         let settings_path = std::path::Path::new("Settings.toml");
         if settings_path.exists() {

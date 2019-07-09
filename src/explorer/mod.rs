@@ -28,6 +28,8 @@ use crossbeam;
 use futures::executor;
 use futures::prelude::*;
 use log::{error, info, warn};
+use std::fmt;
+use std::io::Write;
 use std::sync::{
     self,
     atomic::{AtomicUsize, Ordering},
@@ -202,6 +204,17 @@ pub fn find_best_ex(
     }
 }
 
+/// Adapter used to display the store's statistics
+struct DisplayStats<'a, T> {
+    store: &'a T,
+}
+
+impl<T: Store> fmt::Display for DisplayStats<'_, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.store.display_stats(fmt)
+    }
+}
+
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
 fn launch_search<T: Store>(
@@ -212,6 +225,7 @@ fn launch_search<T: Store>(
     check_result_fn: Option<&CheckResultFn<'_>>,
 ) -> Option<Candidate> {
     let (monitor_sender, monitor_receiver) = futures::sync::mpsc::channel(100);
+    let final_sender = monitor_sender.clone();
     let maybe_candidate = crossbeam::scope(|scope| {
         let best_cand_opt = scope
             .builder()
@@ -239,7 +253,14 @@ fn launch_search<T: Store>(
     // At this point all threads have ended and nobody is going to be
     // exploring the candidate store anymore, so the stats printer
     // should have a consistent view on the tree.
-    candidate_store.print_stats();
+    write!(
+        std::fs::File::create(config.output_path("stats.txt").unwrap()).unwrap(),
+        "{}",
+        DisplayStats {
+            store: &candidate_store
+        }
+    )
+    .unwrap();
     maybe_candidate
 }
 

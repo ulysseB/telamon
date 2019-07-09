@@ -11,12 +11,12 @@
 
 #![allow(clippy::type_complexity)]
 
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::cmp::PartialEq;
 use std::fmt::{self, Debug, Display};
 use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
-    mpsc, Arc, RwLock, Weak,
+    mpsc, Arc, Mutex, RwLock, Weak,
 };
 use std::{cmp, iter, ops, slice};
 
@@ -337,21 +337,81 @@ impl<N, E> Edge<N, E> {
     }
 }
 
+#[derive(Default)]
+struct Perf {
+    constraints_duration: std::time::Duration,
+    model_duration: std::time::Duration,
+}
+
+impl fmt::Display for Perf {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            fmt,
+            "Time spent on constraint propagation: {:?}",
+            self.constraints_duration
+        )?;
+        writeln!(
+            fmt,
+            "Time spent on performance model: {:?}",
+            self.model_duration
+        )?;
+        Ok(())
+    }
+}
+
+impl ops::AddAssign<&'_ Perf> for Perf {
+    fn add_assign(&mut self, other: &'_ Perf) {
+        self.constraints_duration += other.constraints_duration;
+        self.model_duration += other.model_duration;
+    }
+}
+
+struct LocalPerf<'a> {
+    shared: &'a Mutex<Perf>,
+    local: RefCell<Perf>,
+}
+
+impl<'a> LocalPerf<'a> {
+    fn new(shared: &'a Mutex<Perf>) -> Self {
+        LocalPerf {
+            shared,
+            local: RefCell::default(),
+        }
+    }
+
+    fn borrow_mut(&'_ self) -> RefMut<'_, Perf> {
+        self.local.borrow_mut()
+    }
+}
+
+impl<'a> Drop for LocalPerf<'a> {
+    fn drop(&mut self) {
+        *self.shared.lock().unwrap() += &*self.local.get_mut();
+    }
+}
+
 /// An environment in which candidates can be refined.
-#[derive(Clone)]
 pub struct Env<'a> {
     /// The order in which choices should be considered.
     choice_ordering: &'a ChoiceOrdering,
     /// The context to use for constraint propagation.
     context: &'a dyn Context,
+
+    // Performance measurements
+    perf: LocalPerf<'a>,
 }
 
 impl<'a> Env<'a> {
     /// Create a new environment.
-    pub fn new(choice_ordering: &'a ChoiceOrdering, context: &'a dyn Context) -> Self {
+    fn new(
+        choice_ordering: &'a ChoiceOrdering,
+        context: &'a dyn Context,
+        perf: LocalPerf<'a>,
+    ) -> Self {
         Env {
             choice_ordering,
             context,
+            perf,
         }
     }
 
@@ -371,7 +431,8 @@ impl<'a> Env<'a> {
         mut candidate: SearchSpace,
         action: Action,
     ) -> Option<SearchSpace> {
-        if let Ok(()) = match action {
+        let start = std::time::Instant::now();
+        let next = if let Ok(()) = match action {
             Action::Action(action) => candidate.apply_decisions(vec![action]),
             Action::LowerLayout {
                 mem,
@@ -382,12 +443,17 @@ impl<'a> Env<'a> {
             Some(candidate)
         } else {
             None
-        }
+        };
+        self.perf.borrow_mut().constraints_duration += start.elapsed();
+        next
     }
 
     /// Compute the performance model bound for a candidate.
     pub fn bound(&self, candidate: &SearchSpace) -> Bound {
-        bound(candidate, self.context)
+        let start = std::time::Instant::now();
+        let bound = bound(candidate, self.context);
+        self.perf.borrow_mut().model_duration += start.elapsed();
+        bound
     }
 }
 
@@ -1207,6 +1273,9 @@ pub struct MctsStore<'a, N, E> {
 
     /// Time at which the search started.  Used as an epoch for timestamps.
     epoch: std::time::Instant,
+
+    // Performance measurement
+    perf: Mutex<Perf>,
 }
 
 impl<'a, N, E> MctsStore<'a, N, E>
@@ -1225,8 +1294,9 @@ where
         let epoch = std::time::Instant::now();
 
         let id_counter = AtomicUsize::new(0);
+        let perf = Mutex::new(Perf::default());
         let root = Tree::new(
-            Env::new(&config.choice_ordering, context),
+            Env::new(&config.choice_ordering, context, LocalPerf::new(&perf)),
             &id_counter,
             &logger,
             epoch,
@@ -1245,6 +1315,7 @@ where
             logger,
             config,
             epoch,
+            perf,
         }
     }
 
@@ -1256,7 +1327,11 @@ where
             path: Vec::new(),
             node: self.root.clone(),
             tree: Tree::new(
-                Env::new(&self.config.choice_ordering, context),
+                Env::new(
+                    &self.config.choice_ordering,
+                    context,
+                    LocalPerf::new(&self.perf),
+                ),
                 &self.id_counter,
                 &self.logger,
                 self.epoch,
@@ -1380,7 +1455,9 @@ where
         self.stop.store(true, Ordering::Relaxed)
     }
 
-    fn print_stats(&self) {}
+    fn display_stats(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.perf.lock().unwrap(), fmt)
+    }
 }
 
 impl NewNodeOrder {

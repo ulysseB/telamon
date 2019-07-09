@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::device::Context;
 use crate::explorer::candidate::Candidate;
 use crate::explorer::choice::ActionEx;
@@ -28,5 +30,7 @@ pub trait Store: Sync {
     /// Retrieve a Candidate for evaluation, returns `None` if no candidate remains.
     fn explore(&self, context: &dyn Context) -> Option<(Candidate, Self::PayLoad)>;
     /// Displays statistics about the candidate store.
-    fn print_stats(&self) {}
+    fn display_stats(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
 }
