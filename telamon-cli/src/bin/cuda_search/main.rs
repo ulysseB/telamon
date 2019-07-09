@@ -61,7 +61,7 @@ fn benchmark<'a, K, REF, CB>(
 
 #[derive(StructOpt)]
 struct Opt {
-    #[strucopt(flatten)]
+    #[structopt(flatten)]
     common: CommonOpt,
 }
 
