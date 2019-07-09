@@ -226,21 +226,46 @@ pub enum ActivationFunction {
     Sigmoid,
 }
 
-impl ActivationFunction {
-    /// Creates a new virtual tensor by applying the activation
-    /// function to each element of `t`
-    pub fn apply<S: Scalar>(
-        &self,
-        builder: &mut Builder,
-        t: &VirtualTensor,
-    ) -> VirtualTensor {
-        match self {
-            ActivationFunction::ReLU => tensor_elementwise_max(builder, t, &S::zero()),
-            ActivationFunction::Sigmoid => tensor_map(builder, t, |operand, builder| {
+/// Applies an optional activation function element-wise to the
+/// virtual tensor `a` and returns a new virtual tensor with the
+/// result. If no activation function has been specified, the instance
+/// itself is returned.
+pub fn tensor_activate<S: Scalar>(
+    builder: &mut Builder,
+    t: VirtualTensor,
+    f: &Option<ActivationFunction>,
+) -> VirtualTensor {
+    match f {
+        Some(ActivationFunction::ReLU) => tensor_elementwise_max(builder, &t, &S::zero()),
+        Some(ActivationFunction::Sigmoid) => {
+            tensor_map(builder, &t, |operand, builder| {
                 let exp = builder.exp(operand);
                 let add = builder.add(&S::one(), &exp);
                 builder.div(&S::one(), &add)
-            }),
+            })
         }
+        None => t,
+    }
+}
+
+/// Applies an optional activation function element-wise and in place
+/// to the Array `a`. If no activation function has been specified,
+/// `a` is left unmodified.
+pub fn array_activate_inplace<S, D>(
+    a: &mut ndarray::Array<S, D>,
+    f: &Option<ActivationFunction>,
+) where
+    S: Scalar,
+    D: ndarray::Dimension,
+{
+    match f {
+        Some(ActivationFunction::ReLU) => {
+            a.mapv_inplace(|c| c.max(S::zero()));
+        }
+        Some(ActivationFunction::Sigmoid) => {
+            let one = S::one();
+            a.mapv_inplace(|c| one / (one + S::exp(c)));
+        }
+        None => {}
     }
 }

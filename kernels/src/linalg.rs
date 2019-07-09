@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use crate::compose::{
-    matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul, tensor_mad,
-    ActivationFunction,
+    array_activate_inplace, matrix_matrix_multiply, matrix_vector_multiply,
+    tensor_activate, tensor_add, tensor_elementwise_mul, tensor_mad, ActivationFunction,
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
@@ -388,12 +388,9 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
 
         let ab = matrix_matrix_multiply(&mut builder, &a, &b);
 
-        if let Some(activation_fun) = &self.params.activation_fun {
-            let res = activation_fun.apply::<S>(&mut builder, &ab);
-            res.store(&self.c, &mut builder);
-        } else {
-            ab.store(&self.c, &mut builder);
-        }
+        let res = tensor_activate::<S>(&mut builder, ab, &self.params.activation_fun);
+
+        res.store(&self.c, &mut builder);
 
         vec![build_candidate(builder.get(), ctx)]
     }
@@ -403,20 +400,9 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         let b_shape = (self.params.k as usize, self.params.n as usize);
         let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
         let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
+
         let mut res = a.dot(&b);
-
-        match self.params.activation_fun {
-            Some(ActivationFunction::ReLU) => {
-                res.mapv_inplace(|c| c.max(S::zero()));
-            }
-
-            Some(ActivationFunction::Sigmoid) => {
-                let one = S::one();
-                res.mapv_inplace(|c| one / (one + S::exp(c)));
-            }
-
-            None => {}
-        };
+        array_activate_inplace(&mut res, &self.params.activation_fun);
 
         res
     }
@@ -777,12 +763,9 @@ impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
         let aabc = matrix_matrix_multiply(&mut builder, &aab, &c);
         let aabcpbd = tensor_mad(&mut builder, &d, &"beta", &aabc);
 
-        if let Some(activation_fun) = &self.params.activation_fun {
-            let res = activation_fun.apply::<S>(&mut builder, &aabcpbd);
-            res.store(&self.e, &mut builder);
-        } else {
-            aabcpbd.store(&self.e, &mut builder);
-        }
+        let res =
+            tensor_activate::<S>(&mut builder, aabcpbd, &self.params.activation_fun);
+        res.store(&self.e, &mut builder);
 
         let candidate = build_candidate(builder.get(), ctx);
 
@@ -805,18 +788,7 @@ impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
         let bd = d.mapv(|x| x * S::from(self.params.beta).unwrap());
         let mut aabcpbd = aabc + bd;
 
-        match self.params.activation_fun {
-            Some(ActivationFunction::ReLU) => {
-                aabcpbd.mapv_inplace(|c| c.max(S::zero()));
-            }
-
-            Some(ActivationFunction::Sigmoid) => {
-                let one = S::one();
-                aabcpbd.mapv_inplace(|c| one / (one + S::exp(c)));
-            }
-
-            None => {}
-        };
+        array_activate_inplace(&mut aabcpbd, &self.params.activation_fun);
 
         aabcpbd
     }
