@@ -466,16 +466,19 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.numer.is_empty() {
-            write!(fmt, "1")?;
+            fmt.write_str("1")?;
         } else {
-            write!(fmt, "{}", self.numer.iter().format("*"))?;
+            fmt::Display::fmt(&self.numer.iter().format("*"), fmt)?;
         }
 
         if !self.denom.is_empty() {
             if self.denom.len() == 1 {
-                write!(fmt, "/{}", self.denom[0])?;
+                fmt.write_str("/")?;
+                fmt::Display::fmt(&self.denom[0], fmt)?;
             } else {
-                write!(fmt, "/({})", self.denom.iter().format("*"))?;
+                fmt.write_str("/(")?;
+                fmt::Display::fmt(&self.denom.iter().format("*"), fmt)?;
+                fmt.write_str(")")?;
             }
         }
 
@@ -661,13 +664,14 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.ratio.is_one() {
-            write!(fmt, "{}", self.factor)?;
+            fmt::Display::fmt(&self.factor, fmt)?;
         } else {
             if !self.factor.is_one() {
-                write!(fmt, "{}*", self.factor)?;
+                fmt::Display::fmt(&self.factor, fmt)?;
+                fmt.write_str("*")?;
             }
 
-            write!(fmt, "{}", self.ratio)?;
+            fmt::Display::fmt(&self.ratio, fmt)?;
         }
 
         Ok(())
@@ -1132,11 +1136,15 @@ where
     P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str("lcm(")?;
         if self.args.is_empty() {
-            write!(fmt, "lcm({})", self.lcm)
+            fmt::Display::fmt(&self.lcm, fmt)?;
         } else {
-            write!(fmt, "lcm({}, {})", self.gcd, self.args.iter().format(", "))
+            fmt::Display::fmt(&self.gcd, fmt)?;
+            fmt.write_str(", ")?;
+            fmt::Display::fmt(&self.args.iter().format(", "), fmt)?;
         }
+        fmt.write_str(")")
     }
 }
 
@@ -1338,23 +1346,21 @@ where
     P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str("min(")?;
         if let Some(minmax) = self.values.iter().map(Range::max_value).min() {
-            if BigUint::from(minmax) == self.max {
-                write!(fmt, "min({})", self.values.iter().format(", "))
-            } else {
-                write!(
-                    fmt,
-                    "min({}, {})",
-                    self.max,
-                    self.values.iter().format(", ")
-                )
+            if BigUint::from(minmax) != self.max {
+                fmt::Display::fmt(&self.max, fmt)?;
+                fmt.write_str(", ")?;
             }
+            fmt::Display::fmt(&self.values.iter().format(", "), fmt)?;
         } else {
             assert!(self.values.is_empty());
             assert_eq!(self.min, self.max);
 
-            write!(fmt, "min({})", self.min)
+            fmt::Display::fmt(&self.min, fmt)?;
         }
+
+        fmt.write_str(")")
     }
 }
 
@@ -1604,9 +1610,9 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            IntInner::Lcm(lcm) => write!(fmt, "{}", lcm),
-            IntInner::Min(min) => write!(fmt, "{}", min),
-            IntInner::Mul(ratio) => write!(fmt, "{}", ratio),
+            IntInner::Lcm(lcm) => fmt::Display::fmt(lcm, fmt),
+            IntInner::Min(min) => fmt::Display::fmt(min, fmt),
+            IntInner::Mul(ratio) => fmt::Display::fmt(ratio, fmt),
         }
     }
 }
@@ -1940,7 +1946,11 @@ where
     P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "div_ceil({}, {})", self.numer, self.denom)
+        fmt.write_str("div_ceil(")?;
+        fmt::Display::fmt(&self.numer, fmt)?;
+        fmt.write_str(", ")?;
+        fmt::Display::fmt(&self.denom, fmt)?;
+        fmt.write_str(")")
     }
 }
 
@@ -1993,14 +2003,18 @@ where
     P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", self.ratio)?;
+        fmt::Display::fmt(&self.ratio, fmt)?;
 
         if !self.divceils.is_empty() {
-            write!(fmt, "*[{}]", self.divceils.iter().format("*"))?;
+            fmt.write_str("*[")?;
+            fmt::Display::fmt(&self.divceils.iter().format("*"), fmt)?;
+            fmt.write_str("]")?;
         }
 
         if !self.others.is_empty() {
-            write!(fmt, "*{{{}}}", self.others.iter().format("*"))?;
+            fmt.write_str("*{")?;
+            fmt::Display::fmt(&self.others.iter().format("*"), fmt)?;
+            fmt.write_str("}")?;
         }
 
         Ok(())
@@ -2319,13 +2333,14 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.ratio.is_one() {
-            write!(fmt, "{}", self.factor)?;
+            fmt::Display::fmt(&self.factor, fmt)?;
         } else {
             if !self.factor.is_one() {
-                write!(fmt, "{}*", self.factor)?;
+                fmt::Display::fmt(&self.factor, fmt)?;
+                fmt.write_str("*")?;
             }
 
-            write!(fmt, "{}", self.ratio)?;
+            fmt::Display::fmt(&self.ratio, fmt)?;
         }
 
         Ok(())
@@ -2464,52 +2479,47 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         if self.terms.is_empty() {
-            write!(fmt, "{}", self.constant)
+            fmt::Display::fmt(&self.constant, fmt)
         } else {
-            write!(fmt, "(")?;
+            fmt.write_str("(")?;
 
             let (positive, negative) = self
                 .terms
                 .iter()
-                .map(|(weight, item)| (weight, format!("{}", item)))
                 .partition::<Vec<_>, _>(|(weight, _)| weight > &0.);
 
             let mut has_written = false;
             if !self.constant.is_zero() {
-                write!(fmt, "{}", self.constant)?;
-
+                fmt::Display::fmt(&self.constant, fmt)?;
                 has_written = true;
             }
 
-            if !positive.is_empty() {
-                write!(
-                    fmt,
-                    "{}{}",
-                    if has_written { " + " } else { "" },
-                    positive
-                        .iter()
-                        .map(|(weight, item)| format!("{}*{}", weight, item))
-                        .format(" + "),
-                )?;
+            for (weight, item) in positive.iter() {
+                if has_written {
+                    fmt.write_str(" + ")?;
+                } else {
+                    has_written = true;
+                }
 
-                has_written = true;
+                fmt::Display::fmt(weight, fmt)?;
+                fmt.write_str("*")?;
+                fmt::Display::fmt(item, fmt)?;
             }
 
-            if !negative.is_empty() {
-                write!(
-                    fmt,
-                    "{}{}",
-                    if has_written { " - " } else { "-" },
-                    negative
-                        .iter()
-                        .map(|(weight, item)| format!("{}*{}", -weight, item))
-                        .format(" - ")
-                )?;
+            for (weight, item) in negative.iter() {
+                if has_written {
+                    fmt.write_str(" - ")?;
+                } else {
+                    has_written = true;
+                    fmt.write_str("-")?;
+                }
+
+                fmt::Display::fmt(weight, fmt)?;
+                fmt.write_str("*")?;
+                fmt::Display::fmt(item, fmt)?;
             }
 
-            write!(fmt, ")")?;
-
-            Ok(())
+            fmt.write_str(")")
         }
     }
 }
@@ -3021,12 +3031,16 @@ where
     P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "max[{} <= {}](", self.min, self.max)?;
+        fmt.write_str("max[")?;
+        fmt::Display::fmt(&self.min, fmt)?;
+        fmt.write_str(" <= ")?;
+        fmt::Display::fmt(&self.max, fmt)?;
+        fmt.write_str("](")?;
 
         if self.values.is_empty() {
             debug_assert_eq!(self.min, self.max);
 
-            write!(fmt, "{}", self.min)?;
+            fmt::Display::fmt(&self.min, fmt)?;
         } else {
             let maxmin = self
                 .values
@@ -3035,26 +3049,29 @@ where
                 .fold(std::f64::NEG_INFINITY, f64::max);
             assert!(maxmin.is_finite());
 
+            let mut has_written = false;
             if maxmin != self.min {
-                write!(fmt, "{}, ", self.min)?;
+                fmt::Display::fmt(&self.min, fmt)?;
+                has_written = true;
             }
 
-            write!(
-                fmt,
-                "{}",
-                self.values
-                    .iter()
-                    .map(|val| format!(
-                        "[{} <= {}] {}",
-                        val.min_value(),
-                        val.max_value(),
-                        val
-                    ))
-                    .format(", ")
-            )?;
+            for val in self.values.iter() {
+                if has_written {
+                    fmt.write_str(", ")?;
+                } else {
+                    has_written = true;
+                }
+
+                fmt.write_str("[")?;
+                fmt::Display::fmt(&val.min_value(), fmt)?;
+                fmt.write_str(" <= ")?;
+                fmt::Display::fmt(&val.max_value(), fmt)?;
+                fmt.write_str("] ")?;
+                fmt::Display::fmt(val, fmt)?;
+            }
         }
 
-        write!(fmt, ")")
+        fmt.write_str(")")
     }
 }
 
@@ -6093,12 +6110,16 @@ where
     P: Atom,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "min[{} <= {}](", self.min, self.max)?;
+        fmt.write_str("min[")?;
+        fmt::Display::fmt(&self.min, fmt)?;
+        fmt.write_str(" <= ")?;
+        fmt::Display::fmt(&self.max, fmt)?;
+        fmt.write_str("[(")?;
 
         if self.values.is_empty() {
             debug_assert_eq!(self.min, self.max);
 
-            write!(fmt, "{}", self.max)?;
+            fmt::Display::fmt(&self.max, fmt)?;
         } else {
             let maxmin = self
                 .values
@@ -6108,26 +6129,29 @@ where
                 .fold(self.values[0].max_value(), f64::min);
             assert!(maxmin.is_finite());
 
+            let mut has_written = false;
             if maxmin != self.max {
-                write!(fmt, "{}, ", self.max)?;
+                fmt::Display::fmt(&self.max, fmt)?;
+                has_written = true;
             }
 
-            write!(
-                fmt,
-                "{}",
-                self.values
-                    .iter()
-                    .map(|val| format!(
-                        "[{} <= {}] {}",
-                        val.min_value(),
-                        val.max_value(),
-                        val
-                    ))
-                    .format(", ")
-            )?;
+            for val in self.values.iter() {
+                if has_written {
+                    fmt.write_str(", ")?;
+                } else {
+                    has_written = true;
+                }
+
+                fmt.write_str("[")?;
+                fmt::Display::fmt(&val.min_value(), fmt)?;
+                fmt.write_str(" <= ")?;
+                fmt::Display::fmt(&val.max_value(), fmt)?;
+                fmt.write_str("] ")?;
+                fmt::Display::fmt(val, fmt)?;
+            }
         }
 
-        write!(fmt, ")")
+        fmt.write_str(")")
     }
 }
 
