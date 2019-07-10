@@ -93,7 +93,7 @@ impl Bounds {
         let num_tested = atomic::AtomicUsize::new(0);
         let stabilizer = &context.stabilizer();
         context.async_eval(
-            1, // TODO: num_cpus
+            num_cpus::get(),
             device::EvalMode::TestBound,
             &|evaluator| loop {
                 if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= self.num_runs {
