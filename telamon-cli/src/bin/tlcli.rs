@@ -239,6 +239,16 @@ impl Stats {
             Backtrack,
         };
 
+        impl From<mcts::CauseOfDeath> for Cause {
+            fn from(cause: mcts::CauseOfDeath) -> Self {
+                match cause {
+                    mcts::CauseOfDeath::Constraints => Cause::Constraints,
+                    mcts::CauseOfDeath::PerfModel { .. } => Cause::PerfModel,
+                    mcts::CauseOfDeath::Backtrack => Cause::Backtrack,
+                }
+            }
+        }
+
         let mut deadinfo = HashMap::new();
 
         for record_bytes in EventLog::open(&self.eventlog)?.records() {
@@ -250,14 +260,18 @@ impl Stats {
                     let mut cause = None;
                     let len = events.iter().fold(0, |len, event| match event.value {
                         mcts::Event::SelectChild(..) => len + 1,
+                        mcts::Event::KillChild(_, cause_) => {
+                            let info = deadinfo
+                                .entry(Cause::from(cause_))
+                                .or_insert((0u64, 0u32));
+                            info.0 += len + 1;
+                            info.1 += 1;
+                            len
+                        }
                         mcts::Event::Kill(cause_) => {
                             assert!(cause.is_none());
 
-                            cause = Some(match cause_ {
-                                mcts::CauseOfDeath::Constraints => Cause::Constraints,
-                                mcts::CauseOfDeath::PerfModel { .. } => Cause::PerfModel,
-                                mcts::CauseOfDeath::Backtrack => Cause::Backtrack,
-                            });
+                            cause = Some(Cause::from(cause_));
                             len
                         }
                         _ => len,
