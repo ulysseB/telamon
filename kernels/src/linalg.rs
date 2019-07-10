@@ -806,3 +806,180 @@ impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
         }
     }
 }
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ResNetCellP {
+    pub m: i32,
+    pub n: i32,
+    pub k: i32,
+    pub transpose_a: bool,
+    pub transpose_b: bool,
+    pub transpose_c: bool,
+    pub generic: bool,
+    pub m_tiling: Option<helper::TilingPattern>,
+    pub n_tiling: Option<helper::TilingPattern>,
+    pub k_tiling: Option<helper::TilingPattern>,
+    pub activation_fun: Option<ActivationFunction>,
+}
+
+impl ResNetCellP {
+    pub fn new(m: i32, n: i32, k: i32) -> Self {
+        ResNetCellP {
+            m,
+            n,
+            k,
+            transpose_a: false,
+            transpose_b: false,
+            transpose_c: false,
+            generic: true,
+            m_tiling: None,
+            n_tiling: None,
+            k_tiling: None,
+            activation_fun: None,
+        }
+    }
+
+    pub fn transpose_a(mut self) -> Self {
+        self.transpose_a = true;
+        self
+    }
+
+    pub fn transpose_b(mut self) -> Self {
+        self.transpose_b = true;
+        self
+    }
+
+    pub fn transpose_c(mut self) -> Self {
+        self.transpose_c = true;
+        self
+    }
+
+    pub fn activation_fun<F>(mut self, fun: F) -> Self
+    where
+        F: Into<Option<ActivationFunction>>,
+    {
+        self.activation_fun = fun.into();
+        self
+    }
+
+    /// Inline the sizes in the generated code.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
+        self
+    }
+}
+
+/// Computes `O = activation(activation(A.B).C) + A`
+pub struct ResNetCell<'a, S: Scalar> {
+    pub params: ResNetCellP,
+    a: Tensor<'a, S>,
+    b: Tensor<'a, S>,
+    c: Tensor<'a, S>,
+    o: Tensor<'a, S>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for ResNetCell<'a, S> {
+    type Parameters = ResNetCellP;
+    type ExpectedOutput = Array2<S>;
+
+    fn name() -> &'static str {
+        "resnetcell"
+    }
+
+    fn build_signature<AM>(
+        params: ResNetCellP,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let k_size = create_size(params.k, "k", params.generic, builder);
+
+        let a = TensorBuilder::new("a", vec![m_size.clone(), k_size.clone()])
+            .doif(params.transpose_a, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let b = TensorBuilder::new("b", vec![k_size.clone(), n_size.clone()])
+            .doif(params.transpose_b, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let c = TensorBuilder::new("c", vec![n_size, k_size.clone()])
+            .doif(params.transpose_c, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let o = builder.tensor::<S>("o", vec![m_size, k_size], false);
+        ResNetCell { params, a, b, c, o }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
+        let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
+        let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let a = self
+            .a
+            .load(vec![m_tiling.clone(), k_tiling.clone()], &mut builder);
+        let b = self
+            .b
+            .load(vec![k_tiling.clone(), n_tiling.clone()], &mut builder);
+        let c = self
+            .c
+            .load(vec![n_tiling.clone(), k_tiling.clone()], &mut builder);
+
+        let ab = matrix_matrix_multiply(&mut builder, &a, &b);
+        let act_ab = tensor_activate::<S>(&mut builder, ab, &self.params.activation_fun);
+        let act_ab_c = matrix_matrix_multiply(&mut builder, &act_ab, &c);
+        let act_act_ab_c =
+            tensor_activate::<S>(&mut builder, act_ab_c, &self.params.activation_fun);
+
+        let a_copy = a.duplicate(&mut builder);
+
+        let act_act_ab_c_pa = tensor_add(&mut builder, &act_act_ab_c, &a_copy);
+
+        act_act_ab_c_pa.store(&self.o, &mut builder);
+
+        let candidate = build_candidate(builder.get(), ctx);
+
+        vec![candidate]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
+        let a_shape = (self.params.m as usize, self.params.k as usize);
+        let b_shape = (self.params.k as usize, self.params.n as usize);
+        let c_shape = (self.params.n as usize, self.params.k as usize);
+
+        let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
+        let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
+        let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
+
+        let mut ab = a.dot(&b);
+        array_activate_inplace(&mut ab, &self.params.activation_fun);
+
+        let mut act_ab_c = ab.dot(&c);
+        array_activate_inplace(&mut act_ab_c, &self.params.activation_fun);
+
+        act_ab_c + a
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let o_shape = (self.params.m as usize, self.params.k as usize);
+        let o = unwrap!(self.o.read_to_host(context).into_shape(o_shape));
+        if let Err(invalid) = check_output(&o, expected) {
+            Err(format!("Invalid resnetcell output: {}", invalid))
+        } else {
+            Ok(())
+        }
+    }
+}
