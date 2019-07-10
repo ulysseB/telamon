@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::{atomic, Arc, Mutex};
 
@@ -78,12 +78,14 @@ impl Bounds {
         }
     }
 
-    fn test_bound(
+    fn test_bound<F>(
         &self,
         candidates: Vec<Candidate>,
         context: &dyn device::Context,
-    ) -> Vec<(f64, Vec<f64>)> {
-        let leaves = Mutex::new(Vec::new());
+        body_fn: F,
+    ) where
+        F: Fn((f64, Vec<f64>)) + Sync,
+    {
         let num_tested = atomic::AtomicUsize::new(0);
         let stabilizer = &context.stabilizer();
         context.async_eval(
@@ -100,7 +102,7 @@ impl Bounds {
                     self.random_descent(&candidates, context)
                 {
                     evaluator.add_kernel(leaf, {
-                        let leaves = &leaves;
+                        let body_fn = &body_fn;
                         move |leaf, kernel| {
                             let bound = leaf.bound.clone();
                             let runtime = stabilizer
@@ -108,12 +110,11 @@ impl Bounds {
                                 .bound(Some(bound.value()))
                                 .evaluate()
                                 .unwrap();
-                            let mut leaves = leaves.lock().unwrap();
                             bounds.push(bound);
-                            leaves.push((
+                            body_fn((
                                 runtime,
                                 bounds.into_iter().map(|bound| bound.value()).collect(),
-                            ));
+                            ))
                         }
                     });
                 } else {
@@ -121,7 +122,6 @@ impl Bounds {
                 }
             },
         );
-        leaves.into_inner().unwrap()
     }
 
     fn run(&self, _args: &Opt) -> io::Result<()> {
@@ -137,15 +137,19 @@ impl Bounds {
         let signature = Arc::new(signature);
         let expected = kernel.get_expected_output(context);
 
-        for (runtime, bounds) in
-            self.test_bound(kernel.build_body(signature, context), context)
-        {
-            print!("matmul,{}", runtime);
-            for bound in bounds {
-                print!(",{}", bound);
-            }
-            print!("\n");
-        }
+        let stdout = std::io::stdout();
+        self.test_bound(
+            kernel.build_body(signature, context),
+            context,
+            |(runtime, bounds)| {
+                let mut handle = stdout.lock();
+                write!(handle, "matmul,{}", runtime).unwrap();
+                for bound in bounds {
+                    write!(handle, ",{}", bound).unwrap();
+                }
+                write!(handle, "\n").unwrap();
+            },
+        );
 
         Ok(())
     }
