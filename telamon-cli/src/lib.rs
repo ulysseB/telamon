@@ -2,12 +2,13 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
-use telamon::explorer::config::Config;
-use telamon_kernels::Kernel;
+use telamon::explorer::{config::Config, Candidate};
+use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 #[derive(StructOpt)]
 pub struct CommonOpt {
@@ -363,6 +364,41 @@ pub enum KernelParam {
     Gesummv { m: i32, n: i32 },
     Gemm { m: i32, n: i32, k: i32 },
     BatchMM { b: i32, m: i32, n: i32, k: i32 },
+}
+
+impl KernelParam {
+    pub fn with_body<'a, C, F, R>(&self, context: &mut C, body_fn: F) -> R
+    where
+        C: Context + ArgMap<'a>,
+        F: FnOnce(Vec<Candidate>, &dyn Context) -> R,
+    {
+        match *self {
+            KernelParam::Gemm { m, n, k } => {
+                let (signature, kernel, context) = KernelBuilder::default()
+                    .build::<linalg::FusedMM<f32>, C>(
+                    linalg::FusedMMP::new(m, n, k),
+                    context,
+                );
+                let signature = Arc::new(signature);
+                body_fn(kernel.build_body(signature, context), context)
+            }
+            _ => unimplemented!("body for {}", self),
+        }
+    }
+}
+
+impl fmt::Display for KernelParam {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            KernelParam::Axpy { n } => write!(fmt, "axpy_{}", n),
+            KernelParam::MatVec { m, n } => write!(fmt, "matvec_{}_{}", m, n),
+            KernelParam::Gesummv { m, n } => write!(fmt, "gesummv_{}_{}", m, n),
+            KernelParam::Gemm { m, n, k } => write!(fmt, "matmul_{}_{}_{}", m, n, k),
+            KernelParam::BatchMM { b, m, n, k } => {
+                write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
+            }
+        }
+    }
 }
 
 /// An error which can be returned when parsing a kernel.
