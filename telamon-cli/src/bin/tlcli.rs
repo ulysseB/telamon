@@ -212,12 +212,53 @@ impl Rebuild {
 }
 
 #[derive(StructOpt)]
+struct Stats {
+    /// Path to the eventlog to compute stats for
+    #[structopt(
+        parse(from_os_str),
+        short = "i",
+        long = "input",
+        default_value = "eventlog.tfrecord.gz"
+    )]
+    eventlog: PathBuf,
+}
+
+impl Stats {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let (mut nimpl, mut ndead) = (0, 0);
+        for record_bytes in EventLog::open(&self.eventlog)?.records() {
+            match bincode::deserialize(&record_bytes?)
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?
+            {
+                mcts::Message::Node { .. } => (),
+                mcts::Message::Trace { events, .. } => match events.last() {
+                    Some(mcts::Timed {
+                        value: mcts::Event::Implementation,
+                        ..
+                    }) => nimpl += 1,
+                    _ => ndead += 1,
+                },
+                mcts::Message::Evaluation { .. } => (),
+            }
+        }
+
+        println!("Implementations: {}", nimpl);
+        println!("Deadends: {}", ndead);
+
+        Ok(())
+    }
+}
+
+#[derive(StructOpt)]
 enum Command {
     #[structopt(name = "rebuild")]
     Rebuild(Rebuild),
 
     #[structopt(name = "bounds")]
     Bounds(Bounds),
+
+    #[structopt(name = "stats")]
+    Stats(Stats),
 }
 
 #[derive(StructOpt)]
@@ -234,5 +275,6 @@ fn main() -> io::Result<()> {
     match &args.command {
         Command::Rebuild(rebuild) => rebuild.run(&args),
         Command::Bounds(bounds) => bounds.run(&args),
+        Command::Stats(stats) => stats.run(&args),
     }
 }
