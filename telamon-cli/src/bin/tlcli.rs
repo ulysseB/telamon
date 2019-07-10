@@ -357,7 +357,7 @@ impl Stats {
 
         println!(
             "Deadends: {} (avg depth: {})",
-            ndead,
+            ndead + ndead_size,
             (ddepth + ddepth_size) as f64 / (ndead + ndead_size) as f64
         );
 
