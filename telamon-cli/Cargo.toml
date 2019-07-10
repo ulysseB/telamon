@@ -17,6 +17,7 @@ termion = "1.5"
 crossbeam = "0.7"
 bincode = "1.0"
 streaming-stats = "0.2"
+num_cpus = "1.8.0"
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional = true }
