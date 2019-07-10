@@ -271,14 +271,14 @@ impl Stats {
                     let mut node = None;
                     let mut has_size = false;
 
-                    for event in events {
+                    for event in &events {
                         match event.value {
                             mcts::Event::SelectNode(id) => {
                                 node = Some(tree.get_node(id));
                             }
                             mcts::Event::SelectChild(index, ..) => {
                                 let child = node
-                                    .unwrap_or_else(|| panic!("no node"))
+                                    .unwrap_or_else(|| panic!("no node: {:?}", events))
                                     .child(index.into())
                                     .unwrap_or_else(|| panic!("no child"));
                                 match child
