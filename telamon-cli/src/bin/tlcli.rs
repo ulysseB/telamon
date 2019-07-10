@@ -18,13 +18,17 @@ use telamon::explorer::{
 use telamon::model::Bound;
 use telamon::offline_analysis::tree::CandidateTree;
 use telamon::search_space::SearchSpace;
-use telamon_kernels::{linalg, Kernel, KernelBuilder};
+
+use telamon_cli::KernelParam;
 
 /// Compute bounds.csv
 #[derive(StructOpt)]
 struct Bounds {
     #[structopt(long = "order")]
     order: Option<config::ChoiceOrdering>,
+
+    #[structopt(long = "kernel")]
+    kernel: KernelParam,
 
     #[structopt(long = "num-runs", default_value = "500")]
     num_runs: usize,
@@ -127,31 +131,20 @@ impl Bounds {
     fn run(&self, _args: &Opt) -> io::Result<()> {
         let executor = telamon_cuda::Executor::init();
         let mut context = telamon_cuda::Context::new(&executor);
-        let params = linalg::FusedMMP::new(256, 256, 32);
 
-        let (signature, kernel, context) = KernelBuilder::default()
-            .build::<linalg::FusedMM<f32>, telamon_cuda::Context>(
-                params.clone(),
-                &mut context,
-            );
-        let signature = Arc::new(signature);
-        let expected = kernel.get_expected_output(context);
-
-        let stdout = std::io::stdout();
-        self.test_bound(
-            kernel.build_body(signature, context),
-            context,
-            |(runtime, bounds)| {
+        self.kernel.with_body(&mut context, |candidates, context| {
+            let stdout = std::io::stdout();
+            self.test_bound(candidates, context, |(runtime, bounds)| {
                 let mut handle = stdout.lock();
-                write!(handle, "matmul,{}", runtime).unwrap();
+                write!(handle, "{},{}", self.kernel, runtime).unwrap();
                 for bound in bounds {
                     write!(handle, ",{}", bound).unwrap();
                 }
                 write!(handle, "\n").unwrap();
-            },
-        );
+            });
 
-        Ok(())
+            Ok(())
+        })
     }
 }
 
