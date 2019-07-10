@@ -277,8 +277,14 @@ impl Stats {
                                 node = Some(tree.get_node(id));
                             }
                             mcts::Event::SelectChild(index, ..) => {
-                                let child = node.unwrap().child(index.into()).unwrap();
-                                match child.action().unwrap() {
+                                let child = node
+                                    .unwrap_or_else(|| panic!("no node"))
+                                    .child(index.into())
+                                    .unwrap_or_else(|| panic!("no child"));
+                                match child
+                                    .action()
+                                    .unwrap_or_else(|| panic!("no action"))
+                                {
                                     Action::Action(
                                         telamon::search_space::Action::Size(..),
                                     ) => has_size = true,
