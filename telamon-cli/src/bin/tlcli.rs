@@ -299,7 +299,7 @@ impl Stats {
                 }
                 mcts::Message::Evaluation { value, .. } => {
                     if let Some(value) = value {
-                        evalns.push(value);
+                        evalns.push(value.log(2.));
                     }
                 }
             }
@@ -311,7 +311,7 @@ impl Stats {
 
         let stats = stats::OnlineStats::from_slice(&evalns);
         println!(
-            "Average runtime: {:.2e}ns (± {:.2}ns)",
+            "Average log2 runtime: {:.2} (± {:.2})",
             stats.mean(),
             stats.stddev(),
         );
