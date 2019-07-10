@@ -230,18 +230,33 @@ struct Stats {
 impl Stats {
     fn run(&self, _args: &Opt) -> io::Result<()> {
         let (mut nimpl, mut ndead) = (0, 0);
+        let (mut impld, mut deadd) = (0u64, 0u64);
         for record_bytes in EventLog::open(&self.eventlog)?.records() {
             match bincode::deserialize(&record_bytes?)
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?
             {
                 mcts::Message::Node { .. } => (),
-                mcts::Message::Trace { events, .. } => match events.last() {
-                    Some(mcts::Timed {
-                        value: mcts::Event::Implementation,
-                        ..
-                    }) => nimpl += 1,
-                    _ => ndead += 1,
-                },
+                mcts::Message::Trace { events, .. } => {
+                    let len = events.iter().fold(0, |len, event| match event.value {
+                        mcts::Event::SelectNode(..) => 0,
+                        mcts::Event::SelectChild(..) => len + 1,
+                        _ => len,
+                    });
+
+                    match events.last() {
+                        Some(mcts::Timed {
+                            value: mcts::Event::Implementation,
+                            ..
+                        }) => {
+                            impld += len;
+                            nimpl += 1;
+                        }
+                        _ => {
+                            deadd += len;
+                            ndead += 1;
+                        }
+                    }
+                }
                 mcts::Message::Evaluation { .. } => (),
             }
 
@@ -250,8 +265,16 @@ impl Stats {
             }
         }
 
-        println!("Implementations: {}", nimpl);
-        println!("Deadends: {}", ndead);
+        println!(
+            "Implementations: {} (avg depth: {})",
+            nimpl,
+            impld as f64 / nimpl as f64
+        );
+        println!(
+            "Deadends: {} (avg depth: {})",
+            ndead,
+            deadd as f64 / ndead as f64
+        );
 
         Ok(())
     }
