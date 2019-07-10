@@ -221,6 +221,10 @@ struct Stats {
         default_value = "eventlog.tfrecord.gz"
     )]
     eventlog: PathBuf,
+
+    /// Maximum number of implementations to consider
+    #[structopt(long = "limit")]
+    limit: Option<usize>,
 }
 
 impl Stats {
@@ -239,6 +243,10 @@ impl Stats {
                     _ => ndead += 1,
                 },
                 mcts::Message::Evaluation { .. } => (),
+            }
+
+            if self.limit.map(|limit| nimpl >= limit).unwrap_or(false) {
+                break;
             }
         }
 
