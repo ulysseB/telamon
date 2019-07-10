@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
 use std::sync::{atomic, Arc, Mutex};
@@ -229,17 +230,36 @@ struct Stats {
 
 impl Stats {
     fn run(&self, _args: &Opt) -> io::Result<()> {
-        let (mut nimpl, mut ndead) = (0, 0);
-        let (mut impld, mut deadd) = (0u64, 0u64);
+        let (mut nimpl, mut impld) = (0, 0u64);
+
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+        enum Cause {
+            Constraints,
+            PerfModel,
+            Backtrack,
+        };
+
+        let mut deadinfo = HashMap::new();
+
         for record_bytes in EventLog::open(&self.eventlog)?.records() {
             match bincode::deserialize(&record_bytes?)
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?
             {
                 mcts::Message::Node { .. } => (),
                 mcts::Message::Trace { events, .. } => {
+                    let mut cause = None;
                     let len = events.iter().fold(0, |len, event| match event.value {
-                        mcts::Event::SelectNode(..) => 0,
                         mcts::Event::SelectChild(..) => len + 1,
+                        mcts::Event::Kill(cause_) => {
+                            assert!(cause.is_none());
+
+                            cause = Some(match cause_ {
+                                mcts::CauseOfDeath::Constraints => Cause::Constraints,
+                                mcts::CauseOfDeath::PerfModel { .. } => Cause::PerfModel,
+                                mcts::CauseOfDeath::Backtrack => Cause::Backtrack,
+                            });
+                            len
+                        }
                         _ => len,
                     });
 
@@ -248,12 +268,16 @@ impl Stats {
                             value: mcts::Event::Implementation,
                             ..
                         }) => {
+                            assert!(cause.is_none());
+
                             impld += len;
                             nimpl += 1;
                         }
                         _ => {
-                            deadd += len;
-                            ndead += 1;
+                            let info =
+                                deadinfo.entry(cause.unwrap()).or_insert((0u64, 0u32));
+                            info.0 += len;
+                            info.1 += 1;
                         }
                     }
                 }
@@ -270,11 +294,27 @@ impl Stats {
             nimpl,
             impld as f64 / nimpl as f64
         );
+
+        let (ddepth, ndead) = deadinfo
+            .iter()
+            .fold((0, 0), |(ddepth, ndead), (_, (depth, num))| {
+                (ddepth + depth, ndead + num)
+            });
+
         println!(
             "Deadends: {} (avg depth: {})",
             ndead,
-            deadd as f64 / ndead as f64
+            ddepth as f64 / ndead as f64
         );
+
+        for (cause, (cdepth, cnum)) in deadinfo.into_iter() {
+            println!(
+                "  - {:?}: {} (avg depth: {})",
+                cause,
+                cnum,
+                cdepth as f64 / cnum as f64
+            );
+        }
 
         Ok(())
     }
