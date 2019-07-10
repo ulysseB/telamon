@@ -268,29 +268,25 @@ impl Stats {
                 mcts::Message::Trace { events, .. } => {
                     let mut cause = None;
                     let mut len = 0;
-                    let mut node = None;
+                    let mut node = tree.get_root();
                     let mut has_size = false;
 
                     for event in &events {
                         match event.value {
                             mcts::Event::SelectNode(id) => {
-                                node = Some(tree.get_node(id));
+                                node = tree.get_node(id);
                             }
                             mcts::Event::SelectChild(index, ..) => {
-                                let child = node
-                                    .unwrap_or_else(|| panic!("no node: {:?}", events))
+                                node = node
                                     .child(index.into())
                                     .unwrap_or_else(|| panic!("no child"));
-                                match child
-                                    .action()
-                                    .unwrap_or_else(|| panic!("no action"))
+                                match node.action().unwrap_or_else(|| panic!("no action"))
                                 {
                                     Action::Action(
                                         telamon::search_space::Action::Size(..),
                                     ) => has_size = true,
                                     _ => (),
                                 }
-                                node = Some(child);
                                 len += 1;
                             }
                             mcts::Event::KillChild(index, cause_) => {
