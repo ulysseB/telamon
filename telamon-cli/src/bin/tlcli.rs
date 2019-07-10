@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
 use std::sync::{atomic, Arc, Mutex};
@@ -212,12 +213,182 @@ impl Rebuild {
 }
 
 #[derive(StructOpt)]
+struct Stats {
+    /// Path to the eventlog to compute stats for
+    #[structopt(
+        parse(from_os_str),
+        short = "i",
+        long = "input",
+        default_value = "eventlog.tfrecord.gz"
+    )]
+    eventlog: PathBuf,
+
+    /// Maximum number of implementations to consider
+    #[structopt(long = "limit")]
+    limit: Option<usize>,
+}
+
+impl Stats {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let (mut nimpl, mut impld) = (0, 0u64);
+
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+        enum Cause {
+            Constraints,
+            PerfModel,
+            Backtrack,
+        };
+
+        impl From<mcts::CauseOfDeath> for Cause {
+            fn from(cause: mcts::CauseOfDeath) -> Self {
+                match cause {
+                    mcts::CauseOfDeath::Constraints => Cause::Constraints,
+                    mcts::CauseOfDeath::PerfModel { .. } => Cause::PerfModel,
+                    mcts::CauseOfDeath::Backtrack => Cause::Backtrack,
+                }
+            }
+        }
+
+        let mut deadinfo = HashMap::new();
+
+        let mut evalns = self.limit.map(Vec::with_capacity).unwrap_or_default();
+        let mut tree = CandidateTree::new();
+
+        for record_bytes in EventLog::open(&self.eventlog)?.records() {
+            match bincode::deserialize(&record_bytes?)
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?
+            {
+                mcts::Message::Node {
+                    id,
+                    parent,
+                    mut children,
+                    bound,
+                    discovery_time,
+                } => tree.extend(id, discovery_time, parent, bound, &mut children),
+                mcts::Message::Trace { events, .. } => {
+                    let mut cause = None;
+                    let mut len = 0;
+                    let mut node = tree.get_root();
+                    let mut has_size = false;
+
+                    for event in &events {
+                        match event.value {
+                            mcts::Event::SelectNode(id) => {
+                                node = tree.get_node(id);
+                            }
+                            mcts::Event::SelectChild(index, ..) => {
+                                node = node
+                                    .child(index.into())
+                                    .unwrap_or_else(|| panic!("no child"));
+                                match node.action().unwrap_or_else(|| panic!("no action"))
+                                {
+                                    Action::Action(
+                                        telamon::search_space::Action::Size(..),
+                                    ) => has_size = true,
+                                    _ => (),
+                                }
+                                len += 1;
+                            }
+                            mcts::Event::KillChild(index, cause_) => {
+                                let info = deadinfo
+                                    .entry((Cause::from(cause_), has_size))
+                                    .or_insert((0u64, 0u32));
+                                info.0 += len + 1;
+                                info.1 += 1;
+                            }
+                            mcts::Event::Kill(cause_) => {
+                                assert!(cause.is_none());
+
+                                cause = Some(Cause::from(cause_));
+                            }
+                            mcts::Event::Implementation => {
+                                assert!(cause.is_none());
+
+                                impld += len;
+                                nimpl += 1;
+                            }
+                            mcts::Event::Expand => (),
+                        }
+                    }
+
+                    if let Some(cause) = cause {
+                        let info =
+                            deadinfo.entry((cause, has_size)).or_insert((0u64, 0u32));
+                        info.0 += len;
+                        info.1 += 1;
+                    }
+                }
+                mcts::Message::Evaluation { value, .. } => {
+                    if let Some(value) = value {
+                        evalns.push(value.log(10.));
+                    }
+                }
+            }
+
+            if self.limit.map(|limit| nimpl >= limit).unwrap_or(false) {
+                break;
+            }
+        }
+
+        let stats = stats::OnlineStats::from_slice(&evalns);
+        println!(
+            "Average log10 runtime: {:.2} (± {:.2})",
+            stats.mean(),
+            stats.stddev(),
+        );
+
+        println!(
+            "Implementations: {} (avg depth: {})",
+            nimpl,
+            impld as f64 / nimpl as f64
+        );
+
+        let ((ddepth, ndead), (ddepth_size, ndead_size)) = deadinfo.iter().fold(
+            ((0, 0), (0, 0)),
+            |((ddepth, ndead), (ddepth_size, ndead_size)),
+             ((_, has_size), (depth, num))| {
+                if *has_size {
+                    ((ddepth, ndead), (ddepth_size + depth, ndead_size + num))
+                } else {
+                    ((ddepth + depth, ndead + num), (ddepth_size, ndead_size))
+                }
+            },
+        );
+
+        println!(
+            "Deadends: {} (avg depth: {})",
+            ndead + ndead_size,
+            (ddepth + ddepth_size) as f64 / (ndead + ndead_size) as f64
+        );
+
+        for ((cause, has_size), (cdepth, cnum)) in deadinfo.into_iter() {
+            println!(
+                "  - {:?} ({}): {} (avg depth: {})",
+                cause,
+                if has_size {
+                    " (with size)"
+                } else {
+                    " (without size)"
+                },
+                cnum,
+                cdepth as f64 / cnum as f64
+            );
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(StructOpt)]
 enum Command {
     #[structopt(name = "rebuild")]
     Rebuild(Rebuild),
 
     #[structopt(name = "bounds")]
     Bounds(Bounds),
+
+    #[structopt(name = "stats")]
+    Stats(Stats),
 }
 
 #[derive(StructOpt)]
@@ -234,5 +405,6 @@ fn main() -> io::Result<()> {
     match &args.command {
         Command::Rebuild(rebuild) => rebuild.run(&args),
         Command::Bounds(bounds) => bounds.run(&args),
+        Command::Stats(stats) => stats.run(&args),
     }
 }

@@ -16,6 +16,7 @@ futures = "0.1"
 termion = "1.5"
 crossbeam = "0.7"
 bincode = "1.0"
+streaming-stats = "0.2"
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional = true }
