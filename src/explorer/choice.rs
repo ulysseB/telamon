@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::explorer::config;
 use crate::ir::{self, Statement};
-use crate::search_space::{Action, Domain, NumSet, Order, SearchSpace};
+use crate::search_space::{Action, DimKind, Domain, NumSet, Order, SearchSpace};
 use itertools::Itertools;
 use log::trace;
 use serde::{Deserialize, Serialize};
@@ -125,27 +125,43 @@ pub fn list<'a>(
     iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
     space: &'a SearchSpace,
 ) -> impl Iterator<Item = Choice> + 'a {
-    use crate::explorer::config::ChoiceGroup::*;
-
     iter_choice
         .into_iter()
         .map(move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
+            use crate::explorer::config::ChoiceGroup;
             let fun = space.ir_instance();
             match choice_grp {
-                LowerLayout => Box::new(
+                ChoiceGroup::LowerLayout => Box::new(
                     fun.layouts_to_lower()
                         .iter()
                         .map(move |&layout| lower_layout_choice(space, layout)),
                 ),
-                Size => Box::new(fun.static_dims().flat_map(move |dim| {
+                ChoiceGroup::Size => Box::new(fun.static_dims().flat_map(move |dim| {
                     let sizes = space.domain().get_size(dim.id());
                     gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
                 })),
-                DimKind => Box::new(fun.dims().flat_map(move |dim| {
+                ChoiceGroup::ThreadSize => {
+                    Box::new(fun.static_dims().flat_map(move |dim| {
+                        let kinds = space.domain().get_dim_kind(dim.id());
+                        if kinds.intersects(DimKind::THREAD) {
+                            let sizes = space.domain().get_size(dim.id());
+                            gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
+                        } else {
+                            None
+                        }
+                    }))
+                }
+                ChoiceGroup::DimKind => Box::new(fun.dims().flat_map(move |dim| {
                     let kinds = space.domain().get_dim_kind(dim.id());
                     gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
                 })),
-                DimMap => {
+                ChoiceGroup::Threads => Box::new(fun.dims().flat_map(move |dim| {
+                    let kinds = space.domain().get_dim_kind(dim.id());
+                    gen_choice(kinds.bisect(DimKind::THREAD), &|k| {
+                        Action::DimKind(dim.id(), k)
+                    })
+                })),
+                ChoiceGroup::DimMap => {
                     Box::new(fun.static_dims().enumerate().flat_map(move |(i, lhs)| {
                         fun.static_dims().take(i).flat_map(move |rhs| {
                             let mappings =
@@ -156,7 +172,7 @@ pub fn list<'a>(
                         })
                     }))
                 }
-                Order => {
+                ChoiceGroup::Order => {
                     Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
                         // TODO(search_space): avoid picking ordering decisions that have little impact.
                         // For this, we should avoid dimension-instruction and dimension-vector dim
@@ -171,16 +187,20 @@ pub fn list<'a>(
                         )
                     }))
                 }
-                MemSpace => Box::new(fun.mem_blocks().flat_map(move |block| {
-                    let mem_spaces = space.domain().get_mem_space(block.mem_id());
-                    gen_choice(mem_spaces.list(), &|s| {
-                        Action::MemSpace(block.mem_id(), s)
-                    })
-                })),
-                InstFlag => Box::new(fun.mem_insts().flat_map(move |inst| {
-                    let flags = space.domain().get_inst_flag(inst.id()).list();
-                    gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
-                })),
+                ChoiceGroup::MemSpace => {
+                    Box::new(fun.mem_blocks().flat_map(move |block| {
+                        let mem_spaces = space.domain().get_mem_space(block.mem_id());
+                        gen_choice(mem_spaces.list(), &|s| {
+                            Action::MemSpace(block.mem_id(), s)
+                        })
+                    }))
+                }
+                ChoiceGroup::InstFlag => {
+                    Box::new(fun.mem_insts().flat_map(move |inst| {
+                        let flags = space.domain().get_inst_flag(inst.id()).list();
+                        gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
+                    }))
+                }
             }
         })
         .flatten()
