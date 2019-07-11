@@ -25,7 +25,7 @@ use telamon::explorer::{
 use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::search_space::SearchSpace;
-use telamon_cli::{Bench, CublasHandle, Reference};
+use telamon_cli::{Bench, CublasHandle, Reference, ReplayPath};
 use telamon_cuda;
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
@@ -614,21 +614,10 @@ impl<'a> Env for FullEnv<'a> {
 
     fn apply_action(
         &self,
-        mut candidate: SearchSpace,
+        candidate: SearchSpace,
         action: Action,
     ) -> Option<SearchSpace> {
-        if let Ok(()) = match action {
-            Action::Action(action) => candidate.apply_decisions(vec![action]),
-            Action::LowerLayout {
-                mem,
-                st_dims,
-                ld_dims,
-            } => candidate.lower_layout(mem, &st_dims, &ld_dims),
-        } {
-            Some(candidate)
-        } else {
-            None
-        }
+        action.apply_to(candidate).ok()
     }
 
     fn bound(&self, candidate: &SearchSpace) -> Bound {
@@ -768,8 +757,8 @@ struct Opt {
     ///
     /// The replay file is a .json file containing a serialized representation of the actions to
     /// apply, as saved by the 'w' command in the debugger or the replay tests.
-    #[structopt(parse(from_os_str), long = "replay")]
-    replay: Option<PathBuf>,
+    #[structopt(parse(from_os_str), long = "replay", default_value = "")]
+    replay: ReplayPath,
 
     #[structopt(short = "m", default_value = "256")]
     m: i32,
@@ -782,12 +771,8 @@ struct Opt {
 }
 
 impl Opt {
-    pub fn load_replay(&self) -> io::Result<Option<Vec<Action>>> {
-        if let Some(path) = &self.replay {
-            Ok(Some(serde_json::from_reader(fs::File::open(path)?)?))
-        } else {
-            Ok(None)
-        }
+    pub fn load_replay(&self) -> io::Result<Vec<Action>> {
+        self.replay.load()
     }
 
     pub fn save_replay(&self, replay: &[Action]) -> io::Result<Option<PathBuf>> {
@@ -908,10 +893,8 @@ fn main() -> io::Result<()> {
 
             let mut widget = Explorer::new(TuiCursor::new(Cursor::new(&env, root)));
 
-            if let Some(replay) = args.load_replay()? {
-                for action in &replay {
-                    widget.selector.cursor.select_action(action).unwrap();
-                }
+            for action in &args.load_replay()? {
+                widget.selector.cursor.select_action(action).unwrap();
             }
 
             terminal.draw(|mut f| {

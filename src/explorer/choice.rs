@@ -55,60 +55,71 @@ impl ir::IrDisplay for ActionEx {
     }
 }
 
+/// The error type for action application errors.
+///
+/// Errors mostly originate from constraint propagation failing.
+pub struct ActionError {
+    action: ActionEx,
+    space: SearchSpace,
+}
+
+impl fmt::Debug for ActionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("ActionError")
+            .field("action", &self.action)
+            .field("space", &"..")
+            .finish()
+    }
+}
+
+impl fmt::Display for ActionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.action {
+            ActionEx::Action(action) => write!(
+                fmt,
+                "failed to apply action: {}",
+                action.display(self.space.ir_instance())
+            ),
+            ActionEx::LowerLayout { mem, .. } => {
+                // We can't use the IR instance here, since it might be in an inconsistent state.
+                write!(fmt, "failed to lower layout for {}", mem)
+            }
+        }
+    }
+}
+
+impl std::error::Error for ActionError {}
+
+impl ActionEx {
+    /// Apply this action to a search space
+    pub fn apply_to(&self, mut space: SearchSpace) -> Result<SearchSpace, ActionError> {
+        match match *self {
+            ActionEx::Action(action) => space.apply_decisions(vec![action]),
+            ActionEx::LowerLayout {
+                mem,
+                ref st_dims,
+                ref ld_dims,
+            } => space.lower_layout(mem, st_dims, ld_dims),
+        } {
+            Ok(()) => Ok(space),
+            Err(()) => {
+                // This contains the space to which the action was initially applied.  Note that
+                // since action application is a destructive operation, the space might in general
+                // be in an inconsistent state.  However, the IR instance is still valid when
+                // `apply_decisions` failed (but *not* when `lower_layout` failed!), and that is
+                // all we need to display a human-readable error message.
+                Err(ActionError {
+                    action: self.clone(),
+                    space,
+                })
+            }
+        }
+    }
+}
+
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;
-
-/// This struct nests two iterators inside each other and then implements Iterator with the Item of
-/// the internal Iterator
-/// We need that because the choices are generated in different fashion for the different cases
-/// (DimMap, Order...) so we have to iterate on several kinds of iterators (Map, FlatMap...) in a
-/// statically unknown order.
-struct NestedIterator<I: Iterator>
-where
-    I::Item: Iterator,
-{
-    /// The high level Iterator
-    glob_iterator: I,
-    /// The internal iterator we are currently iterating on
-    current_local_iterator: Option<I::Item>,
-}
-
-impl<I: Iterator> NestedIterator<I>
-where
-    I::Item: Iterator,
-{
-    fn new(iterator: I) -> Self {
-        NestedIterator {
-            glob_iterator: iterator,
-            current_local_iterator: None,
-        }
-    }
-}
-
-impl<I: Iterator> Iterator for NestedIterator<I>
-where
-    I::Item: Iterator,
-{
-    type Item = <I::Item as Iterator>::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(ref mut current_it) = self.current_local_iterator {
-                if let Some(choice) = current_it.next() {
-                    break Some(choice);
-                }
-            }
-            // If we are here, either there is no current_local_iterator or the current_local_iterator
-            // is exhausted, we should update it. If glob_iterator itself is exhausted, we return None
-            if let Some(local_it) = self.glob_iterator.next() {
-                self.current_local_iterator = Some(local_it);
-            } else {
-                break None;
-            }
-        }
-    }
-}
 
 pub fn list<'a>(
     iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
@@ -116,8 +127,9 @@ pub fn list<'a>(
 ) -> impl Iterator<Item = Choice> + 'a {
     use crate::explorer::config::ChoiceGroup::*;
 
-    NestedIterator::new(iter_choice.into_iter().map(
-        move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
+    iter_choice
+        .into_iter()
+        .map(move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
             let fun = space.ir_instance();
             match choice_grp {
                 LowerLayout => Box::new(
@@ -170,8 +182,8 @@ pub fn list<'a>(
                     gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
                 })),
             }
-        },
-    ))
+        })
+        .flatten()
 }
 
 /// This function is to be either removed or reimplemented eventually. It is just a replacement for

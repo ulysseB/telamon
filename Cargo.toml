@@ -94,3 +94,4 @@ members = [
 
 [profile.release]
 lto = false
+debug = true
