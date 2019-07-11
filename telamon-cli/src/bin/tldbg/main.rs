@@ -768,6 +768,9 @@ struct Opt {
 
     #[structopt(short = "k", default_value = "32")]
     k: i32,
+
+    #[structopt(long = "order")]
+    order: Option<explorer::config::ChoiceOrdering>,
 }
 
 impl Opt {
@@ -842,12 +845,9 @@ fn main() -> io::Result<()> {
     let mut config = explorer::Config::default();
     match &mut config.algorithm {
         explorer::SearchAlgorithm::Mcts(bconfig) => {
-            () /*
-               bconfig.choice_ordering =
-                   "lower_layout,dim_kind,dim_map,mem_space,order,inst_flag,size"
-                       .parse()
-                       .unwrap();
-                       */
+            if let Some(order) = &args.order {
+                bconfig.choice_ordering = order.clone();
+            }
         }
         _ => unreachable!(),
     }
