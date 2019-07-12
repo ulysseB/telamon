@@ -65,18 +65,9 @@ fn main() -> io::Result<()> {
             action.display(candidate.ir_instance())
         );
 
-        match action {
-            Action::Action(action) => candidate
-                .apply_decisions(vec![action.clone()])
-                .unwrap_or_else(|()| panic!("unable to apply decision {:?}", action)),
-            Action::LowerLayout {
-                mem,
-                st_dims,
-                ld_dims,
-            } => candidate
-                .lower_layout(*mem, st_dims, ld_dims)
-                .expect("lower layout"),
-        }
+        candidate = action
+            .apply_to(candidate)
+            .map_err(|err| io::Error::new(io::ErrorKind::Other, err));
     }
 
     eprintln!("__STARTXX__");

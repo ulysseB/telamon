@@ -15,11 +15,47 @@ use telamon::explorer::{
     eventlog::EventLog,
     mcts, Candidate,
 };
-use telamon::model::Bound;
+use telamon::ir::IrDisplay;
+use telamon::model::{bound, Bound};
 use telamon::offline_analysis::tree::CandidateTree;
 use telamon::search_space::SearchSpace;
 
-use telamon_cli::KernelParam;
+use telamon_cli::{KernelParam, ReplayPath};
+
+#[derive(StructOpt)]
+struct ComputeBound {
+    #[structopt(short = "k", long = "kernel")]
+    kernel: KernelParam,
+
+    #[structopt(parse(from_os_str), short = "r", long = "replay", default_value = "")]
+    replay: ReplayPath,
+}
+
+impl ComputeBound {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let executor = telamon_cuda::Executor::init();
+        let mut context = telamon_cuda::Context::new(&executor);
+        self.kernel
+            .with_body(&mut context, |mut candidates, context| {
+                assert!(candidates.len() == 1);
+                let mut candidate = candidates.swap_remove(0).space;
+
+                // Apply replay if there is some
+                for action in &self.replay.load()? {
+                    candidate = action
+                        .apply_to(candidate)
+                        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+                }
+
+                let start = std::time::Instant::now();
+                let bound = bound(&candidate, context);
+                let duration = start.elapsed();
+                println!("Bound is {:?} (computed in {:?})", bound, duration);
+
+                Ok(())
+            })
+    }
+}
 
 /// Compute bounds.csv
 #[derive(StructOpt)]
@@ -386,6 +422,9 @@ enum Command {
 
     #[structopt(name = "stats")]
     Stats(Stats),
+
+    #[structopt(name = "bound")]
+    Bound(ComputeBound),
 }
 
 #[derive(StructOpt)]
@@ -395,13 +434,19 @@ struct Opt {
     command: Command,
 }
 
-fn main() -> io::Result<()> {
+fn main() {
     let args = Opt::from_args();
     env_logger::init();
 
-    match &args.command {
+    let result = match &args.command {
         Command::Rebuild(rebuild) => rebuild.run(&args),
         Command::Bounds(bounds) => bounds.run(&args),
         Command::Stats(stats) => stats.run(&args),
+        Command::Bound(bound) => bound.run(&args),
+    };
+
+    match result {
+        Ok(()) => (),
+        Err(err) => panic!("An error occured: {}", err),
     }
 }

@@ -1,6 +1,6 @@
 //! Exploration of the search space.
 use crate::device::Context;
-use crate::explorer::choice::ActionEx;
+use crate::explorer::choice::{ActionError, ActionEx};
 use crate::model::{bound, Bound};
 use crate::search_space::SearchSpace;
 
@@ -56,7 +56,7 @@ impl Candidate {
             .into_iter()
             .flat_map(|action| {
                 self.apply_decision(context, action)
-                    .map_err(|_| trace!("invalid action encountered"))
+                    .map_err(|err| trace!("invalid action encountered: {}", err))
                     .ok()
             })
             .collect_vec();
@@ -100,17 +100,9 @@ impl Candidate {
         &self,
         context: &dyn Context,
         action: ActionEx,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, ActionError> {
         debug!("applying action {:?}", action);
-        let mut space = self.space.clone();
-        match action {
-            ActionEx::Action(action) => space.apply_decisions(vec![action]),
-            ActionEx::LowerLayout {
-                mem,
-                ref st_dims,
-                ref ld_dims,
-            } => space.lower_layout(mem, st_dims, ld_dims),
-        }?;
+        let space = action.apply_to(self.space.clone())?;
         let start = std::time::Instant::now();
         let bound = bound(&space, context);
         let duration = start.elapsed();
