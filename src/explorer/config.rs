@@ -348,6 +348,8 @@ pub enum ChoiceGroup {
     Order,
     MemSpace,
     InstFlag,
+    Threads,
+    ThreadSize,
 }
 
 impl fmt::Display for ChoiceGroup {
@@ -362,6 +364,8 @@ impl fmt::Display for ChoiceGroup {
             Order => "order",
             MemSpace => "mem_space",
             InstFlag => "inst_flag",
+            Threads => "threads",
+            ThreadSize => "thread_size",
         })
     }
 }
@@ -392,6 +396,8 @@ impl FromStr for ChoiceGroup {
             "order" => Order,
             "mem_space" => MemSpace,
             "inst_flag" => InstFlag,
+            "threads" => Threads,
+            "thread_size" => ThreadSize,
             _ => return Err(ParseChoiceGroupError(s.to_string())),
         })
     }
