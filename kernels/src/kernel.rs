@@ -194,13 +194,7 @@ pub trait Kernel<'a>: Sized + Sync {
 
         let implem = action_list.iter().fold(candidate, |cand, action| {
             cand.apply_decision(ctx, action.clone())
-                .unwrap_or_else(|()| {
-                    panic!(
-                        "In kernel {}, Could not apply action {:?}",
-                        Self::name(),
-                        action
-                    )
-                })
+                .unwrap_or_else(|err| panic!("In kernel {}: {}", Self::name(), err))
         });
 
         let device_fn = codegen::Function::build(&implem.space);

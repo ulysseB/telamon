@@ -27,6 +27,16 @@ impl {type_name} {{
             .map(|x| {type_name} {{ bits: x }})
     }}
 
+    /// Partition the domain into the intersection with `other` and its complement.
+    pub fn bisect(&self, other: Self) -> impl Iterator<Item = Self> {{
+        (*self & other).into_option().into_iter()
+            .chain((*self & !other).into_option().into_iter())
+    }}
+
+    fn into_option(self) -> Option<Self> {{
+        if self.is_failed() {{ None }} else {{ Some(self) }}
+    }}
+
     /// Indicates if two choices will have the same value.
     pub fn eq(&self, other: Self) -> bool {{
         self.is_constrained() && *self == other

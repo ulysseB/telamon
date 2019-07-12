@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::explorer::config;
 use crate::ir::{self, Statement};
-use crate::search_space::{Action, Domain, NumSet, Order, SearchSpace};
+use crate::search_space::{Action, DimKind, Domain, NumSet, Order, SearchSpace};
 use itertools::Itertools;
 use log::trace;
 use serde::{Deserialize, Serialize};
@@ -59,81 +59,47 @@ impl ir::IrDisplay for ActionEx {
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;
 
-/// This struct nests two iterators inside each other and then implements Iterator with the Item of
-/// the internal Iterator
-/// We need that because the choices are generated in different fashion for the different cases
-/// (DimMap, Order...) so we have to iterate on several kinds of iterators (Map, FlatMap...) in a
-/// statically unknown order.
-struct NestedIterator<I: Iterator>
-where
-    I::Item: Iterator,
-{
-    /// The high level Iterator
-    glob_iterator: I,
-    /// The internal iterator we are currently iterating on
-    current_local_iterator: Option<I::Item>,
-}
-
-impl<I: Iterator> NestedIterator<I>
-where
-    I::Item: Iterator,
-{
-    fn new(iterator: I) -> Self {
-        NestedIterator {
-            glob_iterator: iterator,
-            current_local_iterator: None,
-        }
-    }
-}
-
-impl<I: Iterator> Iterator for NestedIterator<I>
-where
-    I::Item: Iterator,
-{
-    type Item = <I::Item as Iterator>::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(ref mut current_it) = self.current_local_iterator {
-                if let Some(choice) = current_it.next() {
-                    break Some(choice);
-                }
-            }
-            // If we are here, either there is no current_local_iterator or the current_local_iterator
-            // is exhausted, we should update it. If glob_iterator itself is exhausted, we return None
-            if let Some(local_it) = self.glob_iterator.next() {
-                self.current_local_iterator = Some(local_it);
-            } else {
-                break None;
-            }
-        }
-    }
-}
-
 pub fn list<'a>(
     iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
     space: &'a SearchSpace,
 ) -> impl Iterator<Item = Choice> + 'a {
-    use crate::explorer::config::ChoiceGroup::*;
-
-    NestedIterator::new(iter_choice.into_iter().map(
-        move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
+    iter_choice
+        .into_iter()
+        .map(move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
+            use crate::explorer::config::ChoiceGroup;
             let fun = space.ir_instance();
             match choice_grp {
-                LowerLayout => Box::new(
+                ChoiceGroup::LowerLayout => Box::new(
                     fun.layouts_to_lower()
                         .iter()
                         .map(move |&layout| lower_layout_choice(space, layout)),
                 ),
-                Size => Box::new(fun.static_dims().flat_map(move |dim| {
+                ChoiceGroup::Size => Box::new(fun.static_dims().flat_map(move |dim| {
                     let sizes = space.domain().get_size(dim.id());
                     gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
                 })),
-                DimKind => Box::new(fun.dims().flat_map(move |dim| {
+                ChoiceGroup::ThreadSize => {
+                    Box::new(fun.static_dims().flat_map(move |dim| {
+                        let kinds = space.domain().get_dim_kind(dim.id());
+                        if kinds.intersects(DimKind::THREAD) {
+                            let sizes = space.domain().get_size(dim.id());
+                            gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
+                        } else {
+                            None
+                        }
+                    }))
+                }
+                ChoiceGroup::DimKind => Box::new(fun.dims().flat_map(move |dim| {
                     let kinds = space.domain().get_dim_kind(dim.id());
                     gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
                 })),
-                DimMap => {
+                ChoiceGroup::Threads => Box::new(fun.dims().flat_map(move |dim| {
+                    let kinds = space.domain().get_dim_kind(dim.id());
+                    gen_choice(kinds.bisect(DimKind::THREAD), &|k| {
+                        Action::DimKind(dim.id(), k)
+                    })
+                })),
+                ChoiceGroup::DimMap => {
                     Box::new(fun.static_dims().enumerate().flat_map(move |(i, lhs)| {
                         fun.static_dims().take(i).flat_map(move |rhs| {
                             let mappings =
@@ -144,7 +110,7 @@ pub fn list<'a>(
                         })
                     }))
                 }
-                Order => {
+                ChoiceGroup::Order => {
                     Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
                         // TODO(search_space): avoid picking ordering decisions that have little impact.
                         // For this, we should avoid dimension-instruction and dimension-vector dim
@@ -159,19 +125,23 @@ pub fn list<'a>(
                         )
                     }))
                 }
-                MemSpace => Box::new(fun.mem_blocks().flat_map(move |block| {
-                    let mem_spaces = space.domain().get_mem_space(block.mem_id());
-                    gen_choice(mem_spaces.list(), &|s| {
-                        Action::MemSpace(block.mem_id(), s)
-                    })
-                })),
-                InstFlag => Box::new(fun.mem_insts().flat_map(move |inst| {
-                    let flags = space.domain().get_inst_flag(inst.id()).list();
-                    gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
-                })),
+                ChoiceGroup::MemSpace => {
+                    Box::new(fun.mem_blocks().flat_map(move |block| {
+                        let mem_spaces = space.domain().get_mem_space(block.mem_id());
+                        gen_choice(mem_spaces.list(), &|s| {
+                            Action::MemSpace(block.mem_id(), s)
+                        })
+                    }))
+                }
+                ChoiceGroup::InstFlag => {
+                    Box::new(fun.mem_insts().flat_map(move |inst| {
+                        let flags = space.domain().get_inst_flag(inst.id()).list();
+                        gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
+                    }))
+                }
             }
-        },
-    ))
+        })
+        .flatten()
 }
 
 /// This function is to be either removed or reimplemented eventually. It is just a replacement for
@@ -273,4 +243,66 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::MemId) -> Vec<ActionEx> {
         }
     }
     actions
+}
+
+/// The error type for action application errors.
+///
+/// Errors mostly originate from constraint propagation failing.
+pub struct ActionError {
+    action: ActionEx,
+    space: SearchSpace,
+}
+
+impl fmt::Debug for ActionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("ActionError")
+            .field("action", &self.action)
+            .field("space", &"..")
+            .finish()
+    }
+}
+
+impl fmt::Display for ActionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.action {
+            ActionEx::Action(action) => write!(
+                fmt,
+                "failed to apply action: {}",
+                action.display(self.space.ir_instance())
+            ),
+            ActionEx::LowerLayout { mem, .. } => {
+                // We can't use the IR instance here, since it might be in an inconsistent state.
+                write!(fmt, "failed to lower layout for {}", mem)
+            }
+        }
+    }
+}
+
+impl std::error::Error for ActionError {}
+
+impl ActionEx {
+    /// Apply this action to a search space
+    pub fn apply_to(&self, mut space: SearchSpace) -> Result<SearchSpace, ActionError> {
+        match match *self {
+            ActionEx::Action(action) => space.apply_decisions(vec![action]),
+            ActionEx::LowerLayout {
+                mem,
+                ref st_dims,
+                ref ld_dims,
+            } => space.lower_layout(mem, st_dims, ld_dims),
+        } {
+            Ok(()) => Ok(space),
+            Err(()) => {
+                // This contains the space to which the action was initially applied.  Note that
+                // since action application is a destructive operation, the space might in general
+                // be in an inconsistent state.  However, the IR instance is still valid when
+                // `apply_decisions` failed (but *not* when `lower_layout` failed!), and that is
+                // all we need to display a human-readable error message.
+                Err(ActionError {
+                    action: self.clone(),
+                    space,
+                })
+            }
+        }
+    }
 }
