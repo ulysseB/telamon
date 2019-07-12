@@ -10,14 +10,14 @@ use serde::{Deserialize, Serialize};
 use utils::unwrap;
 
 /// Either a regular action or a manually applied action.
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ActionEx {
+    Action(Action),
     LowerLayout {
         mem: ir::MemId,
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     },
-    Action(Action),
 }
 
 impl fmt::Debug for ActionEx {

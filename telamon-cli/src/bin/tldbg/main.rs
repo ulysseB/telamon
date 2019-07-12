@@ -1,4 +1,3 @@
-use std::cmp::Ord;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -334,11 +333,9 @@ impl<'a> TuiCursor<'a> {
     }
 
     fn get_action_strings(node: &Node) -> Vec<(usize, String)> {
-        let mut edges = node.children.iter().enumerate().collect::<Vec<_>>();
-        edges.sort_unstable_by(|(_, lhs), (_, rhs)| lhs.action.cmp(&rhs.action));
-
-        edges
-            .into_iter()
+        node.children
+            .iter()
+            .enumerate()
             .map(|(ix, edge)| {
                 (
                     ix,
@@ -592,8 +589,9 @@ impl<'a> Widget for Explorer<'a> {
     }
 }
 
-struct FullEnv<'a> {
+struct FullEnv<'a, O> {
     context: &'a dyn Context,
+    order: O,
 }
 
 pub trait Env {
@@ -605,9 +603,13 @@ pub trait Env {
     fn bound(&self, candidate: &SearchSpace) -> Bound;
 }
 
-impl<'a> Env for FullEnv<'a> {
+impl<'a, O> Env for FullEnv<'a, O>
+where
+    O: Iterator<Item = &'a explorer::config::ChoiceGroup> + Clone + 'a,
+{
     fn list_actions(&self, candidate: &SearchSpace) -> Vec<Action> {
-        choice::default_list(candidate)
+        // We need the map to cast lifetimes
+        choice::list(self.order.clone().map(|x| x), candidate)
             .flat_map(|x| x.into_iter())
             .collect()
     }
@@ -742,11 +744,7 @@ struct Opt {
     ///
     /// Replays are stored as .json files containing the actions to use, which is also the same
     /// format used by the replay tests.
-    #[structopt(
-        parse(from_os_str),
-        long = "replay-dir",
-        raw(aliases = r#"&["replay_dir"]"#)
-    )]
+    #[structopt(parse(from_os_str), long = "replay-dir", alias = "replay_dir")]
     replay_dir: Option<PathBuf>,
 
     /// If enabled, no tiling will be performed on the code.
@@ -826,7 +824,13 @@ fn main() -> io::Result<()> {
         );
     let signature = Arc::new(signature);
     let expected = kernel.get_expected_output(context);
-    let env = FullEnv { context };
+    let default_order = explorer::config::ChoiceOrdering::default();
+    let order: &explorer::config::ChoiceOrdering =
+        args.order.as_ref().unwrap_or(&default_order);
+    let env = FullEnv {
+        context,
+        order: order.into_iter(),
+    };
 
     let reference_fn = {
         let reference = CublasHandle::new();
@@ -889,7 +893,7 @@ fn main() -> io::Result<()> {
 
             let mut widget = Explorer::new(TuiCursor::new(Cursor::new(&env, root)));
 
-            if let Some(replay) = &self.replay {
+            if let Some(replay) = &args.replay {
                 for action in &replay.load()? {
                     widget.selector.cursor.select_action(action).unwrap();
                 }
