@@ -90,7 +90,7 @@ const NUM_CODE_RUNS: usize = 40;
 /// Search timeout in minutes.
 const TIMEOUT: u64 = 240;
 
-/// Benchamrks a kernel against a reference implementation.
+/// Benchmarks a kernel against a reference implementation.
 fn benchmark<'a, K, REF>(
     params: K::Parameters,
     executor: &'a cuda::Executor,
