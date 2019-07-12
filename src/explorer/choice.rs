@@ -55,68 +55,6 @@ impl ir::IrDisplay for ActionEx {
     }
 }
 
-/// The error type for action application errors.
-///
-/// Errors mostly originate from constraint propagation failing.
-pub struct ActionError {
-    action: ActionEx,
-    space: SearchSpace,
-}
-
-impl fmt::Debug for ActionError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("ActionError")
-            .field("action", &self.action)
-            .field("space", &"..")
-            .finish()
-    }
-}
-
-impl fmt::Display for ActionError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.action {
-            ActionEx::Action(action) => write!(
-                fmt,
-                "failed to apply action: {}",
-                action.display(self.space.ir_instance())
-            ),
-            ActionEx::LowerLayout { mem, .. } => {
-                // We can't use the IR instance here, since it might be in an inconsistent state.
-                write!(fmt, "failed to lower layout for {}", mem)
-            }
-        }
-    }
-}
-
-impl std::error::Error for ActionError {}
-
-impl ActionEx {
-    /// Apply this action to a search space
-    pub fn apply_to(&self, mut space: SearchSpace) -> Result<SearchSpace, ActionError> {
-        match match *self {
-            ActionEx::Action(action) => space.apply_decisions(vec![action]),
-            ActionEx::LowerLayout {
-                mem,
-                ref st_dims,
-                ref ld_dims,
-            } => space.lower_layout(mem, st_dims, ld_dims),
-        } {
-            Ok(()) => Ok(space),
-            Err(()) => {
-                // This contains the space to which the action was initially applied.  Note that
-                // since action application is a destructive operation, the space might in general
-                // be in an inconsistent state.  However, the IR instance is still valid when
-                // `apply_decisions` failed (but *not* when `lower_layout` failed!), and that is
-                // all we need to display a human-readable error message.
-                Err(ActionError {
-                    action: self.clone(),
-                    space,
-                })
-            }
-        }
-    }
-}
-
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;
@@ -306,4 +244,66 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::MemId) -> Vec<ActionEx> {
         }
     }
     actions
+}
+
+/// The error type for action application errors.
+///
+/// Errors mostly originate from constraint propagation failing.
+pub struct ActionError {
+    action: ActionEx,
+    space: SearchSpace,
+}
+
+impl fmt::Debug for ActionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("ActionError")
+            .field("action", &self.action)
+            .field("space", &"..")
+            .finish()
+    }
+}
+
+impl fmt::Display for ActionError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.action {
+            ActionEx::Action(action) => write!(
+                fmt,
+                "failed to apply action: {}",
+                action.display(self.space.ir_instance())
+            ),
+            ActionEx::LowerLayout { mem, .. } => {
+                // We can't use the IR instance here, since it might be in an inconsistent state.
+                write!(fmt, "failed to lower layout for {}", mem)
+            }
+        }
+    }
+}
+
+impl std::error::Error for ActionError {}
+
+impl ActionEx {
+    /// Apply this action to a search space
+    pub fn apply_to(&self, mut space: SearchSpace) -> Result<SearchSpace, ActionError> {
+        match match *self {
+            ActionEx::Action(action) => space.apply_decisions(vec![action]),
+            ActionEx::LowerLayout {
+                mem,
+                ref st_dims,
+                ref ld_dims,
+            } => space.lower_layout(mem, st_dims, ld_dims),
+        } {
+            Ok(()) => Ok(space),
+            Err(()) => {
+                // This contains the space to which the action was initially applied.  Note that
+                // since action application is a destructive operation, the space might in general
+                // be in an inconsistent state.  However, the IR instance is still valid when
+                // `apply_decisions` failed (but *not* when `lower_layout` failed!), and that is
+                // all we need to display a human-readable error message.
+                Err(ActionError {
+                    action: self.clone(),
+                    space,
+                })
+            }
+        }
+    }
 }
