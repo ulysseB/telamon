@@ -24,7 +24,7 @@ use telamon::explorer::{
 use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::search_space::SearchSpace;
-use telamon_cli::{Bench, CublasHandle, Reference, ReplayPath};
+use telamon_cli::{Bench, CublasHandle, KernelBundle, KernelParam, ReplayPath};
 use telamon_cuda;
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
@@ -747,25 +747,19 @@ struct Opt {
     #[structopt(parse(from_os_str), long = "replay-dir", alias = "replay_dir")]
     replay_dir: Option<PathBuf>,
 
-    /// If enabled, no tiling will be performed on the code.
-    #[structopt(long = "untile", hidden = true)]
-    untile: bool,
-
     /// Path to a replay file to load.
+    ///
+    /// Warning: It is up to the user to ensure that the replay file is compatible with the
+    /// provided kernel!
     ///
     /// The replay file is a .json file containing a serialized representation of the actions to
     /// apply, as saved by the 'w' command in the debugger or the replay tests.
     #[structopt(parse(from_os_str), long = "replay")]
     replay: Option<ReplayPath>,
 
-    #[structopt(short = "m", default_value = "256")]
-    m: i32,
-
-    #[structopt(short = "n", default_value = "256")]
-    n: i32,
-
-    #[structopt(short = "k", default_value = "32")]
-    k: i32,
+    /// Kernel specification to use.
+    #[structopt(long = "kernel", default_value = "matmul_256_256_32")]
+    kernel: KernelParam,
 
     #[structopt(long = "order")]
     order: Option<explorer::config::ChoiceOrdering>,
@@ -809,36 +803,21 @@ fn main() -> io::Result<()> {
 
     let executor = telamon_cuda::Executor::init();
     let mut context = telamon_cuda::Context::new(&executor);
-    let mut params = linalg::FusedMMP::new(args.m, args.n, args.k);
+    let (
+        KernelBundle {
+            candidates,
+            check_fn,
+            reference_fn,
+        },
+        context,
+    ) = args.kernel.to_bundle(&mut context, CublasHandle::new());
 
-    if args.untile {
-        params.m_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
-        params.n_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
-        params.k_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[]));
-    }
-
-    let (signature, kernel, context) = KernelBuilder::default()
-        .build::<linalg::FusedMM<f32>, telamon_cuda::Context>(
-            params.clone(),
-            &mut context,
-        );
-    let signature = Arc::new(signature);
-    let expected = kernel.get_expected_output(context);
     let default_order = explorer::config::ChoiceOrdering::default();
     let order: &explorer::config::ChoiceOrdering =
         args.order.as_ref().unwrap_or(&default_order);
     let env = FullEnv {
         context,
         order: order.into_iter(),
-    };
-
-    let reference_fn = {
-        let reference = CublasHandle::new();
-        move || {
-            Reference::<'_, linalg::FusedMM<f32>>::eval_reference(
-                &reference, &params, context,
-            )
-        }
     };
 
     let stabilizer = &context.stabilizer();
@@ -854,15 +833,13 @@ fn main() -> io::Result<()> {
     config.output_dir = "/tmp".to_string();
     config.max_evaluations = Some(10);
 
-    let checker =
-        |_: &Candidate, context: &dyn Context| kernel.check_result(&expected, context);
-
+    let check_fn = &check_fn;
     Evaluator::<Result<f64, String>>::scoped(
         context,
         1,
         EvalMode::FindBest,
         |evaluator| {
-            let candidate = kernel.build_body(signature, context).swap_remove(0).space;
+            let candidate = candidates[0].space.clone();
             let children = env
                 .list_actions(&candidate)
                 .into_iter()
@@ -964,7 +941,7 @@ fn main() -> io::Result<()> {
                                         &config,
                                         context,
                                         candidates,
-                                        Some(&checker),
+                                        Some(&check_fn),
                                     ) {
                                         for action in best.actions.into_iter() {
                                             eprintln!(
@@ -1027,7 +1004,7 @@ fn main() -> io::Result<()> {
                                                         .wrap(keval)
                                                         .evaluate()
                                                         .unwrap();
-                                                    checker(&candidate, context)?;
+                                                    check_fn(&candidate, context)?;
                                                     Ok(runtime)
                                                 },
                                             )
