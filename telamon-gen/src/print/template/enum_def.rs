@@ -37,7 +37,6 @@ impl {type_name} {{
         if self.is_failed() {{ None }} else {{ Some(self) }}
     }}
 
-
     /// Indicates if two choices will have the same value.
     pub fn eq(&self, other: Self) -> bool {{
         self.is_constrained() && *self == other
