@@ -2,13 +2,12 @@ use std::error::Error;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{fmt, fs, io, ops};
+use std::{fmt, fs, io};
 
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
 use telamon::explorer::{choice::ActionEx as Action, config::Config, Candidate};
-use telamon::search_space::SearchSpace;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 #[derive(StructOpt)]
@@ -358,6 +357,7 @@ mod cuda_reference {
 #[cfg(feature = "cuda")]
 pub use cuda_reference::CublasHandle;
 
+/// Helper enum to create the supported kernel parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelParam {
     Axpy { n: i32 },
@@ -368,22 +368,48 @@ pub enum KernelParam {
 }
 
 impl KernelParam {
-    pub fn with_body<'a, C, F, R>(&self, context: &mut C, body_fn: F) -> R
+    /// Build the kernel in a given context, and returns a list of candidates.
+    pub fn build<'a, 'b, C>(&self, context: &'b mut C) -> (Vec<Candidate>, &'b C)
     where
         C: Context + ArgMap<'a>,
-        F: FnOnce(Vec<Candidate>, &dyn Context) -> R,
+        'a: 'b,
     {
+        fn build<'a, 'b, K, C>(
+            params: K::Parameters,
+            context: &'b mut C,
+        ) -> (Vec<Candidate>, &'b C)
+        where
+            K: Kernel<'a> + 'b,
+            C: Context + ArgMap<'a>,
+        {
+            let (signature, kernel, context) =
+                KernelBuilder::default().build::<K, C>(params, context);
+            let signature = Arc::new(signature);
+            (kernel.build_body(signature, context), context)
+        }
+
         match *self {
+            KernelParam::Axpy { n } => {
+                build::<'_, '_, linalg::Axpy<'_, f32>, C>((n, true), context)
+            }
+            KernelParam::MatVec { m, n } => {
+                build::<'_, '_, linalg::MatVec<'_, f32>, C>((m, n, true), context)
+            }
+            KernelParam::Gesummv { m, n } => {
+                build::<'_, '_, linalg::Gesummv<'_, f32>, C>((m, n, true), context)
+            }
             KernelParam::Gemm { m, n, k } => {
-                let (signature, kernel, context) = KernelBuilder::default()
-                    .build::<linalg::FusedMM<f32>, C>(
+                build::<'_, '_, linalg::FusedMM<'_, f32>, C>(
                     linalg::FusedMMP::new(m, n, k),
                     context,
-                );
-                let signature = Arc::new(signature);
-                body_fn(kernel.build_body(signature, context), context)
+                )
             }
-            _ => unimplemented!("body for {}", self),
+            KernelParam::BatchMM { b, m, n, k } => {
+                build::<'_, '_, linalg::BatchMM<'_, f32>, C>(
+                    linalg::BatchMMP::new(b, m, n, k),
+                    context,
+                )
+            }
         }
     }
 }
@@ -436,8 +462,20 @@ impl ParseKernelError {
 }
 
 impl fmt::Display for ParseKernelError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.description().fmt(f)
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            KernelErrorKind::Empty => {
+                fmt.write_str("cannot parse kernel from empty string")
+            }
+            KernelErrorKind::InvalidName => fmt.write_str("invalid kernel name"),
+            KernelErrorKind::MissingParameter => {
+                fmt.write_str("missing kernel parameter")
+            }
+            KernelErrorKind::UnexpectedParameter => {
+                fmt.write_str("extraneous unexpected kernel parameter")
+            }
+            KernelErrorKind::IntError(error) => fmt::Display::fmt(error, fmt),
+        }
     }
 }
 
@@ -446,18 +484,6 @@ impl Error for ParseKernelError {
         match &self.kind {
             KernelErrorKind::IntError(error) => Some(error),
             _ => None,
-        }
-    }
-
-    fn description(&self) -> &str {
-        match &self.kind {
-            KernelErrorKind::Empty => "cannot parse kernel from empty string",
-            KernelErrorKind::InvalidName => "invalid kernel name",
-            KernelErrorKind::MissingParameter => "missing kernel parameter",
-            KernelErrorKind::UnexpectedParameter => {
-                "extraneous unexpected kernel parameter"
-            }
-            KernelErrorKind::IntError(error) => error.description(),
         }
     }
 }
@@ -549,25 +575,20 @@ impl std::str::FromStr for KernelParam {
 ///
 /// This is a thin wrapper around a `PathBuf` which provides convenience functions to load the
 /// actual actions.
-#[derive(Default, Debug)]
-pub struct ReplayPath(Option<PathBuf>);
+#[derive(Debug)]
+pub struct ReplayPath(PathBuf);
 
 impl From<&'_ OsStr> for ReplayPath {
     fn from(os_str: &'_ OsStr) -> ReplayPath {
-        if os_str.is_empty() {
-            ReplayPath(None)
-        } else {
-            ReplayPath(Some(os_str.into()))
-        }
+        ReplayPath(os_str.into())
     }
 }
 
 impl ReplayPath {
+    /// Load the replay and returns the corresponding actions.
+    ///
+    /// If no replay path was provided, an empty vector is returned.
     pub fn load(&self) -> io::Result<Vec<Action>> {
-        if let Some(path) = &self.0 {
-            Ok(serde_json::from_reader(fs::File::open(path)?)?)
-        } else {
-            Ok(Vec::new())
-        }
+        Ok(serde_json::from_reader(fs::File::open(&self.0)?)?)
     }
 }

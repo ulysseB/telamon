@@ -757,8 +757,8 @@ struct Opt {
     ///
     /// The replay file is a .json file containing a serialized representation of the actions to
     /// apply, as saved by the 'w' command in the debugger or the replay tests.
-    #[structopt(parse(from_os_str), long = "replay", default_value = "")]
-    replay: ReplayPath,
+    #[structopt(parse(from_os_str), long = "replay")]
+    replay: Option<ReplayPath>,
 
     #[structopt(short = "m", default_value = "256")]
     m: i32,
@@ -774,10 +774,6 @@ struct Opt {
 }
 
 impl Opt {
-    pub fn load_replay(&self) -> io::Result<Vec<Action>> {
-        self.replay.load()
-    }
-
     pub fn save_replay(&self, replay: &[Action]) -> io::Result<Option<PathBuf>> {
         if let Some(path) = &self.replay_dir {
             // Ensure the replay directory exists
@@ -893,8 +889,10 @@ fn main() -> io::Result<()> {
 
             let mut widget = Explorer::new(TuiCursor::new(Cursor::new(&env, root)));
 
-            for action in &args.load_replay()? {
-                widget.selector.cursor.select_action(action).unwrap();
+            if let Some(replay) = &self.replay {
+                for action in &replay.load()? {
+                    widget.selector.cursor.select_action(action).unwrap();
+                }
             }
 
             terminal.draw(|mut f| {

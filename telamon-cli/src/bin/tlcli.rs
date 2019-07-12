@@ -22,38 +22,41 @@ use telamon::search_space::SearchSpace;
 
 use telamon_cli::{KernelParam, ReplayPath};
 
+/// Compute the bound for a given candidate.
 #[derive(StructOpt)]
 struct ComputeBound {
+    /// Kernel specification to use.
     #[structopt(short = "k", long = "kernel")]
     kernel: KernelParam,
 
-    #[structopt(parse(from_os_str), short = "r", long = "replay", default_value = "")]
-    replay: ReplayPath,
+    /// Path to a saved replay file to load before computing the bound.
+    #[structopt(parse(from_os_str), short = "r", long = "replay")]
+    replay: Option<ReplayPath>,
 }
 
 impl ComputeBound {
     fn run(&self, _args: &Opt) -> io::Result<()> {
         let executor = telamon_cuda::Executor::init();
         let mut context = telamon_cuda::Context::new(&executor);
-        self.kernel
-            .with_body(&mut context, |mut candidates, context| {
-                assert!(candidates.len() == 1);
-                let mut candidate = candidates.swap_remove(0).space;
+        let (mut candidates, context) = self.kernel.build(&mut context);
+        assert!(candidates.len() == 1);
+        let mut candidate = candidates.swap_remove(0).space;
 
-                // Apply replay if there is some
-                for action in &self.replay.load()? {
-                    candidate = action
-                        .apply_to(candidate)
-                        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
-                }
+        // Apply replay if there is some
+        if let Some(replay) = &self.replay {
+            for action in &replay.load()? {
+                candidate = action
+                    .apply_to(candidate)
+                    .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+            }
+        }
 
-                let start = std::time::Instant::now();
-                let bound = bound(&candidate, context);
-                let duration = start.elapsed();
-                println!("Bound is {:?} (computed in {:?})", bound, duration);
+        let start = std::time::Instant::now();
+        let bound = bound(&candidate, context);
+        let duration = start.elapsed();
+        println!("Bound is {:?} (computed in {:?})", bound, duration);
 
-                Ok(())
-            })
+        Ok(())
     }
 }
 
@@ -167,23 +170,25 @@ impl Bounds {
     fn run(&self, _args: &Opt) -> io::Result<()> {
         let executor = telamon_cuda::Executor::init();
         let mut context = telamon_cuda::Context::new(&executor);
+        let (candidates, context) = self.kernel.build(&mut context);
+        let stdout = std::io::stdout();
+        self.test_bound(candidates, context, |(runtime, bounds)| {
+            let mut handle = stdout.lock();
+            write!(handle, "{},{}", self.kernel, runtime).unwrap();
+            for bound in bounds {
+                write!(handle, ",{}", bound).unwrap();
+            }
+            write!(handle, "\n").unwrap();
+        });
 
-        self.kernel.with_body(&mut context, |candidates, context| {
-            let stdout = std::io::stdout();
-            self.test_bound(candidates, context, |(runtime, bounds)| {
-                let mut handle = stdout.lock();
-                write!(handle, "{},{}", self.kernel, runtime).unwrap();
-                for bound in bounds {
-                    write!(handle, ",{}", bound).unwrap();
-                }
-                write!(handle, "\n").unwrap();
-            });
-
-            Ok(())
-        })
+        Ok(())
     }
 }
 
+/// Rebuild a specific list of actions from an event log.
+///
+/// This generates a .json replay file which can be used by the debugger, as well as by various
+/// other utilities (eg the `compute_bound` subcommand).
 #[derive(StructOpt)]
 struct Rebuild {
     /// Path to the eventlog to rebuild from
@@ -245,6 +250,7 @@ impl Rebuild {
     }
 }
 
+/// Compute statistics on an eventlog
 #[derive(StructOpt)]
 struct Stats {
     /// Path to the eventlog to compute stats for
