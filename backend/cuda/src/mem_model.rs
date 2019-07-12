@@ -429,7 +429,7 @@ fn global_coalescing(
 ) -> (f64, f64, f64) {
     let thread_dims = sort_thread_dims(thread_dims, false, space, gpu);
     let offsets = wrap_access_offsets(&thread_dims, true, gpu);
-    trace!("{:?}", offsets);
+    trace!("global offsets: {:?}", offsets);
     let (mut l1_coalescing, mut l2_coalescing, mut replay) =
         offsets_global_coalescing(&offsets, gpu);
     if thread_dims
@@ -439,7 +439,7 @@ fn global_coalescing(
     {
         let offsets =
             wrap_access_offsets(&thread_dims[0..thread_dims.len() - 1], true, gpu);
-        trace!("{:?}", offsets);
+        trace!("global offsets (last inactive): {:?}", offsets);
         let (l1, l2, r) = offsets_global_coalescing(&offsets, gpu);
         l1_coalescing = f64::min(l1_coalescing, l1);
         l2_coalescing = f64::min(l2_coalescing, l2);
