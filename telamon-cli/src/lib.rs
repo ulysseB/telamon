@@ -7,7 +7,9 @@ use std::{fmt, fs, io};
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
-use telamon::explorer::{choice::ActionEx as Action, config::Config, Candidate};
+use telamon::explorer::{
+    choice::ActionEx as Action, config::Config, Candidate, CheckResultFn,
+};
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 #[derive(StructOpt)]
@@ -53,6 +55,8 @@ where
 
     fn eval_reference(&self, params: &K::Parameters, context: &Self::Context) -> f64;
 }
+
+pub type ReferenceFn<'a> = dyn Fn() -> f64 + Sync + 'a;
 
 #[derive(Debug, Clone)]
 pub struct Bench {
@@ -357,6 +361,12 @@ mod cuda_reference {
 #[cfg(feature = "cuda")]
 pub use cuda_reference::CublasHandle;
 
+pub struct KernelBundle<'a> {
+    pub candidates: Vec<Candidate>,
+    pub check_fn: Box<CheckResultFn<'a>>,
+    pub reference_fn: Box<dyn Fn() -> f64 + 'a>,
+}
+
 /// Helper enum to create the supported kernel parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelParam {
@@ -368,6 +378,91 @@ pub enum KernelParam {
 }
 
 impl KernelParam {
+    /// Build the kernel in a given context, and returns a list of candidates along with a
+    /// correction checking function and a reference function.
+    pub fn to_bundle<'a, 'b, C, R>(
+        &self,
+        context: &'b mut C,
+        reference: R,
+    ) -> (KernelBundle<'b>, &'b C)
+    where
+        C: Context + ArgMap<'a>,
+        R: Reference<'a, linalg::Axpy<'a, f32>, Context = C>
+            + Reference<'a, linalg::MatVec<'a, f32>, Context = C>
+            + Reference<'a, linalg::FusedMM<'a, f32>, Context = C>
+            + Reference<'a, linalg::BatchMM<'a, f32>, Context = C>
+            + Reference<'a, linalg::Gesummv<'a, f32>, Context = C>
+            + 'b,
+        'a: 'b,
+    {
+        fn build<'a, 'b, K, C, R>(
+            params: K::Parameters,
+            context: &'b mut C,
+            reference: R,
+        ) -> (KernelBundle<'b>, &'b C)
+        where
+            K: Kernel<'a> + 'b,
+            K::Parameters: 'b,
+            C: Context + ArgMap<'a>,
+            R: Reference<'a, K, Context = C> + 'b,
+        {
+            let (signature, kernel, context) =
+                KernelBuilder::default().build::<K, C>(params.clone(), context);
+            let signature = Arc::new(signature);
+            let expected = kernel.get_expected_output(context);
+            let candidates = kernel.build_body(signature, context);
+            let check_fn = move |_candidate: &Candidate, context: &dyn Context| {
+                kernel.check_result(&expected, context)
+            };
+            let reference_fn =
+                move || Reference::<'_, K>::eval_reference(&reference, &params, context);
+
+            (
+                KernelBundle {
+                    candidates,
+                    check_fn: Box::new(check_fn),
+                    reference_fn: Box::new(reference_fn),
+                },
+                context,
+            )
+        }
+
+        match *self {
+            KernelParam::Axpy { n } => build::<'_, '_, linalg::Axpy<'_, f32>, C, _>(
+                (n, true),
+                context,
+                reference,
+            ),
+            KernelParam::MatVec { m, n } => {
+                build::<'_, '_, linalg::MatVec<'_, f32>, C, _>(
+                    (m, n, true),
+                    context,
+                    reference,
+                )
+            }
+            KernelParam::Gesummv { m, n } => {
+                build::<'_, '_, linalg::Gesummv<'_, f32>, C, _>(
+                    (m, n, true),
+                    context,
+                    reference,
+                )
+            }
+            KernelParam::Gemm { m, n, k } => {
+                build::<'_, '_, linalg::FusedMM<'_, f32>, C, _>(
+                    linalg::FusedMMP::new(m, n, k),
+                    context,
+                    reference,
+                )
+            }
+            KernelParam::BatchMM { b, m, n, k } => {
+                build::<'_, '_, linalg::BatchMM<'_, f32>, C, _>(
+                    linalg::BatchMMP::new(b, m, n, k),
+                    context,
+                    reference,
+                )
+            }
+        }
+    }
     /// Build the kernel in a given context, and returns a list of candidates.
     pub fn build<'a, 'b, C>(&self, context: &'b mut C) -> (Vec<Candidate>, &'b C)
     where
