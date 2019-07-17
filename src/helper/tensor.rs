@@ -186,11 +186,11 @@ where
         &self,
         tiling: Vec<TilingPattern>,
         builder: &mut Builder,
-    ) -> VirtualTensor {
+    ) -> VirtualTensor<S> {
         let dims = self
             .iter_dims
             .iter()
-            .zip_eq(tiling)
+            .zip_eq(tiling.clone())
             .map(|(dim, tiling)| {
                 let size = dim.0.to_ir_size(builder);
                 builder.open_tiled_dim(size, tiling)
@@ -215,7 +215,14 @@ where
         for dim in &dims {
             builder.close_dim(dim);
         }
-        VirtualTensor { inst, dims }
+        VirtualTensor {
+            inst,
+            dims,
+            source: VirtualTensorSource::Tensor {
+                tensor: self,
+                tiling,
+            },
+        }
     }
 
     /// Reads the tensor value in the context and copies it on the host.
@@ -239,16 +246,41 @@ where
     }
 }
 
-/// A tensor loaded in registers.
-pub struct VirtualTensor {
-    inst: ir::InstId,
-    dims: Vec<LogicalDim>,
+pub enum VirtualTensorSource<'a, S: ScalarArgument> {
+    Tensor {
+        tensor: &'a Tensor<'a, S>,
+        tiling: Vec<TilingPattern>,
+    },
+    Instruction,
 }
 
-impl VirtualTensor {
+/// A tensor loaded in registers.
+pub struct VirtualTensor<'a, S: ScalarArgument> {
+    inst: ir::InstId,
+    dims: Vec<LogicalDim>,
+    source: VirtualTensorSource<'a, S>,
+}
+
+impl<'a, S: ScalarArgument> VirtualTensor<'a, S> {
     /// Creates a new `VirtualTensor`.
     pub fn new(inst: ir::InstId, dims: Vec<LogicalDim>) -> Self {
-        VirtualTensor { inst, dims }
+        VirtualTensor {
+            inst,
+            dims,
+            source: VirtualTensorSource::Instruction,
+        }
+    }
+
+    /// Duplicates the virtual tensor.
+    ///
+    /// FIXME: Currently only implemented if VirtualTensor originates
+    /// from a load of a Tensor
+    pub fn duplicate(&self, builder: &mut Builder) -> VirtualTensor<S> {
+        match &self.source {
+            VirtualTensorSource::Tensor { tensor, tiling } =>
+                tensor.load(tiling.clone(), builder),
+            _ => panic!("Duplication of VirtualTensor is only implemented if originating from a load")
+        }
     }
 
     /// Creates an operand that yeilds the values of the tensor in the given loop nest.
@@ -264,7 +296,7 @@ impl VirtualTensor {
 
     /// Stores the `VirtualTensor` in memory. Stores contiguously without taking the
     /// layout of the target tensor into account.
-    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor
+    pub fn store(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor<S>
     where
         S: ScalarArgument,
     {
@@ -285,6 +317,7 @@ impl VirtualTensor {
         VirtualTensor {
             inst,
             dims: new_dims,
+            source: VirtualTensorSource::Instruction,
         }
     }
 
@@ -314,7 +347,7 @@ impl VirtualTensor {
     }
 }
 
-impl std::ops::Index<usize> for VirtualTensor {
+impl<'a, S: ScalarArgument> std::ops::Index<usize> for VirtualTensor<'a, S> {
     type Output = LogicalDim;
 
     fn index(&self, idx: usize) -> &Self::Output {
@@ -322,7 +355,7 @@ impl std::ops::Index<usize> for VirtualTensor {
     }
 }
 
-impl<'a> IntoIterator for &'a VirtualTensor {
+impl<'a, S: ScalarArgument> IntoIterator for &'a VirtualTensor<'_, S> {
     type Item = &'a LogicalDim;
     type IntoIter = std::slice::Iter<'a, LogicalDim>;
 
