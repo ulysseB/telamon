@@ -1,3 +1,4 @@
+use crate::device::ScalarArgument;
 use crate::Scalar;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -6,11 +7,11 @@ use telamon::helper::{AutoOperand, Builder, Reduce};
 use telamon::ir;
 
 /// Multiplies a matrix `lhs` with a vector `rhs`
-pub fn matrix_vector_multiply(
+pub fn matrix_vector_multiply<'a, S: ScalarArgument>(
     builder: &mut Builder,
-    lhs: &VirtualTensor,
-    rhs: &VirtualTensor,
-) -> VirtualTensor {
+    lhs: &VirtualTensor<'_, S>,
+    rhs: &VirtualTensor<'_, S>,
+) -> VirtualTensor<'a, S> {
     assert!(lhs.num_dims() == 2 && rhs.num_dims() == 1);
     assert!(lhs[lhs.num_dims() - 1].size_eq(&rhs[0], builder.function()));
 
@@ -44,11 +45,11 @@ pub fn matrix_vector_multiply(
 }
 
 /// Multiplies two matrices `lhs` and `rhs`
-pub fn matrix_matrix_multiply(
+pub fn matrix_matrix_multiply<'a, S: ScalarArgument>(
     builder: &mut Builder,
-    lhs: &VirtualTensor,
-    rhs: &VirtualTensor,
-) -> VirtualTensor {
+    lhs: &VirtualTensor<S>,
+    rhs: &VirtualTensor<S>,
+) -> VirtualTensor<'a, S> {
     assert!(lhs.num_dims() == 2 && rhs.num_dims() == 2);
     assert!(lhs[lhs.num_dims() - 1].size_eq(&rhs[0], builder.function()));
 
@@ -93,11 +94,11 @@ pub fn matrix_matrix_multiply(
 }
 
 /// Adds two tensors `lhs` and `rhs` of the same shape
-pub fn tensor_add(
+pub fn tensor_add<'a, S: ScalarArgument>(
     builder: &mut Builder,
-    lhs: &VirtualTensor,
-    rhs: &VirtualTensor,
-) -> VirtualTensor {
+    lhs: &VirtualTensor<S>,
+    rhs: &VirtualTensor<S>,
+) -> VirtualTensor<'a, S> {
     assert!(lhs.same_shape(rhs, builder.function()));
 
     let dims = lhs
@@ -128,12 +129,12 @@ pub fn tensor_add(
 
 /// Multiplies all elements of `lhs_mul` with `rhs_mul_operand` and
 /// adds the result to the tensor `rhs_add`
-pub fn tensor_mad(
+pub fn tensor_mad<'a, S: ScalarArgument>(
     builder: &mut Builder,
-    lhs_mul: &VirtualTensor,
+    lhs_mul: &VirtualTensor<S>,
     rhs_mul_operand: &dyn AutoOperand,
-    rhs_add: &VirtualTensor,
-) -> VirtualTensor {
+    rhs_add: &VirtualTensor<S>,
+) -> VirtualTensor<'a, S> {
     assert!(lhs_mul.same_shape(rhs_add, builder.function()));
 
     let dims = lhs_mul
@@ -168,11 +169,11 @@ pub fn tensor_mad(
 /// instructions created by `f` using the builder will be placed in a
 /// set of dimensions mapped to the dimensions of the virtual input
 /// tensor `a`.
-pub fn tensor_map(
+pub fn tensor_map<'a, S: ScalarArgument>(
     builder: &mut Builder,
-    a: &VirtualTensor,
+    a: &VirtualTensor<S>,
     f: impl FnOnce(&ir::Operand<()>, &mut Builder) -> ir::InstId,
-) -> VirtualTensor {
+) -> VirtualTensor<'a, S> {
     let dims = a
         .iter()
         .map(|dim| builder.open_mapped_dim(&dim))
@@ -195,11 +196,11 @@ pub fn tensor_map(
 
 /// Multiplies each element of a virtual tensor `rhs` with a scalar
 /// operand `lhs`
-pub fn tensor_elementwise_mul(
+pub fn tensor_elementwise_mul<'a, S: ScalarArgument>(
     builder: &mut Builder,
     lhs: &dyn AutoOperand,
-    rhs: &VirtualTensor,
-) -> VirtualTensor {
+    rhs: &VirtualTensor<S>,
+) -> VirtualTensor<'a, S> {
     tensor_map(builder, rhs, |tensor_operand, builder| {
         builder.mul(tensor_operand, lhs)
     })
@@ -207,11 +208,11 @@ pub fn tensor_elementwise_mul(
 
 /// Applies the `max` function to all elements of a virtual tensor
 /// `lhs` with `rhs` as the second argument to `max`
-pub fn tensor_elementwise_max(
+pub fn tensor_elementwise_max<'a, S: ScalarArgument>(
     builder: &mut Builder,
-    lhs: &VirtualTensor,
+    lhs: &VirtualTensor<S>,
     rhs: &dyn AutoOperand,
-) -> VirtualTensor {
+) -> VirtualTensor<'a, S> {
     tensor_map(builder, lhs, |tensor_operand, builder| {
         builder.max(tensor_operand, rhs)
     })
@@ -232,8 +233,8 @@ impl ActivationFunction {
     pub fn apply<S: Scalar>(
         &self,
         builder: &mut Builder,
-        t: &VirtualTensor,
-    ) -> VirtualTensor {
+        t: &VirtualTensor<S>,
+    ) -> VirtualTensor<S> {
         match self {
             ActivationFunction::ReLU => tensor_elementwise_max(builder, t, &S::zero()),
             ActivationFunction::Sigmoid => tensor_map(builder, t, |operand, builder| {
