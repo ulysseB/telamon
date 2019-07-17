@@ -335,13 +335,40 @@ pub fn array_activate_inplace<S, D>(
 /// element `o_i` of the result has the value `o_i = exp(a_i) /
 /// sum(j = 0 to N, exp(a_j))`, where `a_i` is the i-th value of the
 /// input array `a` and `N` is the number of elements of `a`.
-pub fn array_softmax_inplace<S, D>(
-    a: &mut ndarray::Array<S, D>,
-) where
+pub fn array_softmax_inplace<S, D>(a: &mut ndarray::Array<S, D>)
+where
     S: Scalar,
     D: ndarray::Dimension,
 {
     a.mapv_inplace(|c| S::exp(c));
     let sum = a.scalar_sum();
     a.mapv_inplace(|c| c / sum);
+}
+
+/// Calculates the sum of all elements of a tensor `t` and returns it
+/// as a 0-dimensional virtual tensor.
+pub fn tensor_sum<'a, S: ScalarArgument>(
+    builder: &mut Builder,
+    t: &VirtualTensor<S>,
+) -> VirtualTensor<'a, S> {
+    let sum_init_instr = builder.mov(&0f32);
+
+    let dims = t
+        .iter()
+        .map(|dim| builder.open_mapped_dim(dim))
+        .collect_vec();
+
+    let t_operand = t.dim_map(
+        &dims.iter().collect_vec(),
+        ir::DimMapScope::Global(()),
+        builder,
+    );
+
+    let sum_instr = builder.add(&t_operand, &Reduce(sum_init_instr));
+
+    for dim in &dims {
+        builder.close_dim(&dim);
+    }
+
+    VirtualTensor::new(sum_instr, vec![])
 }
