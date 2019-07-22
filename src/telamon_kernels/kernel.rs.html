@@ -468,12 +468,6 @@
 <span id="468">468</span>
 <span id="469">469</span>
 <span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="doccomment">//! Kernel also defines a function generate_dump that is used to dump the list of actions taken for</span>
@@ -671,13 +665,7 @@
 
         <span class="kw">let</span> <span class="ident">implem</span> <span class="op">=</span> <span class="ident">action_list</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">candidate</span>, <span class="op">|</span><span class="ident">cand</span>, <span class="ident">action</span><span class="op">|</span> {
             <span class="ident">cand</span>.<span class="ident">apply_decision</span>(<span class="ident">ctx</span>, <span class="ident">action</span>.<span class="ident">clone</span>())
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span>()<span class="op">|</span> {
-                    <span class="macro">panic</span><span class="macro">!</span>(
-                        <span class="string">&quot;In kernel {}, Could not apply action {:?}&quot;</span>,
-                        <span class="self">Self</span>::<span class="ident">name</span>(),
-                        <span class="ident">action</span>
-                    )
-                })
+                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;In kernel {}: {}&quot;</span>, <span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">err</span>))
         });
 
         <span class="kw">let</span> <span class="ident">device_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">implem</span>.<span class="ident">space</span>);

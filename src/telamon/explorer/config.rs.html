@@ -451,6 +451,12 @@
 <span id="451">451</span>
 <span id="452">452</span>
 <span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -802,6 +808,8 @@
     <span class="ident">Order</span>,
     <span class="ident">MemSpace</span>,
     <span class="ident">InstFlag</span>,
+    <span class="ident">Threads</span>,
+    <span class="ident">ThreadSize</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">ChoiceGroup</span> {
@@ -816,6 +824,8 @@
             <span class="ident">Order</span> <span class="op">=&gt;</span> <span class="string">&quot;order&quot;</span>,
             <span class="ident">MemSpace</span> <span class="op">=&gt;</span> <span class="string">&quot;mem_space&quot;</span>,
             <span class="ident">InstFlag</span> <span class="op">=&gt;</span> <span class="string">&quot;inst_flag&quot;</span>,
+            <span class="ident">Threads</span> <span class="op">=&gt;</span> <span class="string">&quot;threads&quot;</span>,
+            <span class="ident">ThreadSize</span> <span class="op">=&gt;</span> <span class="string">&quot;thread_size&quot;</span>,
         })
     }
 }
@@ -846,6 +856,8 @@
             <span class="string">&quot;order&quot;</span> <span class="op">=&gt;</span> <span class="ident">Order</span>,
             <span class="string">&quot;mem_space&quot;</span> <span class="op">=&gt;</span> <span class="ident">MemSpace</span>,
             <span class="string">&quot;inst_flag&quot;</span> <span class="op">=&gt;</span> <span class="ident">InstFlag</span>,
+            <span class="string">&quot;threads&quot;</span> <span class="op">=&gt;</span> <span class="ident">Threads</span>,
+            <span class="string">&quot;thread_size&quot;</span> <span class="op">=&gt;</span> <span class="ident">ThreadSize</span>,
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParseChoiceGroupError</span>(<span class="ident">s</span>.<span class="ident">to_string</span>())),
         })
     }

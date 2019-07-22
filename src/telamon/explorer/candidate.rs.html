@@ -154,18 +154,10 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">device</span>::<span class="ident">Context</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">choice</span>::<span class="ident">ActionEx</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">explorer</span>::<span class="ident">choice</span>::{<span class="ident">ActionError</span>, <span class="ident">ActionEx</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">model</span>::{<span class="ident">bound</span>, <span class="ident">Bound</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
 
@@ -221,7 +213,7 @@
             .<span class="ident">into_iter</span>()
             .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">action</span><span class="op">|</span> {
                 <span class="self">self</span>.<span class="ident">apply_decision</span>(<span class="ident">context</span>, <span class="ident">action</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;invalid action encountered&quot;</span>))
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;invalid action encountered: {}&quot;</span>, <span class="ident">err</span>))
                     .<span class="ident">ok</span>()
             })
             .<span class="ident">collect_vec</span>();
@@ -265,17 +257,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">Context</span>,
         <span class="ident">action</span>: <span class="ident">ActionEx</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ActionError</span><span class="op">&gt;</span> {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;applying action {:?}&quot;</span>, <span class="ident">action</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">space</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">space</span>.<span class="ident">clone</span>();
-        <span class="kw">match</span> <span class="ident">action</span> {
-            <span class="ident">ActionEx</span>::<span class="ident">Action</span>(<span class="ident">action</span>) <span class="op">=&gt;</span> <span class="ident">space</span>.<span class="ident">apply_decisions</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">action</span>]),
-            <span class="ident">ActionEx</span>::<span class="ident">LowerLayout</span> {
-                <span class="ident">mem</span>,
-                <span class="kw-2">ref</span> <span class="ident">st_dims</span>,
-                <span class="kw-2">ref</span> <span class="ident">ld_dims</span>,
-            } <span class="op">=&gt;</span> <span class="ident">space</span>.<span class="ident">lower_layout</span>(<span class="ident">mem</span>, <span class="ident">st_dims</span>, <span class="ident">ld_dims</span>),
-        }<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">space</span> <span class="op">=</span> <span class="ident">action</span>.<span class="ident">apply_to</span>(<span class="self">self</span>.<span class="ident">space</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">delta</span> <span class="op">=</span> <span class="number">1.0e-2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">bound</span>.<span class="ident">value</span>();
         <span class="kw">if</span> <span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">+</span> <span class="ident">delta</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">bound</span>.<span class="ident">value</span>() {
