@@ -17,21 +17,18 @@ const NUM_CODE_RUNS: usize = 40;
 /// Search timeout in minutes.
 const TIMEOUT: u64 = 240;
 
-/// Benchamrks a kernel against a reference implementation.
+/// Benchmarks a kernel against a reference implementation.
 fn benchmark<'a, K, REF, CB>(
     mut config: Config,
     params: K::Parameters,
     executor: CB,
     reference: &REF,
-    // output_dir: String,
 ) where
     K: Kernel<'a>,
     CB: ContextBuilder<'a>,
     REF: Reference<'a, K, Context = CB::Context>,
 {
     config.timeout.get_or_insert(TIMEOUT);
-    // config.output_dir = output_dir;
-    //config.distance_to_best.get_or_insert(20.);
 
     let mut context = executor.build_context();
     let runtime = K::benchmark(

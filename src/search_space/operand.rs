@@ -2,6 +2,73 @@
 use crate::ir::Operand::*;
 use crate::ir::{self, DimMapScope, Statement};
 use crate::search_space::choices::{Action, DimKind, DimMapping, Order};
+use fxhash::FxHashSet;
+use log::debug;
+
+/// Collects all dimensions in `dims` that are reduction dimensions of
+/// `Reduce` operands of `inst_id`.
+fn collect_direct_reduce_dims(
+    fun: &ir::Function,
+    inst_id: ir::InstId,
+    dims: &mut FxHashSet<ir::DimId>,
+) {
+    let instr = fun.inst(inst_id);
+
+    for src_op in instr.operands() {
+        match *src_op {
+            Reduce(_, _, _, ref reduce_dims) => {
+                for d in reduce_dims {
+                    dims.insert(d.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Adds an order action to `actions` for all reduction dimensions of
+/// reductions that the instruction `inst_id` depends on, such that
+/// the instruction is placed after the reduction dimensions. This
+/// ensures that the reductions have finished before the instruction
+/// executes.
+///
+/// Relevant reductions are those that are operands of instructions or
+/// reductions whose results are used by `inst_id`. E.g., for the
+/// following code,
+///
+///   @0[%1]: add(..., reduce(..., [%1]))
+///   @1[%2]: mul(..., reduce(..., [%2]))
+///
+///   @2[%3]: add(@0[%3], @1[%3])
+///
+/// the dimensions `%1` and `%2` need to be placed before `@2`, since
+/// `@2` uses the results of `@0` and `@1`, which are reduced over
+/// `%1` and `%2`, respectively.
+fn order_reduce_dims(fun: &ir::Function, inst_id: ir::InstId, actions: &mut Vec<Action>) {
+    let mut red_dim_set = Default::default();
+    let instr = fun.inst(inst_id);
+
+    // Collect reduction dimensions of reductions that are operands of
+    // instructions that this instruction depends on
+    for operand in instr.operands() {
+        match *operand {
+            Inst(op_inst_id, ..) | Reduce(op_inst_id, ..) => {
+                collect_direct_reduce_dims(fun, op_inst_id, &mut red_dim_set);
+            }
+            _ => {}
+        }
+    }
+
+    // Order reduction dimensions before this instruction
+    for &red_dim in red_dim_set.iter() {
+        let action = Action::Order(red_dim.into(), instr.stmt_id(), Order::BEFORE);
+        debug!(
+            "Adding action ordering reduction dimension before the using instruction: {:?}",
+            action
+        );
+        actions.push(action);
+    }
+}
 
 /// Generates actions to enforce operands invariants.
 pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec<Action> {
@@ -24,6 +91,9 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec
                     actions.push(Action::Order(lhs.into(), rhs.into(), Order::MERGED));
                 }
             }
+
+            order_reduce_dims(fun, src, &mut actions);
+
             // Order the with the source instruction.
             actions.push(Action::Order(src.into(), user, Order::BEFORE));
             actions
@@ -41,6 +111,9 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec
                 actions.push(Action::Order(src.into(), dim.into(), Order::BEFORE));
                 actions.push(Action::DimKind(dim, DimKind::LOOP | DimKind::UNROLL));
             }
+
+            order_reduce_dims(fun, src, &mut actions);
+
             actions
         }
         Index(dim) => vec![Action::Order(dim.into(), user, Order::OUTER)],
