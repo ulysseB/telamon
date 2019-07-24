@@ -4,6 +4,7 @@ use crate::explorer::choice::ActionEx as Action;
 use crate::explorer::mcts::{EdgeIndex, NodeId};
 use crate::model::Bound;
 use fxhash::FxHashMap;
+use std::borrow::Cow;
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
@@ -209,6 +210,30 @@ impl CandidateNode {
                 .action
                 .clone()
             })
+    }
+
+    /// The list of actions to apply from the root to this node, in order.
+    pub fn actions(&self) -> Vec<Action> {
+        let mut actions = Vec::new();
+
+        let mut current = Cow::Borrowed(&self.inner);
+        loop {
+            let parent;
+            if let Some(edge) = current.borrow().incoming_edge.as_ref() {
+                parent = edge.parent.upgrade().expect("no parent");
+                actions.push(
+                    parent.borrow().outgoing_edges[usize::from(edge.child_idx)]
+                        .action
+                        .clone(),
+                );
+            } else {
+                break;
+            }
+            current = Cow::Owned(parent);
+        }
+
+        actions.reverse();
+        actions
     }
 
     /// Returns the action associated to the edge from the parent of
