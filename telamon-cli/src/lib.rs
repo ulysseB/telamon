@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::ffi::OsStr;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fmt, fs, io};
@@ -44,6 +45,22 @@ impl<'a> ContextBuilder<'a> for &'a telamon_cuda::Executor {
 
     fn build_context(&self) -> Self::Context {
         telamon_cuda::Context::new(self)
+    }
+}
+
+#[derive(Default)]
+pub struct DefaultContext<C> {
+    _marker: PhantomData<fn() -> C>,
+}
+
+impl<'a, C> ContextBuilder<'a> for DefaultContext<C>
+where
+    C: Default + ArgMap<'a>,
+{
+    type Context = C;
+
+    fn build_context(&self) -> C {
+        C::default()
     }
 }
 
@@ -360,6 +377,82 @@ mod cuda_reference {
 
 #[cfg(feature = "cuda")]
 pub use cuda_reference::CublasHandle;
+
+#[cfg(feature = "x86")]
+mod x86_reference {
+    use telamon_kernels::linalg;
+
+    use super::Reference;
+
+    #[derive(Default)]
+    pub struct X86Reference {
+        _priv: (),
+    }
+
+    impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(&self, params: &(i32, bool), context: &Self::Context) -> f64 {
+            // TODO
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::MatVec<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            params: &(i32, i32, bool),
+            context: &Self::Context,
+        ) -> f64 {
+            // TODO
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::Gesummv<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            params: &(i32, i32, bool),
+            context: &Self::Context,
+        ) -> f64 {
+            // TODO
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::FusedMM<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::FusedMMP,
+            context: &Self::Context,
+        ) -> f64 {
+            // TODO
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::BatchMMP,
+            context: &Self::Context,
+        ) -> f64 {
+            // TODO
+            1.
+        }
+    }
+}
+
+#[cfg(feature = "x86")]
+pub use x86_reference::X86Reference;
 
 pub struct KernelBundle<'a> {
     pub candidates: Vec<Candidate>,

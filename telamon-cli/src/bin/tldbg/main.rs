@@ -733,6 +733,24 @@ trait AssertSend: Send {}
 
 impl AssertSend for codegen::Function<'_> {}
 
+#[derive(Debug)]
+enum Platform {
+    X86,
+    Cuda,
+}
+
+impl std::str::FromStr for Platform {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "x86" => Platform::X86,
+            "cuda" => Platform::Cuda,
+            _ => return Err("i am bad".to_string()),
+        })
+    }
+}
+
 /// The Telamon Debugger
 #[derive(Debug, StructOpt)]
 #[structopt(name = "tldbg")]
@@ -760,6 +778,9 @@ struct Opt {
     /// Kernel specification to use.
     #[structopt(long = "kernel", default_value = "matmul_256_256_32")]
     kernel: KernelParam,
+
+    #[structopt(long = "platform", default_value = "cuda")]
+    platform: Platform,
 
     #[structopt(long = "order")]
     order: Option<explorer::config::ChoiceOrdering>,
@@ -801,8 +822,12 @@ fn main() -> io::Result<()> {
 
     let args = Opt::from_args();
 
-    let executor = telamon_cuda::Executor::init();
-    let mut context = telamon_cuda::Context::new(&executor);
+    #[cfg(feature = "cuda")]
+    let (cuda_executor, mut cuda_context);
+
+    #[cfg(feature = "x86")]
+    let mut x86_context;
+
     let (
         KernelBundle {
             candidates,
@@ -810,7 +835,41 @@ fn main() -> io::Result<()> {
             reference_fn,
         },
         context,
-    ) = args.kernel.to_bundle(&mut context, CublasHandle::new());
+    ) = match args.platform {
+        Platform::X86 => {
+            #[cfg(feature = "x86")]
+            {
+                x86_context = telamon_x86::Context::default();
+                let reference = telamon_cli::X86Reference::default();
+
+                let (bundle, context) =
+                    args.kernel.to_bundle(&mut x86_context, reference);
+                (bundle, context as &dyn Context)
+            }
+
+            #[cfg(not(feature = "x86"))]
+            {
+                panic!("not supported")
+            }
+        }
+        Platform::Cuda => {
+            #[cfg(feature = "cuda")]
+            {
+                cuda_executor = telamon_cuda::Executor::init();
+                cuda_context = telamon_cuda::Context::new(&cuda_executor);
+                let reference = CublasHandle::new();
+
+                let (bundle, context) =
+                    args.kernel.to_bundle(&mut cuda_context, reference);
+                (bundle, context as &dyn Context)
+            }
+
+            #[cfg(not(feature = "cuda"))]
+            {
+                panic!("not supported")
+            }
+        }
+    };
 
     let default_order = explorer::config::ChoiceOrdering::default();
     let order: &explorer::config::ChoiceOrdering =
