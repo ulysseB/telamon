@@ -276,7 +276,7 @@ mod cuda_reference {
         }
     }
 
-    /// Reference implementation for the `Gesummv` params.
+    /// Reference implementation for `Gesummv`.
     fn gesummv_reference(
         handle: &CublasHandle,
         &(m, n, _): &(i32, i32, bool),
@@ -463,7 +463,8 @@ impl KernelParam {
             }
         }
     }
-    /// Build the kernel in a given context, and returns a list of candidates.
+
+    /// Build the kernel in a given context, and return a list of candidates.
     pub fn build<'a, 'b, C>(&self, context: &'b mut C) -> (Vec<Candidate>, &'b C)
     where
         C: Context + ArgMap<'a>,
@@ -533,7 +534,7 @@ pub struct ParseKernelError {
 pub enum KernelErrorKind {
     /// Value being parsed is empty.
     ///
-    /// Among other things, this variant will be constructed when parsing an empty string.
+    /// This variant will be constructed when parsing an empty string.
     Empty,
 
     /// Invalid kernel name provided.

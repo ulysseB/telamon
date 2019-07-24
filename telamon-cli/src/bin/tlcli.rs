@@ -85,7 +85,7 @@ impl Bounds {
         }
     }
 
-    /// Descend along a path in the search tree and stores the bounds encountered on the way.
+    /// Descends along a path in the search tree and stores the bounds encountered on the way.
     fn random_descent(
         &self,
         candidates: &[Candidate],
