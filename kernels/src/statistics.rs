@@ -41,7 +41,7 @@ pub fn estimate_mean(
     }
     data.sort_by(|&x, &y| cmp_f64(x, y));
     let idx = std::cmp::min(
-        (data.len() as f64 * confidence).ceil() as usize,
+        ((data.len() - 1) as f64 * confidence).ceil() as usize,
         data.len() - 1,
     );
     Estimate {
