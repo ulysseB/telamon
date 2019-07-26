@@ -350,6 +350,11 @@ pub enum ChoiceGroup {
     InstFlag,
     Threads,
     ThreadSize,
+
+    /// Exposes choices from Order defining whether two dimension are
+    /// fused (explicitly sets Order::MERGED or explicitly eliminates
+    /// Order:MERGED)
+    DimFusion,
 }
 
 impl fmt::Display for ChoiceGroup {
@@ -366,6 +371,7 @@ impl fmt::Display for ChoiceGroup {
             InstFlag => "inst_flag",
             Threads => "threads",
             ThreadSize => "thread_size",
+            DimFusion => "dim_fusion",
         })
     }
 }
@@ -398,6 +404,7 @@ impl FromStr for ChoiceGroup {
             "inst_flag" => InstFlag,
             "threads" => Threads,
             "thread_size" => ThreadSize,
+            "dim_fusion" => DimFusion,
             _ => return Err(ParseChoiceGroupError(s.to_string())),
         })
     }

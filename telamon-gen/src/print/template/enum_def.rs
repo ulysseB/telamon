@@ -33,7 +33,7 @@ impl {type_name} {{
             .chain((*self & !other).into_option().into_iter())
     }}
 
-    fn into_option(self) -> Option<Self> {{
+    pub fn into_option(self) -> Option<Self> {{
         if self.is_failed() {{ None }} else {{ Some(self) }}
     }}
 
