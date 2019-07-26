@@ -345,11 +345,20 @@ pub enum ChoiceGroup {
     Size,
     DimKind,
     DimMap,
+    /// Order between all statements
     Order,
+    /// Order between instructions and dimensions
+    InstOrder,
+    /// Order between non-vector dimensions
+    DimOrder,
     MemSpace,
     InstFlag,
+    /// Select thread dimensions (and prevent others from being threads)
     Threads,
+    /// Pick size for dimensions which may be threads
     ThreadSize,
+    /// Select vector dimensions (and prevent others from being vectors)
+    Vectors,
 }
 
 impl fmt::Display for ChoiceGroup {
@@ -362,9 +371,12 @@ impl fmt::Display for ChoiceGroup {
             DimKind => "dim_kind",
             DimMap => "dim_map",
             Order => "order",
+            InstOrder => "inst_order",
+            DimOrder => "dim_order",
             MemSpace => "mem_space",
             InstFlag => "inst_flag",
             Threads => "threads",
+            Vectors => "vectors",
             ThreadSize => "thread_size",
         })
     }
@@ -394,9 +406,12 @@ impl FromStr for ChoiceGroup {
             "dim_kind" => DimKind,
             "dim_map" => DimMap,
             "order" => Order,
+            "inst_order" => InstOrder,
+            "dim_order" => DimOrder,
             "mem_space" => MemSpace,
             "inst_flag" => InstFlag,
             "threads" => Threads,
+            "vectors" => Vectors,
             "thread_size" => ThreadSize,
             _ => return Err(ParseChoiceGroupError(s.to_string())),
         })

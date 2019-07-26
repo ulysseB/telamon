@@ -99,6 +99,12 @@ pub fn list<'a>(
                         Action::DimKind(dim.id(), k)
                     })
                 })),
+                ChoiceGroup::Vectors => Box::new(fun.dims().flat_map(move |dim| {
+                    let kinds = space.domain().get_dim_kind(dim.id());
+                    gen_choice(kinds.bisect(DimKind::VECTOR), &|k| {
+                        Action::DimKind(dim.id(), k)
+                    })
+                })),
                 ChoiceGroup::DimMap => {
                     Box::new(fun.static_dims().enumerate().flat_map(move |(i, lhs)| {
                         fun.static_dims().take(i).flat_map(move |rhs| {
@@ -110,6 +116,47 @@ pub fn list<'a>(
                         })
                     }))
                 }
+                ChoiceGroup::InstOrder => Box::new(fun.insts().flat_map(move |inst| {
+                    let inst_stmt = inst.stmt_id();
+                    fun.dims().flat_map(move |dim| {
+                        let dim_stmt = dim.stmt_id();
+                        let orders = space.domain().get_order(inst_stmt, dim_stmt);
+                        gen_choice(orders.list(), &|o| {
+                            Action::Order(inst_stmt, dim_stmt, o)
+                        })
+                    })
+                })),
+                ChoiceGroup::DimOrder => Box::new(
+                    fun.dims()
+                        .enumerate()
+                        .filter(move |(_, lhs)| {
+                            !space
+                                .domain()
+                                .get_dim_kind(lhs.id())
+                                .is(DimKind::VECTOR)
+                                .is_true()
+                        })
+                        .flat_map(move |(i, lhs)| {
+                            let lhs_id = lhs.stmt_id();
+                            fun.dims()
+                                .take(i)
+                                .filter(move |rhs| {
+                                    !space
+                                        .domain()
+                                        .get_dim_kind(rhs.id())
+                                        .is(DimKind::VECTOR)
+                                        .is_true()
+                                })
+                                .flat_map(move |rhs| {
+                                    let rhs_id = rhs.stmt_id();
+
+                                    let orders = space.domain().get_order(lhs_id, rhs_id);
+                                    gen_choice(orders.list(), &|o| {
+                                        Action::Order(lhs_id, rhs_id, o)
+                                    })
+                                })
+                        }),
+                ),
                 ChoiceGroup::Order => {
                     Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
                         // TODO(search_space): avoid picking ordering decisions that have little impact.
