@@ -355,6 +355,11 @@ pub enum ChoiceGroup {
     /// fused (explicitly sets Order::MERGED or explicitly eliminates
     /// Order:MERGED)
     DimFusion,
+
+    /// Exposes choices from Order defining whether two dimension are
+    /// nested (explicitly sets Order::INNER, Order::OUTER or
+    /// eliminates these two orders)
+    DimNesting,
 }
 
 impl fmt::Display for ChoiceGroup {
@@ -372,6 +377,7 @@ impl fmt::Display for ChoiceGroup {
             Threads => "threads",
             ThreadSize => "thread_size",
             DimFusion => "dim_fusion",
+            DimNesting => "dim_nesting",
         })
     }
 }
@@ -405,6 +411,7 @@ impl FromStr for ChoiceGroup {
             "threads" => Threads,
             "thread_size" => ThreadSize,
             "dim_fusion" => DimFusion,
+            "dim_nesting" => DimNesting,
             _ => return Err(ParseChoiceGroupError(s.to_string())),
         })
     }
