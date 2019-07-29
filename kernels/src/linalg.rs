@@ -2,13 +2,14 @@
 #![allow(clippy::many_single_char_names)]
 use std::sync::Arc;
 
-use crate::compose::{
-    array_activate_inplace, matrix_matrix_multiply, matrix_vector_multiply,
-    tensor_activate, tensor_add, tensor_elementwise_mul, tensor_mad, ActivationFunction,
-};
+pub use crate::compose;
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
 use ::ndarray::{Array1, Array2, Array3, ArrayD};
+use compose::{
+    array_activate_inplace, matrix_matrix_multiply, matrix_vector_multiply,
+    tensor_activate, tensor_add, tensor_elementwise_mul, tensor_mad, ActivationFunction,
+};
 use rand;
 use serde::{Deserialize, Serialize};
 use telamon::explorer::Candidate;

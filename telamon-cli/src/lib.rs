@@ -297,6 +297,15 @@ mod cuda_reference {
         }
     }
 
+    /// Reference implementation for `ResNetCell`.
+    fn resnetcell_reference(
+        handle: &CublasHandle,
+        params: &linalg::ResNetCellP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED!");
+    }
+
     impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CublasHandle {
         type Context = cuda::Context<'a>;
 
@@ -352,6 +361,18 @@ mod cuda_reference {
             gesummv_reference(self, params, context)
         }
     }
+
+    impl<'a> Reference<'a, linalg::ResNetCell<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::ResNetCellP,
+            context: &Self::Context,
+        ) -> f64 {
+            resnetcell_reference(self, params, context)
+        }
+    }
 }
 
 #[cfg(feature = "cuda")]
@@ -360,11 +381,34 @@ pub use cuda_reference::CublasHandle;
 /// Helper enum to create the supported kernel parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelParam {
-    Axpy { n: i32 },
-    MatVec { m: i32, n: i32 },
-    Gesummv { m: i32, n: i32 },
-    Gemm { m: i32, n: i32, k: i32 },
-    BatchMM { b: i32, m: i32, n: i32, k: i32 },
+    Axpy {
+        n: i32,
+    },
+    MatVec {
+        m: i32,
+        n: i32,
+    },
+    Gesummv {
+        m: i32,
+        n: i32,
+    },
+    Gemm {
+        m: i32,
+        n: i32,
+        k: i32,
+    },
+    BatchMM {
+        b: i32,
+        m: i32,
+        n: i32,
+        k: i32,
+    },
+    ResNetCell {
+        m: i32,
+        n: i32,
+        k: i32,
+        activation_fun: Option<linalg::compose::ActivationFunction>,
+    },
 }
 
 impl KernelParam {
@@ -410,6 +454,15 @@ impl KernelParam {
                     context,
                 )
             }
+            KernelParam::ResNetCell {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => build::<'_, '_, linalg::ResNetCell<'_, f32>, C>(
+                linalg::ResNetCellP::new(m, n, k).activation_fun(activation_fun),
+                context,
+            ),
         }
     }
 }
@@ -424,6 +477,19 @@ impl fmt::Display for KernelParam {
             KernelParam::BatchMM { b, m, n, k } => {
                 write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
             }
+            KernelParam::ResNetCell {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => write!(
+                fmt,
+                "resnetcell_{}_{}_{}_{}",
+                m,
+                n,
+                k,
+                linalg::compose::ActivationFunction::opt_to_display(activation_fun)
+            ),
         }
     }
 }
@@ -452,6 +518,9 @@ pub enum KernelErrorKind {
 
     /// A non-integer value was found where an integer value was expected.
     IntError(std::num::ParseIntError),
+
+    /// An invalid activation function was found.
+    ActivationFunctionError(linalg::compose::ActivationFunctionParseError),
 }
 
 impl ParseKernelError {
@@ -475,6 +544,9 @@ impl fmt::Display for ParseKernelError {
                 fmt.write_str("extraneous unexpected kernel parameter")
             }
             KernelErrorKind::IntError(error) => fmt::Display::fmt(error, fmt),
+            KernelErrorKind::ActivationFunctionError(error) => {
+                fmt::Display::fmt(error, fmt)
+            }
         }
     }
 }
@@ -492,6 +564,16 @@ impl From<std::num::ParseIntError> for ParseKernelError {
     fn from(error: std::num::ParseIntError) -> ParseKernelError {
         ParseKernelError {
             kind: KernelErrorKind::IntError(error),
+        }
+    }
+}
+
+impl From<telamon_kernels::compose::ActivationFunctionParseError> for ParseKernelError {
+    fn from(
+        error: telamon_kernels::compose::ActivationFunctionParseError,
+    ) -> ParseKernelError {
+        ParseKernelError {
+            kind: KernelErrorKind::ActivationFunctionError(error),
         }
     }
 }
@@ -550,6 +632,21 @@ impl std::str::FromStr for KernelParam {
                 let n = parse_i32(next_part(&mut parts)?)?;
                 let k = parse_i32(next_part(&mut parts)?)?;
                 BatchMM { b, m, n, k }
+            }
+            "resnetcell" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let activation_fun =
+                    linalg::compose::ActivationFunction::opt_from_string(next_part(
+                        &mut parts,
+                    )?)?;
+                ResNetCell {
+                    m,
+                    n,
+                    k,
+                    activation_fun,
+                }
             }
             _ => {
                 return Err(ParseKernelError {

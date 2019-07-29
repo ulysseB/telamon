@@ -179,6 +179,12 @@ fn main() {
                     idx,
                 )
                 .run(&config, &executor, &reference),
+                ResNetCell { m, n, k, activation_fun } => Benchmark::<'_, linalg::ResNetCell<'_, f32>>::new(
+                    linalg::ResNetCellP::new(m, n, k).activation_fun(activation_fun),
+                    format!("ResNetCell_{}_{}_{}_{}", m, n, k, telamon_kernels::linalg::compose::ActivationFunction::opt_to_display(&activation_fun)),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
             }
         }
     }
