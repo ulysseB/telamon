@@ -2,6 +2,7 @@ use crate::device::ScalarArgument;
 use crate::Scalar;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use telamon::helper::tensor::*;
 use telamon::helper::{AutoOperand, Builder, Reduce};
 use telamon::ir;
@@ -218,13 +219,72 @@ pub fn tensor_elementwise_max<'a, S: ScalarArgument>(
     })
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug, Copy)]
 pub enum ActivationFunction {
     /// Linear rectifier (i.e., max(0, v))
     ReLU,
 
     /// Sigmoid activation function (i.e., 1 / (1 + exp(v))
     Sigmoid,
+}
+
+impl std::fmt::Display for ActivationFunction {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> fmt::Result {
+        match *self {
+            ActivationFunction::ReLU => fmt.write_str("relu"),
+            ActivationFunction::Sigmoid => fmt.write_str("sigmoid"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ActivationFunctionParseError {
+    token: String,
+}
+
+impl fmt::Display for ActivationFunctionParseError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "cannot parse activation function '{}'", self.token)
+    }
+}
+
+impl ActivationFunction {
+    pub fn opt_to_display(
+        activation_opt: &Option<ActivationFunction>,
+    ) -> OptionDisplay<ActivationFunction> {
+        OptionDisplay {
+            inner: &activation_opt,
+            default: "identity",
+        }
+    }
+
+    pub fn opt_from_string(
+        s: &str,
+    ) -> Result<Option<Self>, ActivationFunctionParseError> {
+        match s {
+            "identity" => Ok(None),
+            "relu" => Ok(Some(ActivationFunction::ReLU)),
+            "sigmoid" => Ok(Some(ActivationFunction::Sigmoid)),
+            _ => Err(ActivationFunctionParseError {
+                token: s.to_string(),
+            }),
+        }
+    }
+}
+
+pub struct OptionDisplay<'a, T> {
+    inner: &'a Option<T>,
+    default: &'a str,
+}
+
+impl<T: fmt::Display> fmt::Display for OptionDisplay<'_, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(inner) = self.inner {
+            fmt::Display::fmt(inner, fmt)
+        } else {
+            fmt.write_str(self.default)
+        }
+    }
 }
 
 /// Applies an optional activation function element-wise to the
