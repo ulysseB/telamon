@@ -84,8 +84,8 @@ impl<'a> MctsBuilder<'a> {
         default_policy: Box<dyn mcts::TreePolicy<N, E>>,
     ) -> Option<Candidate>
     where
-        N: Sync + Send + std::fmt::Debug + Default,
-        E: Sync + Send + std::fmt::Debug + Default,
+        N: Sync + Send + std::fmt::Debug + Default + mcts::Reset,
+        E: Sync + Send + std::fmt::Debug + Default + mcts::Reset,
     {
         let MctsBuilder {
             space,
@@ -256,7 +256,10 @@ fn explore_space<T>(
 {
     let best_mutex = &Mutex::new(None);
     let n_evals = &AtomicUsize::new(0);
+    let n_restarts = AtomicUsize::new(0);
+    let is_leader = AtomicUsize::new(0);
     let stabilizer = &context.stabilizer().skip_bad_candidates(true);
+    let barrier = std::sync::Barrier::new(config.num_workers);
 
     context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(context) {
@@ -314,6 +317,24 @@ fn explore_space<T>(
                     warn!("Got disconnected , {:?}", err);
                 }
             });
+
+            if config
+                .restart_every_n_evals
+                .map(|restart_every| {
+                    n_evals.load(Ordering::SeqCst)
+                        > restart_every * n_restarts.load(Ordering::SeqCst)
+                })
+                .unwrap_or(false)
+            {
+                is_leader.fetch_add(1, Ordering::SeqCst);
+                barrier.wait();
+                if is_leader.fetch_sub(1, Ordering::SeqCst) == config.num_workers {
+                    info!("Performing restart");
+                    candidate_store.restart();
+                    n_restarts.fetch_add(1, Ordering::SeqCst);
+                }
+                barrier.wait();
+            }
         }
     });
 }
