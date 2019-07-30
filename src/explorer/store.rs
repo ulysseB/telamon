@@ -29,4 +29,6 @@ pub trait Store: Sync {
     fn explore(&self, context: &dyn Context) -> Option<(Candidate, Self::PayLoad)>;
     /// Displays statistics about the candidate store.
     fn print_stats(&self) {}
+    /// Resets the store to restart evaluation.
+    fn restart(&self) {}
 }

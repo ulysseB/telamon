@@ -46,6 +46,10 @@ pub struct Config {
     /// certain range above the best Therefore, if cut_under is 20%, we can discard any
     /// candidate whose bound is above 80% of the current best.
     pub distance_to_best: Option<f64>,
+    /// Restart the search every n evaluations.
+    ///
+    /// Only supported by the MCTS search algorithm.
+    pub restart_every_n_evals: Option<usize>,
     /// Exploration algorithm to use. Needs to be last for TOML serialization, because it is a table.
     pub algorithm: SearchAlgorithm,
 }
@@ -129,6 +133,7 @@ impl Default for Config {
             timeout: None,
             max_evaluations: None,
             distance_to_best: None,
+            restart_every_n_evals: None,
         }
     }
 }
