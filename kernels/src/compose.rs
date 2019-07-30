@@ -330,3 +330,18 @@ pub fn array_activate_inplace<S, D>(
         None => {}
     }
 }
+
+/// Applies the softmax function to an array `a` in place, i.e., each
+/// element `o_i` of the result has the value `o_i = exp(a_i) /
+/// sum(j = 0 to N, exp(a_j))`, where `a_i` is the i-th value of the
+/// input array `a` and `N` is the number of elements of `a`.
+pub fn array_softmax_inplace<S, D>(
+    a: &mut ndarray::Array<S, D>,
+) where
+    S: Scalar,
+    D: ndarray::Dimension,
+{
+    a.mapv_inplace(|c| S::exp(c));
+    let sum = a.scalar_sum();
+    a.mapv_inplace(|c| c / sum);
+}
