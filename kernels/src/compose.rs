@@ -195,6 +195,18 @@ pub fn tensor_map<'a, S: ScalarArgument>(
     VirtualTensor::new(res_instr, dims)
 }
 
+/// Divides each element of a virtual tensor `t` by a scalar
+/// operand `s`
+pub fn tensor_elementwise_div<'a, S: ScalarArgument>(
+    builder: &mut Builder,
+    t: &VirtualTensor<S>,
+    s: &dyn AutoOperand,
+) -> VirtualTensor<'a, S> {
+    tensor_map(builder, t, |tensor_operand, builder| {
+        builder.div(tensor_operand, s)
+    })
+}
+
 /// Multiplies each element of a virtual tensor `rhs` with a scalar
 /// operand `lhs`
 pub fn tensor_elementwise_mul<'a, S: ScalarArgument>(
