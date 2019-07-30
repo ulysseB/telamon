@@ -185,6 +185,12 @@ fn main() {
                     idx,
                 )
                 .run(&config, &executor, &reference),
+                TransformerCell { m, n, p, r } => Benchmark::<'_, linalg::TransformerCell<'_, f32>>::new(
+                    linalg::TransformerCellP::new(m, n, p, r),
+                    format!("TransformerCell_{}_{}_{}_{}", m, n, p, r),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
             }
         }
     }
