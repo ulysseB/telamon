@@ -306,6 +306,15 @@ mod cuda_reference {
         panic!("NOT IMPLEMENTED!");
     }
 
+    /// Reference implementation for the transformer cell.
+    fn transformercell_reference(
+        handle: &CublasHandle,
+        params: &linalg::TransformerCellP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED!");
+    }
+
     impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CublasHandle {
         type Context = cuda::Context<'a>;
 
@@ -373,6 +382,18 @@ mod cuda_reference {
             resnetcell_reference(self, params, context)
         }
     }
+
+    impl<'a> Reference<'a, linalg::TransformerCell<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::TransformerCellP,
+            context: &Self::Context,
+        ) -> f64 {
+            transformercell_reference(self, params, context)
+        }
+    }
 }
 
 #[cfg(feature = "cuda")]
@@ -408,6 +429,12 @@ pub enum KernelParam {
         n: i32,
         k: i32,
         activation_fun: Option<linalg::compose::ActivationFunction>,
+    },
+    TransformerCell {
+        m: i32,
+        n: i32,
+        p: i32,
+        r: i32,
     },
 }
 
@@ -463,6 +490,12 @@ impl KernelParam {
                 linalg::ResNetCellP::new(m, n, k).activation_fun(activation_fun),
                 context,
             ),
+            KernelParam::TransformerCell { m, n, p, r } => {
+                build::<'_, '_, linalg::TransformerCell<'_, f32>, C>(
+                    linalg::TransformerCellP::new(m, n, p, r),
+                    context,
+                )
+            }
         }
     }
 }
@@ -490,6 +523,9 @@ impl fmt::Display for KernelParam {
                 k,
                 linalg::compose::ActivationFunction::opt_to_display(activation_fun)
             ),
+            KernelParam::TransformerCell { m, n, p, r } => {
+                write!(fmt, "transformercell_{}_{}_{}_{}", m, n, p, r)
+            }
         }
     }
 }
@@ -647,6 +683,13 @@ impl std::str::FromStr for KernelParam {
                     k,
                     activation_fun,
                 }
+            }
+            "transformercell" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let p = parse_i32(next_part(&mut parts)?)?;
+                let r = parse_i32(next_part(&mut parts)?)?;
+                TransformerCell { m, n, p, r }
             }
             _ => {
                 return Err(ParseKernelError {
