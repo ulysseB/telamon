@@ -237,7 +237,12 @@ where
                 (l.eval(context) as usize, (s.eval(context) / s_len) as usize)
             })
             .unzip();
-        let len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l * s).max());
+        let len = sizes
+            .iter()
+            .zip_eq(&strides)
+            .map(|(&l, &s)| l * s)
+            .max()
+            .unwrap_or(1);
         raw.split_off(len);
         unwrap!(ndarray::ArrayBase::from_shape_vec(
             sizes.strides(strides),
