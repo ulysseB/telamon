@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub use crate::compose;
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
-use ::ndarray::{Array1, Array2, Array3, ArrayD};
+use ::ndarray::{Array0, Array1, Array2, Array3, ArrayD};
 use compose::{
     array_activate_inplace, array_softmax_inplace, matrix_matrix_multiply,
     matrix_vector_multiply, tensor_activate, tensor_add, tensor_elementwise_div,
@@ -1168,6 +1168,173 @@ impl<'a, S: Scalar> Kernel<'a> for TransformerCell<'a, S> {
         let o = unwrap!(self.o.read_to_host(context).into_shape(o_shape));
         if let Err(invalid) = check_output(&o, expected) {
             Err(format!("Invalid transformercell output: {}", invalid))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct TransformerCellTopHalfP {
+    pub m: i32,
+    pub n: i32,
+    pub p: i32,
+    pub transpose_q: bool,
+    pub transpose_k: bool,
+    pub generic: bool,
+    pub m_tiling: Option<helper::TilingPattern>,
+    pub n_tiling: Option<helper::TilingPattern>,
+    pub p_tiling: Option<helper::TilingPattern>,
+}
+
+impl TransformerCellTopHalfP {
+    pub fn new(m: i32, n: i32, p: i32) -> Self {
+        TransformerCellTopHalfP {
+            m,
+            n,
+            p,
+            transpose_q: false,
+            transpose_k: false,
+            generic: true,
+            m_tiling: None,
+            n_tiling: None,
+            p_tiling: None,
+        }
+    }
+
+    pub fn transpose_q(mut self) -> Self {
+        self.transpose_q = true;
+        self
+    }
+
+    pub fn transpose_k(mut self) -> Self {
+        self.transpose_k = true;
+        self
+    }
+
+    /// Inline the sizes in the generated code.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
+        self
+    }
+}
+
+/// Computes `O = elementwise_exp(scale(Q.V))` and `S =
+/// scalar_sum(O)`, which corresponds to the first half of the
+/// computation of `TransformerCell` (break in the middle of softmax).
+pub struct TransformerCellTopHalf<'a, S: Scalar> {
+    pub params: TransformerCellTopHalfP,
+    q: Tensor<'a, S>,
+    k: Tensor<'a, S>,
+    o: Tensor<'a, S>,
+    s: Tensor<'a, S>,
+}
+
+impl<'a, S: Scalar> TransformerCellTopHalf<'a, S> {
+    fn scaling_factor(&self) -> S {
+        S::from(1f64 / f64::sqrt(self.params.p as f64 * self.params.n as f64)).unwrap()
+    }
+}
+
+impl<'a, S: Scalar> Kernel<'a> for TransformerCellTopHalf<'a, S> {
+    type Parameters = TransformerCellTopHalfP;
+    type ExpectedOutput = (Array2<S>, S);
+
+    fn name() -> &'static str {
+        "transformercelltophalf"
+    }
+
+    fn build_signature<AM>(
+        params: TransformerCellTopHalfP,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let p_size = create_size(params.p, "p", params.generic, builder);
+
+        let q = TensorBuilder::new("q", vec![m_size.clone(), p_size.clone()])
+            .doif(params.transpose_q, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let k = TensorBuilder::new("k", vec![p_size, n_size.clone()])
+            .doif(params.transpose_k, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let o = builder.tensor::<S>("o", vec![m_size, n_size], false);
+        let s = builder.tensor::<S>("s", vec![], false);
+
+        TransformerCellTopHalf { params, q, k, o, s }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
+        let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
+        let p_tiling = infer_tiling(self.params.p, &self.params.p_tiling, &[32]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let q = self.q.load(vec![m_tiling, p_tiling.clone()], &mut builder);
+        let k = self
+            .k
+            .load(vec![p_tiling.clone(), n_tiling.clone()], &mut builder);
+
+        let qk = matrix_matrix_multiply(&mut builder, &q, &k);
+        let qk_scaled = tensor_elementwise_mul(&mut builder, &self.scaling_factor(), &qk);
+        let qk_scaled_exp = tensor_map(&mut builder, &qk_scaled, |telem, builder| {
+            builder.exp(telem)
+        });
+
+        let sum = tensor_sum(&mut builder, &qk_scaled_exp);
+
+        qk_scaled_exp.store(&self.o, &mut builder);
+        sum.store(&self.s, &mut builder);
+
+        let candidate = build_candidate(builder.get(), ctx);
+
+        vec![candidate]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
+        let q_shape = (self.params.m as usize, self.params.p as usize);
+        let k_shape = (self.params.p as usize, self.params.n as usize);
+
+        let q = unwrap!(self.q.read_to_host(context).into_shape(q_shape));
+        let k = unwrap!(self.k.read_to_host(context).into_shape(k_shape));
+
+        let mut qk = q.dot(&k);
+        qk.mapv_inplace(|c| S::exp(c * self.scaling_factor()));
+        let sum = qk.scalar_sum();
+
+        (qk, sum)
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let o_shape = (self.params.m as usize, self.params.n as usize);
+        let o = unwrap!(self.o.read_to_host(context).into_shape(o_shape));
+        let s = unwrap!(self.s.read_to_host(context).into_shape(()));
+
+        if let Err(invalid) = check_output(&o, &expected.0) {
+            Err(format!(
+                "Invalid transformercelltophalf matrix output: {}",
+                invalid
+            ))
+        } else if let Err(invalid) = check_output(&s, &Array0::from_elem((), expected.1))
+        {
+            Err(format!(
+                "Invalid transformercelltophalf sum output: {}",
+                invalid
+            ))
         } else {
             Ok(())
         }
