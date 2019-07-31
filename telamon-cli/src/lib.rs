@@ -315,6 +315,16 @@ mod cuda_reference {
         panic!("NOT IMPLEMENTED!");
     }
 
+    /// Reference implementation for the first operations of the
+    /// transformer cell.
+    fn transformercelltophalf_reference(
+        handle: &CublasHandle,
+        params: &linalg::TransformerCellTopHalfP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED");
+    }
+
     impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CublasHandle {
         type Context = cuda::Context<'a>;
 
@@ -394,6 +404,18 @@ mod cuda_reference {
             transformercell_reference(self, params, context)
         }
     }
+
+    impl<'a> Reference<'a, linalg::TransformerCellTopHalf<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::TransformerCellTopHalfP,
+            context: &Self::Context,
+        ) -> f64 {
+            transformercelltophalf_reference(self, params, context)
+        }
+    }
 }
 
 #[cfg(feature = "cuda")]
@@ -435,6 +457,11 @@ pub enum KernelParam {
         n: i32,
         p: i32,
         r: i32,
+    },
+    TransformerCellTopHalf {
+        m: i32,
+        n: i32,
+        p: i32,
     },
 }
 
@@ -496,6 +523,12 @@ impl KernelParam {
                     context,
                 )
             }
+            KernelParam::TransformerCellTopHalf { m, n, p } => {
+                build::<'_, '_, linalg::TransformerCellTopHalf<'_, f32>, C>(
+                    linalg::TransformerCellTopHalfP::new(m, n, p),
+                    context,
+                )
+            }
         }
     }
 }
@@ -525,6 +558,9 @@ impl fmt::Display for KernelParam {
             ),
             KernelParam::TransformerCell { m, n, p, r } => {
                 write!(fmt, "transformercell_{}_{}_{}_{}", m, n, p, r)
+            }
+            KernelParam::TransformerCellTopHalf { m, n, p } => {
+                write!(fmt, "transformercelltophalf_{}_{}_{}", m, n, p)
             }
         }
     }
@@ -690,6 +726,12 @@ impl std::str::FromStr for KernelParam {
                 let p = parse_i32(next_part(&mut parts)?)?;
                 let r = parse_i32(next_part(&mut parts)?)?;
                 TransformerCell { m, n, p, r }
+            }
+            "transformercelltophalf" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let p = parse_i32(next_part(&mut parts)?)?;
+                TransformerCellTopHalf { m, n, p }
             }
             _ => {
                 return Err(ParseKernelError {

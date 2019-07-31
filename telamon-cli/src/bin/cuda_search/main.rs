@@ -191,6 +191,12 @@ fn main() {
                     idx,
                 )
                 .run(&config, &executor, &reference),
+                TransformerCellTopHalf { m, n, p } => Benchmark::<'_, linalg::TransformerCellTopHalf<'_, f32>>::new(
+                    linalg::TransformerCellTopHalfP::new(m, n, p),
+                    format!("TransformerCellTopHalf_{}_{}_{}", m, n, p),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
             }
         }
     }
