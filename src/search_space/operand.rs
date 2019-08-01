@@ -5,27 +5,6 @@ use crate::search_space::choices::{Action, DimKind, DimMapping, Order};
 use fxhash::FxHashSet;
 use log::debug;
 
-/// Collects all dimensions in `dims` that are reduction dimensions of
-/// `Reduce` operands of `inst_id`.
-fn collect_direct_reduce_dims(
-    fun: &ir::Function,
-    inst_id: ir::InstId,
-    dims: &mut FxHashSet<ir::DimId>,
-) {
-    let instr = fun.inst(inst_id);
-
-    for src_op in instr.operands() {
-        match *src_op {
-            Reduce(_, _, _, ref reduce_dims) => {
-                for d in reduce_dims {
-                    dims.insert(d.clone());
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
 /// Adds an order action to `actions` for all reduction dimensions of
 /// reductions that the instruction `inst_id` depends on, such that
 /// the instruction is placed after the reduction dimensions. This
@@ -45,7 +24,7 @@ fn collect_direct_reduce_dims(
 /// `@2` uses the results of `@0` and `@1`, which are reduced over
 /// `%1` and `%2`, respectively.
 fn order_reduce_dims(fun: &ir::Function, inst_id: ir::InstId, actions: &mut Vec<Action>) {
-    let mut red_dim_set = Default::default();
+    let mut red_dim_set: FxHashSet<_> = Default::default();
     let instr = fun.inst(inst_id);
 
     // Collect reduction dimensions of reductions that are operands of
@@ -53,7 +32,7 @@ fn order_reduce_dims(fun: &ir::Function, inst_id: ir::InstId, actions: &mut Vec<
     for operand in instr.operands() {
         match *operand {
             Inst(op_inst_id, ..) | Reduce(op_inst_id, ..) => {
-                collect_direct_reduce_dims(fun, op_inst_id, &mut red_dim_set);
+                red_dim_set.extend(fun.inst(op_inst_id).iter_reduced_dims());
             }
             _ => {}
         }

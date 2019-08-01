@@ -87,6 +87,20 @@ impl<L> Instruction<L> {
         self.operator.operands()
     }
 
+    /// Iterate over the dimensions that appear in `Reduce` operands for this instruction.
+    pub fn iter_reduced_dims<'a>(&'a self) -> impl Iterator<Item = ir::DimId> + 'a {
+        self.operator.iter_operands().flat_map(|operand| {
+            match operand {
+                Operand::Reduce(_, _, _, reduce_dims) => {
+                    Some(reduce_dims.into_iter().cloned())
+                }
+                _ => None,
+            }
+            .into_iter()
+            .flatten()
+        })
+    }
+
     /// Returns the type of the variable produced by an instruction.
     pub fn t(&self) -> Option<Type> {
         self.operator.t()
