@@ -430,7 +430,11 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
         num_strided_dims,
     );
     let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
-    let operator = ir::Operator::Ld(*loaded_type, address, access_pattern);
+    let operator = ir::Operator::Ld {
+        t: *loaded_type,
+        operands: [address],
+        access_pattern,
+    };
     Box::into_raw(Box::new(Operator(operator)))
 }
 
@@ -458,7 +462,11 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     );
     let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
     let value = Box::from_raw(value).0;
-    let operator = ir::Operator::St(address, value, true, access_pattern);
+    let operator = ir::Operator::St {
+        operands: [address, value],
+        has_side_effects: true,
+        access_pattern,
+    };
     Box::into_raw(Box::new(Operator(operator)))
 }
 

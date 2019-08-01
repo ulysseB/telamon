@@ -154,11 +154,21 @@ pub enum Operator<L = LoweringMap> {
     /// result to the third.
     Mad(Operand<L>, Operand<L>, Operand<L>, Rounding),
     /// Loads a value of the given type from the given address.
-    Ld(Type, Operand<L>, AccessPattern),
+    // TODO: in_range; default_value
+    Ld {
+        t: Type,
+        operands: [Operand<L>; 1],
+        access_pattern: AccessPattern,
+    },
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
-    St(Operand<L>, Operand<L>, bool, AccessPattern),
+    // TODO: in_range
+    St {
+        operands: [Operand<L>; 2],
+        has_side_effects: bool,
+        access_pattern: AccessPattern,
+    },
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
@@ -216,12 +226,19 @@ impl<L> Operator<L> {
                     (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             }
-            Ld(_, ref addr, ref pattern) => {
+            Ld {
+                operands: [ref addr],
+                access_pattern: ref pattern,
+            } => {
                 pattern.check(iter_dims)?;
                 let pointer_type = pattern.pointer_type(fun.device());
                 ir::TypeError::check_equals(addr.t(), pointer_type)?;
             }
-            St(ref addr, _, _, ref pattern) => {
+            St {
+                operands: [ref addr, _],
+                access_pattern: ref pattern,
+                ..
+            } => {
                 pattern.check(iter_dims)?;
                 let pointer_type = pattern.pointer_type(fun.device());
                 ir::TypeError::check_equals(addr.t(), pointer_type)?;
@@ -235,21 +252,24 @@ impl<L> Operator<L> {
     pub fn t(&self) -> Option<Type> {
         match self {
             Mad(_, _, op, _) => Some(op.t()),
-            Ld(t, ..) | TmpLd(t, _) | Mul(.., t) => Some(*t),
+            Ld { t, .. } | TmpLd(t, _) | Mul(.., t) => Some(*t),
             BinOp(operator, lhs, ..) => Some(operator.t(lhs.t())),
             UnaryOp(operator, operand) => Some(operator.t(operand.t())),
-            St(..) | TmpSt(..) => None,
+            St { .. } | TmpSt(..) => None,
         }
     }
 
     /// Retruns the list of operands.
     pub fn operands(&self) -> Vec<&Operand<L>> {
         match self {
-            BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
-                vec![lhs, rhs]
-            }
+            BinOp(_, lhs, rhs, _)
+            | Mul(lhs, rhs, _, _)
+            | St {
+                operands: [lhs, rhs],
+                ..
+            } => vec![lhs, rhs],
             Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
-            UnaryOp(_, op) | Ld(_, op, _) | TmpSt(op, _) => vec![op],
+            UnaryOp(_, op) | Ld { operands: [op], .. } | TmpSt(op, _) => vec![op],
             TmpLd(..) => vec![],
         }
     }
@@ -257,20 +277,30 @@ impl<L> Operator<L> {
     /// Retruns the list of mutable references to operands.
     pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<L>> {
         match self {
-            BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
-                vec![lhs, rhs]
-            }
+            BinOp(_, lhs, rhs, _)
+            | Mul(lhs, rhs, _, _)
+            | St {
+                operands: [lhs, rhs],
+                ..
+            } => vec![lhs, rhs],
             Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
-            UnaryOp(_, op, ..) | Ld(_, op, ..) | TmpSt(op, _) => vec![op],
+            UnaryOp(_, op, ..) | Ld { operands: [op], .. } | TmpSt(op, _) => vec![op],
             TmpLd(..) => vec![],
         }
     }
 
     /// Returns true if the operator has side effects.
     pub fn has_side_effects(&self) -> bool {
-        match self {
-            St(_, _, b, _) => *b,
-            BinOp(..) | UnaryOp(..) | Mul(..) | Mad(..) | Ld(..) | TmpLd(..)
+        match *self {
+            St {
+                has_side_effects, ..
+            } => has_side_effects,
+            BinOp(..)
+            | UnaryOp(..)
+            | Mul(..)
+            | Mad(..)
+            | Ld { .. }
+            | TmpLd(..)
             | TmpSt(..) => false,
         }
     }
@@ -278,7 +308,7 @@ impl<L> Operator<L> {
     /// Indicates if the operator accesses memory.
     pub fn is_mem_access(&self) -> bool {
         match self {
-            St(..) | Ld(..) | TmpSt(..) | TmpLd(..) => true,
+            St { .. } | Ld { .. } | TmpSt(..) | TmpLd(..) => true,
             _ => false,
         }
     }
@@ -293,9 +323,14 @@ impl<L> Operator<L> {
     /// Returns the pattern of access to the memory by the instruction, if any.
     pub fn mem_access_pattern(&self) -> Option<Cow<AccessPattern>> {
         match *self {
-            Ld(_, _, ref pattern) | St(_, _, _, ref pattern) => {
-                Some(Cow::Borrowed(pattern))
+            Ld {
+                access_pattern: ref pattern,
+                ..
             }
+            | St {
+                access_pattern: ref pattern,
+                ..
+            } => Some(Cow::Borrowed(pattern)),
             TmpLd(_, mem_id) | TmpSt(_, mem_id) => {
                 Some(Cow::Owned(AccessPattern::Unknown(Some(mem_id))))
             }
@@ -330,14 +365,30 @@ impl<L> Operator<L> {
                 let oper3 = f(oper3);
                 Mad(oper1, oper2, oper3, rounding)
             }
-            Ld(t, oper1, ap) => {
+            Ld {
+                t,
+                operands: [oper1],
+                access_pattern,
+            } => {
                 let oper1 = f(oper1);
-                Ld(t, oper1, ap)
+                Ld {
+                    t,
+                    operands: [oper1],
+                    access_pattern,
+                }
             }
-            St(oper1, oper2, side_effects, ap) => {
+            St {
+                operands: [oper1, oper2],
+                has_side_effects,
+                access_pattern,
+            } => {
                 let oper1 = f(oper1);
                 let oper2 = f(oper2);
-                St(oper1, oper2, side_effects, ap)
+                St {
+                    operands: [oper1, oper2],
+                    has_side_effects,
+                    access_pattern,
+                }
             }
             TmpLd(t, id) => TmpLd(t, id),
             TmpSt(oper1, id) => {
@@ -372,8 +423,13 @@ impl<L> ir::IrDisplay<L> for Operator<L> {
                 arg1.display(function),
                 arg2.display(function)
             ),
-            Ld(_t, arg, _ap) => write!(fmt, "load({})", arg.display(function)),
-            St(dst, src, _side_effects, _ap) => write!(
+            Ld {
+                operands: [arg], ..
+            } => write!(fmt, "load({})", arg.display(function)),
+            St {
+                operands: [dst, src],
+                ..
+            } => write!(
                 fmt,
                 "store({}, {})",
                 dst.display(function),
@@ -400,8 +456,13 @@ impl<L> std::fmt::Display for Operator<L> {
             Mad(arg0, arg1, arg2, rnd) => {
                 write!(fmt, "Mad[{}]({}, {}, {})", rnd, arg0, arg1, arg2)
             }
-            Ld(_t, arg, _ap) => write!(fmt, "Load({})", arg),
-            St(dst, src, _side_effects, _ap) => write!(fmt, "Store({}, {})", dst, src),
+            Ld {
+                operands: [arg], ..
+            } => write!(fmt, "Load({})", arg),
+            St {
+                operands: [dst, src],
+                ..
+            } => write!(fmt, "Store({}, {})", dst, src),
             TmpLd(_t, mem) => write!(fmt, "TempLoad({})", mem),
             TmpSt(src, mem) => write!(fmt, "TempStore({}, {})", mem, src),
         }

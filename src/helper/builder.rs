@@ -163,7 +163,11 @@ impl Builder {
         flags: InstFlag,
     ) -> InstId {
         let addr_op = self.get_op(addr);
-        let inst_id = self.inst(op::Ld(ret_type, addr_op, pattern));
+        let inst_id = self.inst(op::Ld {
+            t: ret_type,
+            operands: [addr_op],
+            access_pattern: pattern,
+        });
         self.actions.push(Action::InstFlag(inst_id, flags));
         inst_id
     }
@@ -189,7 +193,11 @@ impl Builder {
     ) -> InstId {
         let addr_op = self.get_op(addr);
         let val_op = self.get_op(val);
-        let inst_id = self.inst(op::St(addr_op, val_op, side_effect, pattern));
+        let inst_id = self.inst(op::St {
+            operands: [addr_op, val_op],
+            has_side_effects: side_effect,
+            acccess_pattern: pattern,
+        });
         self.actions.push(Action::InstFlag(inst_id, flags));
         inst_id
     }

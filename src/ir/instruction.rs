@@ -134,11 +134,19 @@ impl<L> Instruction<L> {
         self.operator = match self.operator.clone() {
             Operator::TmpLd(t, id2) => {
                 assert_eq!(ld_pattern.mem_block(), Some(id2));
-                Operator::Ld(t, ld_idx, ld_pattern)
+                Operator::Ld {
+                    t,
+                    operands: [ld_idx],
+                    access_pattern: ld_pattern,
+                }
             }
             Operator::TmpSt(val, id2) => {
                 assert_eq!(st_pattern.mem_block(), Some(id2));
-                Operator::St(st_idx, val, false, st_pattern)
+                Operator::St {
+                    operands: [st_idx, val],
+                    has_side_effects: false,
+                    access_pattern: st_pattern,
+                }
             }
             _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering"),
         };

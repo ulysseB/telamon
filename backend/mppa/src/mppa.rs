@@ -66,8 +66,8 @@ impl device::Device for Mppa {
 
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
         match op {
-            ir::Operator::Ld(..)
-            | ir::Operator::St(..)
+            ir::Operator::Ld { .. }
+            | ir::Operator::St { .. }
             | ir::Operator::TmpLd(..)
             | ir::Operator::TmpSt(..) => InstFlag::BLOCK_COHERENT,
             _ => panic!("not a memory operation"),
