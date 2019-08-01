@@ -1049,6 +1049,184 @@ impl<'a, S: Scalar> Kernel<'a> for ResNetCellTopHalf<'a, S> {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
+pub struct ResNetCellBottomHalfP {
+    pub m: i32,
+    pub n: i32,
+    pub k: i32,
+    pub transpose_actab: bool,
+    pub transpose_a: bool,
+    pub transpose_c: bool,
+    pub transpose_o: bool,
+    pub generic: bool,
+    pub m_tiling: Option<helper::TilingPattern>,
+    pub n_tiling: Option<helper::TilingPattern>,
+    pub k_tiling: Option<helper::TilingPattern>,
+    pub activation_fun: Option<ActivationFunction>,
+}
+
+impl ResNetCellBottomHalfP {
+    pub fn new<F>(m: i32, n: i32, k: i32, activation_fun: F) -> Self
+    where
+        F: Into<Option<ActivationFunction>>,
+    {
+        ResNetCellBottomHalfP {
+            m,
+            n,
+            k,
+            transpose_actab: false,
+            transpose_a: false,
+            transpose_c: false,
+            transpose_o: false,
+            generic: true,
+            m_tiling: None,
+            n_tiling: None,
+            k_tiling: None,
+            activation_fun: activation_fun.into(),
+        }
+    }
+
+    pub fn transpose_actab(mut self) -> Self {
+        self.transpose_actab = true;
+        self
+    }
+
+    pub fn transpose_a(mut self) -> Self {
+        self.transpose_a = true;
+        self
+    }
+
+    pub fn transpose_c(mut self) -> Self {
+        self.transpose_c = true;
+        self
+    }
+
+    pub fn transpose_o(mut self) -> Self {
+        self.transpose_o = true;
+        self
+    }
+
+    pub fn activation_fun<F>(mut self, fun: F) -> Self
+    where
+        F: Into<Option<ActivationFunction>>,
+    {
+        self.activation_fun = fun.into();
+        self
+    }
+
+    /// Inline the sizes in the generated code.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
+        self
+    }
+}
+
+/// Computes `O = activation(ACTAB.C)+A`
+pub struct ResNetCellBottomHalf<'a, S: Scalar> {
+    pub params: ResNetCellBottomHalfP,
+    act_ab: Tensor<'a, S>,
+    c: Tensor<'a, S>,
+    a: Tensor<'a, S>,
+    o: Tensor<'a, S>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for ResNetCellBottomHalf<'a, S> {
+    type Parameters = ResNetCellBottomHalfP;
+    type ExpectedOutput = Array2<S>;
+
+    fn name() -> &'static str {
+        "resnetcellbottomhalf"
+    }
+
+    fn build_signature<AM>(
+        params: ResNetCellBottomHalfP,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let k_size = create_size(params.k, "k", params.generic, builder);
+
+        let act_ab = TensorBuilder::new("act_ab", vec![n_size.clone(), m_size.clone()])
+            .doif(params.transpose_actab, |b| b.transpose(0, 1))
+            .finish(builder);
+        let a = TensorBuilder::new("a", vec![n_size.clone(), k_size.clone()])
+            .doif(params.transpose_a, |b| b.transpose(0, 1))
+            .finish(builder);
+        let c = TensorBuilder::new("c", vec![m_size, n_size.clone()])
+            .doif(params.transpose_c, |b| b.transpose(0, 1))
+            .finish(builder);
+        let o = builder.tensor::<S>("o", vec![n_size, k_size], false);
+
+        ResNetCellBottomHalf {
+            params,
+            act_ab,
+            c,
+            a,
+            o,
+        }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
+        let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
+        let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32, 4]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let act_ab = self
+            .act_ab
+            .load(vec![n_tiling.clone(), m_tiling.clone()], &mut builder);
+        let c = self.c.load(vec![m_tiling, n_tiling.clone()], &mut builder);
+        let a = self.a.load(vec![n_tiling, k_tiling], &mut builder);
+
+        let act_ab_c = matrix_matrix_multiply(&mut builder, &act_ab, &c);
+        let act_ab_c_pa = matrix_matrix_multiply(&mut builder, &act_ab_c, &a);
+        let act_act_ab_c_pa =
+            tensor_activate(&mut builder, act_ab_c_pa, &self.params.activation_fun);
+
+        act_act_ab_c_pa.store(&self.o, &mut builder);
+
+        vec![build_candidate(builder.get(), ctx)]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
+        let act_ab_shape = (self.params.n as usize, self.params.m as usize);
+        let c_shape = (self.params.m as usize, self.params.n as usize);
+        let a_shape = (self.params.n as usize, self.params.k as usize);
+
+        let act_ab = unwrap!(self.act_ab.read_to_host(context).into_shape(act_ab_shape));
+        let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
+        let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
+
+        let mut act_ab_c = act_ab.dot(&c);
+        array_activate_inplace(&mut act_ab_c, &self.params.activation_fun);
+        let act_act_ab_c_pa = act_ab_c + a;
+
+        act_act_ab_c_pa
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let o_shape = (self.params.n as usize, self.params.k as usize);
+        let o = unwrap!(self.o.read_to_host(context).into_shape(o_shape));
+        if let Err(invalid) = check_output(&o, expected) {
+            Err(format!("Invalid resnetcellbottomhalf output: {}", invalid))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
 pub struct TransformerCellP {
     pub m: i32,
     pub n: i32,
