@@ -1,5 +1,5 @@
 //! Describes a `Function` that is ready to execute on a device.
-use std::{self, fmt};
+use std::{fmt, sync::Arc};
 
 use crate::codegen::{
     self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar,
@@ -18,9 +18,9 @@ pub struct Function<'a> {
     cfg: Cfg<'a>,
     thread_dims: Vec<Dimension<'a>>,
     block_dims: Vec<Dimension<'a>>,
-    device_code_args: Vec<ParamVal<'a>>,
+    device_code_args: Vec<ParamVal>,
     induction_vars: Vec<InductionVar<'a>>,
-    mem_blocks: Vec<MemoryRegion<'a>>,
+    mem_blocks: Vec<MemoryRegion>,
     init_induction_levels: Vec<InductionLevel<'a>>,
     variables: Vec<codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
@@ -108,7 +108,7 @@ impl<'a> Function<'a> {
     }
 
     /// Returns the values to pass from the host to the device.
-    pub fn device_code_args(&self) -> impl Iterator<Item = &ParamVal<'a>> {
+    pub fn device_code_args(&self) -> impl Iterator<Item = &ParamVal> {
         self.device_code_args.iter()
     }
 
@@ -172,33 +172,33 @@ impl<'a> fmt::Display for Function<'a> {
 
 /// Represents the value of a parameter passed to the kernel by the host.
 #[derive(Debug)]
-pub enum ParamVal<'a> {
+pub enum ParamVal {
     /// A parameter given by the caller.
-    External(&'a ir::Parameter, ir::Type),
+    External(Arc<ir::Parameter>, ir::Type),
     /// A tiled dimension size computed on the host.
-    Size(codegen::Size<'a>),
+    Size(codegen::Size),
     /// A pointer to a global memory block, allocated by the wrapper.
-    GlobalMem(ir::MemId, codegen::Size<'a>, ir::Type),
+    GlobalMem(ir::MemId, codegen::Size, ir::Type),
 }
 
-impl<'a> ParamVal<'a> {
+impl ParamVal {
     /// Builds the `ParamVal` needed to implement an operand, if any.
-    pub fn from_operand(operand: &'a ir::Operand, space: &SearchSpace) -> Option<Self> {
+    pub fn from_operand(operand: &ir::Operand, space: &SearchSpace) -> Option<Self> {
         match operand {
             ir::Operand::Param(p) => {
                 let t = unwrap!(space.ir_instance().device().lower_type(p.t, space));
-                Some(ParamVal::External(&*p, t))
+                Some(ParamVal::External(p.clone(), t))
             }
             _ => None,
         }
     }
 
     /// Builds the `ParamVal` needed to get a size value, if any.
-    pub fn from_size(size: &codegen::Size<'a>) -> Option<Self> {
+    pub fn from_size(size: &codegen::Size) -> Option<Self> {
         match *size.dividend() {
             [] => None,
-            [p] if size.factor() == 1 && size.divisor() == 1 => {
-                Some(ParamVal::External(p, ir::Type::I(32)))
+            [ref p] if size.factor() == 1 && size.divisor() == 1 => {
+                Some(ParamVal::External(p.clone(), ir::Type::I(32)))
             }
             _ => Some(ParamVal::Size(size.clone())),
         }
@@ -215,29 +215,29 @@ impl<'a> ParamVal<'a> {
     /// Indicates if the parameter is a pointer.
     pub fn is_pointer(&self) -> bool {
         match *self {
-            ParamVal::External(p, _) => matches!(p.t, ir::Type::PtrTo(_)),
+            ParamVal::External(ref p, _) => matches!(p.t, ir::Type::PtrTo(_)),
             ParamVal::GlobalMem(..) => true,
             ParamVal::Size(_) => false,
         }
     }
 
     /// Returns a unique identifier for the `ParamVal`.
-    pub fn key(&self) -> ParamValKey {
+    pub fn key(&self) -> ParamValKey<'_> {
         match *self {
-            ParamVal::External(p, _) => ParamValKey::External(p),
+            ParamVal::External(ref p, _) => ParamValKey::External(&*p),
             ParamVal::Size(ref s) => ParamValKey::Size(s),
             ParamVal::GlobalMem(mem, ..) => ParamValKey::GlobalMem(mem),
         }
     }
 }
 
-hash_from_key!(ParamVal<'a>, ParamVal::key, 'a);
+hash_from_key!(ParamVal, ParamVal::key);
 
 /// Uniquely identifies a `ParamVal`.
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
-    Size(&'a codegen::Size<'a>),
+    Size(&'a codegen::Size),
     GlobalMem(ir::MemId),
 }
 
@@ -246,7 +246,7 @@ pub enum ParamValKey<'a> {
 fn register_mem_blocks<'a>(
     space: &'a SearchSpace,
     block_dims: &[Dimension<'a>],
-) -> Vec<MemoryRegion<'a>> {
+) -> Vec<MemoryRegion> {
     let num_thread_blocks = block_dims.iter().fold(None, |pred, block| {
         if let Some(mut pred) = pred {
             pred *= block.size();
@@ -263,10 +263,10 @@ fn register_mem_blocks<'a>(
 }
 
 /// A memory block allocated by the kernel.
-pub struct MemoryRegion<'a> {
+pub struct MemoryRegion {
     id: ir::MemId,
-    size: codegen::Size<'a>,
-    num_private_copies: Option<codegen::Size<'a>>,
+    size: codegen::Size,
+    num_private_copies: Option<codegen::Size>,
     mem_space: MemSpace,
     ptr_type: ir::Type,
 }
@@ -279,12 +279,12 @@ pub enum AllocationScheme {
     Shared,
 }
 
-impl<'a> MemoryRegion<'a> {
+impl MemoryRegion {
     /// Creates a new MemoryRegion from an `ir::Mem`.
     pub fn new(
-        block: &'a ir::mem::Block,
-        num_threads_groups: &Option<codegen::Size<'a>>,
-        space: &'a SearchSpace,
+        block: &ir::mem::Block,
+        num_threads_groups: &Option<codegen::Size>,
+        space: &SearchSpace,
     ) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
@@ -313,8 +313,8 @@ impl<'a> MemoryRegion<'a> {
     pub fn host_values(
         &self,
         space: &SearchSpace,
-        block_dims: &[Dimension<'a>],
-    ) -> Vec<ParamVal<'a>> {
+        block_dims: &[Dimension<'_>],
+    ) -> Vec<ParamVal> {
         let mut out = if self.mem_space == MemSpace::GLOBAL {
             let t = ir::Type::PtrTo(self.id);
             let t = unwrap!(space.ir_instance().device().lower_type(t, space));
@@ -355,7 +355,7 @@ impl<'a> MemoryRegion<'a> {
     }
 
     /// Generates the size of the memory to allocate.
-    pub fn alloc_size(&self) -> codegen::Size<'a> {
+    pub fn alloc_size(&self) -> codegen::Size {
         let mut out = self.size.clone();
         if let Some(ref s) = self.num_private_copies {
             out *= s
@@ -364,7 +364,7 @@ impl<'a> MemoryRegion<'a> {
     }
 
     /// Returns the size of the part of the allocated memory accessible by each thread.
-    pub fn local_size(&self) -> &codegen::Size<'a> {
+    pub fn local_size(&self) -> &codegen::Size {
         &self.size
     }
 
@@ -422,10 +422,10 @@ impl<'a> Instruction<'a> {
     }
 
     /// Returns the values to pass from the host to implement this instruction.
-    pub fn host_values(
-        &self,
-        space: &'a SearchSpace,
-    ) -> impl Iterator<Item = ParamVal<'a>> {
+    pub fn host_values<'b>(
+        &'b self,
+        space: &'b SearchSpace,
+    ) -> impl Iterator<Item = ParamVal> + 'b {
         let operands = self.instruction.operator().operands();
         operands
             .into_iter()

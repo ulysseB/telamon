@@ -59,25 +59,25 @@ pub struct NameMap<'a, 'b, VP: ValuePrinter> {
     induction_vars: FxHashMap<ir::IndVarId, String>,
     induction_levels: FxHashMap<(ir::IndVarId, ir::DimId), String>,
     /// Casted sizes.
-    size_casts: FxHashMap<(&'a codegen::Size<'a>, ir::Type), String>,
+    size_casts: FxHashMap<(&'a codegen::Size, ir::Type), String>,
     /// Guard to use in front of instructions with side effects.
     side_effect_guard: Option<RcStr>,
 }
 
 #[derive(Clone)]
-pub enum Nameable<'a, 'b> {
+pub enum Nameable<'a> {
     Ident(Cow<'a, str>),
     Operand(Operand<'a>),
     InductionVar(ir::IndVarId),
     DimIndex(ir::DimId),
     Constant(BigInt, u16),
-    Size(&'a codegen::Size<'b>, ir::Type),
+    Size(&'a codegen::Size, ir::Type),
 }
 
-impl<'a, 'b> Nameable<'a, 'b> {
+impl<'a> Nameable<'a> {
     pub fn name<'c, VP: ValuePrinter>(
         &'c self,
-        namer: &'c NameMap<'b, '_, VP>,
+        namer: &'c NameMap<'_, '_, VP>,
     ) -> Cow<'c, str> {
         use Nameable::*;
 
@@ -94,30 +94,30 @@ impl<'a, 'b> Nameable<'a, 'b> {
     }
 }
 
-pub trait IntoNameable<'a, 'b> {
-    fn into_nameable(self) -> Nameable<'a, 'b>;
+pub trait IntoNameable<'a> {
+    fn into_nameable(self) -> Nameable<'a>;
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for Operand<'a> {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for Operand<'a> {
+    fn into_nameable(self) -> Nameable<'a> {
         Nameable::Operand(self)
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for &'a ir::Operand {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for &'a ir::Operand {
+    fn into_nameable(self) -> Nameable<'a> {
         Operand::Operand(self).into_nameable()
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for ir::IndVarId {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for ir::IndVarId {
+    fn into_nameable(self) -> Nameable<'a> {
         Nameable::InductionVar(self)
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for (ir::IndVarId, Option<ir::DimId>) {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for (ir::IndVarId, Option<ir::DimId>) {
+    fn into_nameable(self) -> Nameable<'a> {
         if let Some(dim_id) = self.1 {
             Operand::InductionLevel(self.0, dim_id).into_nameable()
         } else {
@@ -126,32 +126,32 @@ impl<'a, 'b> IntoNameable<'a, 'b> for (ir::IndVarId, Option<ir::DimId>) {
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for ir::DimId {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for ir::DimId {
+    fn into_nameable(self) -> Nameable<'a> {
         Nameable::DimIndex(self)
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for &'_ Dimension<'_> {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for &'_ Dimension<'_> {
+    fn into_nameable(self) -> Nameable<'a> {
         self.id().into_nameable()
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for i32 {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for i32 {
+    fn into_nameable(self) -> Nameable<'a> {
         Nameable::Constant(self.into(), 32)
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for &'a codegen::Size<'b> {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for &'a codegen::Size {
+    fn into_nameable(self) -> Nameable<'a> {
         (self, ir::Type::I(32)).into_nameable()
     }
 }
 
-impl<'a, 'b> IntoNameable<'a, 'b> for (&'a codegen::Size<'b>, ir::Type) {
-    fn into_nameable(self) -> Nameable<'a, 'b> {
+impl<'a> IntoNameable<'a> for (&'a codegen::Size, ir::Type) {
+    fn into_nameable(self) -> Nameable<'a> {
         Nameable::Size(self.0, self.1)
     }
 }
@@ -272,7 +272,7 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         id
     }
 
-    pub fn name(&self, operand: Operand) -> Cow<str> {
+    pub fn name<'c>(&'c self, operand: Operand<'c>) -> Cow<'c, str> {
         match operand {
             Operand::Operand(op) => self.name_op(op),
             Operand::InductionLevel(ind_var, level) => {
@@ -282,16 +282,16 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Asigns a name to an operand.
-    pub fn name_op(&self, operand: &ir::Operand) -> Cow<str> {
+    pub fn name_op<'c>(&'c self, operand: &'c ir::Operand) -> Cow<'c, str> {
         self.name_op_with_indexes(operand, Cow::Borrowed(&self.current_indexes))
     }
 
     /// Returns the name of the operand, for the given indexes on the given dimensions.
-    fn name_op_with_indexes(
-        &self,
-        operand: &ir::Operand,
+    fn name_op_with_indexes<'c>(
+        &'c self,
+        operand: &'c ir::Operand,
         indexes: Cow<FxHashMap<ir::DimId, usize>>,
-    ) -> Cow<str> {
+    ) -> Cow<'c, str> {
         match operand {
             ir::Operand::Int(val, len) => {
                 Cow::Owned(self.value_printer.get_const_int(val, *len))
@@ -334,11 +334,11 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         self.name_mapped_inst(inst, indexes_map, &DimMap::empty())
     }
 
-    pub fn indexed_op_name(
-        &self,
-        op: &ir::Operand,
+    pub fn indexed_op_name<'c>(
+        &'c self,
+        op: &'c ir::Operand,
         indexes: &[(ir::DimId, u32)],
-    ) -> Cow<str> {
+    ) -> Cow<'c, str> {
         let mut indexes_map = self.current_indexes.clone();
         indexes_map.extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
         self.name_op_with_indexes(op, Cow::Owned(indexes_map))
@@ -414,14 +414,12 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Returns the name of a variable representing a parameter.
-    pub fn name_param(&self, param: ParamValKey) -> Cow<str> {
-        let param = unsafe { std::mem::transmute(param) };
+    pub fn name_param(&self, param: ParamValKey<'a>) -> Cow<str> {
         Cow::Borrowed(&self.params[&param].1)
     }
 
     /// Returns the name of a variable representing a parameter value.
-    pub fn name_param_val(&self, param: ParamValKey) -> Cow<str> {
-        let param = unsafe { std::mem::transmute(param) };
+    pub fn name_param_val(&self, param: ParamValKey<'a>) -> Cow<str> {
         let name = &unwrap!(self.params.get(&param), "cannot find {:?} entry", param).0;
         Cow::Borrowed(name)
     }
@@ -449,7 +447,7 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     /// allcoated.
     pub fn declare_size_cast(
         &mut self,
-        size: &'a codegen::Size<'a>,
+        size: &'a codegen::Size,
         t: ir::Type,
     ) -> Option<String> {
         if size.dividend().is_empty() || t == Type::I(32) {
@@ -464,15 +462,18 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Assigns a name to a size.
-    pub fn name_size(&self, size: &codegen::Size<'a>, expected_t: ir::Type) -> Cow<str> {
-        let size: &'a codegen::Size<'a> = unsafe { std::mem::transmute(size) };
+    pub fn name_size<'c>(
+        &'c self,
+        size: &'c codegen::Size,
+        expected_t: ir::Type,
+    ) -> Cow<'c, str> {
         match (size.dividend(), expected_t) {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);
                 Cow::Owned(size.factor().to_string())
             }
-            (&[p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 => {
-                self.name_param_val(ParamValKey::External(p))
+            ([p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 => {
+                self.name_param_val(ParamValKey::External(&**p))
             }
             (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)),
             _ => {
