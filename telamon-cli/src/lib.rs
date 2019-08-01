@@ -757,7 +757,7 @@ impl std::str::FromStr for KernelParam {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Platform {
     X86,
     Cuda,
@@ -772,6 +772,87 @@ impl std::str::FromStr for Platform {
             "cuda" => Platform::Cuda,
             _ => return Err(format!("invalid platform: {}", s)),
         })
+    }
+}
+impl Platform {
+    pub fn to_builder(self) -> PlatformContextBuilder {
+        match self {
+            #[cfg(feature = "x86")]
+            Platform::X86 => PlatformContextBuilder::X86,
+            #[cfg(feature = "cuda")]
+            Platform::Cuda => {
+                PlatformContextBuilder::Cuda(telamon_cuda::Executor::init())
+            }
+            _ => panic!("platform is not supported"),
+        }
+    }
+}
+
+pub enum PlatformContextBuilder {
+    #[cfg(feature = "x86")]
+    X86,
+    #[cfg(feature = "cuda")]
+    Cuda(telamon_cuda::Executor),
+}
+
+impl PlatformContextBuilder {
+    pub fn build_context(&self) -> PlatformContext<'_> {
+        match self {
+            #[cfg(feature = "x86")]
+            PlatformContextBuilder::X86 => {
+                PlatformContext::X86(telamon_x86::Context::default(), PhantomData)
+            }
+            #[cfg(feature = "cuda")]
+            PlatformContextBuilder::Cuda(executor) => {
+                PlatformContext::Cuda(telamon_cuda::Context::new(executor))
+            }
+        }
+    }
+}
+
+pub enum PlatformContext<'a> {
+    #[cfg(feature = "x86")]
+    X86(telamon_x86::Context, PhantomData<&'a ()>),
+    #[cfg(feature = "cuda")]
+    Cuda(telamon_cuda::Context<'a>),
+}
+
+impl<'a> PlatformContext<'a> {
+    pub fn kernel_bundle(
+        &mut self,
+        kernel: &KernelParam,
+    ) -> (KernelBundle<'_>, &dyn Context) {
+        match self {
+            #[cfg(feature = "x86")]
+            PlatformContext::X86(context, _) => {
+                let (bundle, context) =
+                    kernel.to_bundle(context, X86Reference::default());
+                (bundle, context as &dyn Context)
+            }
+            #[cfg(feature = "cuda")]
+            PlatformContext::Cuda(context) => {
+                let (bundle, context) = kernel.to_bundle(context, CublasHandle::new());
+                (bundle, context as &dyn Context)
+            }
+        }
+    }
+
+    pub fn kernel_build(
+        &mut self,
+        kernel: &KernelParam,
+    ) -> (Vec<Candidate>, &dyn Context) {
+        match self {
+            #[cfg(feature = "x86")]
+            PlatformContext::X86(context, _) => {
+                let (bundle, context) = kernel.build(context);
+                (bundle, context as &dyn Context)
+            }
+            #[cfg(feature = "cuda")]
+            PlatformContext::Cuda(context) => {
+                let (bundle, context) = kernel.build(context);
+                (bundle, context as &dyn Context)
+            }
+        }
     }
 }
 
