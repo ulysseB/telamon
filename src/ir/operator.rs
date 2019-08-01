@@ -141,6 +141,46 @@ impl UnaryOp {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RangePredicate {
+    ind_var: ir::IndVarId,
+    size: ir::Size,
+}
+
+impl RangePredicate {
+    pub fn new(ind_var: ir::IndVarId, size: ir::Size) -> Self {
+        RangePredicate { ind_var, size }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LoadPredicate {
+    in_range: Vec<RangePredicate>,
+    default_value: Operand,
+}
+
+impl LoadPredicate {
+    pub fn new(in_range: Vec<RangePredicate>, default_value: Operand) -> Self {
+        assert!(!in_range.is_empty());
+        LoadPredicate {
+            in_range,
+            default_value,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StorePredicate {
+    in_range: Vec<RangePredicate>,
+}
+
+impl StorePredicate {
+    pub fn new(in_range: Vec<RangePredicate>) -> Self {
+        assert!(!in_range.is_empty());
+        StorePredicate { in_range }
+    }
+}
+
 /// The operation performed by an instruction.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Operator<L = LoweringMap> {
@@ -159,6 +199,7 @@ pub enum Operator<L = LoweringMap> {
         t: Type,
         operands: [Operand<L>; 1],
         access_pattern: AccessPattern,
+        predicate: Option<LoadPredicate>,
     },
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
@@ -168,6 +209,7 @@ pub enum Operator<L = LoweringMap> {
         operands: [Operand<L>; 2],
         has_side_effects: bool,
         access_pattern: AccessPattern,
+        predicate: Option<StorePredicate>,
     },
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),
@@ -229,6 +271,7 @@ impl<L> Operator<L> {
             Ld {
                 operands: [ref addr],
                 access_pattern: ref pattern,
+                ..
             } => {
                 pattern.check(iter_dims)?;
                 let pointer_type = pattern.pointer_type(fun.device());
@@ -369,18 +412,21 @@ impl<L> Operator<L> {
                 t,
                 operands: [oper1],
                 access_pattern,
+                predicate,
             } => {
                 let oper1 = f(oper1);
                 Ld {
                     t,
                     operands: [oper1],
                     access_pattern,
+                    predicate,
                 }
             }
             St {
                 operands: [oper1, oper2],
                 has_side_effects,
                 access_pattern,
+                predicate,
             } => {
                 let oper1 = f(oper1);
                 let oper2 = f(oper2);
@@ -388,6 +434,7 @@ impl<L> Operator<L> {
                     operands: [oper1, oper2],
                     has_side_effects,
                     access_pattern,
+                    predicate,
                 }
             }
             TmpLd(t, id) => TmpLd(t, id),

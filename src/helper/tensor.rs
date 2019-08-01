@@ -211,7 +211,11 @@ where
         } else {
             InstFlag::COHERENT
         };
-        let inst = builder.ld_ex(S::t(), &ptr, pattern, flag);
+        // TODO: default
+        let predicate = builder
+            .predicates_for_logical_dims(&dims)
+            .map(|predicates| ir::LoadPredicate::new(predicates, 0f32.as_operand()));
+        let inst = builder.predicated_ld_ex(S::t(), &ptr, pattern, flag, predicate);
         for dim in &dims {
             builder.close_dim(dim);
         }
@@ -274,11 +278,15 @@ impl VirtualTensor {
             .iter()
             .map(|dim| builder.open_mapped_dim(dim))
             .collect_vec();
+
         let (ptr, pat) = {
             let new_dims = new_dims.iter().collect_vec();
             builder.tensor_access(&tensor.name, None, S::t(), &new_dims)
         };
-        let inst = builder.st(&ptr, &self.inst, pat);
+        let predicate = builder
+            .predicates_for_logical_dims(&new_dims)
+            .map(ir::StorePredicate::new);
+        let inst = builder.predicated_st(&ptr, &self.inst, pat, predicate);
         for dim in &new_dims {
             builder.close_dim(dim);
         }

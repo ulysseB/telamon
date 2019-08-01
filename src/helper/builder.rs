@@ -162,11 +162,23 @@ impl Builder {
         pattern: AccessPattern,
         flags: InstFlag,
     ) -> InstId {
+        self.predicated_ld_ex(ret_type, addr, pattern, flags, None)
+    }
+
+    pub fn predicated_ld_ex(
+        &mut self,
+        ret_type: Type,
+        addr: &dyn AutoOperand,
+        pattern: AccessPattern,
+        flags: InstFlag,
+        predicate: Option<ir::LoadPredicate>,
+    ) -> InstId {
         let addr_op = self.get_op(addr);
         let inst_id = self.inst(op::Ld {
             t: ret_type,
             operands: [addr_op],
             access_pattern: pattern,
+            predicate,
         });
         self.actions.push(Action::InstFlag(inst_id, flags));
         inst_id
@@ -179,7 +191,17 @@ impl Builder {
         val: &dyn AutoOperand,
         pattern: AccessPattern,
     ) -> InstId {
-        self.st_ex(addr, val, true, pattern, InstFlag::ALL)
+        self.predicated_st(addr, val, pattern, None)
+    }
+
+    pub(super) fn predicated_st(
+        &mut self,
+        addr: &dyn AutoOperand,
+        val: &dyn AutoOperand,
+        pattern: AccessPattern,
+        predicate: Option<ir::StorePredicate>,
+    ) -> InstId {
+        self.predicated_st_ex(addr, val, true, pattern, InstFlag::ALL, predicate)
     }
 
     /// Adds a store instruction with the given flags and memory block.
@@ -191,12 +213,25 @@ impl Builder {
         pattern: AccessPattern,
         flags: InstFlag,
     ) -> InstId {
+        self.predicated_st_ex(addr, val, side_effect, pattern, flags, None)
+    }
+
+    pub(super) fn predicated_st_ex(
+        &mut self,
+        addr: &dyn AutoOperand,
+        val: &dyn AutoOperand,
+        side_effect: bool,
+        pattern: AccessPattern,
+        flags: InstFlag,
+        predicate: Option<ir::StorePredicate>,
+    ) -> InstId {
         let addr_op = self.get_op(addr);
         let val_op = self.get_op(val);
         let inst_id = self.inst(op::St {
             operands: [addr_op, val_op],
             has_side_effects: side_effect,
-            acccess_pattern: pattern,
+            access_pattern: pattern,
+            predicate,
         });
         self.actions.push(Action::InstFlag(inst_id, flags));
         inst_id
@@ -406,6 +441,33 @@ impl Builder {
         AccessPattern::Tensor {
             mem_id: mem,
             dims: dims.into_iter().collect(),
+        }
+    }
+
+    pub(super) fn predicates_for_logical_dims<'a, I>(
+        &mut self,
+        dims: I,
+    ) -> Option<Vec<ir::RangePredicate>>
+    where
+        I: IntoIterator<Item = &'a LogicalDim>,
+    {
+        let iter = dims.into_iter();
+        let mut predicates = Vec::with_capacity(iter.size_hint().0);
+
+        for dim in iter {
+            let logical_dim = self.function.logical_dim(dim.id());
+            if logical_dim.total_size().as_constant().is_none() {
+                let total_size = logical_dim.total_size().clone();
+                let induction_var =
+                    self.induction_var(&0i32, vec![(dim, ir::Size::new_const(1))]);
+                predicates.push(ir::RangePredicate::new(induction_var, total_size));
+            }
+        }
+
+        if predicates.is_empty() {
+            None
+        } else {
+            Some(predicates)
         }
     }
 
