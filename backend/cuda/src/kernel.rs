@@ -94,7 +94,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
             .function
             .device_code_args()
             .map(|x| match *x {
-                ParamVal::External(p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
+                ParamVal::External(ref p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
                 ParamVal::Size(ref s) => {
                     ThunkArg::Size(Box::new(args.eval_size(s) as i32))
                 }

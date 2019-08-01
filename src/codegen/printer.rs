@@ -27,41 +27,41 @@ impl MulMode {
 
 use super::name_map::{IntoNameable, Nameable};
 
-pub enum Inst<'a, 'b> {
-    Move(ir::Type, Nameable<'a, 'b>),
-    Add(ir::Type, Nameable<'a, 'b>, Nameable<'a, 'b>),
-    AddAssign(ir::Type, Nameable<'a, 'b>),
+pub enum Inst<'a> {
+    Move(ir::Type, Nameable<'a>),
+    Add(ir::Type, Nameable<'a>, Nameable<'a>),
+    AddAssign(ir::Type, Nameable<'a>),
 }
 
-impl<'a, 'b> Inst<'a, 'b> {
-    fn new_move<I: IntoNameable<'a, 'b>>(t: ir::Type, op: I) -> Self {
+impl<'a> Inst<'a> {
+    fn new_move<I: IntoNameable<'a>>(t: ir::Type, op: I) -> Self {
         Inst::Move(t, op.into_nameable())
     }
 
     fn new_add<A, B>(t: ir::Type, lhs: A, rhs: B) -> Self
     where
-        A: IntoNameable<'a, 'b>,
-        B: IntoNameable<'a, 'b>,
+        A: IntoNameable<'a>,
+        B: IntoNameable<'a>,
     {
         Inst::Add(t, lhs.into_nameable(), rhs.into_nameable())
     }
 
     fn new_add_assign<T>(t: ir::Type, op: T) -> Self
     where
-        T: IntoNameable<'a, 'b>,
+        T: IntoNameable<'a>,
     {
         Inst::AddAssign(t, op.into_nameable())
     }
 }
 
-pub struct Loop<'a, 'b> {
+pub struct Loop<'a> {
     // for (lhs, rhs) in init: lhs = rhs
-    pub inits: Vec<(Nameable<'a, 'b>, Inst<'a, 'b>)>,
+    pub inits: Vec<(Nameable<'a>, Inst<'a>)>,
     // condition is `idx < bound`
-    pub index: Nameable<'a, 'b>,
-    pub bound: Nameable<'a, 'b>,
+    pub index: Nameable<'a>,
+    pub bound: Nameable<'a>,
     // for (lhs, rhs) in update: lhs += rhs
-    pub increments: Vec<(Nameable<'a, 'b>, Inst<'a, 'b>)>,
+    pub increments: Vec<(Nameable<'a>, Inst<'a>)>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -153,7 +153,7 @@ pub trait InstPrinter {
     /// Name an operand, vectorized on the given dimensions.
     fn name_operand<'a>(
         vector_levels: &[Vec<Dimension>; 2],
-        op: &ir::Operand,
+        op: &'a ir::Operand,
         namer: &'a NameMap<Self::ValuePrinter>,
     ) -> Cow<'a, str>;
 
@@ -340,9 +340,9 @@ pub trait InstPrinter {
     ) {
         let idx = dim.id().into_nameable();
 
-        let mut init_vec: Vec<(Nameable<'_, '_>, Inst<'_, '_>)> =
+        let mut init_vec: Vec<(Nameable<'_>, Inst<'_>)> =
             vec![(idx.clone(), Inst::new_move(ir::Type::I(32), 0i32))];
-        let mut update_vec: Vec<(Nameable<'_, '_>, Inst<'_, '_>)> =
+        let mut update_vec: Vec<(Nameable<'_>, Inst<'_>)> =
             vec![(idx.clone(), Inst::new_add_assign(ir::Type::I(32), 1i32))];
 
         let ind_levels = dim.induction_levels();
@@ -560,9 +560,10 @@ pub trait InstPrinter {
             op::St {
                 operands: [addr, val],
                 access_pattern: pattern,
+                has_side_effects,
                 predicate,
             } => {
-                let guard = if inst.has_side_effects() {
+                let guard = if *has_side_effects {
                     namer.side_effect_guard()
                 } else {
                     None
@@ -603,8 +604,8 @@ pub trait InstPrinter {
 
     fn print_inst(
         &mut self,
-        result: &Nameable<'_, '_>,
-        inst: &Inst<'_, '_>,
+        result: &Nameable<'_>,
+        inst: &Inst<'_>,
         namer: &NameMap<'_, '_, Self::ValuePrinter>,
     ) {
         let result = &result.name(namer);
@@ -622,7 +623,7 @@ pub trait InstPrinter {
     fn print_loop(
         &mut self,
         fun: &Function,
-        loop_: &Loop<'_, '_>,
+        loop_: &Loop<'_>,
         body: &[Cfg],
         namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
     ) {

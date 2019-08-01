@@ -518,7 +518,7 @@ impl InstPrinter for X86printer {
 
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
-        op: &ir::Operand,
+        op: &'a ir::Operand,
         value_printer: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
@@ -539,16 +539,16 @@ impl InstPrinter for X86printer {
     fn print_loop(
         &mut self,
         fun: &Function<'_>,
-        loop_: &Loop<'_, '_>,
+        loop_: &Loop<'_>,
         body: &[Cfg<'_>],
         namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
     ) {
-        struct LoopHeader<'a, 'b, 'c, 'd> {
-            loop_: &'a Loop<'a, 'b>,
-            namer: &'a mut NameMap<'c, 'd, ValuePrinter>,
+        struct LoopHeader<'a, 'b, 'c> {
+            loop_: &'a Loop<'a>,
+            namer: &'a mut NameMap<'b, 'c, ValuePrinter>,
         }
 
-        impl<'a, 'b, 'c, 'd> fmt::Display for LoopHeader<'a, 'b, 'c, 'd> {
+        impl<'a, 'b, 'c> fmt::Display for LoopHeader<'a, 'b, 'c> {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(
                     fmt,
