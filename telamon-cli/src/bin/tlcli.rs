@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::sync::{atomic, Arc, Mutex};
+use std::sync::atomic;
 
 use serde_json;
 use structopt::StructOpt;
@@ -15,16 +15,18 @@ use telamon::explorer::{
     eventlog::EventLog,
     mcts, Candidate,
 };
-use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::offline_analysis::tree::CandidateTree;
 use telamon::search_space::SearchSpace;
 
-use telamon_cli::{KernelParam, ReplayPath};
+use telamon_cli::{KernelParam, Platform, ReplayPath};
 
 /// Compute the bound for a given candidate.
 #[derive(StructOpt)]
 struct ComputeBound {
+    #[structopt(long = "platform", default_value = "cuda")]
+    platform: Platform,
+
     /// Kernel specification to use.
     #[structopt(short = "k", long = "kernel")]
     kernel: KernelParam,
@@ -36,9 +38,11 @@ struct ComputeBound {
 
 impl ComputeBound {
     fn run(&self, _args: &Opt) -> io::Result<()> {
-        let executor = telamon_cuda::Executor::init();
-        let mut context = telamon_cuda::Context::new(&executor);
-        let (mut candidates, context) = self.kernel.build(&mut context);
+        let builder = self.platform.to_builder();
+        let mut context = builder.build_context();
+        let (bundle, context) = context.kernel_bundle(&self.kernel);
+        let mut candidates = bundle.candidates;
+
         assert!(candidates.len() == 1);
         let mut candidate = candidates.swap_remove(0).space;
 
@@ -63,6 +67,9 @@ impl ComputeBound {
 /// Compute bounds.csv
 #[derive(StructOpt)]
 struct Bounds {
+    #[structopt(long = "platform", default_value = "cuda")]
+    platform: Platform,
+
     #[structopt(long = "order")]
     order: Option<config::ChoiceOrdering>,
 
@@ -168,11 +175,11 @@ impl Bounds {
     }
 
     fn run(&self, _args: &Opt) -> io::Result<()> {
-        let executor = telamon_cuda::Executor::init();
-        let mut context = telamon_cuda::Context::new(&executor);
-        let (candidates, context) = self.kernel.build(&mut context);
+        let builder = self.platform.to_builder();
+        let mut context = builder.build_context();
+        let (bundle, context) = context.kernel_bundle(&self.kernel);
         let stdout = std::io::stdout();
-        self.test_bound(candidates, context, |(runtime, bounds)| {
+        self.test_bound(bundle.candidates, context, |(runtime, bounds)| {
             let mut handle = stdout.lock();
             write!(handle, "{},{}", self.kernel, runtime).unwrap();
             for bound in bounds {
@@ -328,7 +335,7 @@ impl Stats {
                                 }
                                 len += 1;
                             }
-                            mcts::Event::KillChild(index, cause_) => {
+                            mcts::Event::KillChild(_index, cause_) => {
                                 let info = deadinfo
                                     .entry((Cause::from(cause_), has_size))
                                     .or_insert((0u64, 0u32));
