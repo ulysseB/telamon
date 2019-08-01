@@ -306,6 +306,15 @@ mod cuda_reference {
         panic!("NOT IMPLEMENTED!");
     }
 
+    /// Reference implementation for `ResNetCellTopHalf`.
+    fn resnetcelltophalf_reference(
+        handle: &CublasHandle,
+        params: &linalg::ResNetCellTopHalfP,
+        context: &cuda::Context,
+    ) -> Result<f64, ()> {
+        panic!("NOT IMPLEMENTED!");
+    }
+
     /// Reference implementation for the transformer cell.
     fn transformercell_reference(
         handle: &CublasHandle,
@@ -403,6 +412,18 @@ mod cuda_reference {
         }
     }
 
+    impl<'a> Reference<'a, linalg::ResNetCellTopHalf<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::ResNetCellTopHalfP,
+            context: &Self::Context,
+        ) -> f64 {
+            resnetcelltophalf_reference(self, params, context).expect("")
+        }
+    }
+
     impl<'a> Reference<'a, linalg::TransformerCell<'a, f32>> for CublasHandle {
         type Context = cuda::Context<'a>;
 
@@ -469,6 +490,12 @@ pub enum KernelParam {
         k: i32,
     },
     ResNetCell {
+        m: i32,
+        n: i32,
+        k: i32,
+        activation_fun: Option<linalg::compose::ActivationFunction>,
+    },
+    ResNetCellTopHalf {
         m: i32,
         n: i32,
         k: i32,
@@ -544,6 +571,15 @@ impl KernelParam {
                 linalg::ResNetCellP::new(m, n, k).activation_fun(activation_fun),
                 context,
             ),
+            KernelParam::ResNetCellTopHalf {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => build::<'_, '_, linalg::ResNetCellTopHalf<'_, f32>, C>(
+                linalg::ResNetCellTopHalfP::new(m, n, k, activation_fun),
+                context,
+            ),
             KernelParam::TransformerCell { m, n, p, r } => {
                 build::<'_, '_, linalg::TransformerCell<'_, f32>, C>(
                     linalg::TransformerCellP::new(m, n, p, r),
@@ -584,6 +620,19 @@ impl fmt::Display for KernelParam {
             } => write!(
                 fmt,
                 "resnetcell_{}_{}_{}_{}",
+                m,
+                n,
+                k,
+                linalg::compose::ActivationFunction::opt_to_display(activation_fun)
+            ),
+            KernelParam::ResNetCellTopHalf {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => write!(
+                fmt,
+                "resnetcelltophalf_{}_{}_{}_{}",
                 m,
                 n,
                 k,
@@ -750,6 +799,21 @@ impl std::str::FromStr for KernelParam {
                         &mut parts,
                     )?)?;
                 ResNetCell {
+                    m,
+                    n,
+                    k,
+                    activation_fun,
+                }
+            }
+            "resnetcelltophalf" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let activation_fun =
+                    linalg::compose::ActivationFunction::opt_from_string(next_part(
+                        &mut parts,
+                    )?)?;
+                ResNetCellTopHalf {
                     m,
                     n,
                     k,
