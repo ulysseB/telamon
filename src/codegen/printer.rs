@@ -548,6 +548,7 @@ pub trait InstPrinter {
                 t: ld_type,
                 operands: [addr],
                 access_pattern: pattern,
+                ..
             } => self.print_ld(
                 vector_factors,
                 Self::lower_type(*ld_type, fun),
@@ -559,7 +560,7 @@ pub trait InstPrinter {
             op::St {
                 operands: [addr, val],
                 access_pattern: pattern,
-                ..
+                predicate,
             } => {
                 let guard = if inst.has_side_effects() {
                     namer.side_effect_guard()

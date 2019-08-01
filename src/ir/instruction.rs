@@ -138,6 +138,7 @@ impl<L> Instruction<L> {
                     t,
                     operands: [ld_idx],
                     access_pattern: ld_pattern,
+                    predicate: None,
                 }
             }
             Operator::TmpSt(val, id2) => {
@@ -146,6 +147,7 @@ impl<L> Instruction<L> {
                     operands: [st_idx, val],
                     has_side_effects: false,
                     access_pattern: st_pattern,
+                    predicate: None,
                 }
             }
             _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering"),

@@ -59,6 +59,7 @@ impl super::Device for Device {
             ir::Operator::St {
                 operands: [_, ref operand],
                 access_pattern: ref pattern,
+                ..
             } => pattern.is_consecutive(dim.id(), operand.t()),
             _ => false,
         }
