@@ -6,12 +6,30 @@ use std;
 use utils::*;
 
 /// An iteration dimension composed of one or mure fused dimensions.
+///
+/// Note that induction levels are only associated with IR dimensions that are actually used by an
+/// instruction.  For instance, if dimensions `%0` and `%2` are merged in the following code:
+///
+///   @0[%0]: load(a[%0])
+///   @1[%1, %2]: load(b[%1])
+///
+/// then only `%0` would have an associated level in the corresponding iteration dimension.
+///
+/// Note that the representant does not necessarily have an associated induction level; in the
+/// example above, the representant could be either `%0` or `%2` (with the other dimension in
+/// `other_dims`).
 #[derive(Debug)]
 pub struct Dimension<'a> {
+    /// The iteration kind.  This should be fully constrained.
     kind: DimKind,
+    /// The representant.  This can be any of the fused IR dimensions represented by this
+    /// dimension.
     representant: ir::DimId,
+    /// The IR dimensions represented by this dimensions other than the representant.
     other_dims: Vec<ir::DimId>,
+    /// The induction levels corresponding to this dimension.
     induction_levels: Vec<InductionLevel<'a>>,
+    /// The size of this iteration dimension.
     size: codegen::Size<'a>,
 }
 
@@ -122,10 +140,23 @@ pub fn group_merged_dimensions<'a>(space: &'a SearchSpace) -> Vec<Dimension<'a>>
 }
 
 /// An induction level associated to a dimension.
+///
+/// This represents a variable in a loop that gets incremented at each iteration.
+///
+/// TODO: I don't know what "associated to a dimension" means.
 #[derive(Debug)]
 pub struct InductionLevel<'a> {
+    /// The identifier for the induction variable.  This is shared across the different levels that
+    /// represent a given iteration.
     pub ind_var: ir::IndVarId,
+    /// The increment to use, i.e. the quantity we increment the variable by every iteration.
+    ///
+    ///
+    /// Warning: The dimension here corresponds to the IR dimension represented by this level; it
+    /// does *not* have the same size as the increment!
     pub increment: Option<(ir::DimId, codegen::Size<'a>)>,
+    /// The base of the induction, i.e. the value the variable is initialized to before the first
+    /// iteration.
     pub base: InductionVarValue<'a>,
 }
 
@@ -166,11 +197,23 @@ impl<'a> InductionVar<'a> {
 
 /// The value taken by an induction variable. The actual value is the sum of the component
 /// present. If no components is present, the value must be computed elsewhere.
+///
+/// TODO: I have no clue what "the value must be computed elsewhere" means.
 #[derive(Debug)]
 pub struct InductionVarValue<'a> {
+    /// The identifier for the induction variable.
+    ///
+    /// TODO: I am not entirely sure what this represents, or why it is needed here.
     ind_var: ir::IndVarId,
+    /// The outer level of the induction.
+    ///
+    /// TODO: Not sure what this is exactly.
     outer_level: Option<ir::DimId>,
+    /// The operand.
+    ///
+    /// TODO: Not sure what this is.
     operand: Option<&'a ir::Operand>,
+    /// The type of the induction variable.
     t: ir::Type,
 }
 
@@ -245,6 +288,8 @@ pub fn register_induction_vars<'a>(
     let mut ind_vars = Vec::new();
     let mut precomputed_levels = Vec::new();
     for (id, ind_var) in space.ir_instance().induction_vars() {
+        // const_levels: constant pour un thread fixé
+        // mut_levels: variables pour un thread fixé
         let (const_levels, mut_levels) = get_ind_var_levels(ind_var, space);
         let mut outer_value = InductionVarValue::new(id, ind_var.base(), space);
         let precomputed = const_levels
@@ -266,15 +311,15 @@ pub fn register_induction_vars<'a>(
             };
             ind_levels_map.insert(dim, level);
         }
-        // If their is more than one components, the value cannot be directly used by
+        // If there is more than one components, the value cannot be directly used by
         // instructions.
         let value = if outer_value.components().count() > 1 {
+            // TODO: what if we can't compute the outer_value here???
             let value = InductionVarValue::computed_elsewhere(&outer_value);
-            let base = outer_value;
             let level = InductionLevel {
                 ind_var: id,
                 increment: None,
-                base,
+                base: outer_value,
             };
             let dim = unwrap!(precomputed.last().and_then(|p| p.increment.as_ref())).0;
             ind_levels_map.insert(dim, level);
