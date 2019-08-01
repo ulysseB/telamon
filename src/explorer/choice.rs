@@ -172,6 +172,54 @@ pub fn list<'a>(
                         )
                     }))
                 }
+
+                ChoiceGroup::DimNesting => {
+                    Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
+                        let lhs = lhs.stmt_id();
+                        let dims = fun.dims().take(i).map(|x| x.stmt_id());
+
+                        dims.chain(fun.insts().map(|x| x.stmt_id())).flat_map(
+                            move |rhs| {
+                                let available_orders = space.domain().get_order(lhs, rhs);
+                                let nesting_orders = Order::INNER | Order::OUTER;
+
+                                let orders = (available_orders & Order::INNER)
+                                    .into_option()
+                                    .into_iter()
+                                    .chain(
+                                        (available_orders & Order::OUTER).into_option(),
+                                    )
+                                    .chain(
+                                        (available_orders & !nesting_orders)
+                                            .into_option(),
+                                    );
+
+                                gen_choice(orders, &|order| {
+                                    Action::Order(lhs, rhs, order)
+                                })
+                            },
+                        )
+                    }))
+                }
+
+                ChoiceGroup::DimFusion => {
+                    Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
+                        let lhs = lhs.stmt_id();
+                        let dims = fun.dims().take(i).map(|x| x.stmt_id());
+
+                        dims.chain(fun.insts().map(|x| x.stmt_id())).flat_map(
+                            move |rhs| {
+                                let available_orders = space.domain().get_order(lhs, rhs);
+
+                                gen_choice(
+                                    available_orders.bisect(Order::MERGED),
+                                    &|order| Action::Order(lhs, rhs, order),
+                                )
+                            },
+                        )
+                    }))
+                }
+
                 ChoiceGroup::MemSpace => {
                     Box::new(fun.mem_blocks().flat_map(move |block| {
                         let mem_spaces = space.domain().get_mem_space(block.mem_id());

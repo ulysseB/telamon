@@ -11,7 +11,7 @@ def env_true(name):
 
 
 def build_capi(spec):
-    cmd = ["cargo", "build", "--release"]
+    cmd = ["cargo", "+nightly", "build", "--release"]
     if env_true("TELAMON_CUDA_ENABLE"):
         print("CUDA build enabled.")
         cmd.extend(["--features", "cuda"])
@@ -19,7 +19,7 @@ def build_capi(spec):
     build = spec.add_external_build(cmd=cmd, path="../telamon-capi")
 
     out, err = subprocess.Popen(
-        ["cargo", "metadata", "--format-version", "1"],
+        ["cargo", "+nightly", "metadata", "--format-version", "1"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         stdin=None,
