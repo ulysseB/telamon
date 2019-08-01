@@ -1,11 +1,11 @@
-use crate::codegen::*;
-use crate::search_space::*;
-use itertools::Itertools;
 use std::borrow::Cow;
+
+use itertools::Itertools;
 use utils::*;
 
+use crate::codegen::*;
 use crate::ir::{self, op, Type};
-use crate::search_space::DimKind;
+use crate::search_space::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MulMode {
@@ -23,6 +23,45 @@ impl MulMode {
             (_, _) => MulMode::Low,
         }
     }
+}
+
+use super::name_map::{IntoNameable, Nameable};
+
+pub enum Inst<'a, 'b> {
+    Move(ir::Type, Nameable<'a, 'b>),
+    Add(ir::Type, Nameable<'a, 'b>, Nameable<'a, 'b>),
+    AddAssign(ir::Type, Nameable<'a, 'b>),
+}
+
+impl<'a, 'b> Inst<'a, 'b> {
+    fn new_move<I: IntoNameable<'a, 'b>>(t: ir::Type, op: I) -> Self {
+        Inst::Move(t, op.into_nameable())
+    }
+
+    fn new_add<A, B>(t: ir::Type, lhs: A, rhs: B) -> Self
+    where
+        A: IntoNameable<'a, 'b>,
+        B: IntoNameable<'a, 'b>,
+    {
+        Inst::Add(t, lhs.into_nameable(), rhs.into_nameable())
+    }
+
+    fn new_add_assign<T>(t: ir::Type, op: T) -> Self
+    where
+        T: IntoNameable<'a, 'b>,
+    {
+        Inst::AddAssign(t, op.into_nameable())
+    }
+}
+
+pub struct Loop<'a, 'b> {
+    // for (lhs, rhs) in init: lhs = rhs
+    pub inits: Vec<(Nameable<'a, 'b>, Inst<'a, 'b>)>,
+    // condition is `idx < bound`
+    pub index: Nameable<'a, 'b>,
+    pub bound: Nameable<'a, 'b>,
+    // for (lhs, rhs) in update: lhs += rhs
+    pub increments: Vec<(Nameable<'a, 'b>, Inst<'a, 'b>)>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -299,37 +338,44 @@ pub trait InstPrinter {
         cfgs: &[Cfg],
         namer: &mut NameMap<Self::ValuePrinter>,
     ) {
-        let idx = namer.name_index(dim.id()).to_string();
-        let zero = namer.value_printer().get_const_int(&0.into(), 32);
-        self.print_move(Type::I(32), &idx, &zero);
-        let mut ind_var_vec = vec![];
-        let loop_id = namer.gen_loop_id();
+        let idx = dim.id().into_nameable();
+
+        let mut init_vec: Vec<(Nameable<'_, '_>, Inst<'_, '_>)> =
+            vec![(idx.clone(), Inst::new_move(ir::Type::I(32), 0i32))];
+        let mut update_vec: Vec<(Nameable<'_, '_>, Inst<'_, '_>)> =
+            vec![(idx.clone(), Inst::new_add_assign(ir::Type::I(32), 1i32))];
+
         let ind_levels = dim.induction_levels();
         for level in ind_levels.iter() {
             let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
-            let ind_var = namer.name_induction_var(level.ind_var, dim_id);
-            let base_components = level.base.components().map(|v| namer.name(v));
-            match base_components.collect_vec()[..] {
-                [ref base] => self.print_move(level.t(), &ind_var, &base),
-                [ref lhs, ref rhs] => self.print_add_int(level.t(), &ind_var, lhs, rhs),
+            let ind_var = (level.ind_var, dim_id);
+            match level.base.components().collect_vec()[..] {
+                [base] => init_vec
+                    .push((ind_var.into_nameable(), Inst::new_move(level.t(), base))),
+                [lhs, rhs] => init_vec
+                    .push((ind_var.into_nameable(), Inst::new_add(level.t(), lhs, rhs))),
                 _ => panic!(),
             };
-            ind_var_vec.push(ind_var.into_owned());
+
+            if let Some((_, increment)) = &level.increment {
+                update_vec.push((
+                    ind_var.into_nameable(),
+                    Inst::new_add_assign(level.t(), (increment, level.t())),
+                ));
+            }
         }
-        self.print_label(&loop_id.to_string());
-        self.cfg_vec(fun, cfgs, namer);
-        for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
-            if let Some((_, ref increment)) = level.increment {
-                let step = namer.name_size(increment, level.t());
-                self.print_add_int(level.t(), &ind_var, &ind_var, &step);
-            };
-        }
-        let one = namer.value_printer().get_const_int(&1.into(), 32);
-        self.print_add_int(ir::Type::I(32), &idx, &idx, &one);
-        let lt_cond = namer.gen_name(ir::Type::I(1));
-        let size = namer.name_size(dim.size(), Type::I(32));
-        self.print_lt_int(ir::Type::I(32), &lt_cond, &idx, &size);
-        self.print_cond_jump(&loop_id.to_string(), &lt_cond);
+
+        self.print_loop(
+            fun,
+            &Loop {
+                inits: init_vec,
+                index: idx,
+                bound: dim.size().into_nameable(),
+                increments: update_vec,
+            },
+            cfgs,
+            namer,
+        );
     }
 
     /// Prints an unroll loop - loop without jumps
@@ -544,5 +590,58 @@ pub trait InstPrinter {
             (ref x, ref y) if x == y => MulMode::Low,
             _ => panic!(),
         }
+    }
+
+    fn print_inst(
+        &mut self,
+        result: &Nameable<'_, '_>,
+        inst: &Inst<'_, '_>,
+        namer: &NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        let result = &result.name(namer);
+        match *inst {
+            Inst::Move(t, ref op) => self.print_move(t, result, &op.name(namer)),
+            Inst::Add(t, ref lhs, ref rhs) => {
+                self.print_add_int(t, result, &lhs.name(namer), &rhs.name(namer))
+            }
+            Inst::AddAssign(t, ref op) => {
+                self.print_add_int(t, result, result, &op.name(namer))
+            }
+        }
+    }
+
+    fn print_loop(
+        &mut self,
+        fun: &Function,
+        loop_: &Loop<'_, '_>,
+        body: &[Cfg],
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        // Initialization
+        for (target, inst) in &loop_.inits {
+            self.print_inst(target, inst, namer);
+        }
+
+        // Loop label
+        let loop_id = namer.gen_loop_id();
+        self.print_label(&loop_id.to_string());
+
+        // Loop body
+        self.cfg_vec(fun, body, namer);
+
+        // Update
+        for (target, inst) in &loop_.increments {
+            self.print_inst(target, inst, namer);
+        }
+
+        // Loop condition
+        let lt_cond = namer.gen_name(ir::Type::I(1));
+        self.print_lt_int(
+            ir::Type::I(32),
+            &lt_cond,
+            &loop_.index.name(namer),
+            &loop_.bound.name(namer),
+        );
+        self.print_cond_jump(&loop_id.to_string(), &lt_cond);
     }
 }

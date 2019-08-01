@@ -64,6 +64,98 @@ pub struct NameMap<'a, 'b, VP: ValuePrinter> {
     side_effect_guard: Option<RcStr>,
 }
 
+#[derive(Clone)]
+pub enum Nameable<'a, 'b> {
+    Ident(Cow<'a, str>),
+    Operand(Operand<'a>),
+    InductionVar(ir::IndVarId),
+    DimIndex(ir::DimId),
+    Constant(BigInt, u16),
+    Size(&'a codegen::Size<'b>, ir::Type),
+}
+
+impl<'a, 'b> Nameable<'a, 'b> {
+    pub fn name<'c, VP: ValuePrinter>(
+        &'c self,
+        namer: &'c NameMap<'b, '_, VP>,
+    ) -> Cow<'c, str> {
+        use Nameable::*;
+
+        match self {
+            Ident(name) => Cow::Borrowed(&name),
+            &Operand(operand) => namer.name(operand),
+            &InductionVar(ind_var) => namer.name_induction_var(ind_var, None),
+            &DimIndex(dim_id) => Cow::Borrowed(namer.name_index(dim_id)),
+            &Constant(ref value, bits) => {
+                Cow::Owned(namer.value_printer().get_const_int(&value, bits))
+            }
+            &Size(size, t) => namer.name_size(size, t),
+        }
+    }
+}
+
+pub trait IntoNameable<'a, 'b> {
+    fn into_nameable(self) -> Nameable<'a, 'b>;
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for Operand<'a> {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        Nameable::Operand(self)
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for &'a ir::Operand {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        Operand::Operand(self).into_nameable()
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for ir::IndVarId {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        Nameable::InductionVar(self)
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for (ir::IndVarId, Option<ir::DimId>) {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        if let Some(dim_id) = self.1 {
+            Operand::InductionLevel(self.0, dim_id).into_nameable()
+        } else {
+            self.0.into_nameable()
+        }
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for ir::DimId {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        Nameable::DimIndex(self)
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for &'_ Dimension<'_> {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        self.id().into_nameable()
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for i32 {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        Nameable::Constant(self.into(), 32)
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for &'a codegen::Size<'b> {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        (self, ir::Type::I(32)).into_nameable()
+    }
+}
+
+impl<'a, 'b> IntoNameable<'a, 'b> for (&'a codegen::Size<'b>, ir::Type) {
+    fn into_nameable(self) -> Nameable<'a, 'b> {
+        Nameable::Size(self.0, self.1)
+    }
+}
+
 impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     /// Creates a new `NameMap`.
     pub fn new(function: &'a Function<'a>, value_printer: &'b mut VP) -> Self {
@@ -372,7 +464,7 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Assigns a name to a size.
-    pub fn name_size(&self, size: &codegen::Size, expected_t: ir::Type) -> Cow<str> {
+    pub fn name_size(&self, size: &codegen::Size<'a>, expected_t: ir::Type) -> Cow<str> {
         let size: &'a codegen::Size<'a> = unsafe { std::mem::transmute(size) };
         match (size.dividend(), expected_t) {
             (&[], _) => {
