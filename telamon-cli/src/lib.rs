@@ -757,6 +757,24 @@ impl std::str::FromStr for KernelParam {
     }
 }
 
+#[derive(Debug)]
+pub enum Platform {
+    X86,
+    Cuda,
+}
+
+impl std::str::FromStr for Platform {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "x86" => Platform::X86,
+            "cuda" => Platform::Cuda,
+            _ => return Err(format!("invalid platform: {}", s)),
+        })
+    }
+}
+
 /// Path to a replay file.
 ///
 /// Replay files are .json files containing a serialized representation of actions to apply.  They

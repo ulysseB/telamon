@@ -24,7 +24,7 @@ use telamon::explorer::{
 use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::search_space::SearchSpace;
-use telamon_cli::{Bench, CublasHandle, KernelBundle, KernelParam, ReplayPath};
+use telamon_cli::{Bench, CublasHandle, KernelBundle, KernelParam, Platform, ReplayPath};
 use telamon_cuda;
 use telamon_kernels::statistics::estimate_mean;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
@@ -732,24 +732,6 @@ impl<'a, T: Send> Evaluator<'a, T> {
 trait AssertSend: Send {}
 
 impl AssertSend for codegen::Function<'_> {}
-
-#[derive(Debug)]
-enum Platform {
-    X86,
-    Cuda,
-}
-
-impl std::str::FromStr for Platform {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "x86" => Platform::X86,
-            "cuda" => Platform::Cuda,
-            _ => return Err("i am bad".to_string()),
-        })
-    }
-}
 
 /// The Telamon Debugger
 #[derive(Debug, StructOpt)]
