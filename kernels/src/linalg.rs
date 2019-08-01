@@ -987,6 +987,68 @@ impl<'a, S: Scalar> Kernel<'a> for ResNetCell<'a, S> {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
+pub struct ResNetCellTopHalfP {
+    pub mm_params: FusedMMP,
+}
+
+impl ResNetCellTopHalfP {
+    pub fn new<F>(m: i32, n: i32, k: i32, activation_fun: F) -> Self
+    where
+        F: Into<Option<ActivationFunction>>,
+    {
+        ResNetCellTopHalfP {
+            mm_params: FusedMMP::new(m, n, k).activation_fun(activation_fun),
+        }
+    }
+}
+
+/// Computes `O = activation(A.B)`
+pub struct ResNetCellTopHalf<'a, S: Scalar> {
+    fmmp: FusedMM<'a, S>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for ResNetCellTopHalf<'a, S> {
+    type Parameters = ResNetCellTopHalfP;
+    type ExpectedOutput = Array2<S>;
+
+    fn name() -> &'static str {
+        "resnetcelltophalf"
+    }
+
+    fn build_signature<AM>(
+        params: ResNetCellTopHalfP,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        ResNetCellTopHalf {
+            fmmp: FusedMM::build_signature(params.mm_params, builder),
+        }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        self.fmmp.build_body(signature, ctx)
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
+        self.fmmp.get_expected_output(context)
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        self.fmmp.check_result(expected, context)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
 pub struct TransformerCellP {
     pub m: i32,
     pub n: i32,
