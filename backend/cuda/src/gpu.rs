@@ -349,12 +349,12 @@ impl Gpu {
             (&BinOp(ir::BinOp::Max, ..), Some(Type::F(64))) => self.max_f64_inst.into(),
             (&BinOp(ir::BinOp::Max, ..), Some(Type::I(32))) => self.max_i32_inst.into(),
             (&BinOp(ir::BinOp::Max, ..), Some(Type::I(64))) => self.max_i64_inst.into(),
-            (&Ld(..), _) | (&TmpLd(..), _) => {
+            (&Ld { .. }, _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.load_desc(&mem_info, flag).into()
             }
-            (&St(..), _) | (&TmpSt(..), _) => {
+            (&St { .. }, _) | (&TmpSt(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.store_desc(&mem_info, flag).into()
@@ -440,16 +440,22 @@ impl device::Device for Gpu {
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
         match *op {
             Operator::TmpLd(..) | Operator::TmpSt(..) => true,
-            Operator::Ld(t, _, ref pattern) if pattern.is_consecutive(dim.id(), t) => {
+            Operator::Ld {
+                t,
+                access_pattern: ref pattern,
+                ..
+            } if pattern.is_consecutive(dim.id(), t) => {
                 // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
                 // support alignment contraints.
                 dim.possible_sizes()
                     .map(|sizes| !sizes.contains(&3))
                     .unwrap_or(false)
             }
-            Operator::St(_, ref operand, _, ref pattern)
-                if pattern.is_consecutive(dim.id(), operand.t()) =>
-            {
+            Operator::St {
+                operands: [_, ref operand],
+                access_pattern: ref pattern,
+                ..
+            } if pattern.is_consecutive(dim.id(), operand.t()) => {
                 // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
                 // support alignment contraints.
                 dim.possible_sizes()
@@ -486,9 +492,12 @@ impl device::Device for Gpu {
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
         let mut flags = match op {
             // Only accesses to external memory blocks can be non-coherent.
-            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
-            ir::Operator::Ld(..)
-            | ir::Operator::St(..)
+            ir::Operator::Ld {
+                access_pattern: pat,
+                ..
+            } if pat.mem_block().is_none() => InstFlag::ALL,
+            ir::Operator::Ld { .. }
+            | ir::Operator::St { .. }
             | ir::Operator::TmpLd(..)
             | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
             _ => panic!("invalid memory access operator"),

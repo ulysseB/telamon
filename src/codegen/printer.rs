@@ -544,7 +544,11 @@ pub trait InstPrinter {
                 let operand = Self::name_operand(vector_levels, operand, namer);
                 self.print_unary_op(vector_factors, operator, t, &name, &operand)
             }
-            op::Ld(ld_type, addr, pattern) => self.print_ld(
+            op::Ld {
+                t: ld_type,
+                operands: [addr],
+                access_pattern: pattern,
+            } => self.print_ld(
                 vector_factors,
                 Self::lower_type(*ld_type, fun),
                 access_pattern_space(pattern, fun.space()),
@@ -552,7 +556,11 @@ pub trait InstPrinter {
                 &Self::name_inst(vector_levels, inst.id(), namer),
                 &Self::name_operand(&[vec![], vec![]], addr, namer),
             ),
-            op::St(addr, val, _, pattern) => {
+            op::St {
+                operands: [addr, val],
+                access_pattern: pattern,
+                ..
+            } => {
                 let guard = if inst.has_side_effects() {
                     namer.side_effect_guard()
                 } else {

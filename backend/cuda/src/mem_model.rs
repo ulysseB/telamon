@@ -43,7 +43,14 @@ pub fn analyse(
 ) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
-        ir::Operator::Ld(_, _, ref pattern) | ir::Operator::St(_, _, _, ref pattern) => {
+        ir::Operator::Ld {
+            access_pattern: ref pattern,
+            ..
+        }
+        | ir::Operator::St {
+            access_pattern: ref pattern,
+            ..
+        } => {
             let mem_space = access_pattern_space(pattern, space);
             let is_shared = mem_space.is(MemSpace::SHARED);
             match pattern {

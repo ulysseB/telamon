@@ -51,10 +51,15 @@ impl super::Device for Device {
             ir::Operator::TmpLd(..)
             | ir::Operator::TmpSt(..)
             | ir::Operator::BinOp(ir::BinOp::Add, ..) => true,
-            ir::Operator::Ld(t, _, ref pattern) => pattern.is_consecutive(dim.id(), t),
-            ir::Operator::St(_, ref operand, _, ref pattern) => {
-                pattern.is_consecutive(dim.id(), operand.t())
-            }
+            ir::Operator::Ld {
+                t,
+                access_pattern: ref pattern,
+                ..
+            } => pattern.is_consecutive(dim.id(), t),
+            ir::Operator::St {
+                operands: [_, ref operand],
+                access_pattern: ref pattern,
+            } => pattern.is_consecutive(dim.id(), operand.t()),
             _ => false,
         }
     }
@@ -93,9 +98,12 @@ impl super::Device for Device {
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
         match op {
             // Only accesses to external memory blocks can be non-coherent.
-            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
-            ir::Operator::Ld(..)
-            | ir::Operator::St(..)
+            ir::Operator::Ld {
+                access_pattern: pat,
+                ..
+            } if pat.mem_block().is_none() => InstFlag::ALL,
+            ir::Operator::Ld { .. }
+            | ir::Operator::St { .. }
             | ir::Operator::TmpLd(..)
             | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
             _ => panic!("invalid memory access operator"),
