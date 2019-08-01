@@ -84,6 +84,14 @@ pub enum CauseOfDeath {
     Backtrack,
 }
 
+pub trait Reset {
+    fn reset(&self);
+}
+
+impl Reset for () {
+    fn reset(&self) {}
+}
+
 /// The internal structure of a node.  This should only be accessed through `Node` getters.
 struct NodeInner<N, E> {
     /// Node identifier.  Unique in a single tree.
@@ -251,6 +259,17 @@ impl<N, E> Node<N, E> {
     }
 }
 
+impl<N: Reset, E: Reset> Reset for Node<N, E> {
+    fn reset(&self) {
+        *self.inner.expanded.write().unwrap() = false;
+        *self.inner.candidate.write().unwrap() = None;
+        self.inner.data.reset();
+        for child in &self.inner.children {
+            child.reset();
+        }
+    }
+}
+
 impl<N, E> ops::Index<EdgeIndex> for Node<N, E> {
     type Output = Edge<N, E>;
 
@@ -333,6 +352,16 @@ impl<N, E> Edge<N, E> {
     /// Algorithm-specific data associated with the edge.
     pub fn data(&self) -> &E {
         &self.inner.data
+    }
+}
+
+impl<N: Reset, E: Reset> Reset for Edge<N, E> {
+    fn reset(&self) {
+        if let Some(node) = self.inner.node.read().unwrap().as_ref() {
+            node.reset();
+        }
+
+        self.inner.data.reset();
     }
 }
 
@@ -1160,6 +1189,8 @@ where
 pub struct MctsStore<'a, N, E> {
     root: Node<N, E>,
 
+    space: SearchSpace,
+
     default_policy: Box<dyn TreePolicy<N, E>>,
 
     tree_policy: Box<dyn TreePolicy<N, E>>,
@@ -1168,6 +1199,8 @@ pub struct MctsStore<'a, N, E> {
     cut: RwLock<f64>,
 
     cut_epoch: AtomicUsize,
+
+    restart_id: AtomicUsize,
 
     /// Whether evaluation should be stopped
     stop: AtomicBool,
@@ -1208,14 +1241,16 @@ where
             epoch,
         )
         .node(None, Some(&space));
-        root.store_candidate(space);
+        root.store_candidate(space.clone());
 
         MctsStore {
             root,
+            space,
             default_policy,
             tree_policy,
             cut: RwLock::new(config.initial_cut.unwrap_or(std::f64::INFINITY)),
             cut_epoch: AtomicUsize::new(0),
+            restart_id: AtomicUsize::new(0),
             stop: AtomicBool::new(false),
             id_counter,
             logger,
@@ -1256,12 +1291,17 @@ where
     }
 }
 
+pub struct Payload<N, E> {
+    trace: Trace<N, E>,
+    restart_id: usize,
+}
+
 impl<'a, N, E> Store for MctsStore<'a, N, E>
 where
-    N: Send + Sync + Debug + Default,
-    E: Send + Sync + Debug + Default,
+    N: Send + Sync + Debug + Default + Reset,
+    E: Send + Sync + Debug + Default + Reset,
 {
-    type PayLoad = Trace<N, E>;
+    type PayLoad = Payload<N, E>;
 
     type Event = Message;
 
@@ -1275,9 +1315,15 @@ where
     fn commit_evaluation(
         &self,
         _actions: &List<choice::ActionEx>,
-        trace: Self::PayLoad,
+        payload: Self::PayLoad,
         eval: f64,
     ) {
+        // Discard old evaluations that were meant for a previous restart
+        if self.restart_id.load(Ordering::SeqCst) > payload.restart_id {
+            return;
+        }
+
+        let trace = payload.trace;
         let result_time = self.epoch.elapsed();
         let id = trace.node.id();
         let eval = if eval.is_finite() { Some(eval) } else { None };
@@ -1346,9 +1392,20 @@ where
                     trace.node.bound().unwrap().clone(),
                     trace.node.actions(),
                 ),
-                trace,
+                Payload {
+                    trace,
+                    restart_id: self.restart_id.load(Ordering::SeqCst),
+                },
             )
         })
+    }
+
+    fn restart(&self) {
+        // Update the restart_id before resetting to ensure that the monitor thread doesn't go
+        // updating the wrong tree.
+        self.restart_id.fetch_add(1, Ordering::SeqCst);
+        self.root.reset();
+        self.root.store_candidate(self.space.clone());
     }
 
     fn stop_exploration(&self) {
@@ -1727,6 +1784,12 @@ pub struct CommonStats {
     num_visits: AtomicUsize,
 }
 
+impl Reset for CommonStats {
+    fn reset(&self) {
+        self.num_visits.store(0, Ordering::SeqCst);
+    }
+}
+
 impl Default for CommonStats {
     fn default() -> Self {
         CommonStats {
@@ -1754,6 +1817,14 @@ pub struct UCTStats {
     sum_evaluations: RwLock<f64>,
 
     common: CommonStats,
+}
+
+impl Reset for UCTStats {
+    fn reset(&self) {
+        *self.best_evaluation.write().unwrap() = std::f64::NEG_INFINITY;
+        *self.sum_evaluations.write().unwrap() = 0f64;
+        self.common.reset();
+    }
 }
 
 impl Default for UCTStats {
@@ -1961,6 +2032,13 @@ pub struct TAGStats {
     /// All evaluations seen for the pointed-to node.
     evaluations: RwLock<Evaluations>,
     common: CommonStats,
+}
+
+impl Reset for TAGStats {
+    fn reset(&self) {
+        *self.evaluations.write().unwrap() = Evaluations::new();
+        self.common.reset();
+    }
 }
 
 impl Default for TAGStats {
