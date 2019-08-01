@@ -1340,3 +1340,167 @@ impl<'a, S: Scalar> Kernel<'a> for TransformerCellTopHalf<'a, S> {
         }
     }
 }
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct TransformerCellBottomHalfP {
+    pub m: i32,
+    pub n: i32,
+    pub r: i32,
+    pub transpose_qk_scexp: bool,
+    pub transpose_v: bool,
+    pub generic: bool,
+    pub m_tiling: Option<helper::TilingPattern>,
+    pub n_tiling: Option<helper::TilingPattern>,
+    pub r_tiling: Option<helper::TilingPattern>,
+}
+
+impl TransformerCellBottomHalfP {
+    pub fn new(m: i32, n: i32, r: i32) -> Self {
+        TransformerCellBottomHalfP {
+            m,
+            n,
+            r,
+            transpose_qk_scexp: false,
+            transpose_v: false,
+            generic: true,
+            m_tiling: None,
+            n_tiling: None,
+            r_tiling: None,
+        }
+    }
+
+    pub fn transpose_qk_scexp(mut self) -> Self {
+        self.transpose_qk_scexp = true;
+        self
+    }
+
+    pub fn transpose_v(mut self) -> Self {
+        self.transpose_v = true;
+        self
+    }
+
+    /// Inline the sizes in the generated code.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
+        self
+    }
+}
+
+/// Computes `O = (1/s_exp * QKSCEXP).V`, which corresponds to the
+/// second half of the computation of `TransformerCell` (break in the
+/// middle of softmax).
+pub struct TransformerCellBottomHalf<'a, S: Scalar> {
+    pub params: TransformerCellBottomHalfP,
+    s_exp: Tensor<'a, S>,
+    qk_scexp: Tensor<'a, S>,
+    v: Tensor<'a, S>,
+    o: Tensor<'a, S>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for TransformerCellBottomHalf<'a, S> {
+    type Parameters = TransformerCellBottomHalfP;
+    type ExpectedOutput = Array2<S>;
+
+    fn name() -> &'static str {
+        "transformercellbottomhalf"
+    }
+
+    fn build_signature<AM>(
+        params: TransformerCellBottomHalfP,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let r_size = create_size(params.r, "r", params.generic, builder);
+
+        let s_exp = builder.tensor::<S>("s_exp", vec![], true);
+
+        let qk_scexp =
+            TensorBuilder::new("qk_scexp", vec![m_size.clone(), n_size.clone()])
+                .doif(params.transpose_qk_scexp, |b| b.transpose(0, 1))
+                .finish(builder);
+
+        let v = TensorBuilder::new("v", vec![n_size, r_size.clone()])
+            .doif(params.transpose_v, |b| b.transpose(0, 1))
+            .finish(builder);
+
+        let o = builder.tensor::<S>("o", vec![m_size, r_size], false);
+
+        TransformerCellBottomHalf {
+            params,
+            s_exp,
+            qk_scexp,
+            v,
+            o,
+        }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
+        let r_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
+        let n_tiling = infer_tiling(self.params.r, &self.params.r_tiling, &[32]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let s_exp = self.s_exp.load(vec![], &mut builder);
+        let s_exp_op = s_exp.dim_map(&[], GlobalScope(()), &mut builder);
+
+        let qk_scexp = self
+            .qk_scexp
+            .load(vec![m_tiling, r_tiling.clone()], &mut builder);
+
+        let v = self
+            .v
+            .load(vec![r_tiling.clone(), n_tiling.clone()], &mut builder);
+
+        let qk_scexp_div = tensor_elementwise_div(&mut builder, &qk_scexp, &s_exp_op);
+        let o = matrix_matrix_multiply(&mut builder, &qk_scexp_div, &v);
+
+        o.store(&self.o, &mut builder);
+
+        let candidate = build_candidate(builder.get(), ctx);
+
+        vec![candidate]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
+        let qk_scexp_shape = (self.params.m as usize, self.params.n as usize);
+        let v_shape = (self.params.n as usize, self.params.r as usize);
+
+        let mut qk_scexp = unwrap!(self
+            .qk_scexp
+            .read_to_host(context)
+            .into_shape(qk_scexp_shape));
+        let v = unwrap!(self.v.read_to_host(context).into_shape(v_shape));
+        let s_exp = unwrap!(self.s_exp.read_to_host(context).into_shape(()));
+
+        qk_scexp.mapv_inplace(|c| c / s_exp[[]]);
+
+        qk_scexp.dot(&v)
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let o_shape = (self.params.m as usize, self.params.r as usize);
+        let o = unwrap!(self.o.read_to_host(context).into_shape(o_shape));
+
+        if let Err(invalid) = check_output(&o, &expected) {
+            Err(format!(
+                "Invalid transformercellbottomhalf output: {}",
+                invalid
+            ))
+        } else {
+            Ok(())
+        }
+    }
+}
