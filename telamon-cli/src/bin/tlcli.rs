@@ -192,6 +192,44 @@ impl Bounds {
     }
 }
 
+/// Prints code to stdout for a given kernel.
+#[derive(StructOpt)]
+struct Codegen {
+    /// Path to the replay file to generate code for.  Must be compatible with the provided kernel.
+    #[structopt(parse(from_os_str))]
+    replay: ReplayPath,
+
+    /// Kernel specification to use.
+    #[structopt(short = "k", long = "kernel")]
+    kernel: KernelParam,
+
+    /// Platform to generate code for.
+    #[structopt(long = "platform", short = "p", default_value = "cuda")]
+    platform: Platform,
+}
+
+impl Codegen {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let builder = self.platform.to_builder();
+        let mut context = builder.build_context();
+        let (bundle, context) = context.kernel_bundle(&self.kernel);
+        let mut candidates = bundle.candidates;
+        assert!(candidates.len() == 1);
+
+        let mut candidate = candidates.swap_remove(0).space;
+        for action in &self.replay.load()? {
+            candidate = action
+                .apply_to(candidate)
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        }
+
+        let code = telamon::codegen::Function::build(&candidate);
+        context.device().print(&code, &mut std::io::stdout());
+
+        Ok(())
+    }
+}
+
 /// Rebuild a specific list of actions from an event log.
 ///
 /// This generates a .json replay file which can be used by the debugger, as well as by various
@@ -427,6 +465,9 @@ impl Stats {
 
 #[derive(StructOpt)]
 enum Command {
+    #[structopt(name = "codegen")]
+    Codegen(Codegen),
+
     #[structopt(name = "rebuild")]
     Rebuild(Rebuild),
 
@@ -452,6 +493,7 @@ fn main() {
     env_logger::init();
 
     let result = match &args.command {
+        Command::Codegen(codegen) => codegen.run(&args),
         Command::Rebuild(rebuild) => rebuild.run(&args),
         Command::Bounds(bounds) => bounds.run(&args),
         Command::Stats(stats) => stats.run(&args),
