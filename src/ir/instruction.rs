@@ -89,7 +89,7 @@ impl<L> Instruction<L> {
 
     /// Iterate over the dimensions that appear in `Reduce` operands for this instruction.
     pub fn iter_reduced_dims<'a>(&'a self) -> impl Iterator<Item = ir::DimId> + 'a {
-        self.operator.iter_operands().flat_map(|operand| {
+        self.operator.operands().into_iter().flat_map(|operand| {
             match operand {
                 Operand::Reduce(_, _, _, reduce_dims) => {
                     Some(reduce_dims.into_iter().cloned())
