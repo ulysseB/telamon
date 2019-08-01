@@ -197,6 +197,12 @@ fn main() {
                     idx,
                 )
                 .run(&config, &executor, &reference),
+                TransformerCellBottomHalf { m, n, r } => Benchmark::<'_, linalg::TransformerCellBottomHalf<'_, f32>>::new(
+                    linalg::TransformerCellBottomHalfP::new(m, n, r),
+                    format!("TransformerCellBottomHalf_{}_{}_{}", m, n, r),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
             }
         }
     }
