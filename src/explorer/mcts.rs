@@ -1306,7 +1306,14 @@ where
     type Event = Message;
 
     fn update_cut(&self, new_cut: f64) {
-        *self.cut.write().expect("cut: poisoned") = new_cut;
+        // If an initial cut was specified in the configuration file, `update_cut` will be called
+        // with the first implementation found, even if it is not better than the previous cut.
+        //
+        // When this happens, we should keep using the provided initial cut instead of blindly
+        // using the new cut.
+        let mut cut_mut = self.cut.write().expect("cut: poisoned");
+        *cut_mut = new_cut.min(*cut_mut);
+
         self.cut_epoch.fetch_add(1, Ordering::Relaxed);
 
         // TODO: trim the tree?
