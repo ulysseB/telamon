@@ -11,7 +11,7 @@ pub use self::cfg::Cfg;
 pub use self::dimension::{Dimension, InductionLevel, InductionVar};
 pub use self::function::*;
 pub use self::name_map::{NameMap, Operand, ValuePrinter};
-pub use self::printer::{InstPrinter, MulMode};
+pub use self::printer::{Inst, InstPrinter, Loop, MulMode};
 pub use self::size::Size;
 pub use self::variable::Variable;
 
