@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::ffi::OsStr;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fmt, fs, io};
@@ -7,7 +8,9 @@ use std::{fmt, fs, io};
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
-use telamon::explorer::{choice::ActionEx as Action, config::Config, Candidate};
+use telamon::explorer::{
+    choice::ActionEx as Action, config::Config, Candidate, CheckResultFn,
+};
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 #[derive(StructOpt)]
@@ -17,31 +20,25 @@ pub struct CommonOpt {
     /// Configuration file must be in TOML format.
     #[structopt(parse(from_os_str), long = "config")]
     config_path: Option<PathBuf>,
+
+    /// Search timeout (in minutes)
+    ///
+    /// If provided, overrides the timeout from the configuration file.
+    #[structopt(long = "timeout")]
+    timeout: Option<u64>,
 }
 
 impl CommonOpt {
     pub fn config(&self) -> io::Result<Config> {
-        if let Some(config_path) = &self.config_path {
+        let mut config = if let Some(config_path) = &self.config_path {
             Config::from_path(config_path)
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         } else {
             Ok(Config::default())
-        }
-    }
-}
+        }?;
 
-pub trait ContextBuilder<'a> {
-    type Context: ArgMap<'a>;
-
-    fn build_context(&self) -> Self::Context;
-}
-
-#[cfg(feature = "cuda")]
-impl<'a> ContextBuilder<'a> for &'a telamon_cuda::Executor {
-    type Context = telamon_cuda::Context<'a>;
-
-    fn build_context(&self) -> Self::Context {
-        telamon_cuda::Context::new(self)
+        config.timeout = config.timeout.or(self.timeout);
+        Ok(config)
     }
 }
 
@@ -357,6 +354,90 @@ mod cuda_reference {
 #[cfg(feature = "cuda")]
 pub use cuda_reference::CublasHandle;
 
+#[cfg(feature = "x86")]
+mod x86_reference {
+    use telamon_kernels::linalg;
+
+    use super::Reference;
+
+    #[derive(Default)]
+    pub struct X86Reference {
+        _priv: (),
+    }
+
+    impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(&self, _params: &(i32, bool), _context: &Self::Context) -> f64 {
+            warn!("x86 reference is not implemented");
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::MatVec<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            _params: &(i32, i32, bool),
+            _context: &Self::Context,
+        ) -> f64 {
+            warn!("x86 reference is not implemented");
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::Gesummv<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            _params: &(i32, i32, bool),
+            _context: &Self::Context,
+        ) -> f64 {
+            warn!("x86 reference is not implemented");
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::FusedMM<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            _params: &linalg::FusedMMP,
+            _context: &Self::Context,
+        ) -> f64 {
+            warn!("x86 reference is not implemented");
+            1.
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            _params: &linalg::BatchMMP,
+            _context: &Self::Context,
+        ) -> f64 {
+            warn!("x86 reference is not implemented");
+            1.
+        }
+    }
+}
+
+#[cfg(feature = "x86")]
+pub use x86_reference::X86Reference;
+
+/// A wrapper type containing a (list of) candidates; a checking function to ensure that an
+/// implementation's output is valid, and a reference function to compare to.
+pub struct KernelBundle<'a> {
+    pub candidates: Vec<Candidate>,
+    pub check_fn: Box<CheckResultFn<'a>>,
+    pub reference_fn: Box<dyn Fn() -> f64 + 'a>,
+}
+
 /// Helper enum to create the supported kernel parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelParam {
@@ -368,48 +449,75 @@ pub enum KernelParam {
 }
 
 impl KernelParam {
-    /// Build the kernel in a given context, and return a list of candidates.
-    pub fn build<'a, 'b, C>(&self, context: &'b mut C) -> (Vec<Candidate>, &'b C)
+    /// Build the kernel in a given context, and returns a list of candidates along with a
+    /// correction checking function and a reference function.
+    pub fn to_bundle<'a, 'b, C, R>(
+        &self,
+        context: &'b mut C,
+        reference: R,
+    ) -> (KernelBundle<'b>, &'b C)
     where
         C: Context + ArgMap<'a>,
+        R: Reference<'a, linalg::Axpy<'a, f32>, Context = C>
+            + Reference<'a, linalg::MatVec<'a, f32>, Context = C>
+            + Reference<'a, linalg::FusedMM<'a, f32>, Context = C>
+            + Reference<'a, linalg::BatchMM<'a, f32>, Context = C>
+            + Reference<'a, linalg::Gesummv<'a, f32>, Context = C>
+            + 'b,
         'a: 'b,
     {
-        fn build<'a, 'b, K, C>(
-            params: K::Parameters,
+        struct Builder<'b, C, R> {
             context: &'b mut C,
-        ) -> (Vec<Candidate>, &'b C)
-        where
-            K: Kernel<'a> + 'b,
-            C: Context + ArgMap<'a>,
-        {
-            let (signature, kernel, context) =
-                KernelBuilder::default().build::<K, C>(params, context);
-            let signature = Arc::new(signature);
-            (kernel.build_body(signature, context), context)
+            reference: R,
         }
 
+        impl<'b, C, R> Builder<'b, C, R> where {
+            fn build<'a, K>(self, params: K::Parameters) -> (KernelBundle<'b>, &'b C)
+            where
+                K: Kernel<'a> + 'b,
+                K::Parameters: 'b,
+                C: Context + ArgMap<'a>,
+                R: Reference<'a, K, Context = C> + 'b,
+            {
+                let (signature, kernel, context) =
+                    KernelBuilder::default().build::<K, C>(params.clone(), self.context);
+                let signature = Arc::new(signature);
+                let expected = kernel.get_expected_output(context);
+                let candidates = kernel.build_body(signature, context);
+                let check_fn = move |_candidate: &Candidate, context: &dyn Context| {
+                    kernel.check_result(&expected, context)
+                };
+                let reference = self.reference;
+                let reference_fn = move || {
+                    Reference::<'_, K>::eval_reference(&reference, &params, context)
+                };
+
+                (
+                    KernelBundle {
+                        candidates,
+                        check_fn: Box::new(check_fn),
+                        reference_fn: Box::new(reference_fn),
+                    },
+                    context,
+                )
+            }
+        }
+
+        let builder = Builder { context, reference };
         match *self {
             KernelParam::Axpy { n } => {
-                build::<'_, '_, linalg::Axpy<'_, f32>, C>((n, true), context)
+                builder.build::<'_, linalg::Axpy<'_, f32>>((n, true))
             }
             KernelParam::MatVec { m, n } => {
-                build::<'_, '_, linalg::MatVec<'_, f32>, C>((m, n, true), context)
+                builder.build::<'_, linalg::MatVec<'_, f32>>((m, n, true))
             }
             KernelParam::Gesummv { m, n } => {
-                build::<'_, '_, linalg::Gesummv<'_, f32>, C>((m, n, true), context)
+                builder.build::<'_, linalg::Gesummv<'_, f32>>((m, n, true))
             }
-            KernelParam::Gemm { m, n, k } => {
-                build::<'_, '_, linalg::FusedMM<'_, f32>, C>(
-                    linalg::FusedMMP::new(m, n, k),
-                    context,
-                )
-            }
-            KernelParam::BatchMM { b, m, n, k } => {
-                build::<'_, '_, linalg::BatchMM<'_, f32>, C>(
-                    linalg::BatchMMP::new(b, m, n, k),
-                    context,
-                )
-            }
+            KernelParam::Gemm { m, n, k } => builder
+                .build::<'_, linalg::FusedMM<'_, f32>>(linalg::FusedMMP::new(m, n, k)),
+            KernelParam::BatchMM { b, m, n, k } => builder
+                .build::<'_, linalg::BatchMM<'_, f32>>(linalg::BatchMMP::new(b, m, n, k)),
         }
     }
 }
@@ -564,6 +672,98 @@ impl std::str::FromStr for KernelParam {
             })
         } else {
             Ok(result)
+        }
+    }
+}
+
+/// Available platforms for running kernels on.
+#[derive(Copy, Clone, Debug)]
+pub enum Platform {
+    X86,
+    Cuda,
+}
+
+impl std::str::FromStr for Platform {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "x86" => Platform::X86,
+            "cuda" => Platform::Cuda,
+            _ => return Err(format!("invalid platform: {}", s)),
+        })
+    }
+}
+
+impl Platform {
+    /// Convert the platform into the appropriate context builder.  This initializes any internal
+    /// ressources of the platform; for instance, requesting a Cuda context builder will setup the
+    /// connection to the GPU.
+    pub fn to_builder(self) -> PlatformContextBuilder {
+        match self {
+            #[cfg(feature = "x86")]
+            Platform::X86 => PlatformContextBuilder::X86,
+            #[cfg(feature = "cuda")]
+            Platform::Cuda => {
+                PlatformContextBuilder::Cuda(telamon_cuda::Executor::init())
+            }
+            _ => panic!("platform is not supported"),
+        }
+    }
+}
+
+pub enum PlatformContextBuilder {
+    #[cfg(feature = "x86")]
+    X86,
+    #[cfg(feature = "cuda")]
+    Cuda(telamon_cuda::Executor),
+}
+
+impl PlatformContextBuilder {
+    /// Create a new context for this platform.
+    ///
+    /// There can be multiple concurrent contexts on the same platform.
+    pub fn build_context(&self) -> PlatformContext<'_> {
+        match self {
+            #[cfg(feature = "x86")]
+            PlatformContextBuilder::X86 => {
+                PlatformContext::X86(telamon_x86::Context::default(), PhantomData)
+            }
+            #[cfg(feature = "cuda")]
+            PlatformContextBuilder::Cuda(executor) => {
+                PlatformContext::Cuda(telamon_cuda::Context::new(executor))
+            }
+        }
+    }
+}
+
+/// An abstraction over multiple platform's contexts.
+pub enum PlatformContext<'a> {
+    #[cfg(feature = "x86")]
+    X86(telamon_x86::Context, PhantomData<&'a ()>),
+    #[cfg(feature = "cuda")]
+    Cuda(telamon_cuda::Context<'a>),
+}
+
+impl<'a> PlatformContext<'a> {
+    /// Create a kernel bundle, complete with checking and reference function, for the given kernel
+    /// parameters.  Note that all platforms may not support all kernels.
+    pub fn kernel_bundle(
+        &mut self,
+        kernel: &KernelParam,
+    ) -> (KernelBundle<'_>, &dyn Context) {
+        match self {
+            #[cfg(feature = "x86")]
+            PlatformContext::X86(context, _) => {
+                let (bundle, context) =
+                    kernel.to_bundle(context, X86Reference::default());
+                (bundle, context as &dyn Context)
+            }
+            #[cfg(feature = "cuda")]
+            PlatformContext::Cuda(context) => {
+                let (bundle, context) = kernel.to_bundle(context, CublasHandle::new());
+                (bundle, context as &dyn Context)
+            }
         }
     }
 }
