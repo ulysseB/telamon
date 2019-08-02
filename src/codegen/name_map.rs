@@ -71,7 +71,7 @@ pub enum Nameable<'a> {
     InductionVar(ir::IndVarId),
     DimIndex(ir::DimId),
     Constant(BigInt, u16),
-    Size(&'a codegen::Size, ir::Type),
+    Size(Cow<'a, codegen::Size>, ir::Type),
 }
 
 impl<'a> Nameable<'a> {
@@ -89,13 +89,25 @@ impl<'a> Nameable<'a> {
             &Constant(ref value, bits) => {
                 Cow::Owned(namer.value_printer().get_const_int(&value, bits))
             }
-            &Size(size, t) => namer.name_size(size, t),
+            Size(size, t) => namer.name_size(&size, *t),
         }
     }
 }
 
 pub trait IntoNameable<'a> {
     fn into_nameable(self) -> Nameable<'a>;
+}
+
+impl<'a> IntoNameable<'a> for &'a str {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Ident(Cow::Borrowed(self))
+    }
+}
+
+impl<'a> IntoNameable<'a> for String {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Ident(Cow::Owned(self))
+    }
 }
 
 impl<'a> IntoNameable<'a> for Operand<'a> {
@@ -138,9 +150,33 @@ impl<'a> IntoNameable<'a> for &'_ Dimension<'_> {
     }
 }
 
+impl<'a> IntoNameable<'a> for bool {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Constant(if self { 1.into() } else { 0.into() }, 1)
+    }
+}
+
+impl<'a> IntoNameable<'a> for i8 {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Constant(self.into(), 8)
+    }
+}
+
+impl<'a> IntoNameable<'a> for i16 {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Constant(self.into(), 16)
+    }
+}
+
 impl<'a> IntoNameable<'a> for i32 {
     fn into_nameable(self) -> Nameable<'a> {
         Nameable::Constant(self.into(), 32)
+    }
+}
+
+impl<'a> IntoNameable<'a> for i64 {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Constant(self.into(), 64)
     }
 }
 
@@ -150,9 +186,21 @@ impl<'a> IntoNameable<'a> for &'a codegen::Size {
     }
 }
 
+impl<'a> IntoNameable<'a> for codegen::Size {
+    fn into_nameable(self) -> Nameable<'a> {
+        (self, ir::Type::I(32)).into_nameable()
+    }
+}
+
 impl<'a> IntoNameable<'a> for (&'a codegen::Size, ir::Type) {
     fn into_nameable(self) -> Nameable<'a> {
-        Nameable::Size(self.0, self.1)
+        Nameable::Size(Cow::Borrowed(self.0), self.1)
+    }
+}
+
+impl<'a> IntoNameable<'a> for (codegen::Size, ir::Type) {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Size(Cow::Owned(self.0), self.1)
     }
 }
 

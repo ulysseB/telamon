@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::borrow::Cow;
 
 use itertools::Itertools;
@@ -26,6 +27,146 @@ impl MulMode {
 }
 
 use super::name_map::{IntoNameable, Nameable};
+
+#[derive(Debug, Copy, Clone)]
+pub enum CmpOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+impl CmpOp {
+    fn inverse(self) -> Self {
+        match self {
+            CmpOp::Eq => CmpOp::Ne,
+            CmpOp::Ne => CmpOp::Eq,
+            CmpOp::Lt => CmpOp::Ge,
+            CmpOp::Le => CmpOp::Gt,
+            CmpOp::Gt => CmpOp::Le,
+            CmpOp::Ge => CmpOp::Lt,
+        }
+    }
+}
+
+pub struct Comparison<'a> {
+    op: CmpOp,
+    t: ir::Type,
+    lhs: Nameable<'a>,
+    rhs: Nameable<'a>,
+}
+
+impl<'a> Comparison<'a> {
+    fn new<L, R>(op: CmpOp, t: ir::Type, lhs: L, rhs: R) -> Self
+    where
+        L: IntoNameable<'a>,
+        R: IntoNameable<'a>,
+    {
+        Comparison {
+            op,
+            t,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
+    }
+
+    fn new_lt<L, R>(t: ir::Type, lhs: L, rhs: R) -> Self
+    where
+        L: IntoNameable<'a>,
+        R: IntoNameable<'a>,
+    {
+        Self::new(CmpOp::Lt, t, lhs, rhs)
+    }
+
+    fn inverse_mut(&mut self) {
+        self.op = self.op.inverse();
+    }
+
+    fn inverse(mut self) -> Self {
+        self.inverse_mut();
+        self
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum BoolOp {
+    And,
+    Or,
+    Xor,
+}
+
+#[derive(Clone)]
+enum PredExpr<'a> {
+    CmpOp {
+        op: CmpOp,
+        t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+    BoolOp(BoolOp, Vec<Cow<'a, PredExpr<'a>>>),
+    Not(Box<Cow<'a, PredExpr<'a>>>),
+}
+
+pub enum PExpr<'a> {
+    Reduction {
+        op: BoolOp,
+        args: Vec<Comparison<'a>>,
+        preds: Vec<Nameable<'a>>,
+    },
+}
+
+impl<'a> PExpr<'a> {
+    fn new<C, P>(op: BoolOp, comparisons: C, predicates: P) -> Self
+    where
+        C: IntoIterator<Item = Comparison<'a>>,
+        P: IntoIterator<Item = Nameable<'a>>,
+    {
+        PExpr::Reduction {
+            op,
+            args: comparisons.into_iter().collect(),
+            preds: predicates.into_iter().collect(),
+        }
+    }
+
+    fn from_ranges<B, R, P>(space: &SearchSpace, ranges: R, predicates: P) -> Self
+    where
+        B: Borrow<ir::RangePredicate>,
+        R: IntoIterator<Item = B>,
+        P: IntoIterator<Item = Nameable<'a>>,
+    {
+        Self::new(
+            BoolOp::And,
+            ranges.into_iter().map(|range| {
+                Comparison::new_lt(
+                    ir::Type::I(32),
+                    range.borrow().induction_variable(),
+                    Size::from_ir(
+                        &ir::PartialSize::from(range.borrow().bound().clone()),
+                        space,
+                    ),
+                )
+            }),
+            predicates,
+        )
+    }
+
+    fn to_bool(&self) -> Option<bool> {
+        match self {
+            PExpr::Reduction { op, args, preds }
+                if args.is_empty() && preds.is_empty() =>
+            {
+                match op {
+                    BoolOp::Or => Some(false),
+                    BoolOp::And => Some(true),
+                    BoolOp::Xor => panic!("Impossible"),
+                }
+            }
+            _ => None,
+        }
+    }
+}
 
 pub enum Inst<'a> {
     Move(ir::Type, Nameable<'a>),
@@ -127,6 +268,7 @@ pub trait InstPrinter {
         flag: InstFlag,
         return_id: &str,
         addr: &str,
+        predicate: Option<(&str, Cow<'_, str>)>,
     );
 
     /// Print store val [addr]
@@ -548,15 +690,33 @@ pub trait InstPrinter {
                 t: ld_type,
                 operands: [addr],
                 access_pattern: pattern,
-                ..
-            } => self.print_ld(
-                vector_factors,
-                Self::lower_type(*ld_type, fun),
-                access_pattern_space(pattern, fun.space()),
-                unwrap!(inst.mem_flag()),
-                &Self::name_inst(vector_levels, inst.id(), namer),
-                &Self::name_operand(&[vec![], vec![]], addr, namer),
-            ),
+                predicate,
+            } => {
+                let predicate = if fun.predicate_accesses() {
+                    predicate.as_ref().map(|p| {
+                        let expr = PExpr::from_ranges(
+                            fun.space(),
+                            p.ranges(),
+                            std::iter::empty(),
+                        );
+                        let name = namer.gen_name(ir::Type::I(1));
+                        self.print_predicate_expr(&name, &expr, namer);
+                        (name, p.default_value().into_nameable())
+                    })
+                } else {
+                    None
+                };
+
+                self.print_ld(
+                    vector_factors,
+                    Self::lower_type(*ld_type, fun),
+                    access_pattern_space(pattern, fun.space()),
+                    unwrap!(inst.mem_flag()),
+                    &Self::name_inst(vector_levels, inst.id(), namer),
+                    &Self::name_operand(&[vec![], vec![]], addr, namer),
+                    predicate.as_ref().map(|(a, b)| (a as &str, b.name(namer))),
+                );
+            }
             op::St {
                 operands: [addr, val],
                 access_pattern: pattern,
@@ -568,12 +728,39 @@ pub trait InstPrinter {
                 } else {
                     None
                 };
+
+                let predicate = PExpr::from_ranges(
+                    fun.space(),
+                    predicate
+                        .as_ref()
+                        .and_then(|p| {
+                            if fun.predicate_accesses() {
+                                Some(p)
+                            } else {
+                                None
+                            }
+                        })
+                        .into_iter()
+                        .flat_map(|p| p.ranges()),
+                    guard.as_ref().map(|s| (s as &str).into_nameable()),
+                );
+
+                let guard = if let Some(p) = predicate.to_bool() {
+                    assert!(p, "Instruction is always skipped");
+
+                    None
+                } else {
+                    let predicate_name = namer.gen_name(ir::Type::I(1));
+                    self.print_predicate_expr(&predicate_name, &predicate, namer);
+                    Some(predicate_name)
+                };
+
                 self.print_st(
                     vector_factors,
                     Self::lower_type(val.t(), fun),
                     access_pattern_space(pattern, fun.space()),
                     unwrap!(inst.mem_flag()),
-                    guard.as_ref().map(|x| x as _),
+                    guard.as_ref().map(|s| s as &str),
                     &Self::name_operand(&[vec![], vec![]], addr, namer),
                     &Self::name_operand(vector_levels, val, namer),
                 );
@@ -653,5 +840,83 @@ pub trait InstPrinter {
             &loop_.bound.name(namer),
         );
         self.print_cond_jump(&loop_id.to_string(), &lt_cond);
+    }
+
+    fn print_predicate_expr(
+        &mut self,
+        result: &str,
+        pexpr: &PExpr<'_>,
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        match pexpr {
+            PExpr::Reduction { op, args, preds } => {
+                let init_val = match op {
+                    BoolOp::And => true.into_nameable(),
+                    BoolOp::Or => false.into_nameable(),
+                    BoolOp::Xor => unimplemented!("non"),
+                };
+                let mut iter = preds.iter();
+                self.print_move(
+                    ir::Type::I(1),
+                    result,
+                    &iter.next().unwrap_or(&init_val).name(namer),
+                );
+
+                for pred in iter {
+                    self.print_bool_op(*op, &result, &result, &pred.name(namer));
+                }
+
+                for arg in args {
+                    let tmp = namer.gen_name(ir::Type::I(1));
+                    self.print_comparison(&tmp, arg, namer);
+                    self.print_bool_op(*op, &result, &result, &tmp);
+                }
+            }
+        }
+    }
+
+    fn print_bool_op(&mut self, op: BoolOp, result: &str, lhs: &str, rhs: &str) {
+        let ir_op = match op {
+            BoolOp::And => ir::BinOp::And,
+            BoolOp::Or => ir::BinOp::Or,
+            BoolOp::Xor => unimplemented!("xor"),
+        };
+
+        self.print_binop(
+            [1, 1],
+            ir_op,
+            ir::Type::I(1),
+            ir::op::Rounding::Exact,
+            result,
+            lhs,
+            rhs,
+        );
+    }
+
+    fn print_comparison(
+        &mut self,
+        result: &str,
+        comparison: &Comparison<'_>,
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        let (lhs, rhs) = (&comparison.lhs, &comparison.rhs);
+        let (ir_op, lhs, rhs) = match comparison.op {
+            CmpOp::Eq => (ir::BinOp::Equals, lhs, rhs),
+            CmpOp::Ne => unimplemented!("!="),
+            CmpOp::Lt => (ir::BinOp::Lt, lhs, rhs),
+            CmpOp::Gt => (ir::BinOp::Lt, rhs, lhs),
+            CmpOp::Le => (ir::BinOp::Leq, lhs, rhs),
+            CmpOp::Ge => (ir::BinOp::Leq, rhs, lhs),
+        };
+
+        self.print_binop(
+            [1, 1],
+            ir_op,
+            comparison.t,
+            ir::op::Rounding::Exact,
+            result,
+            &lhs.name(namer),
+            &rhs.name(namer),
+        );
     }
 }

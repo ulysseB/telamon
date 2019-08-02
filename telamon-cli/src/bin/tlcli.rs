@@ -302,6 +302,9 @@ struct Benchmark {
 
     #[structopt(long = "platform", short = "p", default_value = "cuda")]
     platform: Platform,
+
+    #[structopt(long = "predicated")]
+    predicated: bool,
 }
 
 impl Benchmark {
@@ -328,7 +331,9 @@ impl Benchmark {
         (bundle.check_fn)(context)
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
 
-        let code = telamon::codegen::Function::build(&candidate);
+        let code = telamon::codegen::FunctionBuilder::new(&candidate)
+            .predicated(self.predicated)
+            .build();
         let runtimes = context.benchmark(&code, 40);
         (bundle.check_fn)(context)
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
