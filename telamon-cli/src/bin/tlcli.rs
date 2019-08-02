@@ -206,6 +206,9 @@ struct Codegen {
 
     #[structopt(long = "platform", short = "p", default_value = "cuda")]
     platform: Platform,
+
+    #[structopt(long = "predicated")]
+    predicated: bool,
 }
 
 impl Codegen {
@@ -222,7 +225,9 @@ impl Codegen {
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
         }
 
-        let code = telamon::codegen::Function::build(&candidate);
+        let code = telamon::codegen::FunctionBuilder::new(&candidate)
+            .predicated(self.predicated)
+            .build();
         context.device().print(&code, &mut std::io::stdout());
 
         Ok(())
