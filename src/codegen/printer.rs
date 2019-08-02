@@ -1,5 +1,5 @@
-use std::borrow::Borrow;
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
+use std::ops;
 
 use itertools::Itertools;
 use utils::*;
@@ -51,20 +51,50 @@ impl CmpOp {
     }
 }
 
-pub struct Comparison<'a> {
-    op: CmpOp,
-    t: ir::Type,
-    lhs: Nameable<'a>,
-    rhs: Nameable<'a>,
+#[derive(Debug, Copy, Clone)]
+pub enum BoolOp {
+    And,
+    Or,
 }
 
-impl<'a> Comparison<'a> {
-    fn new<L, R>(op: CmpOp, t: ir::Type, lhs: L, rhs: R) -> Self
+/// A predicate expression
+#[derive(Clone)]
+pub enum PredExpr<'a> {
+    /// Typed comparison between two registers
+    ///
+    /// TODO: ftz for float
+    CmpOp {
+        op: CmpOp,
+        t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+    /// Boolean operation
+    BoolOp(BoolOp, Vec<Cow<'a, PredExpr<'a>>>),
+    /// Negation
+    Not(Box<Cow<'a, PredExpr<'a>>>),
+    /// Variable
+    Variable(Nameable<'a>),
+}
+
+impl<'a> ops::Not for PredExpr<'a> {
+    type Output = PredExpr<'a>;
+
+    fn not(self) -> PredExpr<'a> {
+        match self {
+            PredExpr::Not(inner) => inner.into_owned(),
+            _ => PredExpr::Not(Box::new(Cow::Owned(self))),
+        }
+    }
+}
+
+impl<'a> PredExpr<'a> {
+    fn new_cmp<L, R>(op: CmpOp, t: ir::Type, lhs: L, rhs: R) -> Self
     where
         L: IntoNameable<'a>,
         R: IntoNameable<'a>,
     {
-        Comparison {
+        PredExpr::CmpOp {
             op,
             t,
             lhs: lhs.into_nameable(),
@@ -77,95 +107,45 @@ impl<'a> Comparison<'a> {
         L: IntoNameable<'a>,
         R: IntoNameable<'a>,
     {
-        Self::new(CmpOp::Lt, t, lhs, rhs)
-    }
-
-    fn inverse_mut(&mut self) {
-        self.op = self.op.inverse();
-    }
-
-    fn inverse(mut self) -> Self {
-        self.inverse_mut();
-        self
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum BoolOp {
-    And,
-    Or,
-    Xor,
-}
-
-#[derive(Clone)]
-enum PredExpr<'a> {
-    CmpOp {
-        op: CmpOp,
-        t: ir::Type,
-        lhs: Nameable<'a>,
-        rhs: Nameable<'a>,
-    },
-    BoolOp(BoolOp, Vec<Cow<'a, PredExpr<'a>>>),
-    Not(Box<Cow<'a, PredExpr<'a>>>),
-}
-
-pub enum PExpr<'a> {
-    Reduction {
-        op: BoolOp,
-        args: Vec<Comparison<'a>>,
-        preds: Vec<Nameable<'a>>,
-    },
-}
-
-impl<'a> PExpr<'a> {
-    fn new<C, P>(op: BoolOp, comparisons: C, predicates: P) -> Self
-    where
-        C: IntoIterator<Item = Comparison<'a>>,
-        P: IntoIterator<Item = Nameable<'a>>,
-    {
-        PExpr::Reduction {
-            op,
-            args: comparisons.into_iter().collect(),
-            preds: predicates.into_iter().collect(),
-        }
-    }
-
-    fn from_ranges<B, R, P>(space: &SearchSpace, ranges: R, predicates: P) -> Self
-    where
-        B: Borrow<ir::RangePredicate>,
-        R: IntoIterator<Item = B>,
-        P: IntoIterator<Item = Nameable<'a>>,
-    {
-        Self::new(
-            BoolOp::And,
-            ranges.into_iter().map(|range| {
-                Comparison::new_lt(
-                    ir::Type::I(32),
-                    range.borrow().induction_variable(),
-                    Size::from_ir(
-                        &ir::PartialSize::from(range.borrow().bound().clone()),
-                        space,
-                    ),
-                )
-            }),
-            predicates,
-        )
+        Self::new_cmp(CmpOp::Lt, t, lhs, rhs)
     }
 
     fn to_bool(&self) -> Option<bool> {
         match self {
-            PExpr::Reduction { op, args, preds }
-                if args.is_empty() && preds.is_empty() =>
-            {
-                match op {
-                    BoolOp::Or => Some(false),
-                    BoolOp::And => Some(true),
-                    BoolOp::Xor => panic!("Impossible"),
-                }
-            }
+            PredExpr::BoolOp(op, args) if args.is_empty() => Some(match op {
+                BoolOp::And => true,
+                BoolOp::Or => false,
+            }),
+            PredExpr::Not(arg) => arg.to_bool().map(|x| !x),
             _ => None,
         }
     }
+}
+
+pub fn predicates_from_range_and_guard<'a, B, RI>(
+    space: &SearchSpace,
+    ranges: RI,
+    guard: Option<Nameable<'a>>,
+) -> PredExpr<'a>
+where
+    B: Borrow<ir::RangePredicate>,
+    RI: IntoIterator<Item = B>,
+{
+    PredExpr::BoolOp(
+        BoolOp::And,
+        ranges
+            .into_iter()
+            .map(|range| {
+                let range = range.borrow();
+                Cow::Owned(PredExpr::new_lt(
+                    ir::Type::I(32),
+                    range.induction_variable(),
+                    Size::from_ir(&ir::PartialSize::from(range.bound().clone()), space),
+                ))
+            })
+            .chain(guard.map(|guard| Cow::Owned(PredExpr::Variable(guard))))
+            .collect(),
+    )
 }
 
 pub enum Inst<'a> {
@@ -694,10 +674,10 @@ pub trait InstPrinter {
             } => {
                 let predicate = if fun.predicate_accesses() {
                     predicate.as_ref().map(|p| {
-                        let expr = PExpr::from_ranges(
+                        let expr = predicates_from_range_and_guard(
                             fun.space(),
                             p.ranges(),
-                            std::iter::empty(),
+                            None,
                         );
                         let name = namer.gen_name(ir::Type::I(1));
                         self.print_predicate_expr(&name, &expr, namer);
@@ -729,7 +709,7 @@ pub trait InstPrinter {
                     None
                 };
 
-                let predicate = PExpr::from_ranges(
+                let predicate = predicates_from_range_and_guard(
                     fun.space(),
                     predicate
                         .as_ref()
@@ -845,32 +825,52 @@ pub trait InstPrinter {
     fn print_predicate_expr(
         &mut self,
         result: &str,
-        pexpr: &PExpr<'_>,
+        pexpr: &PredExpr<'_>,
         namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
     ) {
         match pexpr {
-            PExpr::Reduction { op, args, preds } => {
-                let init_val = match op {
-                    BoolOp::And => true.into_nameable(),
-                    BoolOp::Or => false.into_nameable(),
-                    BoolOp::Xor => unimplemented!("non"),
+            PredExpr::CmpOp { op, t, lhs, rhs } => {
+                let (ir_op, lhs, rhs) = match op {
+                    CmpOp::Eq => (ir::BinOp::Equals, lhs, rhs),
+                    CmpOp::Ne => unimplemented!("!="),
+                    CmpOp::Lt => (ir::BinOp::Lt, lhs, rhs),
+                    CmpOp::Gt => (ir::BinOp::Lt, rhs, lhs),
+                    CmpOp::Le => (ir::BinOp::Leq, lhs, rhs),
+                    CmpOp::Ge => (ir::BinOp::Leq, rhs, lhs),
                 };
-                let mut iter = preds.iter();
-                self.print_move(
-                    ir::Type::I(1),
+
+                self.print_binop(
+                    [1, 1],
+                    ir_op,
+                    *t,
+                    ir::op::Rounding::Exact,
                     result,
-                    &iter.next().unwrap_or(&init_val).name(namer),
+                    &lhs.name(namer),
+                    &rhs.name(namer),
                 );
+            }
+            PredExpr::BoolOp(op, args) => {
+                let mut iter = args.iter();
+                if let Some(first) = iter.next() {
+                    self.print_predicate_expr(result, first, namer);
 
-                for pred in iter {
-                    self.print_bool_op(*op, &result, &result, &pred.name(namer));
-                }
+                    for arg in iter {
+                        let tmp = namer.gen_name(ir::Type::I(1));
+                        self.print_predicate_expr(&tmp, arg, namer);
+                        self.print_bool_op(*op, &result, &result, &tmp);
+                    }
+                } else {
+                    let init_val = match op {
+                        BoolOp::And => true.into_nameable(),
+                        BoolOp::Or => false.into_nameable(),
+                    };
 
-                for arg in args {
-                    let tmp = namer.gen_name(ir::Type::I(1));
-                    self.print_comparison(&tmp, arg, namer);
-                    self.print_bool_op(*op, &result, &result, &tmp);
+                    self.print_move(ir::Type::I(1), result, &init_val.name(namer));
                 }
+            }
+            PredExpr::Not(arg) => unimplemented!("nope"),
+            PredExpr::Variable(var) => {
+                self.print_move(ir::Type::I(1), result, &var.name(namer))
             }
         }
     }
@@ -879,7 +879,6 @@ pub trait InstPrinter {
         let ir_op = match op {
             BoolOp::And => ir::BinOp::And,
             BoolOp::Or => ir::BinOp::Or,
-            BoolOp::Xor => unimplemented!("xor"),
         };
 
         self.print_binop(
@@ -890,33 +889,6 @@ pub trait InstPrinter {
             result,
             lhs,
             rhs,
-        );
-    }
-
-    fn print_comparison(
-        &mut self,
-        result: &str,
-        comparison: &Comparison<'_>,
-        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
-    ) {
-        let (lhs, rhs) = (&comparison.lhs, &comparison.rhs);
-        let (ir_op, lhs, rhs) = match comparison.op {
-            CmpOp::Eq => (ir::BinOp::Equals, lhs, rhs),
-            CmpOp::Ne => unimplemented!("!="),
-            CmpOp::Lt => (ir::BinOp::Lt, lhs, rhs),
-            CmpOp::Gt => (ir::BinOp::Lt, rhs, lhs),
-            CmpOp::Le => (ir::BinOp::Leq, lhs, rhs),
-            CmpOp::Ge => (ir::BinOp::Leq, rhs, lhs),
-        };
-
-        self.print_binop(
-            [1, 1],
-            ir_op,
-            comparison.t,
-            ir::op::Rounding::Exact,
-            result,
-            &lhs.name(namer),
-            &rhs.name(namer),
         );
     }
 }
