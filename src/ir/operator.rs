@@ -144,12 +144,20 @@ impl UnaryOp {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RangePredicate {
     ind_var: ir::IndVarId,
-    size: ir::Size,
+    bound: ir::Size,
 }
 
 impl RangePredicate {
-    pub fn new(ind_var: ir::IndVarId, size: ir::Size) -> Self {
-        RangePredicate { ind_var, size }
+    pub fn new(ind_var: ir::IndVarId, bound: ir::Size) -> Self {
+        RangePredicate { ind_var, bound }
+    }
+
+    pub fn induction_variable(&self) -> ir::IndVarId {
+        self.ind_var
+    }
+
+    pub fn bound(&self) -> &ir::Size {
+        &self.bound
     }
 }
 
@@ -167,6 +175,14 @@ impl LoadPredicate {
             default_value,
         }
     }
+
+    pub fn ranges(&self) -> &[RangePredicate] {
+        &self.in_range
+    }
+
+    pub fn default_value(&self) -> &Operand {
+        &self.default_value
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -178,6 +194,10 @@ impl StorePredicate {
     pub fn new(in_range: Vec<RangePredicate>) -> Self {
         assert!(!in_range.is_empty());
         StorePredicate { in_range }
+    }
+
+    pub fn ranges(&self) -> &[RangePredicate] {
+        &self.in_range
     }
 }
 
@@ -300,6 +320,20 @@ impl<L> Operator<L> {
             UnaryOp(operator, operand) => Some(operator.t(operand.t())),
             St { .. } | TmpSt(..) => None,
         }
+    }
+
+    pub fn predicates<'a>(&'a self) -> impl Iterator<Item = &'a RangePredicate> {
+        match self {
+            Ld { predicate, .. } => {
+                predicate.as_ref().map(|load_pred| &load_pred.in_range)
+            }
+            St { predicate, .. } => {
+                predicate.as_ref().map(|store_pred| &store_pred.in_range)
+            }
+            _ => None,
+        }
+        .into_iter()
+        .flat_map(|preds| preds)
     }
 
     /// Retruns the list of operands.

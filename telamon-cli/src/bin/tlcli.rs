@@ -19,8 +19,9 @@ use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::offline_analysis::tree::CandidateTree;
 use telamon::search_space::SearchSpace;
+use telamon_kernels::statistics::estimate_mean;
 
-use telamon_cli::{KernelParam, Platform, ReplayPath};
+use telamon_cli::{Bench, KernelParam, Platform, ReplayPath};
 
 /// Compute the bound for a given candidate.
 #[derive(StructOpt)]
@@ -221,6 +222,59 @@ impl Codegen {
 
         let code = telamon::codegen::Function::build(&candidate);
         context.device().print(&code, &mut std::io::stdout());
+
+        Ok(())
+    }
+}
+
+#[derive(StructOpt)]
+struct Benchmark {
+    #[structopt(parse(from_os_str))]
+    replay: ReplayPath,
+
+    /// Kernel specification to use.
+    #[structopt(short = "k", long = "kernel")]
+    kernel: KernelParam,
+
+    #[structopt(long = "platform", short = "p", default_value = "cuda")]
+    platform: Platform,
+
+    #[structopt(long = "predicated")]
+    predicated: bool,
+}
+
+impl Benchmark {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let builder = self.platform.to_builder();
+        let mut context = builder.build_context();
+        let (bundle, context) = context.kernel_bundle(&self.kernel);
+        assert!(bundle.candidates.len() == 1);
+
+        let mut candidate = bundle.candidates[0].space.clone();
+        for action in &self.replay.load()? {
+            candidate = action
+                .apply_to(candidate)
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        }
+
+        let bound = bound(&candidate, context);
+
+        let code = telamon::codegen::FunctionBuilder::new(&candidate)
+            .predicated(self.predicated)
+            .build();
+        let runtimes = context.benchmark(&code, 40);
+        (bundle.check_fn)(&Candidate::new(candidate, bound), context)
+            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+
+        let reference = Bench::default()
+            .warmup(4)
+            .runs(40)
+            .benchmark_fn(&bundle.reference_fn);
+        println!(
+            "runtime: {}, reference: {}",
+            estimate_mean(runtimes, 0.95, "ns"),
+            estimate_mean(reference, 0.95, "ns")
+        );
 
         Ok(())
     }
@@ -461,6 +515,9 @@ impl Stats {
 
 #[derive(StructOpt)]
 enum Command {
+    #[structopt(name = "benchmark")]
+    Benchmark(Benchmark),
+
     #[structopt(name = "codegen")]
     Codegen(Codegen),
 
@@ -489,6 +546,7 @@ fn main() {
     env_logger::init();
 
     let result = match &args.command {
+        Command::Benchmark(benchmark) => benchmark.run(&args),
         Command::Codegen(codegen) => codegen.run(&args),
         Command::Rebuild(rebuild) => rebuild.run(&args),
         Command::Bounds(bounds) => bounds.run(&args),

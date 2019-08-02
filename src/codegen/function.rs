@@ -13,6 +13,73 @@ use itertools::Itertools;
 use log::{debug, trace};
 use matches::matches;
 
+pub struct FunctionBuilder<'a> {
+    space: &'a SearchSpace,
+    predicated: bool,
+}
+
+impl<'a> FunctionBuilder<'a> {
+    pub fn new(space: &'a SearchSpace) -> Self {
+        FunctionBuilder {
+            space,
+            predicated: false,
+        }
+    }
+
+    pub fn predicated(mut self, predicated: bool) -> Self {
+        self.predicated = predicated;
+        self
+    }
+
+    pub fn build(&self) -> Function<'a> {
+        let mut dims = dimension::group_merged_dimensions(self.space);
+        let (induction_vars, init_induction_levels) =
+            dimension::register_induction_vars(&mut dims, self.space);
+        trace!("dims = {:?}", dims);
+        let insts = self
+            .space
+            .ir_instance()
+            .insts()
+            .map(|inst| Instruction::new(inst, self.space))
+            .collect_vec();
+        let mut device_code_args = dims
+            .iter()
+            .flat_map(|d| d.host_values(self.space))
+            .chain(
+                induction_vars
+                    .iter()
+                    .flat_map(|v| v.host_values(self.space)),
+            )
+            .chain(insts.iter().flat_map(|i| i.host_values(self.space)))
+            .chain(
+                init_induction_levels
+                    .iter()
+                    .flat_map(|l| l.host_values(self.space)),
+            )
+            .collect::<FxHashSet<_>>();
+        let (block_dims, thread_dims, cfg) = cfg::build(self.space, insts, dims);
+        let mem_blocks = register_mem_blocks(self.space, &block_dims);
+        device_code_args.extend(
+            mem_blocks
+                .iter()
+                .flat_map(|x| x.host_values(self.space, &block_dims)),
+        );
+        debug!("compiling cfg {:?}", cfg);
+        Function {
+            cfg,
+            thread_dims,
+            block_dims,
+            induction_vars,
+            device_code_args: device_code_args.into_iter().collect(),
+            space: self.space,
+            mem_blocks,
+            variables: codegen::variable::wrap_variables(self.space),
+            init_induction_levels,
+            predicate_accesses: self.predicated,
+        }
+    }
+}
+
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
     cfg: Cfg<'a>,
@@ -25,50 +92,13 @@ pub struct Function<'a> {
     variables: Vec<codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace,
+    predicate_accesses: bool,
 }
 
 impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace) -> Function<'a> {
-        let mut dims = dimension::group_merged_dimensions(space);
-        let (induction_vars, init_induction_levels) =
-            dimension::register_induction_vars(&mut dims, space);
-        trace!("dims = {:?}", dims);
-        let insts = space
-            .ir_instance()
-            .insts()
-            .map(|inst| Instruction::new(inst, space))
-            .collect_vec();
-        let mut device_code_args = dims
-            .iter()
-            .flat_map(|d| d.host_values(space))
-            .chain(induction_vars.iter().flat_map(|v| v.host_values(space)))
-            .chain(insts.iter().flat_map(|i| i.host_values(space)))
-            .chain(
-                init_induction_levels
-                    .iter()
-                    .flat_map(|l| l.host_values(space)),
-            )
-            .collect::<FxHashSet<_>>();
-        let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
-        let mem_blocks = register_mem_blocks(space, &block_dims);
-        device_code_args.extend(
-            mem_blocks
-                .iter()
-                .flat_map(|x| x.host_values(space, &block_dims)),
-        );
-        debug!("compiling cfg {:?}", cfg);
-        Function {
-            cfg,
-            thread_dims,
-            block_dims,
-            induction_vars,
-            device_code_args: device_code_args.into_iter().collect(),
-            space,
-            mem_blocks,
-            variables: codegen::variable::wrap_variables(space),
-            init_induction_levels,
-        }
+        FunctionBuilder::new(space).build()
     }
 
     /// Returns the ordered list of thread dimensions.
@@ -110,6 +140,10 @@ impl<'a> Function<'a> {
     /// Returns the values to pass from the host to the device.
     pub fn device_code_args(&self) -> impl Iterator<Item = &ParamVal> {
         self.device_code_args.iter()
+    }
+
+    pub fn predicate_accesses(&self) -> bool {
+        self.predicate_accesses
     }
 
     /// Returns the control flow graph.
@@ -430,6 +464,17 @@ impl<'a> Instruction<'a> {
         operands
             .into_iter()
             .flat_map(move |op| ParamVal::from_operand(op, space))
+            .chain(
+                self.instruction
+                    .operator()
+                    .predicates()
+                    .flat_map(move |pred| {
+                        ParamVal::from_size(&codegen::Size::from_ir(
+                            &ir::PartialSize::from(pred.bound().clone()),
+                            space,
+                        ))
+                    }),
+            )
     }
 
     /// Returns the type of the instruction.

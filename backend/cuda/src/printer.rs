@@ -514,7 +514,28 @@ impl InstPrinter for CudaPrinter {
         flag: InstFlag,
         result: &str,
         addr: &str,
+        predicate: Option<(&str, Cow<'_, str>)>,
     ) {
+        let p = if let Some((p, oob)) = predicate {
+            match vector_factors {
+                [1, 1] => {
+                    unwrap!(writeln!(
+                        self.buffer,
+                        "  mov.{} {}, {};",
+                        Self::get_type(return_type),
+                        result,
+                        oob
+                    ));
+                }
+                // TODO
+                _ => (),
+            }
+
+            format!("@{}  ", p)
+        } else {
+            "".to_string()
+        };
+
         let operator = Self::ld_operator(mem_space, flag);
         let vector = match vector_factors {
             [1, 1] => "",
@@ -524,7 +545,8 @@ impl InstPrinter for CudaPrinter {
         };
         unwrap!(writeln!(
             self.buffer,
-            "  {}{}.{} {}, [{}];",
+            "  {}{}{}.{} {}, [{}];",
+            p,
             operator,
             vector,
             Self::get_type(return_type),

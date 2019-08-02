@@ -466,15 +466,26 @@ impl InstPrinter for X86printer {
         _: InstFlag,
         result: &str,
         addr: &str,
+        predicate: Option<(&str, Cow<'_, str>)>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
-        unwrap!(writeln!(
+        if let Some((predicate, _)) = predicate {
+            unwrap!(write!(self.buffer, "if ({})", predicate));
+        }
+
+        unwrap!(write!(
             self.buffer,
             "{} = *({}*){} ;",
             result,
             Self::get_type(return_type),
             addr
         ));
+
+        if let Some((_, oob)) = &predicate {
+            unwrap!(write!(self.buffer, " else {} = {} ;", result, oob));
+        }
+
+        unwrap!(write!(self.buffer, "\n"));
     }
 
     fn print_st(
