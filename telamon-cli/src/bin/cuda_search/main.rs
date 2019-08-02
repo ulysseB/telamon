@@ -191,6 +191,12 @@ fn main() {
                     idx,
                 )
                 .run(&config, &executor, &reference),
+                ResNetCellBottomHalf { m, n, k, activation_fun } => Benchmark::<'_, linalg::ResNetCellBottomHalf<'_, f32>>::new(
+                    linalg::ResNetCellBottomHalfP::new(m, n, k, activation_fun),
+                    format!("ResNetCellBottomHalf_{}_{}_{}_{}", m, n, k, telamon_kernels::linalg::compose::ActivationFunction::opt_to_display(&activation_fun)),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
                 TransformerCell { m, n, p, r } => Benchmark::<'_, linalg::TransformerCell<'_, f32>>::new(
                     linalg::TransformerCellP::new(m, n, p, r),
                     format!("TransformerCell_{}_{}_{}_{}", m, n, p, r),

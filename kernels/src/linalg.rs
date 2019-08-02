@@ -902,7 +902,6 @@ impl<'a, S: Scalar> Kernel<'a> for ResNetCell<'a, S> {
         let a = TensorBuilder::new("a", vec![m_size.clone(), k_size.clone()])
             .doif(params.transpose_a, |b| b.transpose(0, 1))
             .finish(builder);
-
         let b = TensorBuilder::new("b", vec![k_size.clone(), n_size.clone()])
             .doif(params.transpose_b, |b| b.transpose(0, 1))
             .finish(builder);
@@ -1148,16 +1147,16 @@ impl<'a, S: Scalar> Kernel<'a> for ResNetCellBottomHalf<'a, S> {
         let n_size = create_size(params.n, "n", params.generic, builder);
         let k_size = create_size(params.k, "k", params.generic, builder);
 
-        let act_ab = TensorBuilder::new("act_ab", vec![n_size.clone(), m_size.clone()])
+        let act_ab = TensorBuilder::new("act_ab", vec![m_size.clone(), n_size.clone()])
             .doif(params.transpose_actab, |b| b.transpose(0, 1))
             .finish(builder);
-        let a = TensorBuilder::new("a", vec![n_size.clone(), k_size.clone()])
+        let a = TensorBuilder::new("a", vec![m_size.clone(), k_size.clone()])
             .doif(params.transpose_a, |b| b.transpose(0, 1))
             .finish(builder);
-        let c = TensorBuilder::new("c", vec![m_size, n_size.clone()])
+        let c = TensorBuilder::new("c", vec![n_size, k_size.clone()])
             .doif(params.transpose_c, |b| b.transpose(0, 1))
             .finish(builder);
-        let o = builder.tensor::<S>("o", vec![n_size, k_size], false);
+        let o = builder.tensor::<S>("o", vec![m_size, k_size], false);
 
         ResNetCellBottomHalf {
             params,
@@ -1181,14 +1180,15 @@ impl<'a, S: Scalar> Kernel<'a> for ResNetCellBottomHalf<'a, S> {
 
         let act_ab = self
             .act_ab
-            .load(vec![n_tiling.clone(), m_tiling.clone()], &mut builder);
-        let c = self.c.load(vec![m_tiling, n_tiling.clone()], &mut builder);
-        let a = self.a.load(vec![n_tiling, k_tiling], &mut builder);
+            .load(vec![m_tiling.clone(), n_tiling.clone()], &mut builder);
+        let c = self.c.load(vec![n_tiling, k_tiling.clone()], &mut builder);
+        let a = self.a.load(vec![m_tiling, k_tiling], &mut builder);
 
         let act_ab_c = matrix_matrix_multiply(&mut builder, &act_ab, &c);
-        let act_ab_c_pa = matrix_matrix_multiply(&mut builder, &act_ab_c, &a);
-        let act_act_ab_c_pa =
-            tensor_activate(&mut builder, act_ab_c_pa, &self.params.activation_fun);
+        let act_act_ab_c =
+            tensor_activate(&mut builder, act_ab_c, &self.params.activation_fun);
+
+        let act_act_ab_c_pa = tensor_add(&mut builder, &act_act_ab_c, &a);
 
         act_act_ab_c_pa.store(&self.o, &mut builder);
 
@@ -1196,9 +1196,9 @@ impl<'a, S: Scalar> Kernel<'a> for ResNetCellBottomHalf<'a, S> {
     }
 
     fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
-        let act_ab_shape = (self.params.n as usize, self.params.m as usize);
-        let c_shape = (self.params.m as usize, self.params.n as usize);
-        let a_shape = (self.params.n as usize, self.params.k as usize);
+        let act_ab_shape = (self.params.m as usize, self.params.n as usize);
+        let c_shape = (self.params.n as usize, self.params.k as usize);
+        let a_shape = (self.params.m as usize, self.params.k as usize);
 
         let act_ab = unwrap!(self.act_ab.read_to_host(context).into_shape(act_ab_shape));
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
