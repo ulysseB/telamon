@@ -1,6 +1,7 @@
 use crate::ValuePrinter;
 use itertools::Itertools;
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::fmt::{self, Write as WriteFmt};
 use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
@@ -357,6 +358,83 @@ impl X86printer {
 
 impl InstPrinter for X86printer {
     type ValuePrinter = ValuePrinter;
+
+    fn print_predicate_expr(
+        &mut self,
+        result: &str,
+        pexpr: &PredExpr<'_>,
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        struct PredicateExpr<'a, 'b, 'c, 'd> {
+            pexpr: &'a PredExpr<'b>,
+            namer: &'a NameMap<'c, 'd, ValuePrinter>,
+        }
+
+        impl<'a, 'b, 'c, 'd> fmt::Display for PredicateExpr<'a, 'b, 'c, 'd> {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self.pexpr {
+                    PredExpr::CmpOp { op, t, lhs, rhs } => {
+                        let (c_op, lhs, rhs) = match op {
+                            CmpOp::Eq => ("==", lhs, rhs),
+                            CmpOp::Ne => ("!=", lhs, rhs),
+                            CmpOp::Lt => ("<", lhs, rhs),
+                            CmpOp::Gt => ("<", rhs, lhs),
+                            CmpOp::Le => ("<=", lhs, rhs),
+                            CmpOp::Ge => ("<=", rhs, lhs),
+                        };
+
+                        write!(
+                            fmt,
+                            "{} {} {}",
+                            lhs.name(self.namer),
+                            c_op,
+                            rhs.name(self.namer)
+                        )
+                    }
+                    PredExpr::BoolOp(op, args) => {
+                        let (c_op, neutral) = match op {
+                            BoolOp::And => (" & ", "true"),
+                            BoolOp::Or => (" | ", "false"),
+                        };
+
+                        if args.is_empty() {
+                            fmt.write_str(neutral)
+                        } else {
+                            write!(
+                                fmt,
+                                "{}",
+                                args.iter().format_with(c_op, move |pexpr, f| {
+                                    f(&format_args!(
+                                        "({})",
+                                        PredicateExpr {
+                                            pexpr,
+                                            namer: self.namer,
+                                        }
+                                    ))
+                                })
+                            )
+                        }
+                    }
+                    PredExpr::Not(arg) => write!(
+                        fmt,
+                        "!({})",
+                        PredicateExpr {
+                            pexpr: arg,
+                            namer: self.namer
+                        }
+                    ),
+                    PredExpr::Variable(var) => fmt.write_str(&var.name(self.namer)),
+                }
+            }
+        }
+
+        unwrap!(writeln!(
+            self.buffer,
+            "{} = {};",
+            result,
+            PredicateExpr { pexpr, namer }
+        ));
+    }
 
     fn print_binop(
         &mut self,
