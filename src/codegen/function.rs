@@ -1,17 +1,20 @@
 //! Describes a `Function` that is ready to execute on a device.
 use std::{fmt, sync::Arc};
 
+use fxhash::{FxHashMap, FxHashSet};
+use itertools::Itertools;
+use log::{debug, trace};
+use matches::matches;
+use utils::*;
+
 use crate::codegen::{
     self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar,
 };
 use crate::ir::{self, IrDisplay};
-use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
-use fxhash::FxHashSet;
-use utils::*;
+use crate::search_space::{self, DimKind, Domain, MemSpace, Order, SearchSpace};
 
-use itertools::Itertools;
-use log::{debug, trace};
-use matches::matches;
+use super::iteration::IterationVars;
+use super::predicates::{PredicateId, PredicateKey, Predicates};
 
 pub struct FunctionBuilder<'a> {
     space: &'a SearchSpace,
@@ -64,6 +67,140 @@ impl<'a> FunctionBuilder<'a> {
                 .iter()
                 .flat_map(|x| x.host_values(self.space, &block_dims)),
         );
+
+        let merged_dims: dimension::MergedDimensions<'_> = cfg
+            .dimensions()
+            .chain(&block_dims)
+            .chain(&thread_dims)
+            .collect();
+
+        let mut iteration_vars = IterationVars::default();
+        let mut predicates = Predicates::default();
+        let mut instruction_predicates = FxHashMap::default();
+        let mut loop_predicate_def = FxHashMap::default();
+        let mut global_predicate_def = Vec::new();
+        for inst in cfg.instructions() {
+            let mut pred_dim = None;
+            let mut inst_preds = Vec::new();
+            for pred in inst.operator().predicates() {
+                let mut instantiation_dims = Vec::new();
+                let mut loop_dims = Vec::new();
+                let mut global_dims = Vec::new();
+
+                for &(dim, ref stride) in self
+                    .space
+                    .ir_instance()
+                    .induction_var(pred.induction_variable())
+                    .dims()
+                    .iter()
+                {
+                    let dim = merged_dims[dim].id();
+                    let stride = codegen::Size::from_ir(stride, self.space);
+
+                    match self.space.domain().get_dim_kind(dim) {
+                        DimKind::LOOP => loop_dims.push((dim, stride)),
+                        DimKind::INNER_VECTOR
+                        | DimKind::OUTER_VECTOR
+                        | DimKind::UNROLL => instantiation_dims.push((
+                            dim,
+                            stride.as_int().unwrap_or_else(|| {
+                                panic!("predicate instantation with dynamic stride")
+                            }),
+                        )),
+                        DimKind::BLOCK | DimKind::THREAD => {
+                            global_dims.push((dim, stride))
+                        }
+                        _ => panic!("invalid dim kind"),
+                    }
+                }
+
+                // Loop dimensions must be in nesting order for `IterationVars`
+                loop_dims.sort_unstable_by(|&(lhs, _), &(rhs, _)| {
+                    if lhs == rhs {
+                        return std::cmp::Ordering::Equal;
+                    }
+
+                    match self.space.domain().get_order(lhs.into(), rhs.into()) {
+                        Order::INNER => std::cmp::Ordering::Greater,
+                        Order::OUTER => std::cmp::Ordering::Less,
+                        Order::MERGED => {
+                            panic!("found MERGED order between representants")
+                        }
+                        _ => panic!("invalid order for induction variable dimensions"),
+                    }
+                });
+
+                // The dim where we compute the final predicate.  This is innermost.
+                if let Some(inner_dim) = loop_dims.last().map(|&(dim, _)| dim) {
+                    match pred_dim {
+                        None => pred_dim = Some(inner_dim),
+                        Some(old) if old == inner_dim => (),
+                        Some(old) => {
+                            match self
+                                .space
+                                .domain()
+                                .get_order(old.into(), inner_dim.into())
+                            {
+                                Order::INNER => (),
+                                Order::MERGED => panic!("MERGED representants"),
+                                Order::OUTER => pred_dim = Some(inner_dim),
+                                _ => panic!("invalid order"),
+                            }
+                        }
+                    }
+                }
+
+                // The iteration variable which tells us where we are for the non unrolled,
+                // non vector dimensions
+                let iteration_var = iteration_vars.add(global_dims, loop_dims);
+
+                // The predicate
+                let predicate = predicates.add(PredicateKey {
+                    iteration_var,
+                    instantiation_dims,
+                    bound: codegen::Size::from_ir(
+                        &ir::PartialSize::from(pred.bound().clone()),
+                        self.space,
+                    ),
+                });
+
+                inst_preds.push(predicate);
+            }
+
+            if !inst_preds.is_empty() {
+                let mut instantiation_dims = Vec::new();
+                for &id in &inst_preds {
+                    instantiation_dims.extend(predicates[id].instantiation_dims().map(
+                        |&(dim, _)| {
+                            (
+                                dim,
+                                // We need to go through `codegen::Size` here to simplify the tile
+                                // dimension sizes
+                                codegen::Size::from_ir(
+                                    self.space.ir_instance().dim(dim).size(),
+                                    self.space,
+                                )
+                                .as_int()
+                                .unwrap() as usize,
+                            )
+                        },
+                    ));
+                }
+                instantiation_dims.sort_unstable();
+                instantiation_dims.dedup();
+                instruction_predicates.insert(inst.id(), instantiation_dims);
+
+                if let Some(dim) = pred_dim {
+                    loop_predicate_def
+                        .entry(dim)
+                        .or_insert(Vec::new())
+                        .push((inst.id(), inst_preds));
+                } else {
+                    global_predicate_def.push((inst.id(), inst_preds));
+                }
+            }
+        }
+
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg,
@@ -76,6 +213,11 @@ impl<'a> FunctionBuilder<'a> {
             variables: codegen::variable::wrap_variables(self.space),
             init_induction_levels,
             predicate_accesses: self.predicated,
+            iteration_vars,
+            predicates,
+            loop_predicate_def,
+            global_predicate_def,
+            instruction_predicates,
         }
     }
 }
@@ -90,6 +232,11 @@ pub struct Function<'a> {
     mem_blocks: Vec<MemoryRegion>,
     init_induction_levels: Vec<InductionLevel<'a>>,
     variables: Vec<codegen::Variable<'a>>,
+    iteration_vars: IterationVars,
+    predicates: Predicates,
+    loop_predicate_def: FxHashMap<ir::DimId, Vec<(ir::InstId, Vec<PredicateId>)>>,
+    global_predicate_def: Vec<(ir::InstId, Vec<PredicateId>)>,
+    instruction_predicates: FxHashMap<ir::InstId, Vec<(ir::DimId, usize)>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace,
     predicate_accesses: bool,
@@ -144,6 +291,32 @@ impl<'a> Function<'a> {
 
     pub fn predicate_accesses(&self) -> bool {
         self.predicate_accesses
+    }
+
+    pub fn iteration_variables(&self) -> &IterationVars {
+        &self.iteration_vars
+    }
+
+    pub fn global_predicates(&self) -> &[(ir::InstId, Vec<PredicateId>)] {
+        &self.global_predicate_def
+    }
+
+    pub fn predicates(&self) -> &Predicates {
+        &self.predicates
+    }
+
+    pub fn loop_predicate(&self, dim: ir::DimId) -> &[(ir::InstId, Vec<PredicateId>)] {
+        if let Some(predicates) = self.loop_predicate_def.get(&dim) {
+            &*predicates
+        } else {
+            &[]
+        }
+    }
+
+    pub fn instruction_predicates(
+        &self,
+    ) -> &FxHashMap<ir::InstId, Vec<(ir::DimId, usize)>> {
+        &self.instruction_predicates
     }
 
     /// Returns the control flow graph.

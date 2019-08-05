@@ -143,6 +143,7 @@ impl UnaryOp {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RangePredicate {
+    // TODO: dims: Vec<ir::DimId>,
     ind_var: ir::IndVarId,
     bound: ir::Size,
 }

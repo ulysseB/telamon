@@ -1,12 +1,17 @@
 use std::borrow::{Borrow, Cow};
 use std::ops;
+use std::rc::Rc;
 
+use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use utils::*;
 
 use crate::codegen::*;
 use crate::ir::{self, op, Type};
 use crate::search_space::*;
+
+use super::iteration::IterationVarId;
+use super::predicates::PredicateId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MulMode {
@@ -22,6 +27,15 @@ impl MulMode {
             (Type::F(x), Type::F(y)) if x == y => MulMode::Empty,
             (Type::I(a), Type::I(b)) if b == 2 * a => MulMode::Wide,
             (_, _) => MulMode::Low,
+        }
+    }
+
+    fn output_type(self, arg_t: Type) -> Type {
+        match (self, arg_t) {
+            (MulMode::Wide, Type::I(i)) => Type::I(2 * i),
+            (MulMode::Low, Type::I(i)) | (MulMode::High, Type::I(i)) => Type::I(i),
+            (MulMode::Empty, Type::F(f)) => Type::F(f),
+            _ => panic!("Invalid mul mode type combination"),
         }
     }
 }
@@ -148,41 +162,249 @@ where
     )
 }
 
-pub enum Inst<'a> {
-    Move(ir::Type, Nameable<'a>),
-    Add(ir::Type, Nameable<'a>, Nameable<'a>),
-    AddAssign(ir::Type, Nameable<'a>),
+#[derive(Debug, Clone)]
+pub enum IntExpr<'a> {
+    Named(Nameable<'a>, ir::Type),
+    Add {
+        arg_t: ir::Type,
+        lhs: IntExprPtr<'a>,
+        rhs: IntExprPtr<'a>,
+    },
+    Mad {
+        arg_t: ir::Type,
+        mul_mode: MulMode,
+        mlhs: IntExprPtr<'a>,
+        mrhs: IntExprPtr<'a>,
+        arhs: IntExprPtr<'a>,
+    },
+    Mul {
+        arg_t: ir::Type,
+        mul_mode: MulMode,
+        lhs: IntExprPtr<'a>,
+        rhs: IntExprPtr<'a>,
+    },
 }
 
-impl<'a> Inst<'a> {
-    fn new_move<I: IntoNameable<'a>>(t: ir::Type, op: I) -> Self {
-        Inst::Move(t, op.into_nameable())
+pub type IntExprPtr<'a> = Rc<IntExpr<'a>>;
+
+impl<'a> IntExpr<'a> {
+    // NB: the result may or may not be in `result`.  The caller needs to issue a `move` itself to
+    // put it there if needed.
+    fn compile<VP: ValuePrinter>(
+        &self,
+        result: Option<Nameable<'a>>,
+        t: ir::Type,
+        namer: &mut NameMap<'_, '_, VP>,
+        flow: &mut Vec<(Nameable<'a>, IntInst<'a>)>,
+    ) -> Nameable<'a> {
+        let (out, out_t) = match self {
+            IntExpr::Named(arg, arg_t) => {
+                if *arg_t == t {
+                    if let Some(result) = result {
+                        flow.push((
+                            result.clone(),
+                            IntInst::new_move(*arg_t, arg.clone()),
+                        ));
+                        return result;
+                    }
+                }
+
+                (arg.clone(), *arg_t)
+            }
+            IntExpr::Add { arg_t, lhs, rhs } => {
+                let lhs = lhs.compile(None, *arg_t, namer, flow);
+                let rhs = rhs.compile(
+                    result.as_ref().filter(|_| t == *arg_t).cloned(),
+                    *arg_t,
+                    namer,
+                    flow,
+                );
+
+                let out = result
+                    .as_ref()
+                    .filter(|_| t == *arg_t)
+                    .cloned()
+                    .unwrap_or_else(|| namer.gen_name(*arg_t).into_nameable());
+                flow.push((out.clone(), IntInst::new_add(*arg_t, lhs, rhs)));
+                (out, *arg_t)
+            }
+            IntExpr::Mul {
+                arg_t,
+                mul_mode,
+                lhs,
+                rhs,
+            } => {
+                let out_t = mul_mode.output_type(*arg_t);
+                let lhs = lhs.compile(None, *arg_t, namer, flow);
+                let rhs = rhs.compile(
+                    result.as_ref().filter(|_| t == *arg_t).cloned(),
+                    *arg_t,
+                    namer,
+                    flow,
+                );
+
+                let out = result
+                    .as_ref()
+                    .filter(|_| t == out_t)
+                    .cloned()
+                    .unwrap_or_else(|| namer.gen_name(out_t).into_nameable());
+                flow.push((out.clone(), IntInst::new_mul(*arg_t, *mul_mode, lhs, rhs)));
+                (out, out_t)
+            }
+            IntExpr::Mad {
+                arg_t,
+                mul_mode,
+                mlhs,
+                mrhs,
+                arhs,
+            } => {
+                let out_t = mul_mode.output_type(*arg_t);
+                let mlhs = mlhs.compile(None, *arg_t, namer, flow);
+                let mrhs = mrhs.compile(None, *arg_t, namer, flow);
+                let arhs = arhs.compile(
+                    result.as_ref().filter(|_| t == *arg_t).cloned(),
+                    *arg_t,
+                    namer,
+                    flow,
+                );
+
+                let out = result
+                    .as_ref()
+                    .filter(|_| t == out_t)
+                    .cloned()
+                    .unwrap_or_else(|| namer.gen_name(out_t).into_nameable());
+                flow.push((
+                    out.clone(),
+                    IntInst::new_mad(*arg_t, *mul_mode, mlhs, mrhs, arhs),
+                ));
+                (out, out_t)
+            }
+            _ => panic!("invalid types"),
+        };
+
+        if out_t != t {
+            let result = result.unwrap_or_else(|| namer.gen_name(t).into_nameable());
+            flow.push((result.clone(), IntInst::new_cast(out, out_t, t)));
+            result
+        } else {
+            out
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum IntInst<'a> {
+    Move(Nameable<'a>, ir::Type),
+    Cast(Nameable<'a>, ir::Type, ir::Type),
+    Add {
+        arg_t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+    Mad {
+        arg_t: ir::Type,
+        mul_mode: MulMode,
+        mlhs: Nameable<'a>,
+        mrhs: Nameable<'a>,
+        arhs: Nameable<'a>,
+    },
+    Mul {
+        arg_t: ir::Type,
+        mul_mode: MulMode,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+}
+
+impl<'a> IntInst<'a> {
+    fn new_move<T: IntoNameable<'a>>(t: ir::Type, arg: T) -> Self {
+        IntInst::Move(arg.into_nameable(), t)
     }
 
-    fn new_add<A, B>(t: ir::Type, lhs: A, rhs: B) -> Self
-    where
-        A: IntoNameable<'a>,
-        B: IntoNameable<'a>,
-    {
-        Inst::Add(t, lhs.into_nameable(), rhs.into_nameable())
+    fn new_cast<T: IntoNameable<'a>>(arg: T, from_t: ir::Type, to_t: ir::Type) -> Self {
+        IntInst::Cast(arg.into_nameable(), from_t, to_t)
     }
 
-    fn new_add_assign<T>(t: ir::Type, op: T) -> Self
-    where
-        T: IntoNameable<'a>,
-    {
-        Inst::AddAssign(t, op.into_nameable())
+    fn new_add<A: IntoNameable<'a>, B: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        lhs: A,
+        rhs: B,
+    ) -> Self {
+        IntInst::Add {
+            arg_t,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
+    }
+
+    fn new_mad<A: IntoNameable<'a>, B: IntoNameable<'a>, C: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        mul_mode: MulMode,
+        mlhs: A,
+        mrhs: B,
+        arhs: C,
+    ) -> Self {
+        IntInst::Mad {
+            arg_t,
+            mul_mode,
+            mlhs: mlhs.into_nameable(),
+            mrhs: mrhs.into_nameable(),
+            arhs: arhs.into_nameable(),
+        }
+    }
+
+    fn new_mul<A: IntoNameable<'a>, B: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        mul_mode: MulMode,
+        lhs: A,
+        rhs: B,
+    ) -> Self {
+        IntInst::Mul {
+            arg_t,
+            mul_mode,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
     }
 }
 
 pub struct Loop<'a> {
     // for (lhs, rhs) in init: lhs = rhs
-    pub inits: Vec<(Nameable<'a>, Inst<'a>)>,
+    pub inits: Vec<(Nameable<'a>, IntInst<'a>)>,
     // condition is `idx < bound`
     pub index: Nameable<'a>,
     pub bound: Nameable<'a>,
     // for (lhs, rhs) in update: lhs += rhs
-    pub increments: Vec<(Nameable<'a>, Inst<'a>)>,
+    pub increments: Vec<(Nameable<'a>, IntInst<'a>)>,
+}
+
+fn iteration_var_def<'a, VP: ValuePrinter>(
+    fun: &'a Function,
+    iter_id: IterationVarId,
+    namer: &mut NameMap<'_, '_, VP>,
+) -> Vec<(Nameable<'a>, IntInst<'a>)> {
+    let mut instructions = Vec::new();
+    let mut expr = None;
+    for (dim, size) in fun.iteration_variables()[iter_id].outer_dims() {
+        if let Some(expr) = expr.as_mut() {
+            let tmp = namer.gen_name(ir::Type::I(32));
+            instructions.push((
+                tmp.clone().into_nameable(),
+                std::mem::replace(
+                    expr,
+                    IntInst::new_mad(ir::Type::I(32), MulMode::Low, dim, size, tmp),
+                ),
+            ));
+        } else {
+            expr = Some(IntInst::new_mul(ir::Type::I(32), MulMode::Low, dim, size));
+        }
+    }
+
+    instructions.push((
+        iter_id.into_nameable(),
+        expr.unwrap_or_else(|| IntInst::new_move(ir::Type::I(32), 0i32)),
+    ));
+    instructions
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -326,6 +548,115 @@ pub trait InstPrinter {
         }
     }
 
+    fn init_inst_predicates(
+        &mut self,
+        fun: &Function,
+        inst_id: ir::InstId,
+        namer: &mut NameMap<Self::ValuePrinter>,
+    ) {
+        let const_true = true.into_nameable();
+
+        // Those are all the dimensions the predicates iterate over.  Note that this can be a
+        // strict subset of the instruction's instantiation dimension.
+        for indices in fun.instruction_predicates()[&inst_id]
+            .iter()
+            .map(|&(dim, size)| (0..size).map(move |pos| (dim, pos)))
+            .multi_cartesian_product()
+        {
+            let pred_name =
+                namer.name_instruction_predicate(inst_id, &indices.into_iter().collect());
+            self.print_move(ir::Type::I(1), &pred_name, &const_true.name(namer));
+        }
+    }
+
+    // Print updating the inst predicates, assuming that they were all set to true initially.
+    fn update_inst_predicates(
+        &mut self,
+        fun: &Function,
+        inst_id: ir::InstId,
+        predicates: &[PredicateId],
+        namer: &mut NameMap<Self::ValuePrinter>,
+    ) {
+        let const_false = false.into_nameable();
+        let instantiation_dims = &fun.instruction_predicates()[&inst_id];
+
+        // Stores the current index.  Reused across unrolls.
+        let idx = namer.gen_name(ir::Type::I(32));
+        // Stores the final condition.  Reused across unrolls.
+        let lt_cond = namer.gen_name(ir::Type::I(1));
+
+        for &pred_id in predicates {
+            let predicate = &fun.predicates()[pred_id];
+            let next_label = namer.gen_loop_id().to_string();
+            // Those are the dimensions this range predicate iterates over and we need to fix for
+            // the others (if there are multiple predicates which share an iteration).
+            let my_dims: FxHashSet<_> =
+                predicate.instantiation_dims().map(|(dim, _)| dim).collect();
+
+            // The instantiation dims are sorted in decreasing stride order, so that the smallest
+            // stride is fastest varying.  Since we also iterate in reverse size order, the
+            // condition `idx < range` is monotonous, and we can jump to the end as soon as it
+            // becomes true.
+            for pred_indices in predicate
+                .instantiation_dims()
+                .map(|&(dim, stride)| {
+                    let size = fun.space().ir_instance().dim(dim).size().as_int().unwrap()
+                        as usize;
+                    (0..size).rev().map(move |pos| (dim, pos, stride))
+                })
+                .multi_cartesian_product()
+            {
+                // Compute the index for this iteration based on the iteration variable
+                let var = namer.name_iteration_var(predicate.iteration_var());
+                self.print_move(ir::Type::I(32), &idx, &var);
+
+                let constant = pred_indices
+                    .iter()
+                    .map(|&(_, pos, stride)| (pos as u32) * stride)
+                    .sum::<u32>();
+
+                if constant != 0 {
+                    self.print_int_inst(
+                        &(&idx).into_nameable(),
+                        &IntInst::new_add(ir::Type::I(32), &idx, constant as i32),
+                        namer,
+                    );
+                }
+
+                // Check if we are in bound...
+                self.print_lt_int(
+                    ir::Type::I(32),
+                    &lt_cond,
+                    &idx,
+                    &namer.name_size(predicate.bound(), ir::Type::I(32)),
+                );
+
+                // ...if so, we can go check the next range...
+                self.print_cond_jump(&next_label, &lt_cond);
+
+                // ... otherwise we set all the predicates for this iter to `false`
+                for other_dims in instantiation_dims
+                    .iter()
+                    .filter(|(dim, _)| !my_dims.contains(dim))
+                    .map(|&(dim, size)| (0..size).map(move |pos| (dim, pos)))
+                    .multi_cartesian_product()
+                {
+                    let pred_name = namer.name_instruction_predicate(
+                        inst_id,
+                        &other_dims
+                            .into_iter()
+                            .chain(pred_indices.iter().map(|&(dim, pos, _)| (dim, pos)))
+                            .collect(),
+                    );
+
+                    self.print_move(ir::Type::I(1), pred_name, &const_false.name(namer));
+                }
+            }
+
+            self.print_label(&next_label);
+        }
+    }
+
     /// Prints a cfg.
     fn cfg<'a>(
         &mut self,
@@ -334,7 +665,23 @@ pub trait InstPrinter {
         namer: &mut NameMap<Self::ValuePrinter>,
     ) {
         match c {
-            Cfg::Root(cfgs) => self.cfg_vec(fun, cfgs, namer),
+            Cfg::Root(cfgs) => {
+                // Iteration variables
+                let iteration_vars = fun.iteration_variables();
+                for iter_id in iteration_vars.global_defs() {
+                    for (target, inst) in iteration_var_def(fun, iter_id, namer) {
+                        self.print_int_inst(&target, &inst, namer);
+                    }
+                }
+
+                // Predicates
+                for &(inst_id, ref predicates) in fun.global_predicates() {
+                    self.init_inst_predicates(fun, inst_id, namer);
+                    self.update_inst_predicates(fun, inst_id, &predicates[..], namer);
+                }
+
+                self.cfg_vec(fun, cfgs, namer)
+            }
             Cfg::Loop(dim, cfgs) => self.gen_loop(fun, dim, cfgs, namer),
             Cfg::Threads(dims, ind_levels, inner) => {
                 // Disable inactive threads
@@ -462,10 +809,13 @@ pub trait InstPrinter {
     ) {
         let idx = dim.id().into_nameable();
 
-        let mut init_vec: Vec<(Nameable<'_>, Inst<'_>)> =
-            vec![(idx.clone(), Inst::new_move(ir::Type::I(32), 0i32))];
-        let mut update_vec: Vec<(Nameable<'_>, Inst<'_>)> =
-            vec![(idx.clone(), Inst::new_add_assign(ir::Type::I(32), 1i32))];
+        let mut init_vec: Vec<(Nameable<'_>, IntInst<'_>)> =
+            vec![(idx.clone(), IntInst::new_move(ir::Type::I(32), 0i32))];
+        let mut update_vec: Vec<(Nameable<'_>, IntInst<'_>)> = vec![(
+            idx.clone(),
+            IntInst::new_add(ir::Type::I(32), idx.clone(), 1i32),
+        )];
+        let mut reset_vec: Vec<(Nameable<'_>, IntInst<'_>)> = Vec::new();
 
         let ind_levels = dim.induction_levels();
         for level in ind_levels.iter() {
@@ -473,19 +823,62 @@ pub trait InstPrinter {
             let ind_var = (level.ind_var, dim_id);
             match level.base.components().collect_vec()[..] {
                 [base] => init_vec
-                    .push((ind_var.into_nameable(), Inst::new_move(level.t(), base))),
-                [lhs, rhs] => init_vec
-                    .push((ind_var.into_nameable(), Inst::new_add(level.t(), lhs, rhs))),
+                    .push((ind_var.into_nameable(), IntInst::new_move(level.t(), base))),
+                [lhs, rhs] => init_vec.push((
+                    ind_var.into_nameable(),
+                    IntInst::new_add(level.t(), lhs, rhs),
+                )),
                 _ => panic!(),
             };
 
             if let Some((_, increment)) = &level.increment {
                 update_vec.push((
                     ind_var.into_nameable(),
-                    Inst::new_add_assign(level.t(), (increment, level.t())),
+                    IntInst::new_add(level.t(), ind_var, (increment, level.t())),
                 ));
             }
         }
+
+        let iteration_vars = fun.iteration_variables();
+        for iter_id in iteration_vars.loop_defs(dim.id()) {
+            init_vec.extend(iteration_var_def(fun, iter_id, namer));
+        }
+
+        for (iter_id, increment) in iteration_vars.loop_updates(dim.id()) {
+            update_vec.push((
+                iter_id.into_nameable(),
+                IntInst::new_add(ir::Type::I(32), iter_id, (increment, ir::Type::I(32))),
+            ));
+
+            // Reset the variable after the loop.  This should usually end up fused with the
+            // increment of the outer loop if there is one.
+            let reset_inst = if let Some(increment) = increment.as_int() {
+                IntInst::new_mad(
+                    ir::Type::I(32),
+                    MulMode::Low,
+                    -(increment as i32),
+                    dim.size(),
+                    iter_id,
+                )
+            } else if let Some(size) = dim.size().as_int() {
+                IntInst::new_mad(
+                    ir::Type::I(32),
+                    MulMode::Low,
+                    (increment, ir::Type::I(32)),
+                    -(size as i32),
+                    iter_id,
+                )
+            } else {
+                panic!("dynamic increment and size")
+            };
+
+            reset_vec.push((iter_id.into_nameable(), reset_inst));
+        }
+
+        // TODO Predicates
+        // for &(inst_id, ref predicates) in fun.loop_predicates(dim.id()) {
+        //panic!(" loop predicate ")
+        //}
 
         self.print_loop(
             fun,
@@ -498,6 +891,14 @@ pub trait InstPrinter {
             cfgs,
             namer,
         );
+
+        // Iteration variables need to be reset after the loop.
+        //
+        // We don't bundle this in the `Loop` structure because most languages don't have a proper
+        // way of handling this.
+        for (target, inst) in &reset_vec {
+            self.print_int_inst(target, inst, namer);
+        }
     }
 
     /// Prints an unroll loop - loop without jumps
@@ -769,21 +1170,53 @@ pub trait InstPrinter {
         }
     }
 
-    fn print_inst(
+    fn print_int_inst(
         &mut self,
         result: &Nameable<'_>,
-        inst: &Inst<'_>,
+        inst: &IntInst<'_>,
         namer: &NameMap<'_, '_, Self::ValuePrinter>,
     ) {
+        use IntInst::*;
+
         let result = &result.name(namer);
         match *inst {
-            Inst::Move(t, ref op) => self.print_move(t, result, &op.name(namer)),
-            Inst::Add(t, ref lhs, ref rhs) => {
-                self.print_add_int(t, result, &lhs.name(namer), &rhs.name(namer))
-            }
-            Inst::AddAssign(t, ref op) => {
-                self.print_add_int(t, result, result, &op.name(namer))
-            }
+            Move(ref op, t) => self.print_move(t, result, &op.name(namer)),
+            Cast(ref op, from_t, to_t) => unimplemented!("CAST"),
+            Add {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => self.print_add_int(arg_t, result, &lhs.name(namer), &rhs.name(namer)),
+            Mad {
+                arg_t,
+                mul_mode,
+                ref mlhs,
+                ref mrhs,
+                ref arhs,
+            } => self.print_mad(
+                [1, 1],
+                arg_t,
+                op::Rounding::Exact,
+                mul_mode,
+                result,
+                &mlhs.name(namer),
+                &mrhs.name(namer),
+                &arhs.name(namer),
+            ),
+            Mul {
+                arg_t,
+                mul_mode,
+                ref lhs,
+                ref rhs,
+            } => self.print_mul(
+                [1, 1],
+                arg_t,
+                op::Rounding::Exact,
+                mul_mode,
+                result,
+                &lhs.name(namer),
+                &rhs.name(namer),
+            ),
         }
     }
 
@@ -796,7 +1229,7 @@ pub trait InstPrinter {
     ) {
         // Initialization
         for (target, inst) in &loop_.inits {
-            self.print_inst(target, inst, namer);
+            self.print_int_inst(target, inst, namer);
         }
 
         // Loop label
@@ -808,7 +1241,7 @@ pub trait InstPrinter {
 
         // Update
         for (target, inst) in &loop_.increments {
-            self.print_inst(target, inst, namer);
+            self.print_int_inst(target, inst, namer);
         }
 
         // Loop condition
