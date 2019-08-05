@@ -625,75 +625,77 @@ impl InstPrinter for X86printer {
         value_printer.name_inst(inst).into()
     }
 
-    fn print_loop(
-        &mut self,
-        fun: &Function<'_>,
-        loop_: &Loop<'_>,
-        body: &[Cfg<'_>],
-        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
-    ) {
-        struct LoopHeader<'a, 'b, 'c> {
-            loop_: &'a Loop<'a>,
-            namer: &'a mut NameMap<'b, 'c, ValuePrinter>,
-        }
-
-        impl<'a, 'b, 'c> fmt::Display for LoopHeader<'a, 'b, 'c> {
-            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(
-                    fmt,
-                    "for ({}; {} < {}; {})",
-                    self.loop_
-                        .inits
-                        .iter()
-                        .format_with(", ", |(target, inst), f| {
-                            f(&target.name(self.namer))?;
-
-                            match inst {
-                                Inst::Move(_, op) => {
-                                    f(&format_args!(" = {}", op.name(self.namer)))?
-                                }
-                                Inst::Add(_, lhs, rhs) => f(&format_args!(
-                                    " = {} + {}",
-                                    lhs.name(self.namer),
-                                    rhs.name(self.namer)
-                                ))?,
-                                Inst::AddAssign(_, op) => {
-                                    f(&format_args!(" += {}", op.name(self.namer)))?
-                                }
-                            }
-
-                            Ok(())
-                        }),
-                    self.loop_.index.name(self.namer),
-                    self.loop_.bound.name(self.namer),
-                    self.loop_.increments.iter().format_with(
-                        ", ",
-                        |(target, inst), f| {
-                            f(&target.name(self.namer))?;
-
-                            match inst {
-                                Inst::Move(_, op) => {
-                                    f(&format_args!(" = {}", op.name(self.namer)))?
-                                }
-                                Inst::Add(_, lhs, rhs) => f(&format_args!(
-                                    " = {} + {}",
-                                    lhs.name(self.namer),
-                                    rhs.name(self.namer)
-                                ))?,
-                                Inst::AddAssign(_, op) => {
-                                    f(&format_args!(" += {}", op.name(self.namer)))?
-                                }
-                            }
-
-                            Ok(())
-                        }
-                    ),
-                )
+    /*
+        fn print_loop(
+            &mut self,
+            fun: &Function<'_>,
+            loop_: &Loop<'_>,
+            body: &[Cfg<'_>],
+            namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+        ) {
+            struct LoopHeader<'a, 'b, 'c> {
+                loop_: &'a Loop<'a>,
+                namer: &'a mut NameMap<'b, 'c, ValuePrinter>,
             }
-        }
 
-        unwrap!(writeln!(self.buffer, "{} {{", LoopHeader { loop_, namer }));
-        self.cfg_vec(fun, body, namer);
-        unwrap!(writeln!(self.buffer, "}}"));
-    }
+            impl<'a, 'b, 'c> fmt::Display for LoopHeader<'a, 'b, 'c> {
+                fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    write!(
+                        fmt,
+                        "for ({}; {} < {}; {})",
+                        self.loop_
+                            .inits
+                            .iter()
+                            .format_with(", ", |(target, inst), f| {
+                                f(&target.name(self.namer))?;
+
+                                match inst {
+                                    Inst::Move(_, op) => {
+                                        f(&format_args!(" = {}", op.name(self.namer)))?
+                                    }
+                                    Inst::Add(_, lhs, rhs) => f(&format_args!(
+                                        " = {} + {}",
+                                        lhs.name(self.namer),
+                                        rhs.name(self.namer)
+                                    ))?,
+                                    Inst::AddAssign(_, op) => {
+                                        f(&format_args!(" += {}", op.name(self.namer)))?
+                                    }
+                                }
+
+                                Ok(())
+                            }),
+                        self.loop_.index.name(self.namer),
+                        self.loop_.bound.name(self.namer),
+                        self.loop_.increments.iter().format_with(
+                            ", ",
+                            |(target, inst), f| {
+                                f(&target.name(self.namer))?;
+
+                                match inst {
+                                    Inst::Move(_, op) => {
+                                        f(&format_args!(" = {}", op.name(self.namer)))?
+                                    }
+                                    Inst::Add(_, lhs, rhs) => f(&format_args!(
+                                        " = {} + {}",
+                                        lhs.name(self.namer),
+                                        rhs.name(self.namer)
+                                    ))?,
+                                    Inst::AddAssign(_, op) => {
+                                        f(&format_args!(" += {}", op.name(self.namer)))?
+                                    }
+                                }
+
+                                Ok(())
+                            }
+                        ),
+                    )
+                }
+            }
+
+            unwrap!(writeln!(self.buffer, "{} {{", LoopHeader { loop_, namer }));
+            self.cfg_vec(fun, body, namer);
+            unwrap!(writeln!(self.buffer, "}}"));
+        }
+    */
 }

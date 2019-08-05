@@ -1,20 +1,24 @@
-use crate::codegen::{
-    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
-};
-use crate::ir::{self, dim, DimMap, InstId, Type};
+use std;
+use std::borrow::Cow;
+use std::collections::hash_map;
+
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
-use std;
-use std::borrow::Cow;
-use std::collections::hash_map;
 use utils::*;
+
+use crate::codegen::{
+    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
+};
+use crate::ir::{self, dim, DimMap, InstId, Type};
+
+use super::iteration::IterationVarId;
 
 // TODO(cleanup): refactor
 
 /// A value that can be named.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Operand<'a> {
     InductionLevel(ir::IndVarId, ir::DimId),
     Operand(&'a ir::Operand),
@@ -62,13 +66,18 @@ pub struct NameMap<'a, 'b, VP: ValuePrinter> {
     size_casts: FxHashMap<(&'a codegen::Size, ir::Type), String>,
     /// Guard to use in front of instructions with side effects.
     side_effect_guard: Option<RcStr>,
+    /// Track names for iteration variables
+    iteration_variables: FxHashMap<IterationVarId, String>,
+    /// Track naems for instruction predicates
+    instruction_predicates: FxHashMap<ir::InstId, VariableNames>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Nameable<'a> {
     Ident(Cow<'a, str>),
     Operand(Operand<'a>),
     InductionVar(ir::IndVarId),
+    IterationVar(IterationVarId),
     DimIndex(ir::DimId),
     Constant(BigInt, u16),
     Size(Cow<'a, codegen::Size>, ir::Type),
@@ -85,6 +94,7 @@ impl<'a> Nameable<'a> {
             Ident(name) => Cow::Borrowed(&name),
             &Operand(operand) => namer.name(operand),
             &InductionVar(ind_var) => namer.name_induction_var(ind_var, None),
+            &IterationVar(iter_var) => namer.name_iteration_var(iter_var),
             &DimIndex(dim_id) => Cow::Borrowed(namer.name_index(dim_id)),
             &Constant(ref value, bits) => {
                 Cow::Owned(namer.value_printer().get_const_int(&value, bits))
@@ -98,9 +108,27 @@ pub trait IntoNameable<'a> {
     fn into_nameable(self) -> Nameable<'a>;
 }
 
+impl<'a> IntoNameable<'a> for Nameable<'a> {
+    fn into_nameable(self) -> Nameable<'a> {
+        self
+    }
+}
+
+impl<'a> IntoNameable<'a> for &'a Nameable<'a> {
+    fn into_nameable(self) -> Nameable<'a> {
+        self.clone()
+    }
+}
+
 impl<'a> IntoNameable<'a> for &'a str {
     fn into_nameable(self) -> Nameable<'a> {
         Nameable::Ident(Cow::Borrowed(self))
+    }
+}
+
+impl<'a> IntoNameable<'a> for &'a String {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Ident(Cow::Borrowed(&*self))
     }
 }
 
@@ -119,6 +147,12 @@ impl<'a> IntoNameable<'a> for Operand<'a> {
 impl<'a> IntoNameable<'a> for &'a ir::Operand {
     fn into_nameable(self) -> Nameable<'a> {
         Operand::Operand(self).into_nameable()
+    }
+}
+
+impl<'a> IntoNameable<'a> for IterationVarId {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::IterationVar(self)
     }
 }
 
@@ -246,8 +280,28 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
                 mem_blocks.insert(mem_block.id(), name);
             }
         }
+
         let variables = VariableNames::create(function, value_printer);
         let mut name_map = NameMap {
+            iteration_variables: function
+                .iteration_variables()
+                .iter()
+                .map(|(id, var)| (id, value_printer.name(ir::Type::I(32))))
+                .collect(),
+            instruction_predicates: function
+                .instruction_predicates()
+                .iter()
+                .map(|(&id, dims)| {
+                    (
+                        id,
+                        VariableNames::new(
+                            ir::Type::I(1),
+                            dims.iter().map(|&(id, size)| (id, size)),
+                            value_printer,
+                        ),
+                    )
+                })
+                .collect(),
             value_printer,
             insts: FxHashMap::default(),
             variables,
@@ -461,6 +515,10 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         }
     }
 
+    pub fn current_indices(&self) -> &FxHashMap<ir::DimId, usize> {
+        &self.current_indexes
+    }
+
     /// Returns the name of a variable representing a parameter.
     pub fn name_param(&self, param: ParamValKey<'a>) -> Cow<str> {
         Cow::Borrowed(&self.params[&param].1)
@@ -489,6 +547,18 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         } else {
             Cow::Borrowed(&self.induction_vars[&var])
         }
+    }
+
+    pub fn name_iteration_var(&self, iter_var: IterationVarId) -> Cow<str> {
+        Cow::Borrowed(&self.iteration_variables[&iter_var])
+    }
+
+    pub fn name_instruction_predicate(
+        &self,
+        id: ir::InstId,
+        indices: &FxHashMap<ir::DimId, usize>,
+    ) -> &str {
+        self.instruction_predicates[&id].get_name(indices)
     }
 
     /// Declares a size cast. Returns the name of the variable only if a new variable was

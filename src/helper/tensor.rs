@@ -211,7 +211,7 @@ where
         } else {
             InstFlag::COHERENT
         };
-        // TODO: default
+        // TODO: take default value as argument
         let predicate = builder
             .predicates_for_logical_dims(&dims)
             .map(|predicates| ir::LoadPredicate::new(predicates, 0f32.as_operand()));
