@@ -2,8 +2,10 @@ use crate::codegen;
 use crate::ir;
 use crate::search_space::{DimKind, Domain, Order, SearchSpace};
 use itertools::Itertools;
-use std;
+use std::ops;
 use utils::*;
+
+use fxhash::FxHashMap;
 
 /// An iteration dimension composed of one or mure fused dimensions.
 ///
@@ -125,6 +127,49 @@ impl<'a> Dimension<'a> {
     }
 }
 
+/// Helper structure to associate a dimension ID to the corresponding merged `codegen::Dimension`
+///
+/// The iteration dimension associated with an `ir::DimId` can be accessed using the indexing
+/// operator.
+pub struct MergedDimensions<'a> {
+    inner: FxHashMap<ir::DimId, &'a Dimension<'a>>,
+}
+
+impl<'a, 'b: 'a, 'c: 'b> Extend<&'b Dimension<'c>> for MergedDimensions<'a> {
+    fn extend<I: IntoIterator<Item = &'b Dimension<'c>>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.inner.reserve(iter.size_hint().0);
+
+        for dim in iter {
+            for dim_id in dim.dim_ids() {
+                let inserted = self.inner.insert(dim_id, dim).is_none();
+                assert!(inserted);
+            }
+        }
+    }
+}
+
+impl<'a, 'b: 'a, 'c: 'b> std::iter::FromIterator<&'b Dimension<'c>>
+    for MergedDimensions<'a>
+{
+    fn from_iter<I: IntoIterator<Item = &'b Dimension<'c>>>(iter: I) -> Self {
+        MergedDimensions {
+            inner: iter
+                .into_iter()
+                .flat_map(|dim| dim.dim_ids().map(move |id| (id, dim)))
+                .collect(),
+        }
+    }
+}
+
+impl<'a> ops::Index<ir::DimId> for MergedDimensions<'a> {
+    type Output = Dimension<'a>;
+
+    fn index(&self, idx: ir::DimId) -> &Dimension<'a> {
+        self.inner[&idx]
+    }
+}
+
 /// Creates the final list of dimensions by grouping fused `ir::Dimension`.
 pub fn group_merged_dimensions<'a>(space: &'a SearchSpace) -> Vec<Dimension<'a>> {
     let mut groups: Vec<Dimension> = Vec::new();
@@ -177,6 +222,7 @@ impl<'a> InductionLevel<'a> {
 }
 
 /// An induction variable, composed of multiple induction variable levels.
+#[derive(Debug)]
 pub struct InductionVar<'a> {
     pub id: ir::IndVarId,
     pub value: InductionVarValue<'a>,
@@ -288,13 +334,10 @@ pub fn register_induction_vars<'a>(
         let mut outer_value = InductionVarValue::new(id, ind_var.base(), space);
         let precomputed = const_levels
             .into_iter()
-            .map(|(dim, increment)| {
-                let base = outer_value.apply_level(dim, false);
-                InductionLevel {
-                    ind_var: id,
-                    increment: Some((dim, increment)),
-                    base,
-                }
+            .map(|(dim, increment)| InductionLevel {
+                ind_var: id,
+                increment: Some((dim, increment)),
+                base: outer_value.apply_level(dim, false),
             })
             .collect_vec();
         for (dim, increment) in mut_levels {
