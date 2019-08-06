@@ -158,27 +158,45 @@ mod cuda_reference {
     }
 
     /// Evaluates the runtime of a cuda function with events.
-    unsafe fn time_cuda<F: FnOnce()>(f: F) -> f64 {
-        let mut start = std::mem::uninitialized();
-        let mut stop = std::mem::uninitialized();
-        check_cuda(cuEventCreate(
-            &mut start,
-            CUevent_flags_enum::CU_EVENT_DEFAULT as _,
-        ));
-        check_cuda(cuEventCreate(
-            &mut stop,
-            CUevent_flags_enum::CU_EVENT_DEFAULT as _,
-        ));
-        check_cuda(cuCtxSynchronize());
-        check_cuda(cuEventRecord(start, std::ptr::null_mut()));
-        f();
-        check_cuda(cuEventRecord(stop, std::ptr::null_mut()));
-        check_cuda(cuEventSynchronize(stop));
-        let mut time = 0f32;
-        check_cuda(cuEventElapsedTime(&mut time, start, stop));
-        check_cuda(cuEventDestroy_v2(start));
-        check_cuda(cuEventDestroy_v2(stop));
-        time as f64 * 1.0e6f64
+    unsafe fn time_cuda<F: Fn()>(f: F) -> f64 {
+        let nvml = nvml_wrapper::NVML::init().unwrap();
+        let gpu = nvml.device_by_index(0).unwrap();
+
+        let mut times: Vec<f64> = Vec::new();
+        for _ in 0..10 {
+            let cur_clock = gpu
+                .clock_info(nvml_wrapper::enum_wrappers::device::Clock::SM)
+                .unwrap() as f64;
+            let max_clock = gpu
+                .max_clock_info(nvml_wrapper::enum_wrappers::device::Clock::SM)
+                .unwrap() as f64;
+
+            let mut start = std::mem::uninitialized();
+            let mut stop = std::mem::uninitialized();
+            check_cuda(cuEventCreate(
+                &mut start,
+                CUevent_flags_enum::CU_EVENT_DEFAULT as _,
+            ));
+            check_cuda(cuEventCreate(
+                &mut stop,
+                CUevent_flags_enum::CU_EVENT_DEFAULT as _,
+            ));
+            check_cuda(cuCtxSynchronize());
+            check_cuda(cuEventRecord(start, std::ptr::null_mut()));
+            f();
+            check_cuda(cuEventRecord(stop, std::ptr::null_mut()));
+            check_cuda(cuEventSynchronize(stop));
+            let mut time = 0f32;
+            check_cuda(cuEventElapsedTime(&mut time, start, stop));
+            check_cuda(cuEventDestroy_v2(start));
+            check_cuda(cuEventDestroy_v2(stop));
+            times.push(time as f64 * 1.0e6f64 * (cur_clock / max_clock));
+        }
+        times
+            .into_iter()
+            .min_by(|&lhs, &rhs| lhs.partial_cmp(&rhs).unwrap())
+            .unwrap()
+        // time as f64 * 1.0e6f64 * (cur_clock / max_clock)
     }
 
     unsafe fn get_array<T>(name: &str, context: &cuda::Context) -> *mut T {

@@ -18,6 +18,7 @@ crossbeam = "0.7"
 bincode = "1.0"
 streaming-stats = "0.2"
 num_cpus = "1.8.0"
+nvml-wrapper = { version = "0.4.1", optional = true }
 
 telamon = { path = "../" }
 telamon-cuda = { path = "../backend/cuda", optional = true }
@@ -27,5 +28,5 @@ telamon-x86 = { path = "../backend/x86", optional = true }
 
 [features]
 default = ["cuda"]
-cuda = ["telamon-cuda/real_gpu", "cuda-sys", "libc"]
+cuda = ["telamon-cuda/real_gpu", "cuda-sys", "libc", "nvml-wrapper"]
 x86 = ["telamon-x86"]
