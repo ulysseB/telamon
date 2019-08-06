@@ -18,11 +18,19 @@ pub struct IterationVarKey {
 
 pub struct IterationVar {
     outer_dims: Vec<(ir::DimId, Size)>,
+    loop_dims: Vec<(ir::DimId, Size)>,
 }
 
 impl IterationVar {
     pub fn outer_dims(&self) -> impl Iterator<Item = (ir::DimId, &Size)> + '_ {
         self.outer_dims.iter().map(|&(id, ref size)| (id, size))
+    }
+
+    pub fn stride_for(&self, dim: ir::DimId) -> Option<&Size> {
+        self.loop_dims
+            .iter()
+            .find(|&&(d, _)| d == dim)
+            .map(|(_, s)| s)
     }
 }
 
@@ -100,6 +108,7 @@ impl IterationVars {
 
                 self.iteration_vars.push(IterationVar {
                     outer_dims: key.global_dims.clone(),
+                    loop_dims: key.loop_dims.clone(),
                 });
 
                 *vacant.insert(id)

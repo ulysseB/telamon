@@ -625,7 +625,7 @@ impl InstPrinter for X86printer {
         value_printer.name_inst(inst).into()
     }
 
-    /*
+    /*TODO label
         fn print_loop(
             &mut self,
             fun: &Function<'_>,

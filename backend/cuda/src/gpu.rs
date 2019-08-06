@@ -434,7 +434,7 @@ impl device::Device for Gpu {
     }
 
     fn max_unrolling(&self) -> u32 {
-        512
+        2048
     }
 
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
