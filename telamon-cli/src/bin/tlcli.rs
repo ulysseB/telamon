@@ -228,6 +228,7 @@ impl Codegen {
         let code = telamon::codegen::FunctionBuilder::new(&candidate)
             .predicated(self.predicated)
             .build();
+        write!(std::fs::File::create("/tmp/code.cfg")?, "{}", code);
         context.device().print(&code, &mut std::io::stdout());
 
         Ok(())
