@@ -301,6 +301,21 @@ pub enum IntInst<'a> {
         lhs: Nameable<'a>,
         rhs: Nameable<'a>,
     },
+    Sub {
+        arg_t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+    Div {
+        arg_t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+    Min {
+        arg_t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
     Mad {
         arg_t: ir::Type,
         mul_mode: MulMode,
@@ -331,6 +346,42 @@ impl<'a> IntInst<'a> {
         rhs: B,
     ) -> Self {
         IntInst::Add {
+            arg_t,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
+    }
+
+    fn new_sub<A: IntoNameable<'a>, B: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        lhs: A,
+        rhs: B,
+    ) -> Self {
+        IntInst::Sub {
+            arg_t,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
+    }
+
+    fn new_div<A: IntoNameable<'a>, B: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        lhs: A,
+        rhs: B,
+    ) -> Self {
+        IntInst::Div {
+            arg_t,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
+    }
+
+    fn new_min<A: IntoNameable<'a>, B: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        lhs: A,
+        rhs: B,
+    ) -> Self {
+        IntInst::Min {
             arg_t,
             lhs: lhs.into_nameable(),
             rhs: rhs.into_nameable(),
@@ -369,6 +420,8 @@ impl<'a> IntInst<'a> {
 }
 
 pub struct Loop<'a> {
+    pub dim: ir::DimId,
+    pub label: u32,
     // for (lhs, rhs) in init: lhs = rhs
     pub inits: Vec<(Nameable<'a>, IntInst<'a>)>,
     // condition is `idx < bound`
@@ -562,6 +615,7 @@ pub trait InstPrinter {
             .iter()
             .map(|&(dim, size)| (0..size).map(move |pos| (dim, pos)))
             .multi_cartesian_product()
+            .pad_using(1, |_| vec![])
         {
             let pred_name =
                 namer.name_instruction_predicate(inst_id, &indices.into_iter().collect());
@@ -578,7 +632,10 @@ pub trait InstPrinter {
         namer: &mut NameMap<Self::ValuePrinter>,
     ) {
         let const_false = false.into_nameable();
-        let instantiation_dims = &fun.instruction_predicates()[&inst_id];
+        let instantiation_dims: FxHashMap<_, _> = fun.instruction_predicates()[&inst_id]
+            .iter()
+            .cloned()
+            .collect();
 
         // Stores the current index.  Reused across unrolls.
         let idx = namer.gen_name(ir::Type::I(32));
@@ -587,7 +644,6 @@ pub trait InstPrinter {
 
         for &pred_id in predicates {
             let predicate = &fun.predicates()[pred_id];
-            let next_label = namer.gen_loop_id().to_string();
             // Those are the dimensions this range predicate iterates over and we need to fix for
             // the others (if there are multiple predicates which share an iteration).
             let my_dims: FxHashSet<_> =
@@ -600,11 +656,12 @@ pub trait InstPrinter {
             for pred_indices in predicate
                 .instantiation_dims()
                 .map(|&(dim, stride)| {
-                    let size = fun.space().ir_instance().dim(dim).size().as_int().unwrap()
-                        as usize;
-                    (0..size).rev().map(move |pos| (dim, pos, stride))
+                    (0..instantiation_dims[&dim])
+                        .rev()
+                        .map(move |pos| (dim, pos, stride))
                 })
                 .multi_cartesian_product()
+                .pad_using(1, |_| vec![])
             {
                 // Compute the index for this iteration based on the iteration variable
                 let var = namer.name_iteration_var(predicate.iteration_var());
@@ -631,15 +688,13 @@ pub trait InstPrinter {
                     &namer.name_size(predicate.bound(), ir::Type::I(32)),
                 );
 
-                // ...if so, we can go check the next range...
-                self.print_cond_jump(&next_label, &lt_cond);
-
-                // ... otherwise we set all the predicates for this iter to `false`
+                // ... and update the predicates
                 for other_dims in instantiation_dims
                     .iter()
                     .filter(|(dim, _)| !my_dims.contains(dim))
-                    .map(|&(dim, size)| (0..size).map(move |pos| (dim, pos)))
+                    .map(|(&dim, &size)| (0..size).map(move |pos| (dim, pos)))
                     .multi_cartesian_product()
+                    .pad_using(1, |_| vec![])
                 {
                     let pred_name = namer.name_instruction_predicate(
                         inst_id,
@@ -649,11 +704,9 @@ pub trait InstPrinter {
                             .collect(),
                     );
 
-                    self.print_move(ir::Type::I(1), pred_name, &const_false.name(namer));
+                    self.print_and(ir::Type::I(1), pred_name, pred_name, &lt_cond);
                 }
             }
-
-            self.print_label(&next_label);
         }
     }
 
@@ -675,9 +728,11 @@ pub trait InstPrinter {
                 }
 
                 // Predicates
-                for &(inst_id, ref predicates) in fun.global_predicates() {
-                    self.init_inst_predicates(fun, inst_id, namer);
-                    self.update_inst_predicates(fun, inst_id, &predicates[..], namer);
+                if fun.predicate_accesses() {
+                    for &(inst_id, ref predicates) in fun.global_predicates() {
+                        self.init_inst_predicates(fun, inst_id, namer);
+                        self.update_inst_predicates(fun, inst_id, &predicates[..], namer);
+                    }
                 }
 
                 self.cfg_vec(fun, cfgs, namer)
@@ -876,21 +931,117 @@ pub trait InstPrinter {
         }
 
         // TODO Predicates
-        // for &(inst_id, ref predicates) in fun.loop_predicates(dim.id()) {
-        //panic!(" loop predicate ")
-        //}
+        // TODO: must count the number of iterations that we can do.
+        let mut min_size: Option<String> = None;
+        if fun.predicate_accesses() {
+            // Print init here
+            for (target, inst) in init_vec.drain(..) {
+                self.print_int_inst(&target, &inst, namer);
+            }
+
+            for &(inst_id, ref predicates) in fun.loop_predicates(dim.id()) {
+                let max_sizes: FxHashMap<_, _> = fun.instruction_predicates()[&inst_id]
+                    .iter()
+                    .map(|&(dim, size)| (dim, size - 1))
+                    .collect();
+
+                for &pid in predicates {
+                    let cur_size = namer.gen_name(ir::Type::I(32));
+                    let pred = &fun.predicates()[pid];
+                    let var = namer.name_iteration_var(pred.iteration_var());
+                    let max_offset = pred
+                        .instantiation_dims()
+                        .map(|&(dim, stride)| (max_sizes[&dim] as u32 - 1) * stride)
+                        .sum::<u32>() as i32;
+                    let bound = namer.name_size(pred.bound(), ir::Type::I(32));
+                    self.print_add_int(
+                        ir::Type::I(32),
+                        &cur_size,
+                        &var,
+                        &max_offset.into_nameable().name(namer),
+                    );
+                    let this_stride = fun.iteration_variables()[pred.iteration_var()]
+                        .stride_for(dim.id())
+                        .map(|s| s.as_int().unwrap() as i32);
+
+                    if let Some(this_stride) = this_stride {
+                        // TODO: Use this predicate value when initializing; it is independant of the
+                        // loop.
+                        self.print_int_inst(
+                            &(&cur_size).into_nameable(),
+                            &IntInst::new_sub(ir::Type::I(32), &*bound, &cur_size),
+                            namer,
+                        );
+                        self.print_int_inst(
+                            &(&cur_size).into_nameable(),
+                            &IntInst::new_div(ir::Type::I(32), &cur_size, this_stride),
+                            namer,
+                        );
+                        if let Some(min_size) = &min_size {
+                            self.print_int_inst(
+                                &min_size.into_nameable(),
+                                &IntInst::new_min(ir::Type::I(32), min_size, &cur_size),
+                                namer,
+                            );
+                        } else {
+                            self.print_int_inst(
+                                &(&cur_size).into_nameable(),
+                                &IntInst::new_min(ir::Type::I(32), &cur_size, dim.size()),
+                                namer,
+                            );
+                            min_size = Some(cur_size);
+                        }
+                    }
+                }
+
+                self.init_inst_predicates(fun, inst_id, namer);
+            }
+        }
+
+        let iter_label = namer.gen_loop_id();
 
         self.print_loop(
             fun,
             &Loop {
+                dim: dim.id(),
+                label: iter_label,
                 inits: init_vec,
-                index: idx,
-                bound: dim.size().into_nameable(),
+                index: idx.clone(),
+                bound: min_size
+                    .as_ref()
+                    .map(IntoNameable::into_nameable)
+                    .unwrap_or_else(|| dim.size().into_nameable()),
                 increments: update_vec,
             },
             cfgs,
             namer,
         );
+
+        let mut reset_label = None;
+        if min_size.is_some() {
+            let ge_cond = namer.gen_name(ir::Type::I(1));
+            self.print_predicate_expr(
+                &ge_cond,
+                &PredExpr::new_cmp(CmpOp::Ge, ir::Type::I(32), idx, dim.size()),
+                namer,
+            );
+            let label = namer.gen_loop_id();
+            self.print_cond_jump(&label.to_string(), &ge_cond);
+            reset_label = Some(label);
+
+            // Here we are in the remainder part of the loop; update the predicates.
+            for &(inst_id, ref predicates) in fun.loop_predicates(dim.id()) {
+                self.update_inst_predicates(fun, inst_id, predicates, namer);
+            }
+
+            // TODO: self.print_jump
+            self.print_move(ir::Type::I(1), &ge_cond, &true.into_nameable().name(namer));
+            self.print_cond_jump(&iter_label.to_string(), &ge_cond);
+        }
+
+        if let Some(label) = reset_label {
+            self.print_label(&label.to_string());
+        }
 
         // Iteration variables need to be reset after the loop.
         //
@@ -1074,16 +1225,30 @@ pub trait InstPrinter {
                 predicate,
             } => {
                 let predicate = if fun.predicate_accesses() {
+                    // TODO: Handle vector
                     predicate.as_ref().map(|p| {
-                        let expr = predicates_from_range_and_guard(
-                            fun.space(),
-                            p.ranges(),
-                            None,
-                        );
-                        let name = namer.gen_name(ir::Type::I(1));
-                        self.print_predicate_expr(&name, &expr, namer);
-                        (name, p.default_value().into_nameable())
+                        (
+                            namer
+                                .name_instruction_predicate(
+                                    inst.id(),
+                                    namer.current_indices(),
+                                )
+                                .to_string(),
+                            p.default_value().into_nameable(),
+                        )
                     })
+                /*
+                predicate.as_ref().map(|p| {
+                    let expr = predicates_from_range_and_guard(
+                        fun.space(),
+                        p.ranges(),
+                        None,
+                    );
+                    let name = namer.gen_name(ir::Type::I(1));
+                    self.print_predicate_expr(&name, &expr, namer);
+                    (name, p.default_value().into_nameable())
+                })
+                */
                 } else {
                     None
                 };
@@ -1110,6 +1275,7 @@ pub trait InstPrinter {
                     None
                 };
 
+                /*
                 let predicate = predicates_from_range_and_guard(
                     fun.space(),
                     predicate
@@ -1135,13 +1301,28 @@ pub trait InstPrinter {
                     self.print_predicate_expr(&predicate_name, &predicate, namer);
                     Some(predicate_name)
                 };
+                */
+
+                let predicate = if fun.predicate_accesses() {
+                    // TODO: Handle vector
+                    predicate.as_ref().map(|p| {
+                        namer
+                            .name_instruction_predicate(
+                                inst.id(),
+                                namer.current_indices(),
+                            )
+                            .to_string()
+                    })
+                } else {
+                    None
+                };
 
                 self.print_st(
                     vector_factors,
                     Self::lower_type(val.t(), fun),
                     access_pattern_space(pattern, fun.space()),
                     unwrap!(inst.mem_flag()),
-                    guard.as_ref().map(|s| s as &str),
+                    predicate.as_ref().map(|s| s as &str),
                     &Self::name_operand(&[vec![], vec![]], addr, namer),
                     &Self::name_operand(vector_levels, val, namer),
                 );
@@ -1187,6 +1368,21 @@ pub trait InstPrinter {
                 ref lhs,
                 ref rhs,
             } => self.print_add_int(arg_t, result, &lhs.name(namer), &rhs.name(namer)),
+            Sub {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unimplemented!("generic sub"),
+            Div {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unimplemented!("generic div"),
+            Min {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unimplemented!("generic min"),
             Mad {
                 arg_t,
                 mul_mode,
@@ -1233,8 +1429,13 @@ pub trait InstPrinter {
         }
 
         // Loop label
-        let loop_id = namer.gen_loop_id();
-        self.print_label(&loop_id.to_string());
+        self.print_label(&loop_.label.to_string());
+
+        // XXX temp hack
+        //for &(inst_id, ref predicates) in fun.loop_predicates(loop_.dim) {
+        //self.init_inst_predicates(fun, inst_id, namer);
+        //self.update_inst_predicates(fun, inst_id, &predicates[..], namer);
+        //}
 
         // Loop body
         self.cfg_vec(fun, body, namer);
@@ -1252,7 +1453,7 @@ pub trait InstPrinter {
             &loop_.index.name(namer),
             &loop_.bound.name(namer),
         );
-        self.print_cond_jump(&loop_id.to_string(), &lt_cond);
+        self.print_cond_jump(&loop_.label.to_string(), &lt_cond);
     }
 
     fn print_predicate_expr(

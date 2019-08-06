@@ -42,6 +42,7 @@ impl<'a> Module<'a> {
         Kernel {
             function,
             context: self.context,
+            nvml: nvml_wrapper::NVML::init().unwrap(),
         }
     }
 }
@@ -61,6 +62,7 @@ unsafe impl<'a> Send for Module<'a> {}
 pub struct Kernel<'a> {
     function: *mut CudaFunction,
     context: &'a CudaContext,
+    nvml: nvml_wrapper::NVML,
 }
 
 impl<'a> Kernel<'a> {
@@ -110,6 +112,13 @@ impl<'a> Kernel<'a> {
         threads: &[u32; 3],
         args: &[&dyn Argument],
     ) -> f64 {
+        let gpu = self.nvml.device_by_index(0).unwrap();
+        let cur_clock = gpu
+            .clock_info(nvml_wrapper::enum_wrappers::device::Clock::SM)
+            .unwrap() as f64;
+        let max_clock = gpu
+            .max_clock_info(nvml_wrapper::enum_wrappers::device::Clock::SM)
+            .unwrap() as f64;
         unsafe {
             let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();
             time_with_events(
@@ -118,7 +127,7 @@ impl<'a> Kernel<'a> {
                 blocks.as_ptr(),
                 threads.as_ptr(),
                 arg_raw_ptrs.as_ptr(),
-            )
+            ) * (cur_clock / max_clock)
         }
     }
 

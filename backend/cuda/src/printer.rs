@@ -371,6 +371,92 @@ impl CudaPrinter {
 impl InstPrinter for CudaPrinter {
     type ValuePrinter = ValuePrinter;
 
+    fn print_int_inst(
+        &mut self,
+        result: &Nameable<'_>,
+        inst: &IntInst<'_>,
+        namer: &NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        use IntInst::*;
+
+        let result = &result.name(namer);
+        match *inst {
+            Move(ref op, t) => self.print_move(t, result, &op.name(namer)),
+            Cast(ref op, from_t, to_t) => unimplemented!("CAST"),
+            Add {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => self.print_add_int(arg_t, result, &lhs.name(namer), &rhs.name(namer)),
+            Sub {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unwrap!(writeln!(
+                self.buffer,
+                "  sub.{} {}, {}, {};",
+                Self::get_type(arg_t),
+                result,
+                lhs.name(namer),
+                rhs.name(namer)
+            )),
+            Div {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unwrap!(writeln!(
+                self.buffer,
+                "  div.{} {}, {}, {};",
+                Self::get_type(arg_t),
+                result,
+                lhs.name(namer),
+                rhs.name(namer)
+            )),
+            Min {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unwrap!(writeln!(
+                self.buffer,
+                "  min.{} {}, {}, {};",
+                Self::get_type(arg_t),
+                result,
+                lhs.name(namer),
+                rhs.name(namer)
+            )),
+            Mad {
+                arg_t,
+                mul_mode,
+                ref mlhs,
+                ref mrhs,
+                ref arhs,
+            } => self.print_mad(
+                [1, 1],
+                arg_t,
+                op::Rounding::Exact,
+                mul_mode,
+                result,
+                &mlhs.name(namer),
+                &mrhs.name(namer),
+                &arhs.name(namer),
+            ),
+            Mul {
+                arg_t,
+                mul_mode,
+                ref lhs,
+                ref rhs,
+            } => self.print_mul(
+                [1, 1],
+                arg_t,
+                op::Rounding::Exact,
+                mul_mode,
+                result,
+                &lhs.name(namer),
+                &rhs.name(namer),
+            ),
+        }
+    }
+
     /// Print result = op1 op op2
     fn print_binop(
         &mut self,
@@ -594,11 +680,8 @@ impl InstPrinter for CudaPrinter {
 
     /// Print if (cond) jump label(label_id)
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        unwrap!(writeln!(
-            self.buffer,
-            "  @{} bra.uni LOOP_{};",
-            cond, label_id
-        ));
+        // TODO bra.uni
+        unwrap!(writeln!(self.buffer, "  @{} bra LOOP_{};", cond, label_id));
     }
 
     /// Print wait on all threads

@@ -305,7 +305,7 @@ impl<'a> Function<'a> {
         &self.predicates
     }
 
-    pub fn loop_predicate(&self, dim: ir::DimId) -> &[(ir::InstId, Vec<PredicateId>)] {
+    pub fn loop_predicates(&self, dim: ir::DimId) -> &[(ir::InstId, Vec<PredicateId>)] {
         if let Some(predicates) = self.loop_predicate_def.get(&dim) {
             &*predicates
         } else {

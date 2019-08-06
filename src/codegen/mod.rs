@@ -12,7 +12,7 @@ mod variable;
 pub use self::cfg::Cfg;
 pub use self::dimension::{Dimension, InductionLevel, InductionVar};
 pub use self::function::*;
-pub use self::name_map::{NameMap, Operand, ValuePrinter};
+pub use self::name_map::{NameMap, Nameable, Operand, ValuePrinter};
 pub use self::printer::{BoolOp, CmpOp, InstPrinter, IntInst, Loop, MulMode, PredExpr};
 pub use self::size::Size;
 pub use self::variable::Variable;
