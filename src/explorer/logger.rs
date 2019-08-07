@@ -75,10 +75,17 @@ pub fn log<E: Send + Serialize>(
                 timestamp,
                 num_evaluations,
             } => {
+                let t_s = timestamp.as_secs();
+                let n_seconds = t_s % 60;
+                let n_minutes = (t_s / 60) % 60;
+                let n_hours = t_s / 3600;
                 writeln!(
                     write_buffer,
-                    "search stopped after {}s and {} evaluations (avg {} evaluations/s)",
-                    timestamp.as_nanos() as f64 * 1e-9,
+                    "search stopped after {}h {}m {}s and {} evaluations \
+                     (avg {} evaluations/s)",
+                    n_hours,
+                    n_minutes,
+                    n_seconds,
                     num_evaluations,
                     num_evaluations as f64 / (timestamp.as_nanos() as f64 * 1e-9),
                 )?;
