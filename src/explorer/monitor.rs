@@ -116,7 +116,11 @@ where
         Err(reason) => {
             warn!("exploration stopped because {}", reason);
             candidate_store.stop_exploration();
-            unwrap!(log_sender.send(LogMessage::Finished(reason)));
+            unwrap!(log_sender.send(LogMessage::Finished {
+                reason,
+                timestamp: duration,
+                num_evaluations: status.num_evaluations
+            }));
         }
     }
     status.best_candidate.map(|x| x.0)

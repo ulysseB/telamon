@@ -17,7 +17,11 @@ pub enum LogMessage<E> {
         cpt: usize,
         timestamp: Duration,
     },
-    Finished(monitor::TerminationReason),
+    Finished {
+        reason: monitor::TerminationReason,
+        timestamp: Duration,
+        num_evaluations: usize,
+    },
 }
 
 #[derive(Debug, Fail)]
@@ -66,12 +70,32 @@ pub fn log<E: Send + Serialize>(
             } => {
                 log_monitor(score, cpt, timestamp, &mut write_buffer);
             }
-            LogMessage::Finished(reason) => {
-                writeln!(write_buffer, "search stopped because {}", reason)?;
+            LogMessage::Finished {
+                reason,
+                timestamp,
+                num_evaluations,
+            } => {
+                let t_s = timestamp.as_secs();
+                let n_seconds = t_s % 60;
+                let n_minutes = (t_s / 60) % 60;
+                let n_hours = t_s / 3600;
+                writeln!(
+                    write_buffer,
+                    "search stopped after {}h {}m {}s and {} evaluations \
+                     (avg {} evaluations/s)",
+                    n_hours,
+                    n_minutes,
+                    n_seconds,
+                    num_evaluations,
+                    num_evaluations as f64 / (timestamp.as_nanos() as f64 * 1e-9),
+                )?;
+                writeln!(write_buffer, "{}", reason)?;
             }
         }
+        // Flush after writing a message to ensure the log file does not end up empty in case of a
+        // crash.
+        write_buffer.flush()?;
     }
-    write_buffer.flush()?;
     record_writer
         .into_inner()
         .map_err(io::Error::from)?
