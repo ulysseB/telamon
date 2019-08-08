@@ -265,6 +265,11 @@ impl Benchmark {
 
         let bound = bound(&candidate, context);
 
+        let reference = Bench::default()
+            .warmup(4)
+            .runs(40)
+            .benchmark_fn(&bundle.reference_fn);
+
         let code = telamon::codegen::FunctionBuilder::new(&candidate)
             .predicated(self.predicated)
             .build();
@@ -272,10 +277,6 @@ impl Benchmark {
         (bundle.check_fn)(&Candidate::new(candidate, bound), context)
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
 
-        let reference = Bench::default()
-            .warmup(4)
-            .runs(40)
-            .benchmark_fn(&bundle.reference_fn);
         println!(
             "runtime: {}, reference: {}",
             estimate_mean(runtimes, 0.95, "ns"),
