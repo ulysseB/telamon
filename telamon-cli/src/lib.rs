@@ -20,16 +20,25 @@ pub struct CommonOpt {
     /// Configuration file must be in TOML format.
     #[structopt(parse(from_os_str), long = "config")]
     config_path: Option<PathBuf>,
+
+    /// Search timeout (in minutes)
+    ///
+    /// If provided, overrides the timeout from the configuration file.
+    #[structopt(long = "timeout")]
+    timeout: Option<u64>,
 }
 
 impl CommonOpt {
     pub fn config(&self) -> io::Result<Config> {
-        if let Some(config_path) = &self.config_path {
+        let mut config = if let Some(config_path) = &self.config_path {
             Config::from_path(config_path)
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
         } else {
             Ok(Config::default())
-        }
+        }?;
+
+        config.timeout = config.timeout.or(self.timeout);
+        Ok(config)
     }
 }
 
