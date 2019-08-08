@@ -498,6 +498,7 @@ pub enum KernelParam {
         k: i32,
         ta: bool,
         tb: bool,
+        ss: bool,
     },
     BatchMM {
         b: i32,
@@ -577,13 +578,23 @@ impl KernelParam {
                     reference,
                 )
             }
-            KernelParam::Gemm { m, n, k, ta, tb } => {
+            KernelParam::Gemm {
+                m,
+                n,
+                k,
+                ta,
+                tb,
+                ss,
+            } => {
                 let mut params = linalg::FusedMMP::new(m, n, k);
                 if ta {
                     params = params.transpose_a();
                 }
                 if tb {
                     params = params.transpose_b();
+                }
+                if ss {
+                    params = params.static_sizes();
                 }
                 build::<'_, '_, linalg::FusedMM<'_, f32>, C, _>(
                     params, context, reference,
@@ -629,13 +640,23 @@ impl KernelParam {
             KernelParam::Gesummv { m, n } => {
                 build::<'_, '_, linalg::Gesummv<'_, f32>, C>((m, n, true), context)
             }
-            KernelParam::Gemm { m, n, k, ta, tb } => {
+            KernelParam::Gemm {
+                m,
+                n,
+                k,
+                ta,
+                tb,
+                ss,
+            } => {
                 let mut params = linalg::FusedMMP::new(m, n, k);
                 if ta {
                     params = params.transpose_a();
                 }
                 if tb {
                     params = params.transpose_b();
+                }
+                if ss {
+                    params = params.static_sizes();
                 }
                 build::<'_, '_, linalg::FusedMM<'_, f32>, C>(params, context)
             }
@@ -655,14 +676,22 @@ impl fmt::Display for KernelParam {
             KernelParam::Axpy { n } => write!(fmt, "axpy_{}", n),
             KernelParam::MatVec { m, n } => write!(fmt, "matvec_{}_{}", m, n),
             KernelParam::Gesummv { m, n } => write!(fmt, "gesummv_{}_{}", m, n),
-            KernelParam::Gemm { m, n, k, ta, tb } => write!(
+            KernelParam::Gemm {
+                m,
+                n,
+                k,
+                ta,
+                tb,
+                ss,
+            } => write!(
                 fmt,
-                "matmul_{}_{}_{}_{}{}",
+                "matmul_{}_{}_{}_{}{}{}",
                 m,
                 n,
                 k,
                 if ta { "AT" } else { "A" },
-                if tb { "BT" } else { "B" }
+                if tb { "BT" } else { "B" },
+                if ss { "_SS" } else { "" },
             ),
             KernelParam::BatchMM { b, m, n, k } => {
                 write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
@@ -786,11 +815,12 @@ impl std::str::FromStr for KernelParam {
                 let n = parse_i32(next_part(&mut parts)?)?;
                 let k = parse_i32(next_part(&mut parts)?)?;
 
-                let (ta, tb) = match next_part(&mut parts) {
-                    Ok("AB") | Err(_) => (false, false),
-                    Ok("ATB") => (true, false),
-                    Ok("ABT") => (false, true),
-                    Ok("ATBT") => (true, true),
+                let (ta, tb, ss) = match next_part(&mut parts) {
+                    Ok("AB") | Err(_) => (false, false, None),
+                    Ok("ATB") => (true, false, None),
+                    Ok("ABT") => (false, true, None),
+                    Ok("ATBT") => (true, true, None),
+                    Ok("SS") => (false, false, Some(true)),
                     Ok(_) => {
                         return Err(ParseKernelError {
                             kind: KernelErrorKind::InvalidName,
@@ -798,7 +828,28 @@ impl std::str::FromStr for KernelParam {
                     }
                 };
 
-                Gemm { m, n, k, ta, tb }
+                let ss = if let Some(ss) = ss {
+                    ss
+                } else {
+                    match next_part(&mut parts) {
+                        Ok("SS") => true,
+                        Err(_) => false,
+                        Ok(_) => {
+                            return Err(ParseKernelError {
+                                kind: KernelErrorKind::InvalidName,
+                            })
+                        }
+                    }
+                };
+
+                Gemm {
+                    m,
+                    n,
+                    k,
+                    ta,
+                    tb,
+                    ss,
+                }
             }
             "batchmm" => {
                 let b = parse_i32(next_part(&mut parts)?)?;
