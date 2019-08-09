@@ -270,12 +270,14 @@ impl Benchmark {
             .warmup(4)
             .runs(40)
             .benchmark_fn(&bundle.reference_fn);
+        (bundle.check_fn)(context)
+            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
 
         let code = telamon::codegen::FunctionBuilder::new(&candidate)
             .predicated(self.predicated)
             .build();
         let runtimes = context.benchmark(&code, 40);
-        (bundle.check_fn)(&Candidate::new(candidate, bound), context)
+        (bundle.check_fn)(context)
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
 
         println!(

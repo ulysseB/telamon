@@ -278,7 +278,7 @@ mod cuda_reference {
             };
             time_cuda(|| {
                 check_cublas(cublasSgemm_v2(
-                    handle.0, op_b, op_a, n, m, k, &2., b, ldb, a, lda, &0., c, n,
+                    handle.0, op_b, op_a, n, m, k, &1., b, ldb, a, lda, &0., c, n,
                 ));
             })
         }
@@ -313,8 +313,8 @@ mod cuda_reference {
             let stride_c = (m * n) as libc::c_long;
             time_cuda(|| {
                 check_cublas(cublasSgemmStridedBatched(
-                    handle.0, op_b, op_a, n, m, k, &2., b, ldb, stride_b, a, lda,
-                    stride_a, &3., c, n, stride_c, batch,
+                    handle.0, op_b, op_a, n, m, k, &1., b, ldb, stride_b, a, lda,
+                    stride_a, &0., c, n, stride_c, batch,
                 ));
             })
         }
@@ -483,7 +483,7 @@ pub use x86_reference::X86Reference;
 
 pub struct KernelBundle<'a> {
     pub candidates: Vec<Candidate>,
-    pub check_fn: Box<CheckResultFn<'a>>,
+    pub check_fn: Box<dyn Fn(&dyn Context) -> Result<(), String> + Sync + 'a>,
     pub reference_fn: Box<dyn Fn() -> f64 + 'a>,
 }
 
@@ -552,9 +552,8 @@ impl KernelParam {
             let signature = Arc::new(signature);
             let expected = kernel.get_expected_output(context);
             let candidates = kernel.build_body(signature, context);
-            let check_fn = move |_candidate: &Candidate, context: &dyn Context| {
-                kernel.check_result(&expected, context)
-            };
+            let check_fn =
+                move |context: &dyn Context| kernel.check_result(&expected, context);
             let reference_fn =
                 move || Reference::<'_, K>::eval_reference(&reference, &params, context);
 
@@ -875,7 +874,7 @@ impl std::str::FromStr for KernelParam {
                 let m = parse_i32(next_part(&mut parts)?)?;
                 let n = parse_i32(next_part(&mut parts)?)?;
                 let k = parse_i32(next_part(&mut parts)?)?;
-                let rb = match next_part(&mut parts)? {
+                let rb = match next_part(&mut parts) {
                     Ok("rb") => true,
                     Err(_) => false,
                     _ => {
