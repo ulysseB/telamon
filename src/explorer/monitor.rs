@@ -10,6 +10,7 @@ use futures::prelude::*;
 use futures::{executor, future, task, Async};
 use log::warn;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::sync::{
     self,
     atomic::{AtomicBool, Ordering},
@@ -181,13 +182,20 @@ where
         };
         unwrap!(log_sender.send(log_message));
 
-        match config.output_path(format!("best_{}", status.num_evaluations)) {
-            Ok(output_path) => cand
-                .space
-                .dump_code(context, output_path)
-                .unwrap_or_else(|err| warn!("Error while dumping candidate: {}", err)),
-            Err(err) => warn!("Error while dumping candidate: {}", err),
-        }
+        config
+            .output_path(format!("best_{}", status.num_evaluations))
+            .and_then(|output_path| {
+                std::fs::create_dir_all(&output_path)?;
+
+                write!(
+                    std::fs::File::create(output_path.join("actions.json"))?,
+                    "{}",
+                    serde_json::to_string(&cand.actions).unwrap()
+                )?;
+
+                cand.space.dump_code(context, output_path.join("code"))
+            })
+            .unwrap_or_else(|err| warn!("Error while dumping candidate: {}", err));
 
         status.best_candidate = Some((cand, eval));
     }
