@@ -264,6 +264,7 @@ impl Benchmark {
         }
 
         let bound = bound(&candidate, context);
+        println!("bound: {}", bound);
 
         let reference = Bench::default()
             .warmup(4)
