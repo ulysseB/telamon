@@ -255,6 +255,7 @@ impl Benchmark {
         }
 
         let bound = bound(&candidate, context);
+        println!("bound: {}", bound);
 
         let code = telamon::codegen::Function::build(&candidate);
         let runtimes = context.benchmark(&code, 40);
