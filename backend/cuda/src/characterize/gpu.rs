@@ -267,6 +267,13 @@ fn gpu_rates(gpu: &Gpu, smx_rates: &InstDesc) -> InstDesc {
 /// Returns the number of wrap scheduler in a single SMX and the number of independent
 /// instruction issued per wrap scheduler.
 /// This comes from the "Architecture" subsection for each compute capability on the CPG.
+///
+/// The CPG says that recent (5.x and later) architectures can issue a single instruction per
+/// cycle, but other nvidia documentation[1] says that dual issue is still possible.  This is
+/// coherent with generated SASS assembly, as well as practical measurements -- hence, we ignore
+/// the CPG and assume dual-issue for those architectures.
+///
+/// 1: https://devblogs.nvidia.com/5-things-you-should-know-about-new-maxwell-gpu-architecture/
 fn wrap_scheds_per_smx(sm_major: u8, sm_minor: u8) -> (u32, u32) {
     match (sm_major, sm_minor) {
         // Fermi
@@ -275,13 +282,13 @@ fn wrap_scheds_per_smx(sm_major: u8, sm_minor: u8) -> (u32, u32) {
         // Kepler
         (3, _) => (4, 2),
         // Maxwell
-        (5, _) => (4, 1),
+        (5, _) => (4, 2),
         // Pascal
-        (6, 0) => (2, 1),
-        (6, 1) => (4, 1),
-        (6, 2) => (4, 1),
+        (6, 0) => (2, 2),
+        (6, 1) => (4, 2),
+        (6, 2) => (4, 2),
         // Volta, Turing
-        (7, _) => (4, 1),
+        (7, _) => (4, 2),
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
