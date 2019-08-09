@@ -1,15 +1,17 @@
 //! Memory accesses analysis.
-use crate::Gpu;
 use binary_heap_plus::BinaryHeap;
 use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use log::trace;
 use num::Integer;
-use telamon::device::Context;
+use utils::*;
+
+use telamon::device::{Context, Device};
 use telamon::ir;
 use telamon::model::size;
 use telamon::search_space::*;
-use utils::*;
+
+use crate::Gpu;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
 // take this into account be computing the pressure incrementatly when applying levels.
@@ -26,7 +28,7 @@ pub struct MemInfo {
     /// The number of L2 cache line loaded for each instruction.
     pub l2_coalescing: f64,
     /// The number of times the instruction must be issued to be completed.
-    pub replay_factor: f64,
+    pub issue_replay_factor: f64,
     /// Indicates if the instruction accesses shared memory.
     pub access_shared: bool,
     /// Indicates if the instruction accesses global memory.
@@ -71,13 +73,13 @@ pub fn analyse(
 fn unknown_info(is_shared_access: Trivalent, gpu: &Gpu) -> MemInfo {
     let mut info = MemInfo::default();
     if is_shared_access.maybe_true() {
-        info.replay_factor = 1.0;
+        info.issue_replay_factor = 1.0;
         info.access_shared = true;
     }
     if is_shared_access.maybe_false() {
         info.l1_coalescing = 1.0 / f64::from(gpu.wrap_size);
         info.l2_coalescing = 1.0 / f64::from(gpu.wrap_size);
-        info.replay_factor = 1.0;
+        info.issue_replay_factor = 1.0;
         info.access_global = true;
     }
     info
@@ -100,10 +102,10 @@ fn info(
     let mut info = MemInfo::default();
     let thread_dims = tensor_thread_dims(space, inst, dims, sizes, ctx);
     trace!("thread dims: {:?}", thread_dims);
-    info.replay_factor = std::f64::INFINITY;
+    info.issue_replay_factor = std::f64::INFINITY;
     if is_shared_access.maybe_true() {
         let replay = shared_replay_factor(thread_dims.clone(), dims, sizes, space, gpu);
-        info.replay_factor = f64::min(replay, info.replay_factor);
+        info.issue_replay_factor = f64::min(replay, info.issue_replay_factor);
         info.access_shared = true;
     }
     if is_shared_access.maybe_false() {
@@ -111,10 +113,31 @@ fn info(
             global_coalescing(thread_dims, space, gpu);
         info.l1_coalescing = l1_coalescing;
         info.l2_coalescing = l2_coalescing;
-        info.replay_factor = f64::min(replay, info.replay_factor);
+        info.issue_replay_factor = f64::min(replay, info.issue_replay_factor);
         info.access_global = true;
         // TODO(model): compute the miss ratio
     }
+
+    // Starting with Maxwell, memory replays are handled by the individual units, not by the
+    // scheduler.
+    //
+    // https://stackoverflow.com/questions/35566178/how-to-explain-instruction-replay-in-cuda
+    if gpu.sm_major >= 5 {
+        let max_vectorization = gpu
+            .max_vectorization(inst.operator())
+            .iter()
+            .cloned()
+            .max()
+            .unwrap_or(1u32);
+        let vectorization = dims
+            .iter()
+            .filter(|&(&d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
+            .map(|(d, _)| (sizes[&d].max as u32).min(max_vectorization))
+            .max()
+            .unwrap_or(1);
+        info.issue_replay_factor = 1. / vectorization as f64;
+    }
+
     info
 }
 
