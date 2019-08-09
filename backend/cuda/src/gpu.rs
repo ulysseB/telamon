@@ -256,8 +256,8 @@ impl Gpu {
         };
         InstDesc {
             latency: f64::min(gbl_latency, shared_latency),
-            issue: mem_info.replay_factor,
-            mem: mem_info.replay_factor,
+            issue: mem_info.issue_replay_factor,
+            mem: mem_info.issue_replay_factor.max(1.),
             l1_lines_from_l2: mem_info.l1_coalescing,
             l2_lines_read: mem_info.l2_coalescing,
             ram_bw: mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
@@ -272,8 +272,8 @@ impl Gpu {
         assert!(InstFlag::COHERENT.contains(flags));
         // L1 lines per L2 is not limiting.
         InstDesc {
-            issue: mem_info.replay_factor,
-            mem: mem_info.replay_factor,
+            issue: mem_info.issue_replay_factor,
+            mem: mem_info.issue_replay_factor.max(1.),
             l2_lines_stored: mem_info.l2_coalescing,
             ram_bw: 2.0 * mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             ..InstDesc::default()
