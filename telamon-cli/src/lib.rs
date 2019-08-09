@@ -496,6 +496,7 @@ pub enum KernelParam {
         m: i32,
         n: i32,
         k: i32,
+        rb: bool,
     },
 }
 
@@ -591,11 +592,13 @@ impl KernelParam {
                     params, context, reference,
                 )
             }
-            KernelParam::BatchMM { b, m, n, k } => {
+            KernelParam::BatchMM { b, m, n, k, rb } => {
+                let mut params = linalg::BatchMMP::new(b, m, n, k);
+                if rb {
+                    params = params.reuse_b();
+                }
                 build::<'_, '_, linalg::BatchMM<'_, f32>, C, _>(
-                    linalg::BatchMMP::new(b, m, n, k),
-                    context,
-                    reference,
+                    params, context, reference,
                 )
             }
         }
@@ -651,11 +654,12 @@ impl KernelParam {
                 }
                 build::<'_, '_, linalg::FusedMM<'_, f32>, C>(params, context)
             }
-            KernelParam::BatchMM { b, m, n, k } => {
-                build::<'_, '_, linalg::BatchMM<'_, f32>, C>(
-                    linalg::BatchMMP::new(b, m, n, k),
-                    context,
-                )
+            KernelParam::BatchMM { b, m, n, k, rb } => {
+                let mut params = linalg::BatchMMP::new(b, m, n, k);
+                if rb {
+                    params = params.reuse_b();
+                }
+                build::<'_, '_, linalg::BatchMM<'_, f32>, C>(params, context)
             }
         }
     }
@@ -684,9 +688,15 @@ impl fmt::Display for KernelParam {
                 if tb { "BT" } else { "B" },
                 if ss { "_SS" } else { "" },
             ),
-            KernelParam::BatchMM { b, m, n, k } => {
-                write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
-            }
+            KernelParam::BatchMM { b, m, n, k, rb } => write!(
+                fmt,
+                "batchmm_{}_{}_{}_{}{}",
+                b,
+                m,
+                n,
+                k,
+                if rb { "_rb" } else { "" }
+            ),
         }
     }
 }
@@ -847,7 +857,16 @@ impl std::str::FromStr for KernelParam {
                 let m = parse_i32(next_part(&mut parts)?)?;
                 let n = parse_i32(next_part(&mut parts)?)?;
                 let k = parse_i32(next_part(&mut parts)?)?;
-                BatchMM { b, m, n, k }
+                let rb = match next_part(&mut parts)? {
+                    Ok("rb") => true,
+                    Err(_) => false,
+                    _ => {
+                        return Err(ParseKernelError {
+                            kind: KernelErrorKind::InvalidName,
+                        })
+                    }
+                };
+                BatchMM { b, m, n, k, rb }
             }
             _ => {
                 return Err(ParseKernelError {
