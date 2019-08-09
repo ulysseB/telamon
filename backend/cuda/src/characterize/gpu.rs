@@ -207,8 +207,13 @@ fn smx_rates(gpu: &Gpu, executor: &Executor) -> InstDesc {
         (5, _) => (128, 32, 64),
         // Pascal
         (6, 0) => (64, 16, 32),
-        (6, 1) => (128, 16, 64),
-        (6, 2) => (128, 16, 64),
+        // 6.1 and 6.2 architectures have four processing blocks, whereas 6.0 only has two.  This
+        //   is reflected in the CPG for alu and sync units, but is not visible in the 6.0
+        //   whitepaper.
+        //
+        // https://forums.anandtech.com/threads/gp100-and-gp104-are-different-architectures.2473319/
+        (6, 1) => (128, 32, 64),
+        (6, 2) => (128, 32, 64),
         // Volta
         (7, 0) => (64, 32, 16),
         // Turing
