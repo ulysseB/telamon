@@ -592,7 +592,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let b = self
             .b
             .read_to_host(context)
-            .into_shape((batch, k, n))
+            .into_shape((if self.params.batch_b { batch } else { 1 }, k, n))
             .unwrap();
         let mut c = Array3::zeros((batch, m, n));
         for (mut c, (a, b)) in c.outer_iter_mut().zip(a.outer_iter().zip(b.outer_iter()))
