@@ -53,7 +53,7 @@ where
     }
 }
 
-impl<'c> AutoOperand for &'c str {
+impl AutoOperand for &'_ str {
     fn get(&self, builder: &mut Builder) -> Operand<()> {
         Param(Arc::clone(unwrap!(builder
             .function()
@@ -125,5 +125,11 @@ impl AutoOperand for ir::IndVarId {
     fn get(&self, builder: &mut Builder) -> Operand<()> {
         let t = builder.function().induction_var(*self).base().t();
         Operand::InductionVar(*self, t)
+    }
+}
+
+impl AutoOperand for ir::Access {
+    fn get(&self, _builder: &mut Builder) -> Operand<()> {
+        Operand::ComputedAddress(self.clone())
     }
 }

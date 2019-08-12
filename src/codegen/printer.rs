@@ -165,7 +165,24 @@ where
 #[derive(Debug, Clone)]
 pub enum IntExpr<'a> {
     Named(Nameable<'a>, ir::Type),
+    Shared(IntExprPtr<'a>),
+    Cast(IntExprPtr<'a>, ir::Type),
     Add {
+        arg_t: ir::Type,
+        lhs: IntExprPtr<'a>,
+        rhs: IntExprPtr<'a>,
+    },
+    Sub {
+        arg_t: ir::Type,
+        lhs: IntExprPtr<'a>,
+        rhs: IntExprPtr<'a>,
+    },
+    Shr {
+        arg_t: ir::Type,
+        lhs: IntExprPtr<'a>,
+        rhs: IntExprPtr<'a>,
+    },
+    Div {
         arg_t: ir::Type,
         lhs: IntExprPtr<'a>,
         rhs: IntExprPtr<'a>,
@@ -187,46 +204,299 @@ pub enum IntExpr<'a> {
 
 pub type IntExprPtr<'a> = Rc<IntExpr<'a>>;
 
+pub trait IntoIntExpr<'a> {
+    fn into_int_expr(self) -> IntExprPtr<'a>;
+}
+
+impl<'a> IntoIntExpr<'a> for IntExpr<'a> {
+    fn into_int_expr(self) -> IntExprPtr<'a> {
+        Rc::new(self)
+    }
+}
+
+impl<'a> IntoIntExpr<'a> for IntExprPtr<'a> {
+    fn into_int_expr(self) -> IntExprPtr<'a> {
+        self
+    }
+}
+
+impl<'a> IntoIntExpr<'a> for i32 {
+    fn into_int_expr(self) -> IntExprPtr<'a> {
+        IntExpr::Named(self.into_nameable(), ir::Type::I(32)).into_int_expr()
+    }
+}
+
+impl<'a, Rhs> ops::Add<Rhs> for IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn add(self, other: Rhs) -> Self::Output {
+        let other = other.into_int_expr();
+        let lhs_t = self.t();
+        let rhs_t = other.t();
+
+        assert_eq!(lhs_t, rhs_t);
+
+        IntExpr::Add {
+            arg_t: lhs_t,
+            lhs: Rc::new(self),
+            rhs: other,
+        }
+    }
+}
+
+impl<'a, Rhs> ops::Add<Rhs> for &'_ IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn add(self, other: Rhs) -> Self::Output {
+        self.clone() + other
+    }
+}
+
+impl<'a, Rhs> ops::Sub<Rhs> for IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn sub(self, other: Rhs) -> Self::Output {
+        let other = other.into_int_expr();
+        let lhs_t = self.t();
+        let rhs_t = other.t();
+
+        assert_eq!(lhs_t, rhs_t);
+
+        IntExpr::Sub {
+            arg_t: lhs_t,
+            lhs: Rc::new(self),
+            rhs: other,
+        }
+    }
+}
+
+impl<'a, Rhs> ops::Sub<Rhs> for &'_ IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn sub(self, other: Rhs) -> Self::Output {
+        self.clone() - other
+    }
+}
+
+impl<'a, Rhs> ops::Mul<Rhs> for IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn mul(self, other: Rhs) -> Self::Output {
+        let other = other.into_int_expr();
+        let lhs_t = self.t();
+        let rhs_t = other.t();
+
+        assert_eq!(lhs_t, rhs_t);
+
+        IntExpr::Mul {
+            arg_t: lhs_t,
+            mul_mode: MulMode::Low,
+            lhs: Rc::new(self),
+            rhs: other,
+        }
+    }
+}
+
+impl<'a, Rhs> ops::Mul<Rhs> for &'_ IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn mul(self, other: Rhs) -> Self::Output {
+        self.clone() * other
+    }
+}
+
+impl<'a, Rhs> ops::Div<Rhs> for IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn div(self, other: Rhs) -> Self::Output {
+        let other = other.into_int_expr();
+        let lhs_t = self.t();
+        let rhs_t = other.t();
+
+        assert_eq!(lhs_t, rhs_t);
+
+        IntExpr::Div {
+            arg_t: lhs_t,
+            lhs: Rc::new(self),
+            rhs: other,
+        }
+    }
+}
+
+impl<'a, Rhs> ops::Div<Rhs> for &'_ IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn div(self, other: Rhs) -> Self::Output {
+        self.clone() / other
+    }
+}
+
+impl<'a, Rhs> ops::Shr<Rhs> for IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn shr(self, other: Rhs) -> Self::Output {
+        let other = other.into_int_expr();
+        let lhs_t = self.t();
+        let rhs_t = other.t();
+
+        assert_eq!(lhs_t, rhs_t);
+
+        IntExpr::Shr {
+            arg_t: lhs_t,
+            lhs: Rc::new(self),
+            rhs: other,
+        }
+    }
+}
+
+impl<'a, Rhs> ops::Shr<Rhs> for &'_ IntExpr<'a>
+where
+    Rhs: IntoIntExpr<'a>,
+{
+    type Output = IntExpr<'a>;
+
+    fn shr(self, other: Rhs) -> Self::Output {
+        self.clone() >> other
+    }
+}
+
 impl<'a> IntExpr<'a> {
+    fn mul_high<Rhs>(self, other: Rhs) -> Self
+    where
+        Rhs: IntoIntExpr<'a>,
+    {
+        let other = other.into_int_expr();
+        assert_eq!(self.t(), other.t());
+
+        IntExpr::Mul {
+            arg_t: self.t(),
+            mul_mode: MulMode::High,
+            lhs: Rc::new(self),
+            rhs: other,
+        }
+    }
+
+    fn shared(self) -> Self {
+        match self {
+            IntExpr::Shared(_) => self,
+            _ => IntExpr::Shared(Rc::new(self)),
+        }
+    }
+
+    fn cast(self, t: ir::Type) -> Self {
+        if self.t() == t {
+            self
+        } else {
+            IntExpr::Cast(self.into_int_expr(), t)
+        }
+    }
+
+    fn t(&self) -> ir::Type {
+        use IntExpr::*;
+
+        match *self {
+            Shared(ref inner) => inner.t(),
+            Named(_, t) | Cast(_, t) => t,
+            Add { arg_t, .. }
+            | Sub { arg_t, .. }
+            | Div { arg_t, .. }
+            | Shr { arg_t, .. } => arg_t,
+            Mad {
+                arg_t, mul_mode, ..
+            }
+            | Mul {
+                arg_t, mul_mode, ..
+            } => mul_mode.output_type(arg_t),
+        }
+    }
+
     // NB: the result may or may not be in `result`.  The caller needs to issue a `move` itself to
     // put it there if needed.
-    fn compile<VP: ValuePrinter>(
+    fn compile<F>(
         &self,
         result: Option<Nameable<'a>>,
-        t: ir::Type,
-        namer: &mut NameMap<'_, '_, VP>,
-        flow: &mut Vec<(Nameable<'a>, IntInst<'a>)>,
-    ) -> Nameable<'a> {
-        let (out, out_t) = match self {
-            IntExpr::Named(arg, arg_t) => {
-                if *arg_t == t {
-                    if let Some(result) = result {
-                        flow.push((
-                            result.clone(),
-                            IntInst::new_move(*arg_t, arg.clone()),
-                        ));
-                        return result;
-                    }
-                }
-
-                (arg.clone(), *arg_t)
+        emit: &mut F,
+        cache: &mut FxHashMap<usize, Nameable<'a>>,
+    ) -> Nameable<'a>
+    where
+        F: FnMut(Option<Nameable<'a>>, ir::Type, IntInst<'a>) -> Nameable<'a>,
+    {
+        match self {
+            IntExpr::Named(arg, _) => arg.clone(),
+            IntExpr::Shared(arg) => {
+                let key = &**arg as *const IntExpr<'a> as usize;
+                cache.get(&key).cloned().unwrap_or_else(move || {
+                    let out = arg.compile(result, emit, cache);
+                    cache.insert(key, out.clone());
+                    out
+                })
+            }
+            IntExpr::Cast(arg, out_t) => {
+                let name = arg.compile(None, emit, cache);
+                emit(result, *out_t, IntInst::new_cast(name, arg.t(), *out_t))
             }
             IntExpr::Add { arg_t, lhs, rhs } => {
-                let lhs = lhs.compile(None, *arg_t, namer, flow);
-                let rhs = rhs.compile(
-                    result.as_ref().filter(|_| t == *arg_t).cloned(),
-                    *arg_t,
-                    namer,
-                    flow,
-                );
+                assert_eq!(lhs.t(), *arg_t);
+                assert_eq!(rhs.t(), *arg_t);
 
-                let out = result
-                    .as_ref()
-                    .filter(|_| t == *arg_t)
-                    .cloned()
-                    .unwrap_or_else(|| namer.gen_name(*arg_t).into_nameable());
-                flow.push((out.clone(), IntInst::new_add(*arg_t, lhs, rhs)));
-                (out, *arg_t)
+                let lhs = lhs.compile(None, emit, cache);
+                let rhs = rhs.compile(None, emit, cache);
+                emit(result, *arg_t, IntInst::new_add(*arg_t, lhs, rhs))
+            }
+            IntExpr::Sub { arg_t, lhs, rhs } => {
+                assert_eq!(lhs.t(), *arg_t);
+                assert_eq!(rhs.t(), *arg_t);
+
+                let lhs = lhs.compile(None, emit, cache);
+                let rhs = rhs.compile(None, emit, cache);
+
+                emit(result, *arg_t, IntInst::new_sub(*arg_t, lhs, rhs))
+            }
+            IntExpr::Div { arg_t, lhs, rhs } => {
+                assert_eq!(lhs.t(), *arg_t);
+                assert_eq!(rhs.t(), *arg_t);
+
+                let lhs = lhs.compile(None, emit, cache);
+                let rhs = rhs.compile(None, emit, cache);
+
+                emit(result, *arg_t, IntInst::new_div(*arg_t, lhs, rhs))
+            }
+            IntExpr::Shr { arg_t, lhs, rhs } => {
+                assert_eq!(lhs.t(), *arg_t);
+                // TODO: should be U(32)
+                assert_eq!(rhs.t(), ir::Type::I(32));
+
+                let lhs = lhs.compile(None, emit, cache);
+                let rhs = rhs.compile(None, emit, cache);
+
+                emit(result, *arg_t, IntInst::new_shr(*arg_t, lhs, rhs))
             }
             IntExpr::Mul {
                 arg_t,
@@ -234,22 +504,14 @@ impl<'a> IntExpr<'a> {
                 lhs,
                 rhs,
             } => {
-                let out_t = mul_mode.output_type(*arg_t);
-                let lhs = lhs.compile(None, *arg_t, namer, flow);
-                let rhs = rhs.compile(
-                    result.as_ref().filter(|_| t == *arg_t).cloned(),
-                    *arg_t,
-                    namer,
-                    flow,
-                );
+                assert_eq!(lhs.t(), *arg_t);
+                assert_eq!(rhs.t(), *arg_t);
 
-                let out = result
-                    .as_ref()
-                    .filter(|_| t == out_t)
-                    .cloned()
-                    .unwrap_or_else(|| namer.gen_name(out_t).into_nameable());
-                flow.push((out.clone(), IntInst::new_mul(*arg_t, *mul_mode, lhs, rhs)));
-                (out, out_t)
+                let out_t = mul_mode.output_type(*arg_t);
+                let lhs = lhs.compile(None, emit, cache);
+                let rhs = rhs.compile(None, emit, cache);
+
+                emit(result, out_t, IntInst::new_mul(*arg_t, *mul_mode, lhs, rhs))
             }
             IntExpr::Mad {
                 arg_t,
@@ -258,36 +520,21 @@ impl<'a> IntExpr<'a> {
                 mrhs,
                 arhs,
             } => {
+                assert_eq!(mlhs.t(), *arg_t);
+                assert_eq!(mrhs.t(), *arg_t);
                 let out_t = mul_mode.output_type(*arg_t);
-                let mlhs = mlhs.compile(None, *arg_t, namer, flow);
-                let mrhs = mrhs.compile(None, *arg_t, namer, flow);
-                let arhs = arhs.compile(
-                    result.as_ref().filter(|_| t == *arg_t).cloned(),
-                    *arg_t,
-                    namer,
-                    flow,
-                );
+                assert_eq!(arhs.t(), out_t);
 
-                let out = result
-                    .as_ref()
-                    .filter(|_| t == out_t)
-                    .cloned()
-                    .unwrap_or_else(|| namer.gen_name(out_t).into_nameable());
-                flow.push((
-                    out.clone(),
+                let mlhs = mlhs.compile(None, emit, cache);
+                let mrhs = mrhs.compile(None, emit, cache);
+                let arhs = arhs.compile(None, emit, cache);
+
+                emit(
+                    result,
+                    out_t,
                     IntInst::new_mad(*arg_t, *mul_mode, mlhs, mrhs, arhs),
-                ));
-                (out, out_t)
+                )
             }
-            _ => panic!("invalid types"),
-        };
-
-        if out_t != t {
-            let result = result.unwrap_or_else(|| namer.gen_name(t).into_nameable());
-            flow.push((result.clone(), IntInst::new_cast(out, out_t, t)));
-            result
-        } else {
-            out
         }
     }
 }
@@ -307,6 +554,11 @@ pub enum IntInst<'a> {
         rhs: Nameable<'a>,
     },
     Div {
+        arg_t: ir::Type,
+        lhs: Nameable<'a>,
+        rhs: Nameable<'a>,
+    },
+    Shr {
         arg_t: ir::Type,
         lhs: Nameable<'a>,
         rhs: Nameable<'a>,
@@ -370,6 +622,18 @@ impl<'a> IntInst<'a> {
         rhs: B,
     ) -> Self {
         IntInst::Div {
+            arg_t,
+            lhs: lhs.into_nameable(),
+            rhs: rhs.into_nameable(),
+        }
+    }
+
+    fn new_shr<A: IntoNameable<'a>, B: IntoNameable<'a>>(
+        arg_t: ir::Type,
+        lhs: A,
+        rhs: B,
+    ) -> Self {
+        IntInst::Shr {
             arg_t,
             lhs: lhs.into_nameable(),
             rhs: rhs.into_nameable(),
@@ -1253,13 +1517,112 @@ pub trait InstPrinter {
                     None
                 };
 
+                let target_id = if std::env::var("TELAMON_IMPLICIT_GEMM").is_ok() {
+                    Some(ir::InstId(0))
+                } else {
+                    None
+                };
+                let operand = if Some(inst.id()) == target_id {
+                    // P + R - 1
+                    const H: i32 = 68;
+                    // Q + S - 1
+                    const W: i32 = 68;
+
+                    // NPQ = 4 * 64 * 64 = 16384
+                    const P: i32 = 64;
+                    const magic_p: i32 = 0x8000_0001u32 as i32;
+                    const shift_p: i32 = 5;
+                    const Q: i32 = 64;
+                    const magic_q: i32 = 0x8000_0001u32 as i32;
+                    const shift_q: i32 = 5;
+                    const magic_pq: i32 = 0x8000_0001u32 as i32;
+                    const shift_pq: i32 = 11;
+
+                    // CRS = 1024
+                    //const R: i32 = 4;
+                    // const magic_r: i32 = 0x8000_0001u32 as i32;
+                    //const shift_r: i32 = 1;
+                    const R: i32 = 5;
+                    const magic_r: i32 = 0xcccc_cccdu32 as i32;
+                    const shift_r: i32 = 2;
+
+                    //const S: i32 = 4;
+                    //const magic_s: i32 = 0x8000_0001u32 as i32;
+                    //const shift_s: i32 = 1;
+                    //const magic_rs: i32 = 0x8000_0001u32 as i32;
+                    //const shift_rs: i32 = 3;
+
+                    const S: i32 = 5;
+                    const magic_s: i32 = 0xcccc_cccdu32 as i32;
+                    const shift_s: i32 = 2;
+                    const magic_rs: i32 = 0xa3d70a3eu32 as i32;
+                    const shift_rs: i32 = 3;
+
+                    const C: i32 = 128;
+
+                    let npq =
+                        IntExpr::Named(ir::IndVarId(0).into_nameable(), ir::Type::I(32))
+                            .shared();
+                    let crs =
+                        IntExpr::Named(ir::IndVarId(1).into_nameable(), ir::Type::I(32))
+                            .shared();
+
+                    let np = ((&npq + npq.clone().mul_high(magic_q)) >> shift_q).shared();
+                    // let np = (&npq / Q).shared();
+                    let q = (&npq - &np * Q).shared();
+                    //let n = (&np / P).shared();
+                    let n =
+                        ((&npq + npq.clone().mul_high(magic_pq)) >> shift_pq).shared();
+                    let p = (np - &n * P).shared();
+
+                    //let cr = (&crs / S).shared();
+                    let cr = ((&crs + crs.clone().mul_high(magic_s)) >> shift_s).shared();
+                    let s = (&crs - &cr * S).shared();
+                    //let c = (&cr / R).shared();
+                    let c =
+                        ((&crs + crs.clone().mul_high(magic_rs)) >> shift_rs).shared();
+                    let r = (cr - &c * R).shared();
+
+                    let h = p + r; //R - r - 1i32;
+                    let w = q + s; //S - s - 1i32;
+
+                    let offset = (((n * C + c) * H + h) * W + w) * 4i32;
+
+                    let base = match *addr {
+                        ir::Operand::InductionVar(id, t) => IntExpr::Named(
+                            fun.space()
+                                .ir_instance()
+                                .induction_var(id)
+                                .base()
+                                .into_nameable(),
+                            t,
+                        ),
+                        _ => panic!("FAIL"),
+                    };
+
+                    let addr = base + offset.cast(ir::Type::I(64));
+
+                    addr.compile(
+                        None,
+                        &mut |nameable, t, inst| {
+                            let arg = nameable
+                                .unwrap_or_else(|| namer.gen_name(t).into_nameable());
+                            self.print_int_inst(&arg, &inst, namer);
+                            arg
+                        },
+                        &mut FxHashMap::default(),
+                    )
+                } else {
+                    addr.into_nameable()
+                };
+
                 self.print_ld(
                     vector_factors,
                     Self::lower_type(*ld_type, fun),
                     access_pattern_space(pattern, fun.space()),
                     unwrap!(inst.mem_flag()),
                     &Self::name_inst(vector_levels, inst.id(), namer),
-                    &Self::name_operand(&[vec![], vec![]], addr, namer),
+                    &operand.name(namer),
                     predicate.as_ref().map(|(a, b)| (a as &str, b.name(namer))),
                 );
             }
@@ -1303,6 +1666,64 @@ pub trait InstPrinter {
                 };
                 */
 
+                let target_id = if std::env::var("TELAMON_IMPLICIT_GEMM").is_ok() {
+                    Some(ir::InstId(4))
+                } else {
+                    None
+                };
+                let operand = if Some(inst.id()) == target_id {
+                    const P: i32 = 64;
+                    const magic_p: i32 = 0x8000_0001u32 as i32;
+                    const shift_p: i32 = 5;
+                    const Q: i32 = 64;
+                    const magic_q: i32 = 0x8000_0001u32 as i32;
+                    const shift_q: i32 = 5;
+                    const K: i32 = 256;
+
+                    let npq =
+                        IntExpr::Named(ir::IndVarId(7).into_nameable(), ir::Type::I(32))
+                            .shared();
+                    let k =
+                        IntExpr::Named(ir::IndVarId(8).into_nameable(), ir::Type::I(32))
+                            .shared();
+
+                    let np = ((&npq + npq.clone().mul_high(magic_q)) >> shift_q).shared();
+                    // let np = (&npq / Q).shared();
+                    let q = (npq - &np * Q).shared();
+                    //let n = (&np / P).shared();
+                    let n = ((&np + np.clone().mul_high(magic_p)) >> shift_p).shared();
+                    let p = (np - &n * P).shared();
+
+                    let offset = (((n * K + k) * P + p) * Q + q) * 4i32;
+
+                    let base = match *addr {
+                        ir::Operand::InductionVar(id, t) => IntExpr::Named(
+                            fun.space()
+                                .ir_instance()
+                                .induction_var(id)
+                                .base()
+                                .into_nameable(),
+                            t,
+                        ),
+                        _ => panic!("FAIL"),
+                    };
+
+                    let addr = base + offset.cast(ir::Type::I(64));
+
+                    addr.compile(
+                        None,
+                        &mut |nameable, t, inst| {
+                            let arg = nameable
+                                .unwrap_or_else(|| namer.gen_name(t).into_nameable());
+                            self.print_int_inst(&arg, &inst, namer);
+                            arg
+                        },
+                        &mut FxHashMap::default(),
+                    )
+                } else {
+                    addr.into_nameable()
+                };
+
                 let predicate = if fun.predicate_accesses() {
                     // TODO: Handle vector
                     predicate.as_ref().map(|p| {
@@ -1323,7 +1744,7 @@ pub trait InstPrinter {
                     access_pattern_space(pattern, fun.space()),
                     unwrap!(inst.mem_flag()),
                     predicate.as_ref().map(|s| s as &str),
-                    &Self::name_operand(&[vec![], vec![]], addr, namer),
+                    &operand.name(namer),
                     &Self::name_operand(vector_levels, val, namer),
                 );
             }
@@ -1373,6 +1794,11 @@ pub trait InstPrinter {
                 ref lhs,
                 ref rhs,
             } => unimplemented!("generic sub"),
+            Shr {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unimplemented!("generic shr"),
             Div {
                 arg_t,
                 ref lhs,

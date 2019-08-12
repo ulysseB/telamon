@@ -460,6 +460,8 @@ impl Builder {
                 let total_size = logical_dim.total_size().clone();
                 let induction_var =
                     self.induction_var(&0i32, vec![(dim, ir::Size::new_const(1))]);
+                println!("predicate indvar: {:?}", induction_var);
+                println!("{:?}", self.function.induction_var(induction_var));
                 predicates.push(ir::RangePredicate::new(induction_var, total_size));
             }
         }
@@ -560,6 +562,23 @@ impl Builder {
     /// Returns the list of open dimensions with the dimensions they are mapped to.
     pub(super) fn open_dims(&self) -> impl Iterator<Item = (ir::DimId, ir::DimId)> + '_ {
         self.open_dims.iter().map(|(&new, &old)| (new, old))
+    }
+
+    pub fn unpack(
+        &mut self,
+        dim: &LogicalDim,
+        packing: Vec<ir::Size>,
+    ) -> Vec<ir::IndexExpr> {
+        if packing.len() == 1 {
+            vec![ir::IndexExpr::LogicalDim(dim.id())]
+        } else {
+            self.function
+                .packed_dims_mut()
+                .unpack(dim.id(), packing)
+                .into_iter()
+                .map(ir::IndexExpr::Unpack)
+                .collect()
+        }
     }
 }
 

@@ -74,11 +74,63 @@ impl<'a> FunctionBuilder<'a> {
             .chain(&thread_dims)
             .collect();
 
+        /*
+        let mut logical_ids = FxHashSet::default();
+        let mut unpack_ids = FxHashSet::default();
+        for inst in cfg.instructions() {
+            for operand in inst.operator().operands() {
+                match operand {
+                    ir::Operand::ComputedAddress(access) => {
+                        device_code_args.insert(ParamVal::from_param(access.base()));
+
+                        for expr in access.indices() {
+                            use ir::IndexExpr::*;
+                            match *expr {
+                                Parameter(ref p) => {
+                                    device_code_args.insert(ParamVal::from_param(p));
+                                }
+                                LogicalDim(id) => logical_ids.insert(id),
+                                Unpack(id) => {
+                                    unpack_ids.insert(id);
+                                    logical_ids.insert(
+                                        self.space.ir_instance().packed_dims()[id]
+                                            .logical_dim(),
+                                    );
+                                }
+                                _ => (),
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        let mut logical_to_iteration = FxHashMap::default();
+        for logical_id in logical_ids {
+            // TODO: create the iteration var
+        }
+
+        let mut packed_to_expr = FxHashMap::default();
+        let packed_dims = self.space.ir_instance().packed_dims();
+        for unpack_id in unpack_ids {
+            let packed = packed_dims[unpack_id];
+            let packed_id = packed.id();
+            let logical_id = packed.logical_dim();
+
+            packed_to_expr.entry(packed_id).or_insert_with(|| {
+                let iteration_var = logical_to_iteration[&logical_id];
+                (iteration_var, packed.sizes())
+            })
+        }
+        */
+
         let mut iteration_vars = IterationVars::default();
         let mut predicates = Predicates::default();
         let mut instruction_predicates = FxHashMap::default();
         let mut loop_predicate_def = FxHashMap::default();
         let mut global_predicate_def = Vec::new();
+
         for inst in cfg.instructions() {
             let mut pred_dim = None;
             let mut inst_preds = Vec::new();
@@ -395,6 +447,15 @@ impl ParamVal {
             ir::Operand::Param(p) => {
                 let t = unwrap!(space.ir_instance().device().lower_type(p.t, space));
                 Some(ParamVal::External(p.clone(), t))
+            }
+            ir::Operand::ComputedAddress(access) => {
+                let base = access.base();
+                let t = space
+                    .ir_instance()
+                    .device()
+                    .lower_type(base.t, space)
+                    .unwrap();
+                Some(ParamVal::External(base.clone(), t))
             }
             _ => None,
         }

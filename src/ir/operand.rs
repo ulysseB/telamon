@@ -1,16 +1,19 @@
 //! Describes the different kinds of operands an instruction can have.
 use std::fmt;
+use std::sync::Arc;
 
-use self::Operand::*;
-use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use utils::unwrap;
+
+use super::access::Access;
+use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
+
+use self::Operand::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoweringMap {
@@ -121,6 +124,8 @@ pub enum Operand<L = LoweringMap> {
     InductionVar(ir::IndVarId, Type),
     /// A variable, stored in register.
     Variable(ir::VarId, Type),
+    // Computed access to a memory location
+    ComputedAddress(Access),
 }
 
 impl<L> Operand<L> {
@@ -131,6 +136,8 @@ impl<L> Operand<L> {
             Float(_, n_bit) => Type::F(*n_bit),
             Addr(mem) => ir::Type::PtrTo(*mem),
             Index(..) => Type::I(32),
+            // TODO: Memory size
+            ComputedAddress(access) => access.t(),
             Param(p) => p.t,
             Variable(_, t) => *t,
             Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => *t,
@@ -206,7 +213,8 @@ impl<L> Operand<L> {
     pub fn is_constant(&self) -> bool {
         match self {
             Int(..) | Float(..) | Addr(..) | Param(..) => true,
-            Index(..) | Inst(..) | Reduce(..) | InductionVar(..) | Variable(..) => false,
+            Index(..) | Inst(..) | Reduce(..) | InductionVar(..) | Variable(..)
+            | ComputedAddress(..) => false,
         }
     }
 
@@ -240,6 +248,7 @@ impl Operand<()> {
             Addr(id) => Addr(id),
             Reduce(id, t, dim_map, dims) => Reduce(id, t, dim_map, dims),
             InductionVar(id, t) => InductionVar(id, t),
+            ComputedAddress(address) => ComputedAddress(address),
         }
     }
 }
@@ -247,7 +256,7 @@ impl Operand<()> {
 impl<L> fmt::Display for Operand<L> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Int(val, len) => write!(fmt, "{}u{}", val, len),
+            Int(val, len) => write!(fmt, "{}i{}", val, len),
             Float(val, len) => write!(fmt, "{}f{}", val, len),
             Inst(id, _t, dim_map, _scope) => write!(fmt, "{:?} [{}]", id, dim_map),
             Index(id) => write!(fmt, "{}", id),
@@ -258,6 +267,7 @@ impl<L> fmt::Display for Operand<L> {
             }
             InductionVar(_id, _t) => write!(fmt, "ind"),
             Variable(var, t) => write!(fmt, "({}){}", t, var),
+            ComputedAddress(..) => write!(fmt, "<..>"),
         }
     }
 }
@@ -265,7 +275,7 @@ impl<L> fmt::Display for Operand<L> {
 impl<L> ir::IrDisplay<L> for Operand<L> {
     fn fmt(&self, fmt: &mut fmt::Formatter, fun: &ir::Function<L>) -> fmt::Result {
         match self {
-            Int(val, len) => write!(fmt, "{}u{}", val, len),
+            Int(val, len) => write!(fmt, "{}i{}", val, len),
             Float(val, len) => write!(fmt, "{}f{}", val, len),
             Inst(id, _t, dim_map, _scope) => {
                 let source_dims = fun
@@ -312,6 +322,7 @@ impl<L> ir::IrDisplay<L> for Operand<L> {
                 write!(fmt, "{}", fun.induction_var(*id).display(fun))
             }
             Variable(var, t) => write!(fmt, "({}){}", t, var),
+            ComputedAddress(..) => write!(fmt, "<..>"),
         }
     }
 }
