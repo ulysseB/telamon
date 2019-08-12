@@ -382,12 +382,30 @@ impl InstPrinter for CudaPrinter {
         let result = &result.name(namer);
         match *inst {
             Move(ref op, t) => self.print_move(t, result, &op.name(namer)),
-            Cast(ref op, from_t, to_t) => unimplemented!("CAST"),
+            Cast(ref op, from_t, to_t) => self.print_unary_op(
+                [1, 1],
+                ir::UnaryOp::Cast(to_t),
+                from_t,
+                result,
+                &op.name(namer),
+            ),
             Add {
                 arg_t,
                 ref lhs,
                 ref rhs,
             } => self.print_add_int(arg_t, result, &lhs.name(namer), &rhs.name(namer)),
+            Shr {
+                arg_t,
+                ref lhs,
+                ref rhs,
+            } => unwrap!(writeln!(
+                self.buffer,
+                "  shr.{} {}, {}, {};",
+                Self::get_type(arg_t),
+                result,
+                lhs.name(namer),
+                rhs.name(namer),
+            )),
             Sub {
                 arg_t,
                 ref lhs,

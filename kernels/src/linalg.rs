@@ -8,7 +8,7 @@ use crate::compose::{
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
-use ::ndarray::{Array1, Array2, Array3, ArrayD};
+use ::ndarray::{s, Array1, Array2, Array3, Array4, ArrayD};
 use rand;
 use serde::{Deserialize, Serialize};
 use telamon::explorer::Candidate;
@@ -347,7 +347,7 @@ pub struct FusedMM<'a, S: Scalar> {
 
 impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
     type Parameters = FusedMMP;
-    type ExpectedOutput = Array2<S>;
+    type ExpectedOutput = Array4<S>;
 
     fn name() -> &'static str {
         "fused_mm"
@@ -383,6 +383,20 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
 
         let mut builder = helper::Builder::new(signature, ctx.device());
 
+        /*
+        let a = self.input.load_packed(
+            vec![(vec![n, p, q], npq_tiling), (vec![c, r, s], crs_tiling)],
+            |args| {
+                if let &[n, p, q, c, r, s] = args {
+                    vec![n, c, p * d_h + r * s_h - 1 - pad_h, q * d_w + s * s_w - 1 - pad_w]
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
+        */
+
         let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
         let b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
 
@@ -398,12 +412,35 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &dyn device::Context) -> Array2<S> {
-        let a_shape = (self.params.m as usize, self.params.k as usize);
-        let b_shape = (self.params.k as usize, self.params.n as usize);
+    fn get_expected_output(&self, context: &dyn device::Context) -> Array4<S> {
+        //let a_shape = (self.params.m as usize, self.params.k as usize);
+        //let b_shape = (self.params.k as usize, self.params.n as usize);
+        let a_shape = (4, 128, 68, 68);
+        let b_shape = (128, 5, 5, 256);
         let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
         let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
-        let mut res = a.dot(&b);
+        let mut res = ArrayD::<S>::zeros(vec![4, 64, 64, 256])
+            .into_shape((4, 256, 64, 64))
+            .unwrap();
+        for n in 0..4 {
+            for k in 0..256 {
+                for p in 0..64 {
+                    for q in 0..64 {
+                        let mut x = S::zero();
+                        for r in 0..5 {
+                            for s in 0..5 {
+                                for c in 0..128 {
+                                    x += a[[n, c, p + r, q + s]] * b[[c, r, s, k]];
+                                }
+                            }
+                        }
+                        res[[n, k, p, q]] = x;
+                    }
+                }
+            }
+        }
+        // let mut res = a.dot(&b);
+        // let mut res = res.into_shape((16384, 256)).unwrap();
 
         match self.params.activation_fun {
             Some(ActivationFunction::ReLU) => {
@@ -426,7 +463,8 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         expected: &Self::ExpectedOutput,
         context: &dyn device::Context,
     ) -> Result<(), String> {
-        let c_shape = (self.params.m as usize, self.params.n as usize);
+        //let c_shape = (self.params.m as usize, self.params.n as usize);
+        let c_shape = (4, 256, 64, 64);
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
         if let Err(invalid) = check_output(&c, expected) {
             Err(format!("Invalid fused_mm output: {}", invalid))

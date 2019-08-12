@@ -1,4 +1,5 @@
 //! Representation and manipulation of a set of possible implementation.
+mod access;
 mod access_pattern;
 mod dim_map;
 mod dimension;
@@ -19,6 +20,7 @@ use std::marker::PhantomData;
 use std::{self, fmt};
 use utils::unwrap;
 
+pub use self::access::{Access, IndexExpr, PackedDims, UnpackedDimId};
 pub use self::access_pattern::{AccessPattern, Stride};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{

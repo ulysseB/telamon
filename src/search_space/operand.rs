@@ -105,6 +105,25 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec
             }
             actions
         }
+        ComputedAddress(ref access) => {
+            use ir::IndexExpr;
+
+            let mut actions = Vec::new();
+
+            for index in access.indices() {
+                let id = match *index {
+                    IndexExpr::LogicalDim(id) => id,
+                    IndexExpr::Unpack(id) => fun.packed_dims()[id].logical_dim(),
+                    _ => continue,
+                };
+
+                for dim in fun.logical_dim(id).dimensions() {
+                    actions.push(Action::Order(dim.into(), user, Order::OUTER));
+                }
+            }
+
+            actions
+        }
     }
 }
 

@@ -418,6 +418,7 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
             ir::Operand::Variable(val_id, _t) => {
                 Cow::Borrowed(&self.variables[val_id].get_name(&indexes))
             }
+            ir::Operand::ComputedAddress(..) => unimplemented!("computed address"),
         }
     }
 

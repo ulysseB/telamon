@@ -1,13 +1,13 @@
 //! Utilities to allocate and operate on tensors.
+use ::ndarray::{self, ArrayD};
+use itertools::Itertools;
+use std::sync::Arc;
+use utils::*;
+
 use crate::device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
 use crate::helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
 use crate::ir;
 use crate::search_space::InstFlag;
-use ::ndarray::{self, ArrayD};
-use itertools::Itertools;
-use std;
-use std::sync::Arc;
-use utils::*;
 
 /// A dimension size, before tiling.
 #[derive(Clone)]
@@ -106,11 +106,14 @@ impl<'a> TensorBuilder<'a> {
         S: ScalarArgument,
         AM: ArgMap<'a> + Context + 'a,
     {
-        let size = self
+        let mut size = self
             .storage_dims
             .iter()
             .map(|s| s.eval(builder.context()) as usize)
             .product::<usize>();
+        if self.name == "a" {
+            size = 4 * 128 * 68 * 68;
+        }
         let array = builder.array::<S>(self.name, size);
         let mut stride: DimSize = unwrap!(S::t().len_byte()).into();
         let mut strides = self
@@ -181,6 +184,74 @@ where
         }
     }
 
+    // NCHW -> [N][CRS][PQ]
+    // .pack(vec![vec![N], vec![CRS], vec![PQ]])
+    // |n, c, r, s, p, q| -> ...
+    pub fn load_packed<F>(
+        &self,
+        tiling: Vec<(Vec<DimSize<'a>>, TilingPattern)>,
+        packing_fn: F,
+        builder: &mut Builder,
+    ) -> VirtualTensor
+    where
+        F: FnOnce(Vec<ir::IndexExpr>) -> Vec<ir::IndexExpr>,
+    {
+        let mut dims = Vec::with_capacity(tiling.len());
+        let mut unpacked = Vec::with_capacity(tiling.len());
+
+        for (sizes, tiling) in tiling {
+            let sizes = sizes
+                .into_iter()
+                .map(|size| size.to_ir_size(builder))
+                .collect::<Vec<_>>();
+
+            let mut total_size = ir::Size::new_const(1);
+            for size in &sizes {
+                total_size *= size;
+            }
+
+            let logical_dim = builder.open_tiled_dim(total_size, tiling);
+
+            unpacked.extend(builder.unpack(&logical_dim, sizes));
+
+            dims.push(logical_dim);
+        }
+        let packed = packing_fn(unpacked);
+        assert_eq!(packed.len(), self.iter_dims.len());
+
+        let ptr = ir::Access::new(
+            builder.find_param(self.name).clone(),
+            self.iter_dims
+                .iter()
+                .zip(packed)
+                // TODO: size for the predicates.
+                .map(|(sizestride, expr)| {
+                    let (_size, stride) = sizestride;
+                    (expr, stride.to_ir_size(builder))
+                })
+                .collect(),
+        );
+
+        //let pattern = builder.tensor_access_pattern(None, increments);
+        let pattern = ir::AccessPattern::Unknown(None);
+
+        let inst = builder.predicated_ld_ex(S::t(), &ptr, pattern, self.flag(), None);
+
+        for dim in &dims {
+            builder.close_dim(dim);
+        }
+
+        VirtualTensor { inst, dims }
+    }
+
+    fn flag(&self) -> InstFlag {
+        if self.read_only {
+            InstFlag::ALL
+        } else {
+            InstFlag::COHERENT
+        }
+    }
+
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
     pub fn load(
         &self,
@@ -196,6 +267,11 @@ where
                 builder.open_tiled_dim(size, tiling)
             })
             .collect_vec();
+        // TODO: take default value as argument
+        // XXX CONVHACK: make sure iterations are the first induction vars.
+        let predicate = builder
+            .predicates_for_logical_dims(&dims)
+            .map(|predicates| ir::LoadPredicate::new(predicates, 0f32.as_operand()));
         let (ptr, pattern);
         {
             let increments = dims
@@ -203,19 +279,21 @@ where
                 .zip_eq(&self.iter_dims)
                 .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder)))
                 .collect_vec();
+            /*
+            ptr = ir::Access::new(
+                builder.find_param(self.name).clone(),
+                increments
+                    .iter()
+                    .cloned()
+                    .map(|(dim, stride)| (ir::IndexExpr::LogicalDim(dim.id()), stride))
+                    .collect(),
+            );
+            */
             ptr = builder.induction_var(&self.name, increments.clone());
             pattern = builder.tensor_access_pattern(None, increments);
         };
-        let flag = if self.read_only {
-            InstFlag::ALL
-        } else {
-            InstFlag::COHERENT
-        };
-        // TODO: take default value as argument
-        let predicate = builder
-            .predicates_for_logical_dims(&dims)
-            .map(|predicates| ir::LoadPredicate::new(predicates, 0f32.as_operand()));
-        let inst = builder.predicated_ld_ex(S::t(), &ptr, pattern, flag, predicate);
+        let inst =
+            builder.predicated_ld_ex(S::t(), &ptr, pattern, self.flag(), predicate);
         for dim in &dims {
             builder.close_dim(dim);
         }
@@ -234,12 +312,22 @@ where
                 (l.eval(context) as usize, (s.eval(context) / s_len) as usize)
             })
             .unzip();
-        let len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l * s).max());
+        let mut len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l * s).max());
+        if self.name == "a" {
+            len = 4 * 128 * 68 * 68;
+        }
         raw.split_off(len);
-        unwrap!(ndarray::ArrayBase::from_shape_vec(
-            sizes.strides(strides),
-            raw
-        ))
+        if self.name == "a" {
+            unwrap!(ndarray::ArrayBase::from_shape_vec(
+                vec![4, 128, 68, 68],
+                raw
+            ))
+        } else {
+            unwrap!(ndarray::ArrayBase::from_shape_vec(
+                sizes.strides(strides),
+                raw
+            ))
+        }
     }
 }
 
