@@ -1208,12 +1208,22 @@ pub trait InstPrinter {
                             } else {
                                 let src = IntExpr::named(&src, t);
                                 let div_by = rolling.div_by();
-                                let div_magic =
-                                    IntExpr::named(ParamValKey::DivMagic(div_by, t), t);
-                                let div_shift =
-                                    IntExpr::named(ParamValKey::DivShift(div_by, t), t);
-                                let div =
-                                    (&src + src.clone().mul_high(div_magic)) >> div_shift;
+
+                                let div = if std::env::var("TELAMON_MAGIC").is_err() {
+                                    (&src / IntExpr::named(div_by, t))
+                                } else {
+                                    let div_magic = IntExpr::named(
+                                        ParamValKey::DivMagic(div_by, t),
+                                        t,
+                                    );
+                                    let div_shift = IntExpr::named(
+                                        ParamValKey::DivShift(div_by, t),
+                                        t,
+                                    );
+
+                                    (src.clone() + src.mul_high(div_magic)) >> div_shift
+                                };
+
                                 let tmp = namer.gen_name(t);
                                 div.compile_to(
                                     &(&tmp).into_nameable(),
@@ -2119,7 +2129,8 @@ pub trait InstPrinter {
                     Self::lower_type(val.t(), fun),
                     access_pattern_space(pattern, fun.space()),
                     unwrap!(inst.mem_flag()),
-                    predicate.as_ref().map(|s| s as &str),
+                    //predicate.as_ref().map(|s| s as &str),
+                    guard.as_ref().map(|s| (s as &str)),
                     &operand.name(namer),
                     &Self::name_operand(vector_levels, val, namer),
                 );

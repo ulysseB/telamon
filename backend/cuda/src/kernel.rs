@@ -3,7 +3,7 @@
 use crate::PerfCounterSet;
 use crate::{api, Context, Gpu, JITDaemon};
 use itertools::Itertools;
-use log::warn;
+use log::{trace, warn};
 use telamon::codegen::{self, ParamVal};
 use telamon::device::{self, Context as ContextTrait};
 
@@ -95,11 +95,18 @@ impl<'a, 'b> Kernel<'a, 'b> {
             .device_code_args()
             .map(|x| match *x {
                 ParamVal::External(ref p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
-                ParamVal::Size(ref s) => {
-                    ThunkArg::Size(Box::new(args.eval_size(s) as i32))
-                }
-                ParamVal::DivMagic(ref s, t) => ThunkArg::Size(args.div_magic(s, t)),
-                ParamVal::DivShift(ref s, t) => ThunkArg::Size(args.div_shift(s, t)),
+                ParamVal::Size(ref s) => ThunkArg::Size(
+                    Box::new(args.eval_size(s) as i32),
+                    s.ident_name().to_string(),
+                ),
+                ParamVal::DivMagic(ref s, t) => ThunkArg::Size(
+                    args.div_magic(s, t),
+                    format!("magic_{}", s.ident_name()),
+                ),
+                ParamVal::DivShift(ref s, t) => ThunkArg::Size(
+                    args.div_shift(s, t),
+                    format!("shift_{}", s.ident_name()),
+                ),
                 ParamVal::GlobalMem(_, ref size, _) => {
                     tmp_arrays.push(args.eval_size(size) as usize);
                     ThunkArg::TmpArray(tmp_arrays.len() - 1)
@@ -185,7 +192,7 @@ impl<'a> ThunkArgs<'a> {
             .iter()
             .map(|x| match *x {
                 ThunkArg::ArgRef(arg) => arg,
-                ThunkArg::Size(ref arg) => arg,
+                ThunkArg::Size(ref arg, _) => arg,
                 ThunkArg::TmpArray(id) => &tmp_arrays[id],
             })
             .collect_vec();
@@ -211,7 +218,7 @@ impl<'a> ThunkArgs<'a> {
             .iter()
             .map(|x| match *x {
                 ThunkArg::ArgRef(arg) => arg,
-                ThunkArg::Size(ref arg) => arg,
+                ThunkArg::Size(ref arg, _) => arg,
                 ThunkArg::TmpArray(id) => &tmp_arrays[id],
             })
             .collect_vec();
@@ -226,6 +233,8 @@ impl<'a> ThunkArgs<'a> {
         num_samples: usize,
         executor: &api::Executor,
     ) -> Vec<f64> {
+        trace!("Running with args: {:?}", self);
+
         let tmp_arrays = self
             .tmp_arrays
             .iter()
@@ -236,7 +245,7 @@ impl<'a> ThunkArgs<'a> {
             .iter()
             .map(|x| match *x {
                 ThunkArg::ArgRef(arg) => arg,
-                ThunkArg::Size(ref arg) => arg,
+                ThunkArg::Size(ref arg, _) => arg,
                 ThunkArg::TmpArray(id) => &tmp_arrays[id],
             })
             .collect_vec();
@@ -278,7 +287,7 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 /// An argument of a kernel ready to evaluate.
 enum ThunkArg<'a> {
     ArgRef(&'a dyn api::Argument),
-    Size(Box<dyn device::ScalarArgument>),
+    Size(Box<dyn device::ScalarArgument>, String),
     TmpArray(usize),
 }
 
@@ -286,7 +295,7 @@ impl<'a> std::fmt::Debug for ThunkArg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ThunkArg::ArgRef(_) => write!(f, "context argument"),
-            ThunkArg::Size(size) => write!(f, "size = {}", size),
+            ThunkArg::Size(size, name) => write!(f, "size[{}] = {}", name, size),
             ThunkArg::TmpArray(size) => write!(f, "temporary array of size {}", size),
         }
     }

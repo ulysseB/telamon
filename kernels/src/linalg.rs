@@ -734,8 +734,13 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
             let input = self.input.read_to_host(context);
             let filter = self.filter.read_to_host(context);
             Err(format!(
-                "Invalid conv2d output: {}; input\n{}\nfilter\n{}\nexpected \n{}\ngot\n{}\n",
-                invalid, input, filter, expected, output
+                "Invalid conv2d output: {}
+            input {}
+            filter {}
+            output {}
+            expected {}
+                        ",
+                input, filter, output, expected, invalid
             ))
         } else {
             Ok(())
