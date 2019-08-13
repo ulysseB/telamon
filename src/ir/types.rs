@@ -17,7 +17,26 @@ pub enum Type {
     PtrTo(ir::MemId),
 }
 
+pub struct IdentName<'a> {
+    t: &'a Type,
+}
+
+impl fmt::Display for IdentName<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.t {
+            Type::I(s) => write!(fmt, "i{}", s),
+            Type::U(s) => write!(fmt, "u{}", s),
+            Type::F(s) => write!(fmt, "f{}", s),
+            Type::PtrTo(mem) => write!(fmt, "memptr{}", mem.0),
+        }
+    }
+}
+
 impl Type {
+    pub fn ident_name(&self) -> IdentName<'_> {
+        IdentName { t: self }
+    }
+
     /// Returns true if the type is an integer.
     pub fn is_integer(self) -> bool {
         match self {

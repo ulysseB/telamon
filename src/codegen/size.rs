@@ -16,7 +16,43 @@ pub struct Size {
     divisor: u32,
 }
 
+pub struct IdentName<'a> {
+    size: &'a Size,
+}
+
+impl fmt::Display for IdentName<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.size.factor != 1 {
+            write!(fmt, "_{}", self.size.factor)?;
+        }
+
+        for dividend in &self.size.dividend {
+            write!(fmt, "_{}", dividend)?;
+        }
+
+        if self.size.divisor != 1 {
+            write!(fmt, "_{}", self.size.divisor)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl From<u32> for Size {
+    fn from(factor: u32) -> Self {
+        Size {
+            factor,
+            dividend: Vec::new(),
+            divisor: 1,
+        }
+    }
+}
+
 impl Size {
+    pub fn ident_name(&self) -> IdentName<'_> {
+        IdentName { size: self }
+    }
+
     /// Creates a new 'Size'.
     pub fn new(factor: u32, dividend: Vec<Arc<ir::Parameter>>, divisor: u32) -> Self {
         assert!(divisor != 0);

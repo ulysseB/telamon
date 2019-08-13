@@ -13,6 +13,7 @@ use crate::codegen::{
 use crate::ir::{self, IrDisplay};
 use crate::search_space::{self, DimKind, Domain, MemSpace, Order, SearchSpace};
 
+use super::access::{IndexVarId, IndexVars, VarWalker};
 use super::iteration::IterationVars;
 use super::predicates::{PredicateId, PredicateKey, Predicates};
 
@@ -74,56 +75,42 @@ impl<'a> FunctionBuilder<'a> {
             .chain(&thread_dims)
             .collect();
 
-        /*
-        let mut logical_ids = FxHashSet::default();
-        let mut unpack_ids = FxHashSet::default();
+        // Iteration vars
+        let mut index_vars = IndexVars::default();
+        let mut walker = VarWalker {
+            merged_dims: &merged_dims,
+            space: &self.space,
+            device_code_args: &mut device_code_args,
+            index_vars: &mut index_vars,
+        };
+
+        let mut access_map = FxHashMap::default();
         for inst in cfg.instructions() {
             for operand in inst.operator().operands() {
                 match operand {
-                    ir::Operand::ComputedAddress(access) => {
-                        device_code_args.insert(ParamVal::from_param(access.base()));
+                    ir::Operand::ComputedAddress(id) => {
+                        let access = &self.space.ir_instance().accesses()[*id];
+                        walker.process_parameter(access.base());
 
-                        for expr in access.indices() {
-                            use ir::IndexExpr::*;
-                            match *expr {
-                                Parameter(ref p) => {
-                                    device_code_args.insert(ParamVal::from_param(p));
-                                }
-                                LogicalDim(id) => logical_ids.insert(id),
-                                Unpack(id) => {
-                                    unpack_ids.insert(id);
-                                    logical_ids.insert(
-                                        self.space.ir_instance().packed_dims()[id]
-                                            .logical_dim(),
-                                    );
-                                }
-                                _ => (),
-                            }
-                        }
+                        let strides = access
+                            .strides()
+                            .map(|(expr, stride)| {
+                                let stride = codegen::Size::from_ir(
+                                    &ir::PartialSize::from(stride.clone()),
+                                    self.space,
+                                );
+
+                                walker.process_size(&stride);
+                                (walker.process_index_expr(expr), stride)
+                            })
+                            .collect::<Vec<_>>();
+
+                        access_map.insert(*id, strides);
                     }
                     _ => (),
                 }
             }
         }
-
-        let mut logical_to_iteration = FxHashMap::default();
-        for logical_id in logical_ids {
-            // TODO: create the iteration var
-        }
-
-        let mut packed_to_expr = FxHashMap::default();
-        let packed_dims = self.space.ir_instance().packed_dims();
-        for unpack_id in unpack_ids {
-            let packed = packed_dims[unpack_id];
-            let packed_id = packed.id();
-            let logical_id = packed.logical_dim();
-
-            packed_to_expr.entry(packed_id).or_insert_with(|| {
-                let iteration_var = logical_to_iteration[&logical_id];
-                (iteration_var, packed.sizes())
-            })
-        }
-        */
 
         let mut iteration_vars = IterationVars::default();
         let mut predicates = Predicates::default();
@@ -266,10 +253,12 @@ impl<'a> FunctionBuilder<'a> {
             init_induction_levels,
             predicate_accesses: self.predicated,
             iteration_vars,
+            index_vars,
             predicates,
             loop_predicate_def,
             global_predicate_def,
             instruction_predicates,
+            access_map,
         }
     }
 }
@@ -285,10 +274,12 @@ pub struct Function<'a> {
     init_induction_levels: Vec<InductionLevel<'a>>,
     variables: Vec<codegen::Variable<'a>>,
     iteration_vars: IterationVars,
+    index_vars: IndexVars,
     predicates: Predicates,
     loop_predicate_def: FxHashMap<ir::DimId, Vec<(ir::InstId, Vec<PredicateId>)>>,
     global_predicate_def: Vec<(ir::InstId, Vec<PredicateId>)>,
     instruction_predicates: FxHashMap<ir::InstId, Vec<(ir::DimId, usize)>>,
+    access_map: FxHashMap<ir::AccessId, Vec<(IndexVarId, codegen::Size)>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace,
     predicate_accesses: bool,
@@ -347,6 +338,16 @@ impl<'a> Function<'a> {
 
     pub fn iteration_variables(&self) -> &IterationVars {
         &self.iteration_vars
+    }
+
+    pub fn index_vars(&self) -> &IndexVars {
+        &self.index_vars
+    }
+
+    pub fn access_map(
+        &self,
+    ) -> &FxHashMap<ir::AccessId, Vec<(IndexVarId, codegen::Size)>> {
+        &self.access_map
     }
 
     pub fn global_predicates(&self) -> &[(ir::InstId, Vec<PredicateId>)] {
@@ -438,6 +439,10 @@ pub enum ParamVal {
     Size(codegen::Size),
     /// A pointer to a global memory block, allocated by the wrapper.
     GlobalMem(ir::MemId, codegen::Size, ir::Type),
+    // Magic constant for division
+    DivMagic(codegen::Size, ir::Type),
+    // Shift amount for division
+    DivShift(codegen::Size, ir::Type),
 }
 
 impl ParamVal {
@@ -449,7 +454,7 @@ impl ParamVal {
                 Some(ParamVal::External(p.clone(), t))
             }
             ir::Operand::ComputedAddress(access) => {
-                let base = access.base();
+                let base = space.ir_instance().accesses()[*access].base();
                 let t = space
                     .ir_instance()
                     .device()
@@ -472,10 +477,27 @@ impl ParamVal {
         }
     }
 
+    pub fn div_magic(size: &codegen::Size, t: ir::Type) -> Option<Self> {
+        match *size.dividend() {
+            [] => None,
+            _ => Some(ParamVal::DivMagic(size.clone(), t)),
+        }
+    }
+
+    pub fn div_shift(size: &codegen::Size, t: ir::Type) -> Option<Self> {
+        match *size.dividend() {
+            [] => None,
+            _ => Some(ParamVal::DivShift(size.clone(), t)),
+        }
+    }
+
     /// Returns the type of the parameter.
     pub fn t(&self) -> ir::Type {
         match *self {
-            ParamVal::External(_, t) | ParamVal::GlobalMem(.., t) => t,
+            ParamVal::External(_, t)
+            | ParamVal::GlobalMem(.., t)
+            | ParamVal::DivMagic(.., t)
+            | ParamVal::DivShift(.., t) => t,
             ParamVal::Size(_) => ir::Type::I(32),
         }
     }
@@ -485,7 +507,7 @@ impl ParamVal {
         match *self {
             ParamVal::External(ref p, _) => matches!(p.t, ir::Type::PtrTo(_)),
             ParamVal::GlobalMem(..) => true,
-            ParamVal::Size(_) => false,
+            ParamVal::Size(_) | ParamVal::DivMagic(..) | ParamVal::DivShift(..) => false,
         }
     }
 
@@ -495,6 +517,8 @@ impl ParamVal {
             ParamVal::External(ref p, _) => ParamValKey::External(&*p),
             ParamVal::Size(ref s) => ParamValKey::Size(s),
             ParamVal::GlobalMem(mem, ..) => ParamValKey::GlobalMem(mem),
+            ParamVal::DivMagic(ref size, t) => ParamValKey::DivMagic(size, t),
+            ParamVal::DivShift(ref size, t) => ParamValKey::DivShift(size, t),
         }
     }
 }
@@ -507,6 +531,8 @@ pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
     Size(&'a codegen::Size),
     GlobalMem(ir::MemId),
+    DivMagic(&'a codegen::Size, ir::Type),
+    DivShift(&'a codegen::Size, ir::Type),
 }
 
 /// Generates the list of internal memory blocks, and creates the parameters needed to

@@ -1,13 +1,17 @@
 //! Provides functions to print PTX code.
-use crate::{Gpu, ValuePrinter};
-use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use std::io::Write;
+
+use fxhash::FxHashSet;
+use itertools::Itertools;
+
 use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use utils::*;
+
+use crate::{Gpu, ValuePrinter};
 
 #[derive(Default)]
 pub(crate) struct CudaPrinter {
@@ -299,6 +303,7 @@ impl CudaPrinter {
         let mut next_extra_var_id = 0;
         let mut extra_def = vec![];
         let mut extra_cleanup = vec![];
+        let mut magics = FxHashSet::default();
         let params = fun
             .device_code_args()
             .map(|p| match *p {
@@ -325,9 +330,29 @@ impl CudaPrinter {
                     extra_cleanup.push(format!("CHECK_CUDA(cuMemFree({}));", extra_var));
                     format!("&{}", extra_var)
                 }
+                ParamVal::DivMagic(ref size, t) => {
+                    magics.insert((size, t));
+                    format!("&_{}_magic{}", t.ident_name(), size.ident_name())
+                }
+                ParamVal::DivShift(ref size, t) => {
+                    magics.insert((size, t));
+                    format!("&_{}_shift{}", t.ident_name(), size.ident_name())
+                }
             })
             .collect_vec()
             .join(", ");
+        for (size, t) in magics {
+            let magic = format!("_{}_magic{}", t.ident_name(), size.ident_name());
+            let shift = format!("_{}_shift{}", t.ident_name(), size.ident_name());
+            extra_def.push(format!("{} {}, {};", Self::host_type(t), magic, shift));
+            extra_def.push(format!(
+                "{}_magic({}, &{}, &{});",
+                Self::host_type(t),
+                Self::host_size(size),
+                magic,
+                shift
+            ));
+        }
         let extern_params = fun
             .space()
             .ir_instance()
@@ -450,7 +475,7 @@ impl InstPrinter for CudaPrinter {
                 ref arhs,
             } => self.print_mad(
                 [1, 1],
-                arg_t,
+                mul_mode.output_type(arg_t),
                 op::Rounding::Exact,
                 mul_mode,
                 result,
@@ -465,7 +490,7 @@ impl InstPrinter for CudaPrinter {
                 ref rhs,
             } => self.print_mul(
                 [1, 1],
-                arg_t,
+                mul_mode.output_type(arg_t),
                 op::Rounding::Exact,
                 mul_mode,
                 result,

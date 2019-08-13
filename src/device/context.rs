@@ -40,6 +40,12 @@ where
 /// A callback that is called after evaluating a kernel.
 pub type AsyncCallback<'b> = Box<dyn AsyncCallbackFn + Send + 'b>;
 
+fn i32_div_magic(val: i32) -> (i32, i32) {
+    let l = (32 - (val - 1).leading_zeros()).max(1) as i32;
+    let m = 1 + (1u64 << (31 + l)) / (val as u64);
+    ((m.wrapping_sub(1u64 << 32)) as i32, l - 1)
+}
+
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
@@ -78,6 +84,22 @@ pub trait Context: Sync {
             size, dividend
         );
         result
+    }
+
+    fn div_shift(&self, size: &codegen::Size, t: ir::Type) -> Box<dyn ScalarArgument> {
+        assert_eq!(t, ir::Type::I(32));
+
+        let size = self.eval_size(size) as i32;
+        let (magic, _) = i32_div_magic(size);
+        Box::new(magic)
+    }
+
+    fn div_magic(&self, size: &codegen::Size, t: ir::Type) -> Box<dyn ScalarArgument> {
+        assert_eq!(t, ir::Type::I(32));
+
+        let size = self.eval_size(size) as i32;
+        let (_, shift) = i32_div_magic(size);
+        Box::new(shift)
     }
 
     /// Returns a default stabilizer configuration for use with this context.  By default, no

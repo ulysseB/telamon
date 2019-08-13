@@ -11,9 +11,9 @@ use utils::*;
 use crate::codegen::{
     self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
 };
-use crate::ir::{self, dim, DimMap, InstId, Type};
+use crate::ir::{self, dim, AccessId, DimMap, InstId, Type};
 
-use super::iteration::IterationVarId;
+use super::access::{IndexVarId, IterationVarId, UnpackId};
 
 // TODO(cleanup): refactor
 
@@ -70,6 +70,10 @@ pub struct NameMap<'a, 'b, VP: ValuePrinter> {
     iteration_variables: FxHashMap<IterationVarId, String>,
     /// Track naems for instruction predicates
     instruction_predicates: FxHashMap<ir::InstId, VariableNames>,
+
+    unpack_variables: FxHashMap<UnpackId, Vec<VariableNames>>,
+    index_variables: FxHashMap<IndexVarId, VariableNames>,
+    accesses: FxHashMap<AccessId, VariableNames>,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +84,7 @@ pub enum Nameable<'a> {
     IterationVar(IterationVarId),
     DimIndex(ir::DimId),
     Constant(BigInt, u16),
+    Param(ParamValKey<'a>),
     Size(Cow<'a, codegen::Size>, ir::Type),
 }
 
@@ -99,6 +104,7 @@ impl<'a> Nameable<'a> {
             &Constant(ref value, bits) => {
                 Cow::Owned(namer.value_printer().get_const_int(&value, bits))
             }
+            &Param(key) => namer.name_param_val(key),
             Size(size, t) => namer.name_size(&size, *t),
         }
     }
@@ -106,6 +112,12 @@ impl<'a> Nameable<'a> {
 
 pub trait IntoNameable<'a> {
     fn into_nameable(self) -> Nameable<'a>;
+}
+
+impl<'a> IntoNameable<'a> for ParamValKey<'a> {
+    fn into_nameable(self) -> Nameable<'a> {
+        Nameable::Param(self)
+    }
 }
 
 impl<'a> IntoNameable<'a> for Nameable<'a> {
@@ -283,10 +295,60 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
 
         let variables = VariableNames::create(function, value_printer);
         let mut name_map = NameMap {
-            iteration_variables: function
-                .iteration_variables()
+            accesses: function
+                .access_map()
                 .iter()
-                .map(|(id, var)| (id, value_printer.name(ir::Type::I(32))))
+                .map(|(id, strides)| {
+                    (
+                        *id,
+                        VariableNames::new(
+                            ir::Type::I(64),
+                            strides.iter().flat_map(|(ivar, _)| {
+                                function.index_vars().instantiation_dims(*ivar)
+                            }),
+                            value_printer,
+                        ),
+                    )
+                })
+                .collect(),
+            iteration_variables: function
+                .index_vars()
+                .iteration_vars()
+                .map(|(id, var)| (id, value_printer.name(var.t())))
+                .collect(),
+            unpack_variables: function
+                .index_vars()
+                .unpacks()
+                .map(|(id, unpack)| {
+                    (
+                        id,
+                        (0..unpack.rolling().len())
+                            .map(|_| {
+                                VariableNames::new(
+                                    ir::Type::I(32),
+                                    function
+                                        .index_vars()
+                                        .instantiation_dims(unpack.source()),
+                                    value_printer,
+                                )
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
+            index_variables: function
+                .index_vars()
+                .index_vars()
+                .map(|(id, _)| {
+                    (
+                        id,
+                        VariableNames::new(
+                            ir::Type::I(32),
+                            function.index_vars().instantiation_dims(id),
+                            value_printer,
+                        ),
+                    )
+                })
                 .collect(),
             instruction_predicates: function
                 .instruction_predicates()
@@ -418,7 +480,9 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
             ir::Operand::Variable(val_id, _t) => {
                 Cow::Borrowed(&self.variables[val_id].get_name(&indexes))
             }
-            ir::Operand::ComputedAddress(..) => unimplemented!("computed address"),
+            ir::Operand::ComputedAddress(id) => {
+                Cow::Borrowed(self.name_access(*id, &indexes))
+            }
         }
     }
 
@@ -552,6 +616,31 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
 
     pub fn name_iteration_var(&self, iter_var: IterationVarId) -> Cow<str> {
         Cow::Borrowed(&self.iteration_variables[&iter_var])
+    }
+
+    pub fn name_index_var(
+        &self,
+        id: IndexVarId,
+        indices: &FxHashMap<ir::DimId, usize>,
+    ) -> &str {
+        self.index_variables[&id].get_name(indices)
+    }
+
+    pub fn name_access(
+        &self,
+        id: ir::AccessId,
+        indices: &FxHashMap<ir::DimId, usize>,
+    ) -> &str {
+        self.accesses[&id].get_name(indices)
+    }
+
+    pub fn name_unpack(
+        &self,
+        id: UnpackId,
+        index: usize,
+        indices: &FxHashMap<ir::DimId, usize>,
+    ) -> &str {
+        self.unpack_variables[&id][index].get_name(indices)
     }
 
     pub fn name_instruction_predicate(

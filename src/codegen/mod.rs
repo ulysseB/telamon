@@ -1,4 +1,5 @@
 //! Helpers to generate code from an IR instance and fully specified decisions.
+mod access;
 mod cfg;
 mod dimension;
 mod function;

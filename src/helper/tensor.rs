@@ -1,4 +1,6 @@
 //! Utilities to allocate and operate on tensors.
+use std::ops;
+
 use ::ndarray::{self, ArrayD};
 use itertools::Itertools;
 use std::sync::Arc;
@@ -57,6 +59,34 @@ impl<'a> From<u32> for DimSize<'a> {
     }
 }
 
+impl<'a, 'b, 'c> ops::Mul<&'b DimSize<'a>> for &'c DimSize<'a> {
+    type Output = DimSize<'a>;
+
+    fn mul(self, other: &'b DimSize<'a>) -> Self::Output {
+        DimSize {
+            factor: self.factor * other.factor,
+            params: self.params.iter().chain(&other.params).cloned().collect(),
+            max_size: self.max_size * other.max_size,
+        }
+    }
+}
+
+impl<'a, 'b> ops::Mul<&'b DimSize<'a>> for DimSize<'a> {
+    type Output = DimSize<'a>;
+
+    fn mul(self, other: &'b DimSize<'a>) -> Self::Output {
+        DimSize {
+            factor: self.factor * other.factor,
+            params: self
+                .params
+                .into_iter()
+                .chain(other.params.iter().cloned())
+                .collect(),
+            max_size: self.max_size * other.max_size,
+        }
+    }
+}
+
 /// An helper to build a tensor.
 pub struct TensorBuilder<'a> {
     name: &'a str,
@@ -111,7 +141,7 @@ impl<'a> TensorBuilder<'a> {
             .iter()
             .map(|s| s.eval(builder.context()) as usize)
             .product::<usize>();
-        if self.name == "a" {
+        if self.name == "aXXCONV" {
             size = 4 * 128 * 68 * 68;
         }
         let array = builder.array::<S>(self.name, size);
@@ -219,8 +249,8 @@ where
         let packed = packing_fn(unpacked);
         assert_eq!(packed.len(), self.iter_dims.len());
 
-        let ptr = ir::Access::new(
-            builder.find_param(self.name).clone(),
+        let ptr = builder.new_access(
+            self.name,
             self.iter_dims
                 .iter()
                 .zip(packed)
@@ -235,6 +265,7 @@ where
         //let pattern = builder.tensor_access_pattern(None, increments);
         let pattern = ir::AccessPattern::Unknown(None);
 
+        // TODO: predicate(s)
         let inst = builder.predicated_ld_ex(S::t(), &ptr, pattern, self.flag(), None);
 
         for dim in &dims {
@@ -279,16 +310,14 @@ where
                 .zip_eq(&self.iter_dims)
                 .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder)))
                 .collect_vec();
-            /*
-            ptr = ir::Access::new(
-                builder.find_param(self.name).clone(),
+            /*ptr = builder.new_access(
+                self.name,
                 increments
                     .iter()
                     .cloned()
                     .map(|(dim, stride)| (ir::IndexExpr::LogicalDim(dim.id()), stride))
                     .collect(),
-            );
-            */
+            );*/
             ptr = builder.induction_var(&self.name, increments.clone());
             pattern = builder.tensor_access_pattern(None, increments);
         };
@@ -313,11 +342,11 @@ where
             })
             .unzip();
         let mut len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l * s).max());
-        if self.name == "a" {
+        if self.name == "aXXCONV" {
             len = 4 * 128 * 68 * 68;
         }
         raw.split_off(len);
-        if self.name == "a" {
+        if self.name == "aXXCONV" {
             unwrap!(ndarray::ArrayBase::from_shape_vec(
                 vec![4, 128, 68, 68],
                 raw
@@ -360,6 +389,7 @@ impl VirtualTensor {
     where
         S: ScalarArgument,
     {
+        // TODO: store_packed
         assert!(!tensor.read_only);
         let new_dims = self
             .dims

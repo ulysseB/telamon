@@ -4,13 +4,14 @@ use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
+use num::bigint::BigInt;
 use utils::*;
 
 use crate::codegen::*;
 use crate::ir::{self, op, Type};
 use crate::search_space::*;
 
-use super::iteration::IterationVarId;
+use super::access::IterationVarId;
 use super::predicates::PredicateId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -30,7 +31,7 @@ impl MulMode {
         }
     }
 
-    fn output_type(self, arg_t: Type) -> Type {
+    pub fn output_type(self, arg_t: Type) -> Type {
         match (self, arg_t) {
             (MulMode::Wide, Type::I(i)) => Type::I(2 * i),
             (MulMode::Low, Type::I(i)) | (MulMode::High, Type::I(i)) => Type::I(i),
@@ -165,6 +166,7 @@ where
 #[derive(Debug, Clone)]
 pub enum IntExpr<'a> {
     Named(Nameable<'a>, ir::Type),
+    Signed(BigInt, u16),
     Shared(IntExprPtr<'a>),
     Cast(IntExprPtr<'a>, ir::Type),
     Add {
@@ -222,7 +224,7 @@ impl<'a> IntoIntExpr<'a> for IntExprPtr<'a> {
 
 impl<'a> IntoIntExpr<'a> for i32 {
     fn into_int_expr(self) -> IntExprPtr<'a> {
-        IntExpr::Named(self.into_nameable(), ir::Type::I(32)).into_int_expr()
+        IntExpr::Signed(self.into(), 32).into_int_expr()
     }
 }
 
@@ -233,16 +235,25 @@ where
     type Output = IntExpr<'a>;
 
     fn add(self, other: Rhs) -> Self::Output {
+        use IntExpr::*;
+
         let other = other.into_int_expr();
         let lhs_t = self.t();
         let rhs_t = other.t();
 
         assert_eq!(lhs_t, rhs_t);
 
-        IntExpr::Add {
-            arg_t: lhs_t,
-            lhs: Rc::new(self),
-            rhs: other,
+        match (&self, &*other) {
+            (Signed(self_val, self_bits), Signed(other_val, other_bits)) => {
+                assert_eq!(self_bits, other_bits);
+
+                Signed(self_val * other_val, *self_bits)
+            }
+            (_, _) => Add {
+                arg_t: lhs_t,
+                lhs: Rc::new(self),
+                rhs: other,
+            },
         }
     }
 }
@@ -265,16 +276,25 @@ where
     type Output = IntExpr<'a>;
 
     fn sub(self, other: Rhs) -> Self::Output {
+        use IntExpr::*;
+
         let other = other.into_int_expr();
         let lhs_t = self.t();
         let rhs_t = other.t();
 
         assert_eq!(lhs_t, rhs_t);
 
-        IntExpr::Sub {
-            arg_t: lhs_t,
-            lhs: Rc::new(self),
-            rhs: other,
+        match (&self, &*other) {
+            (Signed(self_val, self_bits), Signed(other_val, other_bits)) => {
+                assert_eq!(self_bits, other_bits);
+
+                Signed(self_val - other_val, *self_bits)
+            }
+            (_, _) => Sub {
+                arg_t: lhs_t,
+                lhs: Rc::new(self),
+                rhs: other,
+            },
         }
     }
 }
@@ -297,17 +317,26 @@ where
     type Output = IntExpr<'a>;
 
     fn mul(self, other: Rhs) -> Self::Output {
+        use IntExpr::*;
+
         let other = other.into_int_expr();
         let lhs_t = self.t();
         let rhs_t = other.t();
 
         assert_eq!(lhs_t, rhs_t);
 
-        IntExpr::Mul {
-            arg_t: lhs_t,
-            mul_mode: MulMode::Low,
-            lhs: Rc::new(self),
-            rhs: other,
+        match (&self, &*other) {
+            (Signed(self_val, self_bits), Signed(other_val, other_bits)) => {
+                assert_eq!(self_bits, other_bits);
+
+                Signed(self_val * other_val, *self_bits)
+            }
+            (_, _) => Mul {
+                arg_t: lhs_t,
+                mul_mode: MulMode::Low,
+                lhs: Rc::new(self),
+                rhs: other,
+            },
         }
     }
 }
@@ -388,6 +417,30 @@ where
 }
 
 impl<'a> IntExpr<'a> {
+    fn named<N>(nameable: N, t: ir::Type) -> Self
+    where
+        N: IntoNameable<'a>,
+    {
+        match nameable.into_nameable() {
+            Nameable::Constant(val, n_bits) => {
+                assert_eq!(t, ir::Type::I(n_bits));
+
+                IntExpr::Signed(val, n_bits)
+            }
+            Nameable::Size(ref size, size_t) if size.dividend().is_empty() => {
+                assert_eq!(size_t, t);
+
+                match size_t {
+                    ir::Type::I(n_bits) => {
+                        IntExpr::Signed((size.as_int().unwrap() as i32).into(), n_bits)
+                    }
+                    _ => panic!("unexpected floating point size"),
+                }
+            }
+            named => IntExpr::Named(named, t),
+        }
+    }
+
     fn mul_high<Rhs>(self, other: Rhs) -> Self
     where
         Rhs: IntoIntExpr<'a>,
@@ -424,6 +477,7 @@ impl<'a> IntExpr<'a> {
         match *self {
             Shared(ref inner) => inner.t(),
             Named(_, t) | Cast(_, t) => t,
+            Signed(_, n_bits) => ir::Type::I(n_bits),
             Add { arg_t, .. }
             | Sub { arg_t, .. }
             | Div { arg_t, .. }
@@ -437,19 +491,47 @@ impl<'a> IntExpr<'a> {
         }
     }
 
+    fn compile_to<F, VP: ValuePrinter>(
+        &self,
+        result: &Nameable<'a>,
+        t: ir::Type,
+        mut emit: F,
+        namer: &mut NameMap<'_, '_, VP>,
+    ) where
+        F: FnMut(&Nameable<'a>, IntInst<'a>, &NameMap<'_, '_, VP>),
+    {
+        let found = self.compile(
+            Some(result),
+            &mut |n, t, inst| {
+                let arg = n
+                    .map(Cow::Borrowed)
+                    .unwrap_or_else(|| Cow::Owned(namer.gen_name(t).into_nameable()));
+                emit(&arg, inst, namer);
+                arg.into_owned()
+            },
+            &mut FxHashMap::default(),
+        );
+
+        // TODO: This is hack.
+        if result.name(namer) != found.name(namer) {
+            emit(result, IntInst::Move(found, t), namer);
+        }
+    }
+
     // NB: the result may or may not be in `result`.  The caller needs to issue a `move` itself to
     // put it there if needed.
     fn compile<F>(
         &self,
-        result: Option<Nameable<'a>>,
+        result: Option<&Nameable<'a>>,
         emit: &mut F,
         cache: &mut FxHashMap<usize, Nameable<'a>>,
     ) -> Nameable<'a>
     where
-        F: FnMut(Option<Nameable<'a>>, ir::Type, IntInst<'a>) -> Nameable<'a>,
+        F: FnMut(Option<&Nameable<'a>>, ir::Type, IntInst<'a>) -> Nameable<'a>,
     {
         match self {
             IntExpr::Named(arg, _) => arg.clone(),
+            IntExpr::Signed(val, n_bits) => Nameable::Constant(val.clone(), *n_bits),
             IntExpr::Shared(arg) => {
                 let key = &**arg as *const IntExpr<'a> as usize;
                 cache.get(&key).cloned().unwrap_or_else(move || {
@@ -684,7 +766,7 @@ impl<'a> IntInst<'a> {
 }
 
 pub struct Loop<'a> {
-    pub dim: ir::DimId,
+    pub dim: &'a Dimension<'a>,
     pub label: u32,
     // for (lhs, rhs) in init: lhs = rhs
     pub inits: Vec<(Nameable<'a>, IntInst<'a>)>,
@@ -695,6 +777,7 @@ pub struct Loop<'a> {
     pub increments: Vec<(Nameable<'a>, IntInst<'a>)>,
 }
 
+/* XXX PREDICATES
 fn iteration_var_def<'a, VP: ValuePrinter>(
     fun: &'a Function,
     iter_id: IterationVarId,
@@ -723,6 +806,7 @@ fn iteration_var_def<'a, VP: ValuePrinter>(
     ));
     instructions
 }
+*/
 
 #[allow(clippy::too_many_arguments)]
 pub trait InstPrinter {
@@ -888,89 +972,321 @@ pub trait InstPrinter {
     }
 
     // Print updating the inst predicates, assuming that they were all set to true initially.
-    fn update_inst_predicates(
-        &mut self,
-        fun: &Function,
-        inst_id: ir::InstId,
-        predicates: &[PredicateId],
-        namer: &mut NameMap<Self::ValuePrinter>,
-    ) {
-        let const_false = false.into_nameable();
-        let instantiation_dims: FxHashMap<_, _> = fun.instruction_predicates()[&inst_id]
-            .iter()
-            .cloned()
-            .collect();
+    /* XXX PREDICATES
+        fn update_inst_predicates(
+            &mut self,
+            fun: &Function,
+            inst_id: ir::InstId,
+            predicates: &[PredicateId],
+            namer: &mut NameMap<Self::ValuePrinter>,
+        ) {
+            let const_false = false.into_nameable();
+            let instantiation_dims: FxHashMap<_, _> = fun.instruction_predicates()[&inst_id]
+                .iter()
+                .cloned()
+                .collect();
 
-        // Stores the current index.  Reused across unrolls.
-        let idx = namer.gen_name(ir::Type::I(32));
-        // Stores the final condition.  Reused across unrolls.
-        let lt_cond = namer.gen_name(ir::Type::I(1));
+            // Stores the current index.  Reused across unrolls.
+            let idx = namer.gen_name(ir::Type::I(32));
+            // Stores the final condition.  Reused across unrolls.
+            let lt_cond = namer.gen_name(ir::Type::I(1));
 
-        for &pred_id in predicates {
-            let predicate = &fun.predicates()[pred_id];
-            // Those are the dimensions this range predicate iterates over and we need to fix for
-            // the others (if there are multiple predicates which share an iteration).
-            let my_dims: FxHashSet<_> =
-                predicate.instantiation_dims().map(|(dim, _)| dim).collect();
+            for &pred_id in predicates {
+                let predicate = &fun.predicates()[pred_id];
+                // Those are the dimensions this range predicate iterates over and we need to fix for
+                // the others (if there are multiple predicates which share an iteration).
+                let my_dims: FxHashSet<_> =
+                    predicate.instantiation_dims().map(|(dim, _)| dim).collect();
 
-            // The instantiation dims are sorted in decreasing stride order, so that the smallest
-            // stride is fastest varying.  Since we also iterate in reverse size order, the
-            // condition `idx < range` is monotonous, and we can jump to the end as soon as it
-            // becomes true.
-            for pred_indices in predicate
-                .instantiation_dims()
-                .map(|&(dim, stride)| {
-                    (0..instantiation_dims[&dim])
-                        .rev()
-                        .map(move |pos| (dim, pos, stride))
-                })
-                .multi_cartesian_product()
-                .pad_using(1, |_| vec![])
-            {
-                // Compute the index for this iteration based on the iteration variable
-                let var = namer.name_iteration_var(predicate.iteration_var());
-                self.print_move(ir::Type::I(32), &idx, &var);
-
-                let constant = pred_indices
-                    .iter()
-                    .map(|&(_, pos, stride)| (pos as u32) * stride)
-                    .sum::<u32>();
-
-                if constant != 0 {
-                    self.print_int_inst(
-                        &(&idx).into_nameable(),
-                        &IntInst::new_add(ir::Type::I(32), &idx, constant as i32),
-                        namer,
-                    );
-                }
-
-                // Check if we are in bound...
-                self.print_lt_int(
-                    ir::Type::I(32),
-                    &lt_cond,
-                    &idx,
-                    &namer.name_size(predicate.bound(), ir::Type::I(32)),
-                );
-
-                // ... and update the predicates
-                for other_dims in instantiation_dims
-                    .iter()
-                    .filter(|(dim, _)| !my_dims.contains(dim))
-                    .map(|(&dim, &size)| (0..size).map(move |pos| (dim, pos)))
+                // The instantiation dims are sorted in decreasing stride order, so that the smallest
+                // stride is fastest varying.  Since we also iterate in reverse size order, the
+                // condition `idx < range` is monotonous, and we can jump to the end as soon as it
+                // becomes true.
+                for pred_indices in predicate
+                    .instantiation_dims()
+                    .map(|&(dim, stride)| {
+                        (0..instantiation_dims[&dim])
+                            .rev()
+                            .map(move |pos| (dim, pos, stride))
+                    })
                     .multi_cartesian_product()
                     .pad_using(1, |_| vec![])
                 {
-                    let pred_name = namer.name_instruction_predicate(
-                        inst_id,
-                        &other_dims
-                            .into_iter()
-                            .chain(pred_indices.iter().map(|&(dim, pos, _)| (dim, pos)))
-                            .collect(),
+                    // Compute the index for this iteration based on the iteration variable
+                    let var = namer.name_iteration_var(predicate.iteration_var());
+                    self.print_move(ir::Type::I(32), &idx, &var);
+
+                    let constant = pred_indices
+                        .iter()
+                        .map(|&(_, pos, stride)| (pos as u32) * stride)
+                        .sum::<u32>();
+
+                    if constant != 0 {
+                        self.print_int_inst(
+                            &(&idx).into_nameable(),
+                            &IntInst::new_add(ir::Type::I(32), &idx, constant as i32),
+                            namer,
+                        );
+                    }
+
+                    // Check if we are in bound...
+                    self.print_lt_int(
+                        ir::Type::I(32),
+                        &lt_cond,
+                        &idx,
+                        &namer.name_size(predicate.bound(), ir::Type::I(32)),
                     );
 
-                    self.print_and(ir::Type::I(1), pred_name, pred_name, &lt_cond);
+                    // ... and update the predicates
+                    for other_dims in instantiation_dims
+                        .iter()
+                        .filter(|(dim, _)| !my_dims.contains(dim))
+                        .map(|(&dim, &size)| (0..size).map(move |pos| (dim, pos)))
+                        .multi_cartesian_product()
+                        .pad_using(1, |_| vec![])
+                    {
+                        let pred_name = namer.name_instruction_predicate(
+                            inst_id,
+                            &other_dims
+                                .into_iter()
+                                .chain(pred_indices.iter().map(|&(dim, pos, _)| (dim, pos)))
+                                .collect(),
+                        );
+
+                        self.print_and(ir::Type::I(1), pred_name, pred_name, &lt_cond);
+                    }
                 }
             }
+        }
+    */
+
+    fn print_index_var_defs(
+        &mut self,
+        fun: &Function,
+        where_def: Option<ir::DimId>,
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        let index_vars = fun.index_vars();
+
+        for def_id in index_vars.var_def_at(where_def) {
+            use crate::codegen::access::DefId;
+
+            match def_id {
+                DefId::IterationVar(id) => {
+                    let iteration_var = &index_vars[id];
+                    let t = iteration_var.t();
+                    let mut expr = IntExpr::named(iteration_var.min(), t);
+                    for &(dim, ref stride) in iteration_var.outer_dims() {
+                        expr = expr + IntExpr::named(dim, t) * IntExpr::named(stride, t);
+                    }
+
+                    expr.compile_to(
+                        &id.into_nameable(),
+                        t,
+                        |arg, inst, namer| self.print_int_inst(arg, &inst, namer),
+                        namer,
+                    );
+                }
+                DefId::IndexVar(id) => {
+                    let index_var = &index_vars[id];
+
+                    for indices in index_vars
+                        .instantiation_dims(id)
+                        .into_iter()
+                        .map(|(dim, size)| (0..size).map(move |pos| (dim, pos as usize)))
+                        .multi_cartesian_product()
+                        .pad_using(1, |_| vec![])
+                    {
+                        use crate::codegen::access::IndexVar;
+
+                        let indices: FxHashMap<_, _> = indices.into_iter().collect();
+
+                        let expr = match index_var {
+                            IndexVar::Iteration {
+                                source,
+                                instantiation_dims,
+                                ..
+                            } => {
+                                assert!(instantiation_dims.len() == indices.len());
+                                let iter_var = &index_vars[*source];
+
+                                let mut expr = IntExpr::named(*source, iter_var.t());
+                                for ((_dim, &pos), (_, _, stride)) in
+                                    indices.iter().zip(instantiation_dims)
+                                {
+                                    expr = expr
+                                        + IntExpr::named(pos as i32, iter_var.t())
+                                            * IntExpr::named(stride, iter_var.t());
+                                }
+
+                                expr
+                            }
+
+                            IndexVar::Unpack { source, index, .. } => {
+                                let name = namer
+                                    .name_unpack(*source, *index, &indices)
+                                    .to_owned();
+                                IntExpr::named(name, ir::Type::I(32))
+                            }
+
+                            IndexVar::Parameter(p) => {
+                                assert!(indices.is_empty());
+
+                                // TODO: lowered type
+                                let name = namer
+                                    .name_param_val(ParamValKey::External(&*p))
+                                    .to_string();
+                                IntExpr::named(name, ir::Type::I(32))
+                            }
+
+                            &IndexVar::Constant(c) => {
+                                assert!(indices.is_empty());
+
+                                IntExpr::Signed(c.into(), 32)
+                            }
+
+                            IndexVar::Sum { args, .. } => {
+                                let mut expr = None;
+
+                                for &arg in args {
+                                    let name =
+                                        namer.name_index_var(arg, &indices).to_string();
+                                    let name_e = IntExpr::named(name, ir::Type::I(32));
+
+                                    if let Some(e) = expr {
+                                        expr = Some(e + name_e);
+                                    } else {
+                                        expr = Some(name_e);
+                                    }
+                                }
+
+                                expr.unwrap_or_else(|| IntExpr::Signed(0i32.into(), 32))
+                            }
+                        };
+
+                        let name = namer.name_index_var(id, &indices).to_string();
+                        expr.compile_to(
+                            &name.into_nameable(),
+                            ir::Type::I(32),
+                            |arg, inst, namer| self.print_int_inst(arg, &inst, namer),
+                            namer,
+                        );
+                    }
+                }
+                DefId::Unpack(id) => {
+                    let unpack = &index_vars[id];
+                    let source = unpack.source();
+
+                    for indices in index_vars
+                        .instantiation_dims(source)
+                        .into_iter()
+                        .map(|(dim, size)| (0..size).map(move |pos| (dim, pos as usize)))
+                        .multi_cartesian_product()
+                        .pad_using(1, |_| vec![])
+                    {
+                        let t = ir::Type::I(32);
+                        let indices = indices.into_iter().collect();
+                        let src = namer.name_index_var(source, &indices).to_string();
+
+                        let mut prev = IntExpr::named(&src, ir::Type::I(32));
+                        for (ix, rolling) in unpack.rolling().iter().enumerate() {
+                            let target = namer
+                                .name_unpack(id, ix, &indices)
+                                .to_string()
+                                .into_nameable();
+
+                            if ix == unpack.rolling().len() - 1 {
+                                // If we are on the last iteration, no need to compute n % N
+                                prev.compile_to(
+                                    &target,
+                                    t,
+                                    |arg, inst, namer| {
+                                        self.print_int_inst(arg, &inst, namer)
+                                    },
+                                    namer,
+                                );
+                            } else {
+                                let src = IntExpr::named(&src, t);
+                                let div_by = rolling.div_by();
+                                let div_magic =
+                                    IntExpr::named(ParamValKey::DivMagic(div_by, t), t);
+                                let div_shift =
+                                    IntExpr::named(ParamValKey::DivShift(div_by, t), t);
+                                let div =
+                                    (&src + src.clone().mul_high(div_magic)) >> div_shift;
+                                let tmp = namer.gen_name(t);
+                                div.compile_to(
+                                    &(&tmp).into_nameable(),
+                                    t,
+                                    |arg, inst, namer| {
+                                        self.print_int_inst(arg, &inst, namer)
+                                    },
+                                    namer,
+                                );
+
+                                (prev
+                                    - IntExpr::named(&tmp, t)
+                                        * IntExpr::named(rolling.mod_by(), t))
+                                .compile_to(
+                                    &target,
+                                    t,
+                                    |arg, inst, namer| {
+                                        self.print_int_inst(arg, &inst, namer)
+                                    },
+                                    namer,
+                                );
+
+                                prev = IntExpr::named(tmp, t);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn print_iteration_var_updates(
+        &mut self,
+        fun: &Function,
+        dim: &Dimension<'_>,
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        let index_vars = fun.index_vars();
+
+        for (id, stride) in index_vars.iteration_updates(dim.id()) {
+            let index_var = &index_vars[id];
+            let t = index_var.t();
+
+            self.print_int_inst(
+                &id.into_nameable(),
+                &IntInst::new_add(t, id, (stride, t)),
+                namer,
+            );
+        }
+    }
+
+    fn print_iteration_var_reset(
+        &mut self,
+        fun: &Function,
+        dim: &Dimension<'_>,
+        namer: &mut NameMap<'_, '_, Self::ValuePrinter>,
+    ) {
+        let index_vars = fun.index_vars();
+
+        for (id, stride) in index_vars.iteration_updates(dim.id()) {
+            let index_var = &index_vars[id];
+            let t = index_var.t();
+
+            let stride = IntExpr::named((stride, t), t);
+            let size = IntExpr::named((dim.size(), t), t);
+            let this = IntExpr::named(id, t);
+
+            (this - size * stride).compile_to(
+                &id.into_nameable(),
+                t,
+                |arg, inst, namer| self.print_int_inst(arg, &inst, namer),
+                namer,
+            );
         }
     }
 
@@ -984,6 +1300,9 @@ pub trait InstPrinter {
         match c {
             Cfg::Root(cfgs) => {
                 // Iteration variables
+                self.print_index_var_defs(fun, None, namer);
+
+                /* XXX PREDICATEs
                 let iteration_vars = fun.iteration_variables();
                 for iter_id in iteration_vars.global_defs() {
                     for (target, inst) in iteration_var_def(fun, iter_id, namer) {
@@ -998,6 +1317,7 @@ pub trait InstPrinter {
                         self.update_inst_predicates(fun, inst_id, &predicates[..], namer);
                     }
                 }
+                */
 
                 self.cfg_vec(fun, cfgs, namer)
             }
@@ -1158,6 +1478,7 @@ pub trait InstPrinter {
             }
         }
 
+        /* XXX PREDICATES
         let iteration_vars = fun.iteration_variables();
         for iter_id in iteration_vars.loop_defs(dim.id()) {
             init_vec.extend(iteration_var_def(fun, iter_id, namer));
@@ -1193,11 +1514,13 @@ pub trait InstPrinter {
 
             reset_vec.push((iter_id.into_nameable(), reset_inst));
         }
+        */
 
         // TODO Predicates
         // TODO: must count the number of iterations that we can do.
         let mut min_size: Option<String> = None;
         if fun.predicate_accesses() {
+            /* XXX PREDICATES
             // Print init here
             for (target, inst) in init_vec.drain(..) {
                 self.print_int_inst(&target, &inst, namer);
@@ -1260,6 +1583,7 @@ pub trait InstPrinter {
 
                 self.init_inst_predicates(fun, inst_id, namer);
             }
+            */
         }
 
         let iter_label = namer.gen_loop_id();
@@ -1267,7 +1591,7 @@ pub trait InstPrinter {
         self.print_loop(
             fun,
             &Loop {
-                dim: dim.id(),
+                dim,
                 label: iter_label,
                 inits: init_vec,
                 index: idx.clone(),
@@ -1293,10 +1617,12 @@ pub trait InstPrinter {
             self.print_cond_jump(&label.to_string(), &ge_cond);
             reset_label = Some(label);
 
+            /* XXX: predicates
             // Here we are in the remainder part of the loop; update the predicates.
             for &(inst_id, ref predicates) in fun.loop_predicates(dim.id()) {
                 self.update_inst_predicates(fun, inst_id, predicates, namer);
             }
+            */
 
             // TODO: self.print_jump
             self.print_move(ir::Type::I(1), &ge_cond, &true.into_nameable().name(namer));
@@ -1418,6 +1744,70 @@ pub trait InstPrinter {
         namer: &mut NameMap<Self::ValuePrinter>,
         fun: &Function,
     ) {
+        // Ensure vector dimensions are at their first iteration.
+        //
+        // Maybe we should forbid vectorization for ComputedAddress-style operands.
+        //
+        // (We need the values for predication)
+        let mut indices = Cow::Borrowed(namer.current_indices());
+        for dim in vector_levels.iter().flat_map(|dims| dims) {
+            indices.to_mut().insert(dim.id(), 0);
+        }
+        let indices = match indices {
+            Cow::Owned(indices) => Some(indices),
+            Cow::Borrowed(_) => None,
+        };
+
+        for operand in inst.operator().operands() {
+            match operand {
+                ir::Operand::ComputedAddress(access) => {
+                    let tmp = namer.gen_name(ir::Type::I(32));
+                    self.print_int_inst(
+                        &(&tmp).into_nameable(),
+                        &IntInst::new_move(ir::Type::I(32), 0),
+                        namer,
+                    );
+
+                    for &(ivar, ref size) in &fun.access_map()[access] {
+                        let var_name = namer.name_index_var(
+                            ivar,
+                            indices.as_ref().unwrap_or_else(|| namer.current_indices()),
+                        );
+                        self.print_int_inst(
+                            &(&tmp).into_nameable(),
+                            &IntInst::new_mad(
+                                ir::Type::I(32),
+                                MulMode::Low,
+                                var_name,
+                                (size, ir::Type::I(32)),
+                                &tmp,
+                            ),
+                            namer,
+                        );
+                    }
+
+                    let name = namer.name_access(*access, namer.current_indices());
+                    self.print_int_inst(
+                        &name.into_nameable(),
+                        &IntInst::new_cast(&tmp, ir::Type::I(32), ir::Type::I(64)),
+                        //TODO physical stride &IntInst::new_mul(ir::Type::I(32), MulMode::Wide, &tmp, 4i32),
+                        namer,
+                    );
+
+                    let base = namer.name_param_val(ParamValKey::External(
+                        &**fun.space().ir_instance().accesses()[*access].base(),
+                    ));
+
+                    self.print_int_inst(
+                        &name.into_nameable(),
+                        &IntInst::new_add(ir::Type::I(64), name, &*base),
+                        namer,
+                    );
+                }
+                _ => (),
+            }
+        }
+
         // Multiple dimension can be mapped to the same vectorization level so we combine
         // them when computing the vectorization factor.
         let vector_factors = [
@@ -1543,7 +1933,7 @@ pub trait InstPrinter {
                     // const magic_r: i32 = 0x8000_0001u32 as i32;
                     //const shift_r: i32 = 1;
                     const R: i32 = 5;
-                    const magic_r: i32 = 0xcccc_cccdu32 as i32;
+                    const magic_r: i32 = 0xCCCC_CCCDu32 as i32;
                     const shift_r: i32 = 2;
 
                     //const S: i32 = 4;
@@ -1553,19 +1943,15 @@ pub trait InstPrinter {
                     //const shift_rs: i32 = 3;
 
                     const S: i32 = 5;
-                    const magic_s: i32 = 0xcccc_cccdu32 as i32;
+                    const magic_s: i32 = 0xCCCC_CCCDu32 as i32;
                     const shift_s: i32 = 2;
-                    const magic_rs: i32 = 0xa3d70a3eu32 as i32;
-                    const shift_rs: i32 = 3;
+                    const magic_rs: i32 = 0xA3D7_0A3Eu32 as i32;
+                    const shift_rs: i32 = 4;
 
                     const C: i32 = 128;
 
-                    let npq =
-                        IntExpr::Named(ir::IndVarId(0).into_nameable(), ir::Type::I(32))
-                            .shared();
-                    let crs =
-                        IntExpr::Named(ir::IndVarId(1).into_nameable(), ir::Type::I(32))
-                            .shared();
+                    let npq = IntExpr::named(ir::IndVarId(0), ir::Type::I(32)).shared();
+                    let crs = IntExpr::named(ir::IndVarId(1), ir::Type::I(32)).shared();
 
                     let np = ((&npq + npq.clone().mul_high(magic_q)) >> shift_q).shared();
                     // let np = (&npq / Q).shared();
@@ -1589,12 +1975,8 @@ pub trait InstPrinter {
                     let offset = (((n * C + c) * H + h) * W + w) * 4i32;
 
                     let base = match *addr {
-                        ir::Operand::InductionVar(id, t) => IntExpr::Named(
-                            fun.space()
-                                .ir_instance()
-                                .induction_var(id)
-                                .base()
-                                .into_nameable(),
+                        ir::Operand::InductionVar(id, t) => IntExpr::named(
+                            fun.space().ir_instance().induction_var(id).base(),
                             t,
                         ),
                         _ => panic!("FAIL"),
@@ -1605,10 +1987,11 @@ pub trait InstPrinter {
                     addr.compile(
                         None,
                         &mut |nameable, t, inst| {
-                            let arg = nameable
-                                .unwrap_or_else(|| namer.gen_name(t).into_nameable());
+                            let arg = nameable.map(Cow::Borrowed).unwrap_or_else(|| {
+                                Cow::Owned(namer.gen_name(t).into_nameable())
+                            });
                             self.print_int_inst(&arg, &inst, namer);
-                            arg
+                            arg.into_owned()
                         },
                         &mut FxHashMap::default(),
                     )
@@ -1680,12 +2063,8 @@ pub trait InstPrinter {
                     const shift_q: i32 = 5;
                     const K: i32 = 256;
 
-                    let npq =
-                        IntExpr::Named(ir::IndVarId(7).into_nameable(), ir::Type::I(32))
-                            .shared();
-                    let k =
-                        IntExpr::Named(ir::IndVarId(8).into_nameable(), ir::Type::I(32))
-                            .shared();
+                    let npq = IntExpr::named(ir::IndVarId(7), ir::Type::I(32)).shared();
+                    let k = IntExpr::named(ir::IndVarId(8), ir::Type::I(32)).shared();
 
                     let np = ((&npq + npq.clone().mul_high(magic_q)) >> shift_q).shared();
                     // let np = (&npq / Q).shared();
@@ -1697,12 +2076,8 @@ pub trait InstPrinter {
                     let offset = (((n * K + k) * P + p) * Q + q) * 4i32;
 
                     let base = match *addr {
-                        ir::Operand::InductionVar(id, t) => IntExpr::Named(
-                            fun.space()
-                                .ir_instance()
-                                .induction_var(id)
-                                .base()
-                                .into_nameable(),
+                        ir::Operand::InductionVar(id, t) => IntExpr::named(
+                            fun.space().ir_instance().induction_var(id).base(),
                             t,
                         ),
                         _ => panic!("FAIL"),
@@ -1713,10 +2088,11 @@ pub trait InstPrinter {
                     addr.compile(
                         None,
                         &mut |nameable, t, inst| {
-                            let arg = nameable
-                                .unwrap_or_else(|| namer.gen_name(t).into_nameable());
+                            let arg = nameable.map(Cow::Borrowed).unwrap_or_else(|| {
+                                Cow::Owned(namer.gen_name(t).into_nameable())
+                            });
                             self.print_int_inst(&arg, &inst, namer);
-                            arg
+                            arg.into_owned()
                         },
                         &mut FxHashMap::default(),
                     )
@@ -1817,7 +2193,7 @@ pub trait InstPrinter {
                 ref arhs,
             } => self.print_mad(
                 [1, 1],
-                arg_t,
+                mul_mode.output_type(arg_t),
                 op::Rounding::Exact,
                 mul_mode,
                 result,
@@ -1832,7 +2208,7 @@ pub trait InstPrinter {
                 ref rhs,
             } => self.print_mul(
                 [1, 1],
-                arg_t,
+                mul_mode.output_type(arg_t),
                 op::Rounding::Exact,
                 mul_mode,
                 result,
@@ -1857,6 +2233,9 @@ pub trait InstPrinter {
         // Loop label
         self.print_label(&loop_.label.to_string());
 
+        // Initialize index variables
+        self.print_index_var_defs(fun, Some(loop_.dim.id()), namer);
+
         // XXX temp hack
         //for &(inst_id, ref predicates) in fun.loop_predicates(loop_.dim) {
         //self.init_inst_predicates(fun, inst_id, namer);
@@ -1871,6 +2250,8 @@ pub trait InstPrinter {
             self.print_int_inst(target, inst, namer);
         }
 
+        self.print_iteration_var_updates(fun, loop_.dim, namer);
+
         // Loop condition
         let lt_cond = namer.gen_name(ir::Type::I(1));
         self.print_lt_int(
@@ -1880,6 +2261,8 @@ pub trait InstPrinter {
             &loop_.bound.name(namer),
         );
         self.print_cond_jump(&loop_.label.to_string(), &lt_cond);
+
+        self.print_iteration_var_reset(fun, loop_.dim, namer);
     }
 
     fn print_predicate_expr(

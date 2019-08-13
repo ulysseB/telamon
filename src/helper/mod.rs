@@ -33,6 +33,10 @@ impl LogicalDim {
         self.logical_id
     }
 
+    pub fn size<'a, L>(&self, fun: &'a ir::Function<L>) -> &'a ir::Size {
+        fun.logical_dim(self.logical_id).total_size()
+    }
+
     /// Returns true if the size of `other` is equal to the
     /// dimension's own size
     pub fn size_eq<T>(&self, other: &Self, function: &ir::Function<T>) -> bool {

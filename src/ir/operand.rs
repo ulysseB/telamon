@@ -10,7 +10,7 @@ use num::traits::{Signed, Zero};
 use serde::{Deserialize, Serialize};
 use utils::unwrap;
 
-use super::access::Access;
+use super::access::AccessId;
 use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 
 use self::Operand::*;
@@ -125,7 +125,7 @@ pub enum Operand<L = LoweringMap> {
     /// A variable, stored in register.
     Variable(ir::VarId, Type),
     // Computed access to a memory location
-    ComputedAddress(Access),
+    ComputedAddress(AccessId),
 }
 
 impl<L> Operand<L> {
@@ -137,7 +137,7 @@ impl<L> Operand<L> {
             Addr(mem) => ir::Type::PtrTo(*mem),
             Index(..) => Type::I(32),
             // TODO: Memory size
-            ComputedAddress(access) => access.t(),
+            ComputedAddress(access) => Type::I(64),
             Param(p) => p.t,
             Variable(_, t) => *t,
             Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => *t,
