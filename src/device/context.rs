@@ -86,7 +86,7 @@ pub trait Context: Sync {
         result
     }
 
-    fn div_shift(&self, size: &codegen::Size, t: ir::Type) -> Box<dyn ScalarArgument> {
+    fn div_magic(&self, size: &codegen::Size, t: ir::Type) -> Box<dyn ScalarArgument> {
         assert_eq!(t, ir::Type::I(32));
 
         let size = self.eval_size(size) as i32;
@@ -94,7 +94,7 @@ pub trait Context: Sync {
         Box::new(magic)
     }
 
-    fn div_magic(&self, size: &codegen::Size, t: ir::Type) -> Box<dyn ScalarArgument> {
+    fn div_shift(&self, size: &codegen::Size, t: ir::Type) -> Box<dyn ScalarArgument> {
         assert_eq!(t, ir::Type::I(32));
 
         let size = self.eval_size(size) as i32;

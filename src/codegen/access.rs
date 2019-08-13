@@ -418,6 +418,7 @@ impl<'a> VarWalker<'a> {
     }
 
     pub fn process_size_for_division(&mut self, size: &Size) {
+        self.process_size(size);
         self.device_code_args
             .extend(ParamVal::div_magic(size, ir::Type::I(32)));
         self.device_code_args

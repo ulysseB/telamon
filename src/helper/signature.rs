@@ -43,7 +43,8 @@ where
             name: name.to_string(),
             params: vec![],
         };
-        let rng = rand::XorShiftRng::from_seed(Default::default());
+        //let rng = rand::XorShiftRng::from_seed(Default::default());
+        let rng = rand::XorShiftRng::from_rng(rand::thread_rng()).unwrap();
         Builder {
             mem_init: MemInit::Uninit,
             context,

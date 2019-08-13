@@ -387,6 +387,7 @@ impl CudaPrinter {
         match t {
             Type::I(1) => "pred".to_string(),
             Type::I(size) => format!("s{size}", size = size),
+            Type::U(size) => format!("u{size}", size = size),
             Type::F(size) => format!("f{size}", size = size),
             _ => panic!(),
         }
