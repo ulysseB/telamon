@@ -554,6 +554,15 @@ impl Builder {
             .find(|p| p.name == param))
     }
 
+    pub fn new_access(
+        &mut self,
+        name: &str,
+        strides: Vec<(ir::IndexExpr, ir::Size)>,
+    ) -> ir::AccessId {
+        let access = ir::Access::new(self.find_param(name).clone(), strides);
+        self.function.accesses_mut().add(access)
+    }
+
     /// Returns a reference to the function being built.
     pub fn function(&self) -> &ir::Function<()> {
         &self.function

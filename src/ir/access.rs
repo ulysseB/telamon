@@ -20,12 +20,22 @@ impl PackedDim {
     pub fn logical_dim(&self) -> LogicalDimId {
         self.logical_dim
     }
+
+    pub fn sizes(&self) -> &[Size] {
+        &self.sizes
+    }
 }
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
 pub struct UnpackedDimId(usize, usize);
+
+impl UnpackedDimId {
+    pub fn unpack_index(self) -> usize {
+        self.1
+    }
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PackedDims {
@@ -80,6 +90,83 @@ pub enum IndexExpr {
     Sum(Vec<IndexExpr>),
 }
 
+pub trait IntoIndexExpr {
+    fn into_index_expr(self) -> IndexExpr;
+}
+
+impl IntoIndexExpr for IndexExpr {
+    fn into_index_expr(self) -> IndexExpr {
+        self
+    }
+}
+
+impl IntoIndexExpr for &'_ IndexExpr {
+    fn into_index_expr(self) -> IndexExpr {
+        self.clone()
+    }
+}
+
+impl IntoIndexExpr for LogicalDimId {
+    fn into_index_expr(self) -> IndexExpr {
+        IndexExpr::LogicalDim(self)
+    }
+}
+
+impl IntoIndexExpr for UnpackedDimId {
+    fn into_index_expr(self) -> IndexExpr {
+        IndexExpr::Unpack(self)
+    }
+}
+
+impl IntoIndexExpr for i32 {
+    fn into_index_expr(self) -> IndexExpr {
+        IndexExpr::Constant(self)
+    }
+}
+
+impl IntoIndexExpr for Arc<Parameter> {
+    fn into_index_expr(self) -> IndexExpr {
+        IndexExpr::Parameter(self)
+    }
+}
+
+impl IntoIndexExpr for Parameter {
+    fn into_index_expr(self) -> IndexExpr {
+        Arc::new(self).into_index_expr()
+    }
+}
+
+impl<Rhs: IntoIndexExpr> ops::Add<Rhs> for IndexExpr {
+    type Output = IndexExpr;
+
+    fn add(self, other: Rhs) -> Self::Output {
+        let other = other.into_index_expr();
+
+        match (self, other) {
+            (IndexExpr::Constant(lhs), IndexExpr::Constant(rhs)) => {
+                IndexExpr::Constant(lhs + rhs)
+            }
+            (IndexExpr::Sum(mut lhs), IndexExpr::Sum(rhs)) => {
+                lhs.extend(rhs);
+                IndexExpr::Sum(lhs)
+            }
+            (IndexExpr::Sum(mut sum), other) | (other, IndexExpr::Sum(mut sum)) => {
+                sum.push(other);
+                IndexExpr::Sum(sum)
+            }
+            (lhs, rhs) => IndexExpr::Sum(vec![lhs, rhs]),
+        }
+    }
+}
+
+impl<Rhs: IntoIndexExpr> ops::Add<Rhs> for &'_ IndexExpr {
+    type Output = IndexExpr;
+
+    fn add(self, other: Rhs) -> Self::Output {
+        self.clone() + other
+    }
+}
+
 impl IndexExpr {
     fn collect_indices<'a>(&'a self, indices: &mut Vec<&'a Self>) {
         indices.push(self);
@@ -127,6 +214,40 @@ impl Access {
         }
 
         indices.into_iter()
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Accesses {
+    accesses: Vec<Access>,
+}
+
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
+#[repr(transparent)]
+pub struct AccessId(usize);
+
+impl Accesses {
+    pub fn add(&mut self, access: Access) -> AccessId {
+        let id = AccessId(self.accesses.len());
+        self.accesses.push(access);
+        id
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (AccessId, &Access)> {
+        self.accesses
+            .iter()
+            .enumerate()
+            .map(|(id, access)| (AccessId(id), access))
+    }
+}
+
+impl ops::Index<AccessId> for Accesses {
+    type Output = Access;
+
+    fn index(&self, idx: AccessId) -> &Access {
+        &self.accesses[idx.0]
     }
 }
 

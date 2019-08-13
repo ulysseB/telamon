@@ -377,6 +377,18 @@ mod cuda_reference {
         }
     }
 
+    impl<'a> Reference<'a, linalg::Conv2d<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::Conv2dP,
+            context: &Self::Context,
+        ) -> f64 {
+            panic!("Not implemented.")
+        }
+    }
+
     impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for CublasHandle {
         type Context = cuda::Context<'a>;
 
@@ -464,6 +476,19 @@ mod x86_reference {
         }
     }
 
+    impl<'a> Reference<'a, linalg::Conv2d<'a, f32>> for X86Reference {
+        type Context = telamon_x86::Context;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::Conv2dP,
+            context: &Self::Context,
+        ) -> f64 {
+            // TODO
+            1.
+        }
+    }
+
     impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for X86Reference {
         type Context = telamon_x86::Context;
 
@@ -509,6 +534,15 @@ pub enum KernelParam {
         tb: bool,
         ss: bool,
     },
+    Conv2d {
+        n: i32,
+        c: i32,
+        h: i32,
+        w: i32,
+        k: i32,
+        r: i32,
+        s: i32,
+    },
     BatchMM {
         b: i32,
         m: i32,
@@ -533,6 +567,7 @@ impl KernelParam {
             + Reference<'a, linalg::FusedMM<'a, f32>, Context = C>
             + Reference<'a, linalg::BatchMM<'a, f32>, Context = C>
             + Reference<'a, linalg::Gesummv<'a, f32>, Context = C>
+            + Reference<'a, linalg::Conv2d<'a, f32>, Context = C>
             + 'b,
         'a: 'b,
     {
@@ -586,6 +621,26 @@ impl KernelParam {
                     context,
                     reference,
                 )
+            }
+            KernelParam::Conv2d {
+                n,
+                c,
+                h,
+                w,
+                k,
+                r,
+                s,
+            } => {
+                let params = linalg::Conv2dP {
+                    batch: n,
+                    in_channels: c,
+                    in_height: h,
+                    in_width: w,
+                    out_channels: k,
+                    filter_height: r,
+                    filter_width: s,
+                };
+                build::<'_, '_, linalg::Conv2d<'_, f32>, C, _>(params, context, reference)
             }
             KernelParam::Gemm {
                 m,
@@ -651,6 +706,26 @@ impl KernelParam {
             KernelParam::Gesummv { m, n } => {
                 build::<'_, '_, linalg::Gesummv<'_, f32>, C>((m, n, true), context)
             }
+            KernelParam::Conv2d {
+                n,
+                c,
+                h,
+                w,
+                k,
+                r,
+                s,
+            } => {
+                let params = linalg::Conv2dP {
+                    batch: n,
+                    in_channels: c,
+                    in_height: h,
+                    in_width: w,
+                    out_channels: k,
+                    filter_height: r,
+                    filter_width: s,
+                };
+                build::<'_, '_, linalg::Conv2d<'_, f32>, C>(params, context)
+            }
             KernelParam::Gemm {
                 m,
                 n,
@@ -688,6 +763,15 @@ impl fmt::Display for KernelParam {
             KernelParam::Axpy { n } => write!(fmt, "axpy_{}", n),
             KernelParam::MatVec { m, n } => write!(fmt, "matvec_{}_{}", m, n),
             KernelParam::Gesummv { m, n } => write!(fmt, "gesummv_{}_{}", m, n),
+            KernelParam::Conv2d {
+                n,
+                c,
+                h,
+                w,
+                k,
+                r,
+                s,
+            } => write!(fmt, "conv2d_{}_{}_{}_{}_{}_{}_{}", n, c, h, w, k, r, s),
             KernelParam::Gemm {
                 m,
                 n,
@@ -827,6 +911,24 @@ impl std::str::FromStr for KernelParam {
                 let m = parse_i32(next_part(&mut parts)?)?;
                 let n = parse_i32(next_part(&mut parts)?)?;
                 Gesummv { m, n }
+            }
+            "conv2d" => {
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let c = parse_i32(next_part(&mut parts)?)?;
+                let h = parse_i32(next_part(&mut parts)?)?;
+                let w = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let r = parse_i32(next_part(&mut parts)?)?;
+                let s = parse_i32(next_part(&mut parts)?)?;
+                Conv2d {
+                    n,
+                    c,
+                    h,
+                    w,
+                    k,
+                    r,
+                    s,
+                }
             }
             "matmul" => {
                 let m = parse_i32(next_part(&mut parts)?)?;

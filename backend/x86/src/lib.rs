@@ -97,6 +97,12 @@ impl codegen::ValuePrinter for ValuePrinter {
                 self.num_sizes += 1;
                 format!("_size_{}", self.num_sizes - 1)
             }
+            codegen::ParamValKey::DivMagic(size, t) => {
+                format!("_{}_magic{}", t.ident_name(), size.ident_name())
+            }
+            codegen::ParamValKey::DivShift(size, t) => {
+                format!("_{}_shift{}", t.ident_name(), size.ident_name())
+            }
         }
     }
 }

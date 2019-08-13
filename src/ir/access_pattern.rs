@@ -30,7 +30,7 @@ impl AccessPattern {
     /// Indicates if memory accesses access to consecutive elements on the given dimension.
     pub fn is_consecutive(&self, dim: ir::DimId, t: ir::Type) -> bool {
         match self {
-            AccessPattern::Unknown(..) => false,
+            AccessPattern::Unknown(..) => true,
             AccessPattern::Tensor { dims, .. } => dims
                 .get(&dim)
                 .and_then(|stride| stride.as_int())

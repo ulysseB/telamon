@@ -20,7 +20,9 @@ use std::marker::PhantomData;
 use std::{self, fmt};
 use utils::unwrap;
 
-pub use self::access::{Access, IndexExpr, PackedDims, UnpackedDimId};
+pub use self::access::{
+    Access, AccessId, Accesses, IndexExpr, PackedDims, UnpackedDimId,
+};
 pub use self::access_pattern::{AccessPattern, Stride};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{

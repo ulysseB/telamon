@@ -30,6 +30,7 @@ impl X86printer {
             ParamVal::GlobalMem(_, _, par_type) => {
                 format!("{} {}", Self::get_type(*par_type), name)
             }
+            ParamVal::DivMagic(..) | ParamVal::DivShift(..) => unimplemented!(),
         }
     }
 
@@ -199,6 +200,7 @@ impl X86printer {
                     t = Self::get_type(*par_type),
                     i = i
                 ),
+                ParamVal::DivMagic(..) | ParamVal::DivShift(..) => unimplemented!(),
             })
             .collect_vec()
             .join(";\n  ")

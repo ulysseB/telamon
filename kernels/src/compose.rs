@@ -50,7 +50,12 @@ pub fn matrix_matrix_multiply(
     rhs: &VirtualTensor,
 ) -> VirtualTensor {
     assert!(lhs.num_dims() == 2 && rhs.num_dims() == 2);
-    assert!(lhs[lhs.num_dims() - 1].size_eq(&rhs[0], builder.function()));
+    assert!(
+        lhs[lhs.num_dims() - 1].size_eq(&rhs[0], builder.function()),
+        "Incompatible sizes: {:?} != {:?}",
+        &lhs[lhs.num_dims() - 1].size(builder.function()),
+        &rhs[0].size(builder.function()),
+    );
 
     // Assume (m x k) . (k x n) multiplication -> Result: (m x n)
     let m = &lhs[0];

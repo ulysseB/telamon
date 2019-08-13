@@ -98,6 +98,8 @@ impl<'a, 'b> Kernel<'a, 'b> {
                 ParamVal::Size(ref s) => {
                     ThunkArg::Size(Box::new(args.eval_size(s) as i32))
                 }
+                ParamVal::DivMagic(ref s, t) => ThunkArg::Size(args.div_magic(s, t)),
+                ParamVal::DivShift(ref s, t) => ThunkArg::Size(args.div_shift(s, t)),
                 ParamVal::GlobalMem(_, ref size, _) => {
                     tmp_arrays.push(args.eval_size(size) as usize);
                     ThunkArg::TmpArray(tmp_arrays.len() - 1)

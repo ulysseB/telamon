@@ -4,8 +4,8 @@ use std::{self, fmt};
 
 use crate::device::Device;
 use crate::ir::{
-    self, Dimension, InstId, Instruction, IrDisplay, Operator, PackedDims, Statement,
-    StmtId,
+    self, Accesses, Dimension, InstId, Instruction, IrDisplay, Operator, PackedDims,
+    Statement, StmtId,
 };
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
 use crate::search_space::MemSpace;
@@ -83,6 +83,7 @@ pub struct Body<L = ir::LoweringMap> {
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
     variables: SparseVec<ir::VarId, ir::Variable>,
     packed_dims: PackedDims,
+    accesses: Accesses,
 }
 
 impl<L> Body<L> {
@@ -100,6 +101,7 @@ impl<L> Body<L> {
             dim_mappings: SparseVec::new(),
             variables: SparseVec::new(),
             packed_dims: Default::default(),
+            accesses: Default::default(),
         }
     }
 }
@@ -482,6 +484,14 @@ impl<L> Function<L> {
     pub fn packed_dims_mut(&mut self) -> &mut PackedDims {
         &mut self.body.packed_dims
     }
+
+    pub fn accesses_mut(&mut self) -> &mut Accesses {
+        &mut self.body.accesses
+    }
+
+    pub fn accesses(&self) -> &Accesses {
+        &self.body.accesses
+    }
 }
 
 impl Function<()> {
@@ -597,6 +607,7 @@ impl Function<()> {
                     mut dim_mappings,
                     variables,
                     packed_dims,
+                    accesses,
                 },
         } = self;
 
@@ -643,6 +654,7 @@ impl Function<()> {
                 dim_mappings,
                 variables,
                 packed_dims,
+                accesses,
             },
         }
     }

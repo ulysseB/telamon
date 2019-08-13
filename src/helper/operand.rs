@@ -128,8 +128,8 @@ impl AutoOperand for ir::IndVarId {
     }
 }
 
-impl AutoOperand for ir::Access {
+impl AutoOperand for ir::AccessId {
     fn get(&self, _builder: &mut Builder) -> Operand<()> {
-        Operand::ComputedAddress(self.clone())
+        Operand::ComputedAddress(*self)
     }
 }

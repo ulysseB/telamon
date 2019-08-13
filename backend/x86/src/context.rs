@@ -61,6 +61,8 @@ impl Context {
                 ParamVal::Size(size) => {
                     ThunkArg::Size((self as &dyn device::Context).eval_size(size) as i32)
                 }
+                ParamVal::DivMagic(_size, _t) => unimplemented!(),
+                ParamVal::DivShift(_size, _t) => unimplemented!(),
             })
             .collect_vec()
     }

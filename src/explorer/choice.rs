@@ -315,8 +315,9 @@ impl fmt::Display for ActionError {
         match &self.action {
             ActionEx::Action(action) => write!(
                 fmt,
-                "failed to apply action: {}",
-                action.display(self.space.ir_instance())
+                "failed to apply action `{}` to instance:\n{}",
+                action.display(self.space.ir_instance()),
+                self.space.ir_instance(),
             ),
             ActionEx::LowerLayout { mem, .. } => {
                 // We can't use the IR instance here, since it might be in an inconsistent state.

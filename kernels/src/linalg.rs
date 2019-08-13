@@ -8,7 +8,7 @@ use crate::compose::{
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
-use ::ndarray::{s, Array1, Array2, Array3, Array4, ArrayD};
+use ::ndarray::{Array1, Array2, Array3, Array4, ArrayD};
 use rand;
 use serde::{Deserialize, Serialize};
 use telamon::explorer::Candidate;
@@ -347,7 +347,7 @@ pub struct FusedMM<'a, S: Scalar> {
 
 impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
     type Parameters = FusedMMP;
-    type ExpectedOutput = Array4<S>;
+    type ExpectedOutput = Array2<S>;
 
     fn name() -> &'static str {
         "fused_mm"
@@ -388,7 +388,7 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
             vec![(vec![n, p, q], npq_tiling), (vec![c, r, s], crs_tiling)],
             |args| {
                 if let &[n, p, q, c, r, s] = args {
-                    vec![n, c, p * d_h + r * s_h - 1 - pad_h, q * d_w + s * s_w - 1 - pad_w]
+                    vec![n, c, p * d_h + r * s_h - pad_h, q * d_w + s * s_w - pad_w]
                 } else {
                     unreachable!()
                 }
@@ -397,8 +397,46 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         );
         */
 
-        let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
-        let b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
+        //let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
+        let m = DimSize {
+            factor: 1,
+            params: vec!["m"],
+            max_size: self.params.m as u32,
+        };
+        let k = DimSize {
+            factor: 1,
+            params: vec!["k"],
+            max_size: self.params.k as u32,
+        };
+        let n = DimSize {
+            factor: 1,
+            params: vec!["n"],
+            max_size: self.params.n as u32,
+        };
+
+        let a = self.a.load_packed(
+            vec![(vec![m], m_tiling), (vec![k.clone()], k_tiling.clone())],
+            |args| {
+                if let [m, k] = &args[..] {
+                    vec![m.clone(), k.clone()]
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
+        // let b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
+        let b = self.b.load_packed(
+            vec![(vec![k], k_tiling), (vec![n], n_tiling.clone())],
+            |args| {
+                if let [k, n] = &args[..] {
+                    vec![k.clone(), n.clone()]
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
 
         let ab = matrix_matrix_multiply(&mut builder, &a, &b);
 
@@ -412,13 +450,17 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         vec![build_candidate(builder.get(), ctx)]
     }
 
-    fn get_expected_output(&self, context: &dyn device::Context) -> Array4<S> {
-        //let a_shape = (self.params.m as usize, self.params.k as usize);
-        //let b_shape = (self.params.k as usize, self.params.n as usize);
+    fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
+        let a_shape = (self.params.m as usize, self.params.k as usize);
+        let b_shape = (self.params.k as usize, self.params.n as usize);
+
+        /* XXX CONV
         let a_shape = (4, 128, 68, 68);
         let b_shape = (128, 5, 5, 256);
+        */
         let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
         let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
+        /* XXX CONV
         let mut res = ArrayD::<S>::zeros(vec![4, 64, 64, 256])
             .into_shape((4, 256, 64, 64))
             .unwrap();
@@ -439,7 +481,8 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
                 }
             }
         }
-        // let mut res = a.dot(&b);
+        */
+        let mut res = a.dot(&b);
         // let mut res = res.into_shape((16384, 256)).unwrap();
 
         match self.params.activation_fun {
@@ -463,11 +506,237 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         expected: &Self::ExpectedOutput,
         context: &dyn device::Context,
     ) -> Result<(), String> {
-        //let c_shape = (self.params.m as usize, self.params.n as usize);
-        let c_shape = (4, 256, 64, 64);
+        let c_shape = (self.params.m as usize, self.params.n as usize);
+        // XXX conv let c_shape = (4, 256, 64, 64);
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
         if let Err(invalid) = check_output(&c, expected) {
             Err(format!("Invalid fused_mm output: {}", invalid))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Conv2dP {
+    pub batch: i32,
+    pub in_channels: i32,
+    pub in_height: i32,
+    pub in_width: i32,
+    pub out_channels: i32,
+    pub filter_width: i32,
+    pub filter_height: i32,
+}
+
+impl Conv2dP {
+    fn out_height(&self) -> i32 {
+        self.in_height - self.filter_height + 1
+    }
+
+    fn out_width(&self) -> i32 {
+        self.in_width - self.filter_width + 1
+    }
+
+    fn output_shape(&self) -> (usize, usize, usize, usize) {
+        (
+            self.batch as usize,
+            self.out_height() as usize,
+            self.out_width() as usize,
+            self.out_channels as usize,
+        )
+    }
+}
+
+pub struct Conv2d<'a, S: Scalar> {
+    pub params: Conv2dP,
+    input: Tensor<'a, S>,
+    filter: Tensor<'a, S>,
+    output: Tensor<'a, S>,
+    n: DimSize<'a>,
+    c: DimSize<'a>,
+    h: DimSize<'a>,
+    w: DimSize<'a>,
+    k: DimSize<'a>,
+    r: DimSize<'a>,
+    s: DimSize<'a>,
+    p: DimSize<'a>,
+    q: DimSize<'a>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
+    type Parameters = Conv2dP;
+    type ExpectedOutput = Array4<S>;
+
+    fn name() -> &'static str {
+        "conv2d"
+    }
+
+    fn build_signature<AM>(
+        params: Self::Parameters,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let n = create_size(params.batch, "n", true, builder);
+        let c = create_size(params.in_channels, "c", true, builder);
+        let h = create_size(params.in_height, "h", true, builder);
+        let w = create_size(params.in_width, "w", true, builder);
+        let k = create_size(params.out_channels, "k", true, builder);
+        let r = create_size(params.filter_height, "r", true, builder);
+        let s = create_size(params.filter_width, "s", true, builder);
+        let p = create_size(params.out_height(), "p", true, builder);
+        let q = create_size(params.out_width(), "q", true, builder);
+
+        let input_dims = vec![n.clone(), c.clone(), h.clone(), w.clone()];
+        let input = TensorBuilder::new("input", input_dims).finish(builder);
+        let filter_dims = vec![k.clone(), c.clone(), r.clone(), s.clone()];
+        let filter_dims = vec![k.clone(), &c * &r * &s];
+        let filter_dims = vec![&c * &r * &s, k.clone()];
+        let filter = TensorBuilder::new("filter", filter_dims)
+            // .transpose(0, 1) TODO
+            .finish(builder);
+        let output_dims = vec![n.clone(), k.clone(), p.clone(), q.clone()];
+        let output_dims = vec![&n * &p * &q, k.clone()];
+        let output = builder.tensor::<S>("output", output_dims, false);
+        Conv2d {
+            params,
+            input,
+            filter,
+            output,
+            n,
+            c,
+            h,
+            w,
+            k,
+            r,
+            s,
+            p,
+            q,
+        }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let npq = self.params.batch * self.params.out_height() * self.params.out_width();
+        let crs = self.params.in_channels
+            * self.params.filter_height
+            * self.params.filter_width;
+        let npq_tiling = infer_tiling(npq, &None, &[32, 4]);
+        let k_tiling = infer_tiling(self.params.out_channels, &None, &[32, 4]);
+        let crs_tiling = infer_tiling(crs, &None, &[32]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        //let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
+        let a = self.input.load_packed(
+            vec![
+                (
+                    vec![self.n.clone(), self.p.clone(), self.q.clone()],
+                    npq_tiling,
+                ),
+                (
+                    vec![self.c.clone(), self.r.clone(), self.s.clone()],
+                    crs_tiling.clone(),
+                ),
+            ],
+            |args| {
+                if let [n, p, q, c, r, s] = &args[..] {
+                    vec![n.clone(), c.clone(), p + r, q + s]
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
+        let b = self.filter.load(vec![crs_tiling, k_tiling], &mut builder);
+
+        let ab = matrix_matrix_multiply(&mut builder, &a, &b);
+
+        ab.store(&self.output, &mut builder);
+
+        vec![build_candidate(builder.get(), ctx)]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
+        let input_shape = (
+            self.params.batch as usize,
+            self.params.in_channels as usize,
+            self.params.in_height as usize,
+            self.params.in_width as usize,
+        );
+        let filter_shape = (
+            self.params.in_channels as usize,
+            self.params.filter_height as usize,
+            self.params.filter_width as usize,
+            self.params.out_channels as usize,
+        );
+        let output_shape = self.params.output_shape();
+
+        let input = self.input.read_to_host(context);
+        assert_eq!(
+            input.shape(),
+            &[input_shape.0, input_shape.1, input_shape.2, input_shape.3]
+        );
+        let input = input.into_shape(input_shape).unwrap();
+        let filter = self.filter.read_to_host(context);
+        assert_eq!(
+            filter.shape(),
+            &[
+                filter_shape.0 * filter_shape.1 * filter_shape.2,
+                filter_shape.3
+            ]
+        );
+        let filter = filter.into_shape(filter_shape).unwrap();
+
+        let mut res = Array4::<S>::zeros(output_shape);
+        for n in 0..self.params.batch as usize {
+            for k in 0..self.params.out_channels as usize {
+                for p in 0..self.params.out_height() as usize {
+                    for q in 0..self.params.out_width() as usize {
+                        let mut x = S::zero();
+                        for r in 0..self.params.filter_height as usize {
+                            for s in 0..self.params.filter_width as usize {
+                                for c in 0..self.params.in_channels as usize {
+                                    x += input[[n, c, p + r, q + s]]
+                                        * filter[[c, r, s, k]];
+                                }
+                            }
+                        }
+                        res[[n, p, q, k]] = x;
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let output_shape = self.params.output_shape();
+        let output = self.output.read_to_host(context);
+        assert_eq!(
+            output.shape(),
+            &[
+                output_shape.0 * output_shape.1 * output_shape.2,
+                output_shape.3
+            ]
+        );
+        let output = output.into_shape(output_shape).unwrap();
+        if let Err(invalid) = check_output(&output, expected) {
+            let input = self.input.read_to_host(context);
+            let filter = self.filter.read_to_host(context);
+            Err(format!(
+                "Invalid conv2d output: {}; input\n{}\nfilter\n{}\nexpected \n{}\ngot\n{}\n",
+                invalid, input, filter, expected, output
+            ))
         } else {
             Ok(())
         }
