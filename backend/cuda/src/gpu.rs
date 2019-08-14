@@ -241,7 +241,7 @@ impl Gpu {
     /// Returns the description of a load instruction.
     fn load_desc(&self, mem_info: &MemInfo, flags: InstFlag) -> InstDesc {
         // TODO(search_space,model): support CA and NC flags.
-        assert!(InstFlag::COHERENT.contains(flags));
+        // XXX assert!(InstFlag::COHERENT.contains(flags));
         // Compute possible latencies.
         let gbl_latency = if mem_info.access_global {
             let miss = mem_info.l2_miss_ratio / mem_info.l2_coalescing;
@@ -495,7 +495,7 @@ impl device::Device for Gpu {
         };
         // TODO(model): CACHE_READ_ONLY and CACHE_SHARED are currently not supported by the
         // performance model.  Disable them, even if the hardware supports them.
-        flags.restrict(!InstFlag::CACHE_READ_ONLY);
+        // XXX flags.restrict(!InstFlag::CACHE_READ_ONLY);
         flags.restrict(!InstFlag::CACHE_SHARED);
 
         if !self.allow_nc_load {
