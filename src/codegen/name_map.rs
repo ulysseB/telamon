@@ -298,13 +298,13 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
             accesses: function
                 .access_map()
                 .iter()
-                .map(|(id, strides)| {
+                .map(|(id, infos)| {
                     (
                         *id,
                         VariableNames::new(
                             ir::Type::I(64),
-                            strides.iter().flat_map(|(ivar, _)| {
-                                function.index_vars().instantiation_dims(*ivar)
+                            infos.iter().flat_map(|info| {
+                                function.index_vars().instantiation_dims(info.id)
                             }),
                             value_printer,
                         ),

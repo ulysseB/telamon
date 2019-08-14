@@ -45,6 +45,8 @@ impl CudaPrinter {
     fn ld_operator(space: MemSpace, flag: InstFlag) -> &'static str {
         if space == MemSpace::SHARED {
             "ld.shared"
+        } else if std::env::arg("TELAMON_FORCE_LOAD_NC").is_ok() {
+            "ld.global.nc"
         } else {
             match flag {
                 InstFlag::CACHE_SHARED => "ld.global.ca",

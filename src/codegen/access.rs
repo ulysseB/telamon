@@ -392,6 +392,13 @@ impl IndexVars {
     }
 }
 
+pub struct IndexInfo {
+    pub id: IndexVarId,
+    pub stride: Size,
+    pub min: Option<Size>,
+    pub max: Option<Size>,
+}
+
 pub struct VarWalker<'a> {
     pub merged_dims: &'a MergedDimensions<'a>,
     pub space: &'a SearchSpace,
@@ -429,6 +436,7 @@ impl<'a> VarWalker<'a> {
         use ir::IndexExpr::*;
 
         match *expr {
+            Unchecked(ref ptr) => self.process_index_expr(&*ptr),
             LogicalDim(id) => {
                 let mut global_dims = Vec::new();
                 let mut loop_dims = Vec::new();
