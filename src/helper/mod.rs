@@ -120,7 +120,7 @@ impl TilingPattern {
     /// Infer a tiling pattern for a dimension whose size is a multiple of `gcd_size`.
     /// `max_tile_sizes` limits the maximal tile sizes for each tiling dimension.
     pub fn infer_pattern(gcd_size: u32, max_tile_sizes: &[u32]) -> Self {
-        let multiples: VecSet<_> = (2..gcd_size)
+        let multiples: VecSet<_> = (2..=gcd_size)
             .filter(|x| (gcd_size % x) == 0)
             .take(16)
             .collect();

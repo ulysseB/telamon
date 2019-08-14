@@ -496,6 +496,8 @@ pub enum KernelParam {
         m: i32,
         n: i32,
         k: i32,
+        ta: bool,
+        tb: bool,
         rb: bool,
     },
 }
@@ -591,8 +593,22 @@ impl KernelParam {
                     params, context, reference,
                 )
             }
-            KernelParam::BatchMM { b, m, n, k, rb } => {
+            KernelParam::BatchMM {
+                b,
+                m,
+                n,
+                k,
+                ta,
+                tb,
+                rb,
+            } => {
                 let mut params = linalg::BatchMMP::new(b, m, n, k);
+                if ta {
+                    params = params.transpose_a();
+                }
+                if tb {
+                    params = params.transpose_b();
+                }
                 if rb {
                     params = params.reuse_b();
                 }
@@ -653,8 +669,22 @@ impl KernelParam {
                 }
                 build::<'_, '_, linalg::FusedMM<'_, f32>, C>(params, context)
             }
-            KernelParam::BatchMM { b, m, n, k, rb } => {
+            KernelParam::BatchMM {
+                b,
+                m,
+                n,
+                k,
+                ta,
+                tb,
+                rb,
+            } => {
                 let mut params = linalg::BatchMMP::new(b, m, n, k);
+                if ta {
+                    params = params.transpose_a();
+                }
+                if tb {
+                    params = params.transpose_b();
+                }
                 if rb {
                     params = params.reuse_b();
                 }
@@ -687,13 +717,23 @@ impl fmt::Display for KernelParam {
                 if tb { "BT" } else { "B" },
                 if ss { "_SS" } else { "" },
             ),
-            KernelParam::BatchMM { b, m, n, k, rb } => write!(
-                fmt,
-                "batchmm_{}_{}_{}_{}{}",
+            KernelParam::BatchMM {
                 b,
                 m,
                 n,
                 k,
+                ta,
+                tb,
+                rb,
+            } => write!(
+                fmt,
+                "batchmm_{}_{}_{}_{}_{}{}{}",
+                b,
+                m,
+                n,
+                k,
+                if ta { "AT" } else { "A" },
+                if tb { "BT" } else { "B" },
                 if rb { "_rb" } else { "" }
             ),
         }
@@ -856,16 +896,42 @@ impl std::str::FromStr for KernelParam {
                 let m = parse_i32(next_part(&mut parts)?)?;
                 let n = parse_i32(next_part(&mut parts)?)?;
                 let k = parse_i32(next_part(&mut parts)?)?;
-                let rb = match next_part(&mut parts) {
-                    Ok("rb") => true,
-                    Err(_) => false,
+                let ((ta, tb), rb) = match next_part(&mut parts) {
+                    Ok("AB") => ((false, false), None),
+                    Ok("ATB") => ((true, false), None),
+                    Ok("ABT") => ((false, true), None),
+                    Ok("ATBT") => ((true, true), None),
+                    Ok("rb") => ((false, false), Some(true)),
+                    Err(_) => ((false, false), Some(false)),
                     _ => {
                         return Err(ParseKernelError {
                             kind: KernelErrorKind::InvalidName,
                         })
                     }
                 };
-                BatchMM { b, m, n, k, rb }
+                let rb = if let Some(rb) = rb {
+                    rb
+                } else {
+                    match next_part(&mut parts) {
+                        Ok("rb") => true,
+                        Err(_) => false,
+                        _ => {
+                            return Err(ParseKernelError {
+                                kind: KernelErrorKind::InvalidName,
+                            })
+                        }
+                    }
+                };
+
+                BatchMM {
+                    b,
+                    m,
+                    n,
+                    k,
+                    ta,
+                    tb,
+                    rb,
+                }
             }
             _ => {
                 return Err(ParseKernelError {
