@@ -1,16 +1,19 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::ffi::{OsStr, OsString};
+use std::fs;
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::sync::atomic;
 
+use itertools::*;
 use serde_json;
 use structopt::StructOpt;
 
 use telamon::device;
 use telamon::explorer::{
     self,
-    choice::{ActionEx as Action, Choice},
+    choice::{default_list, ActionEx as Action, Choice},
     config,
     eventlog::EventLog,
     mcts, Candidate,
@@ -18,8 +21,9 @@ use telamon::explorer::{
 use telamon::model::{bound, Bound};
 use telamon::offline_analysis::tree::CandidateTree;
 use telamon::search_space::SearchSpace;
+use telamon_kernels::statistics::estimate_mean;
 
-use telamon_cli::{KernelParam, Platform, ReplayPath};
+use telamon_cli::{Bench, KernelBundle, KernelParam, Platform, ReplayPath};
 
 /// Compute the bound for a given candidate.
 #[derive(StructOpt)]
@@ -227,6 +231,159 @@ impl Codegen {
         context.device().print(&code, &mut std::io::stdout());
 
         Ok(())
+    }
+}
+
+#[derive(StructOpt)]
+struct Benchmark {
+    #[structopt(parse(from_os_str))]
+    replays: Vec<OsString>,
+
+    /// Kernel specification to use.
+    #[structopt(short = "k", long = "kernel")]
+    kernel: KernelParam,
+
+    #[structopt(long = "platform", short = "p", default_value = "cuda")]
+    platform: Platform,
+
+    /// Batch mode.  If enabled will print data in CSV format.
+    #[structopt(long = "batch")]
+    batch_mode: bool,
+
+    /// Name to use for the reference in batch mode.  Ignored if batch mode is not enabled.
+    #[structopt(long = "reference", default_value = "cublas")]
+    reference_name: String,
+
+    /// Number of times to run each benchmark.
+    #[structopt(long = "bench-runs", default_value = "40")]
+    num_bench_runs: usize,
+}
+
+impl Benchmark {
+    fn build(
+        &self,
+        bundle: &KernelBundle<'_>,
+        replay: &ReplayPath,
+    ) -> io::Result<SearchSpace> {
+        assert!(
+            bundle.candidates.len() == 1,
+            "Multi-candidates bundle not supported"
+        );
+
+        let mut candidate = bundle.candidates[0].space.clone();
+        for action in &replay.load()? {
+            candidate = action
+                .apply_to(candidate)
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        }
+
+        if default_list(&candidate).next().is_some() {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Final candidate is not fixed",
+            ));
+        }
+
+        Ok(candidate)
+    }
+
+    fn iter_replays(&self) -> impl Iterator<Item = io::Result<ReplayPath>> + '_ {
+        self.replays.iter().flat_map(|replay| {
+            if replay.to_str().map(|s| s.starts_with('@')).unwrap_or(false) {
+                let replay = &replay.to_str().unwrap()[1..];
+                match replay {
+                    "-" => {
+                        let stdin = io::stdin();
+                        stdin
+                            .lock()
+                            .lines()
+                            .map(|line| Ok(ReplayPath::from(&*line?)))
+                            .collect::<Vec<_>>()
+                    }
+                    _ => match fs::File::open(replay) {
+                        Ok(file) => BufReader::new(file)
+                            .lines()
+                            .map(|line| Ok(ReplayPath::from(&*line?)))
+                            .collect::<Vec<_>>(),
+                        Err(e) => vec![Err(e)],
+                    },
+                }
+            } else {
+                vec![Ok(ReplayPath::from(replay as &OsStr))]
+            }
+        })
+    }
+
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let builder = self.platform.to_builder();
+        let mut context = builder.build_context();
+        let (bundle, context) = context.kernel_bundle(&self.kernel);
+        assert!(bundle.candidates.len() == 1);
+
+        let reference = Bench::default()
+            .runs(self.num_bench_runs)
+            .benchmark_fn(&bundle.reference_fn);
+        (bundle.check_fn)(context)
+            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+
+        if self.batch_mode {
+            println!("{},{}", self.reference_name, reference.iter().format(","));
+        };
+
+        let reference_estimate = estimate_mean(reference, 0.95, "ns");
+
+        let mut failed = false;
+        for replay in self.iter_replays() {
+            let replay = match replay {
+                Ok(replay) => replay,
+                Err(err) => {
+                    eprintln!("Failed to load replay: {}", err);
+                    failed = true;
+                    continue;
+                }
+            };
+
+            let candidate = match self.build(&bundle, &replay) {
+                Ok(candidate) => candidate,
+                Err(err) => {
+                    eprintln!(
+                        "Unable to rebuild candidate from {}: {}",
+                        replay.display(),
+                        err
+                    );
+                    failed = true;
+                    continue;
+                }
+            };
+
+            let code = telamon::codegen::Function::build(&candidate);
+            let runtimes = context.benchmark(&code, self.num_bench_runs);
+            if let Err(err) = (bundle.check_fn)(context) {
+                eprintln!("Check error for {}: {}", replay.display(), err);
+                failed = true;
+                continue;
+            }
+
+            if self.batch_mode {
+                println!("{},{}", replay.display(), runtimes.into_iter().format(","));
+            } else {
+                let bound = bound(&candidate, context);
+                println!("bound: {}", bound);
+
+                let self_estimate = estimate_mean(runtimes, 0.95, "ns");
+                let speedup = reference_estimate.value / self_estimate.value;
+                println!(
+                    "runtime: {}, reference: {} (speedup: {:.2})",
+                    self_estimate, reference_estimate, speedup,
+                );
+            }
+        }
+
+        if failed {
+            Err(io::Error::new(io::ErrorKind::Other, "Benchmark failed."))
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -465,6 +622,9 @@ impl Stats {
 
 #[derive(StructOpt)]
 enum Command {
+    #[structopt(name = "benchmark")]
+    Benchmark(Benchmark),
+
     #[structopt(name = "codegen")]
     Codegen(Codegen),
 
@@ -493,6 +653,7 @@ fn main() {
     env_logger::init();
 
     let result = match &args.command {
+        Command::Benchmark(benchmark) => benchmark.run(&args),
         Command::Codegen(codegen) => codegen.run(&args),
         Command::Rebuild(rebuild) => rebuild.run(&args),
         Command::Bounds(bounds) => bounds.run(&args),
