@@ -61,7 +61,9 @@ pub fn log<E: Send + Serialize>(
     while let Ok(message) = recv.recv() {
         match message {
             LogMessage::Event(event) => {
-                record_writer.write_record(&bincode::serialize(&event)?)?;
+                if let Some(writer) = &mut record_writer {
+                    writer.write_record(&bincode::serialize(&event)?)?;
+                }
             }
             LogMessage::NewBest {
                 score,
@@ -96,11 +98,13 @@ pub fn log<E: Send + Serialize>(
         // crash.
         write_buffer.flush()?;
     }
-    record_writer
-        .into_inner()
-        .map_err(io::Error::from)?
-        .finish()?
-        .flush()?;
+    if let Some(record_writer) = record_writer {
+        record_writer
+            .into_inner()
+            .map_err(io::Error::from)?
+            .finish()?
+            .flush()?;
+    }
     Ok(())
 }
 
