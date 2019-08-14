@@ -513,14 +513,22 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let n_size = create_size(params.n, "n", params.generic, builder);
         let k_size = create_size(params.k, "k", params.generic, builder);
         let batch = create_size(params.batch, "batch", true, builder);
+        let one = create_size(1, "one", false, builder);
         let a_dims = vec![batch.clone(), m_size.clone(), k_size.clone()];
         let a = TensorBuilder::new("a", a_dims)
             .doif(params.transpose_a, |b| b.transpose(1, 2))
             .finish(builder);
-        let b = TensorBuilder::new("b", vec![batch.clone(), k_size, n_size.clone()])
-            .doif(params.transpose_b, |b| b.transpose(1, 2))
-            .doif(!params.batch_b, |b| b.stride_dim(0))
-            .finish(builder);
+        let b = TensorBuilder::new(
+            "b",
+            vec![
+                if params.batch_b { batch.clone() } else { one },
+                k_size,
+                n_size.clone(),
+            ],
+        )
+        .doif(params.transpose_b, |b| b.transpose(1, 2))
+        .doif(!params.batch_b, |b| b.stride_dim(0))
+        .finish(builder);
         let c = builder.tensor::<S>("c", vec![batch, m_size, n_size], false);
         BatchMM { params, a, b, c }
     }
@@ -595,7 +603,10 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             .into_shape((if self.params.batch_b { batch } else { 1 }, k, n))
             .unwrap();
         let mut c = Array3::zeros((batch, m, n));
-        for (mut c, (a, b)) in c.outer_iter_mut().zip(a.outer_iter().zip(b.outer_iter()))
+        for ((mut c, a), b) in c
+            .outer_iter_mut()
+            .zip(a.outer_iter())
+            .zip(b.broadcast((batch, k, n)).unwrap().outer_iter())
         {
             c.assign(&a.dot(&b));
         }
