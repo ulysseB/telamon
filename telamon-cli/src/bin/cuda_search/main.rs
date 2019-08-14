@@ -50,7 +50,10 @@ fn main() {
                 &config,
                 context,
                 bundle.candidates,
-                Some(&bundle.check_fn),
+                Some({
+                    let check_fn = &bundle.check_fn;
+                    &move |_, context| check_fn(context)
+                }),
             )
             .unwrap_or_else(|| panic!("no candidates found for kernel {}", kernel));
 
