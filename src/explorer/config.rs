@@ -27,8 +27,9 @@ pub struct Config {
     pub output_dir: String,
     /// Name of the file in wich to store the logs.
     pub log_file: String,
-    /// Name of the file in which to store the binary event log.
-    pub event_log: String,
+    /// Name of the file in which to store the binary event log.  If none is provided, the event
+    /// log is not saved.
+    pub event_log: Option<String>,
     /// Number of exploration threads.
     pub num_workers: usize,
     /// Indicates the search must be stopped if a candidate with an execution time better
@@ -109,8 +110,12 @@ impl Config {
         Ok(BufWriter::new(f))
     }
 
-    pub fn create_eventlog(&self) -> io::Result<tfrecord::Writer<EventLog>> {
-        EventLog::create(self.output_path(&self.event_log)?)
+    pub fn create_eventlog(&self) -> io::Result<Option<tfrecord::Writer<EventLog>>> {
+        if let Some(event_log) = &self.event_log {
+            EventLog::create(self.output_path(event_log)?).map(Some)
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -125,7 +130,7 @@ impl Default for Config {
         Config {
             output_dir: ".".to_string(),
             log_file: "watch.log".to_string(),
-            event_log: "eventlog.tfrecord.gz".to_string(),
+            event_log: None,
             check_all: false,
             num_workers: num_cpus::get(),
             algorithm: SearchAlgorithm::default(),
