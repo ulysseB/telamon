@@ -557,7 +557,7 @@ impl Builder {
     pub fn new_access(
         &mut self,
         name: &str,
-        strides: Vec<(ir::IndexExpr, ir::Size)>,
+        strides: Vec<ir::IndexDimension>,
     ) -> ir::AccessId {
         let access = ir::Access::new(self.find_param(name).clone(), strides);
         self.function.accesses_mut().add(access)

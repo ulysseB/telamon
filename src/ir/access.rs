@@ -88,6 +88,14 @@ pub enum IndexExpr {
     ///
     /// This is used for the `p + r` expression in convolutions.
     Sum(Vec<IndexExpr>),
+    // Marker for an unchecked expr (must not generate predicate)
+    Unchecked(Box<IndexExpr>),
+}
+
+impl IndexExpr {
+    pub fn unchecked(self) -> IndexExpr {
+        IndexExpr::Unchecked(Box::new(self))
+    }
 }
 
 pub trait IntoIndexExpr {
@@ -182,15 +190,23 @@ impl IndexExpr {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IndexDimension {
+    pub expr: IndexExpr,
+    pub stride: Size,
+    pub min: Option<Size>,
+    pub max: Option<Size>,
+}
+
 /// A memory access
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Access {
     base: Arc<Parameter>,
-    strides: Vec<(IndexExpr, Size)>,
+    strides: Vec<IndexDimension>,
 }
 
 impl Access {
-    pub fn new(base: Arc<Parameter>, strides: Vec<(IndexExpr, Size)>) -> Self {
+    pub fn new(base: Arc<Parameter>, strides: Vec<IndexDimension>) -> Self {
         Access { base, strides }
     }
 
@@ -202,15 +218,15 @@ impl Access {
         &self.base
     }
 
-    pub fn strides(&self) -> impl Iterator<Item = &'_ (IndexExpr, Size)> + '_ {
-        self.strides.iter()
+    pub fn index_dims(&self) -> &[IndexDimension] {
+        &self.strides
     }
 
     /// Iterate (recursively) over all the indices used in this access
     pub fn indices(&self) -> impl Iterator<Item = &'_ IndexExpr> + '_ {
         let mut indices = Vec::new();
-        for (expr, _) in &self.strides {
-            expr.collect_indices(&mut indices);
+        for access_dim in &self.strides {
+            access_dim.expr.collect_indices(&mut indices);
         }
 
         indices.into_iter()

@@ -266,27 +266,36 @@ impl Benchmark {
         let bound = bound(&candidate, context);
         println!("bound: {}", bound);
 
-        /*
-        let reference = Bench::default()
-            .warmup(4)
-            .runs(40)
-            .benchmark_fn(&bundle.reference_fn);
-        (bundle.check_fn)(context)
-            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
-            */
+        let nocheck = std::env::var("TELAMON_NOCHEK").is_ok();
+
+        let refmean = if std::env::var("TELAMON_NOREF").is_err() {
+            let reference = Bench::default()
+                .warmup(4)
+                .runs(40)
+                .benchmark_fn(&bundle.reference_fn);
+            if !nocheck {
+                (bundle.check_fn)(context)
+                    .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+            }
+            estimate_mean(reference, 0.95, "ns").to_string()
+        } else {
+            "??".to_string()
+        };
 
         let code = telamon::codegen::FunctionBuilder::new(&candidate)
             .predicated(self.predicated)
             .build();
         println!("Going runtimes");
         let runtimes = context.benchmark(&code, 40);
-        (bundle.check_fn)(context)
-            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+        if !nocheck {
+            (bundle.check_fn)(context)
+                .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+        }
 
         println!(
             "runtime: {}, reference: {}",
             estimate_mean(runtimes, 0.95, "ns"),
-            "??", //estimate_mean(reference, 0.95, "ns")
+            refmean,
         );
 
         Ok(())

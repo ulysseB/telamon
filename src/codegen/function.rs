@@ -13,7 +13,7 @@ use crate::codegen::{
 use crate::ir::{self, IrDisplay};
 use crate::search_space::{self, DimKind, Domain, MemSpace, Order, SearchSpace};
 
-use super::access::{IndexVarId, IndexVars, VarWalker};
+use super::access::{IndexInfo, IndexVarId, IndexVars, VarWalker};
 use super::iteration::IterationVars;
 use super::predicates::{PredicateId, PredicateKey, Predicates};
 
@@ -92,19 +92,47 @@ impl<'a> FunctionBuilder<'a> {
                         let access = &self.space.ir_instance().accesses()[*id];
                         walker.process_parameter(access.base());
 
+                        // TODO: bounds
                         let strides = access
-                            .strides()
-                            .map(|(expr, stride)| {
+                            .index_dims()
+                            .iter()
+                            .map(|idim| {
                                 let stride = codegen::Size::from_ir(
-                                    &ir::PartialSize::from(stride.clone()),
+                                    &ir::PartialSize::from(idim.stride.clone()),
                                     self.space,
                                 );
-
                                 walker.process_size(&stride);
-                                (walker.process_index_expr(expr), stride)
+
+                                let min = idim.min.as_ref().map(|min| {
+                                    let min = codegen::Size::from(0);
+                                    /* XXX: PartialSize zero
+                                    let min = codegen::Size::from_ir(
+                                        &ir::PartialSize::from(min.clone()),
+                                        self.space,
+                                    );*/
+                                    walker.process_size(&min);
+                                    min
+                                });
+
+                                let max = idim.max.as_ref().map(|max| {
+                                    let max = codegen::Size::from_ir(
+                                        &ir::PartialSize::from(max.clone()),
+                                        self.space,
+                                    );
+                                    walker.process_size(&max);
+                                    max
+                                });
+
+                                IndexInfo {
+                                    id: walker.process_index_expr(&idim.expr),
+                                    stride,
+                                    min,
+                                    max,
+                                }
                             })
                             .collect::<Vec<_>>();
 
+                        // TODO: Add the predicates for the accesses.
                         access_map.insert(*id, strides);
                     }
                     _ => (),
@@ -279,7 +307,7 @@ pub struct Function<'a> {
     loop_predicate_def: FxHashMap<ir::DimId, Vec<(ir::InstId, Vec<PredicateId>)>>,
     global_predicate_def: Vec<(ir::InstId, Vec<PredicateId>)>,
     instruction_predicates: FxHashMap<ir::InstId, Vec<(ir::DimId, usize)>>,
-    access_map: FxHashMap<ir::AccessId, Vec<(IndexVarId, codegen::Size)>>,
+    access_map: FxHashMap<ir::AccessId, Vec<IndexInfo>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace,
     predicate_accesses: bool,
@@ -344,9 +372,7 @@ impl<'a> Function<'a> {
         &self.index_vars
     }
 
-    pub fn access_map(
-        &self,
-    ) -> &FxHashMap<ir::AccessId, Vec<(IndexVarId, codegen::Size)>> {
+    pub fn access_map(&self) -> &FxHashMap<ir::AccessId, Vec<IndexInfo>> {
         &self.access_map
     }
 

@@ -1768,6 +1768,9 @@ pub trait InstPrinter {
             Cow::Borrowed(_) => None,
         };
 
+        // The instruction predicates
+        let mut preds = Vec::new();
+
         for operand in inst.operator().operands() {
             match operand {
                 ir::Operand::ComputedAddress(access) => {
@@ -1778,7 +1781,10 @@ pub trait InstPrinter {
                         namer,
                     );
 
-                    for &(ivar, ref size) in &fun.access_map()[access] {
+                    for info in &fun.access_map()[access] {
+                        let ivar = info.id;
+                        let stride = &info.stride;
+
                         let var_name = namer.name_index_var(
                             ivar,
                             indices.as_ref().unwrap_or_else(|| namer.current_indices()),
@@ -1789,11 +1795,29 @@ pub trait InstPrinter {
                                 ir::Type::I(32),
                                 MulMode::Low,
                                 var_name,
-                                (size, ir::Type::I(32)),
+                                (stride, ir::Type::I(32)),
                                 &tmp,
                             ),
                             namer,
                         );
+
+                        if let Some(min) = &info.min {
+                            preds.push(Cow::Owned(PredExpr::new_cmp(
+                                CmpOp::Ge,
+                                ir::Type::I(32),
+                                var_name.to_string(),
+                                min,
+                            )));
+                        }
+
+                        if let Some(max) = &info.max {
+                            preds.push(Cow::Owned(PredExpr::new_cmp(
+                                CmpOp::Lt,
+                                ir::Type::I(32),
+                                var_name.to_string(),
+                                max,
+                            )));
+                        }
                     }
 
                     let name = namer.name_access(*access, namer.current_indices());
@@ -1817,6 +1841,12 @@ pub trait InstPrinter {
                 _ => (),
             }
         }
+
+        let inst_predicate = if fun.predicate_accesses() && !preds.is_empty() {
+            Some(PredExpr::BoolOp(BoolOp::And, preds))
+        } else {
+            None
+        };
 
         // Multiple dimension can be mapped to the same vectorization level so we combine
         // them when computing the vectorization factor.
@@ -2008,6 +2038,17 @@ pub trait InstPrinter {
                 } else {
                     addr.into_nameable()
                 };
+
+                use crate::device::ScalarArgument;
+                let predicate = inst_predicate.map(|p| {
+                    let pname = namer.gen_name(ir::Type::I(1));
+                    self.print_predicate_expr(&pname, &p, namer);
+                    let zero = namer.value_printer().get_const_float(
+                        &num::rational::Ratio::from_float(0f32).unwrap(),
+                        32,
+                    );
+                    (pname, zero.into_nameable())
+                });
 
                 self.print_ld(
                     vector_factors,

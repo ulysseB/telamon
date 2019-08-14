@@ -13,6 +13,9 @@ use telamon::explorer::{
 };
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
+#[cfg(feature = "cuda")]
+mod cudnn;
+
 #[derive(StructOpt)]
 pub struct CommonOpt {
     /// Path to the configuration file to use.
@@ -129,6 +132,8 @@ mod cuda_reference {
     use telamon_cuda as cuda;
     use telamon_kernels::linalg;
 
+    use crate::cudnn;
+
     use super::Reference;
 
     /// Checks the cublas status and panics if an error occured.
@@ -145,7 +150,10 @@ mod cuda_reference {
         }
     }
 
-    pub struct CublasHandle(cublasHandle_t);
+    pub struct CublasHandle {
+        cublas: cublasHandle_t,
+        cudnn: cudnn::CudnnHandle,
+    }
 
     impl CublasHandle {
         /// Initialize a new handle.
@@ -153,7 +161,10 @@ mod cuda_reference {
             unsafe {
                 let mut handle = std::mem::uninitialized();
                 check_cublas(cublasCreate_v2(&mut handle));
-                CublasHandle(handle)
+                CublasHandle {
+                    cublas: handle,
+                    cudnn: cudnn::CudnnHandle::new().unwrap(),
+                }
             }
         }
     }
@@ -161,7 +172,7 @@ mod cuda_reference {
     impl Drop for CublasHandle {
         fn drop(&mut self) {
             unsafe {
-                check_cublas(cublasDestroy_v2(self.0));
+                check_cublas(cublasDestroy_v2(self.cublas));
             }
         }
     }
@@ -227,7 +238,9 @@ mod cuda_reference {
         unsafe {
             let x = get_array("x", context);
             let y = get_array("y", context);
-            time_cuda(|| check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1)))
+            time_cuda(|| {
+                check_cublas(cublasSaxpy_v2(handle.cublas, n, alpha, x, 1, y, 1))
+            })
         }
     }
 
@@ -246,7 +259,18 @@ mod cuda_reference {
             time_cuda(|| {
                 let op = cublasOperation_t_CUBLAS_OP_T;
                 check_cublas(cublasSgemv_v2(
-                    handle.0, op, n, m, &2., a, n, x, 1, &3., y, 1,
+                    handle.cublas,
+                    op,
+                    n,
+                    m,
+                    &2.,
+                    a,
+                    n,
+                    x,
+                    1,
+                    &3.,
+                    y,
+                    1,
                 ))
             })
         }
@@ -278,10 +302,92 @@ mod cuda_reference {
             };
             time_cuda(|| {
                 check_cublas(cublasSgemm_v2(
-                    handle.0, op_b, op_a, n, m, k, &1., b, ldb, a, lda, &0., c, n,
+                    handle.cublas,
+                    op_b,
+                    op_a,
+                    n,
+                    m,
+                    k,
+                    &1.,
+                    b,
+                    ldb,
+                    a,
+                    lda,
+                    &0.,
+                    c,
+                    n,
                 ));
             })
         }
+    }
+
+    fn conv2d_reference(
+        handle: &CublasHandle,
+        params: &linalg::Conv2dP,
+        context: &cuda::Context,
+    ) -> cudnn::Result<f64> {
+        let input_desc = cudnn::TensorDescriptor::new_4d(
+            cudnn::TensorFormat::Nchw,
+            cudnn::DataType::Float,
+            params.batch,
+            params.in_channels,
+            params.in_height,
+            params.in_width,
+        )?;
+
+        let filter_desc = cudnn::FilterDescriptor::new_4d(
+            cudnn::DataType::Float,
+            cudnn::TensorFormat::Nchw,
+            params.out_channels,
+            params.in_channels,
+            params.filter_height,
+            params.filter_width,
+        )?;
+
+        let conv_desc = cudnn::ConvolutionDescriptor::new_2d(
+            1, // params.pad_h
+            1, // params.pad_w
+            1,
+            1,
+            1,
+            1,
+            cudnn::ConvolutionMode::CrossCorrelation,
+            cudnn::DataType::Float,
+        )?;
+
+        let output_desc = cudnn::TensorDescriptor::new_4d(
+            cudnn::TensorFormat::Nchw,
+            cudnn::DataType::Float,
+            params.batch,
+            params.out_channels,
+            params.out_height(),
+            params.out_width(),
+        )?;
+
+        let time = unsafe {
+            let input = get_array("input", context);
+            let filter = get_array("filter", context);
+            let output = get_array("output", context);
+
+            time_cuda(|| {
+                handle
+                    .cudnn
+                    .convolution_forward_implicit_gemm(
+                        &1f32 as *const f32 as *const _,
+                        &input_desc,
+                        input,
+                        &filter_desc,
+                        filter,
+                        &conv_desc,
+                        &0f32 as *const f32 as *const _,
+                        &output_desc,
+                        output,
+                    )
+                    .unwrap()
+            })
+        };
+
+        Ok(time)
     }
 
     /// Reference implementation for the matrix-matrix multiplication.
@@ -313,8 +419,24 @@ mod cuda_reference {
             let stride_c = (m * n) as libc::c_long;
             time_cuda(|| {
                 check_cublas(cublasSgemmStridedBatched(
-                    handle.0, op_b, op_a, n, m, k, &1., b, ldb, stride_b, a, lda,
-                    stride_a, &0., c, n, stride_c, batch,
+                    handle.cublas,
+                    op_b,
+                    op_a,
+                    n,
+                    m,
+                    k,
+                    &1.,
+                    b,
+                    ldb,
+                    stride_b,
+                    a,
+                    lda,
+                    stride_a,
+                    &0.,
+                    c,
+                    n,
+                    stride_c,
+                    batch,
                 ));
             })
         }
@@ -336,10 +458,32 @@ mod cuda_reference {
             time_cuda(|| {
                 let op = cublasOperation_t_CUBLAS_OP_T;
                 check_cublas(cublasSgemv_v2(
-                    handle.0, op, n, m, &3.1, a, n, x, 1, &0., y, 1,
+                    handle.cublas,
+                    op,
+                    n,
+                    m,
+                    &3.1,
+                    a,
+                    n,
+                    x,
+                    1,
+                    &0.,
+                    y,
+                    1,
                 ));
                 check_cublas(cublasSgemv_v2(
-                    handle.0, op, n, m, &4.1, b, n, x, 1, &1., y, 1,
+                    handle.cublas,
+                    op,
+                    n,
+                    m,
+                    &4.1,
+                    b,
+                    n,
+                    x,
+                    1,
+                    &1.,
+                    y,
+                    1,
                 ));
             })
         }
@@ -385,7 +529,7 @@ mod cuda_reference {
             params: &linalg::Conv2dP,
             context: &Self::Context,
         ) -> f64 {
-            panic!("Not implemented.")
+            conv2d_reference(self, params, context).unwrap()
         }
     }
 

@@ -254,10 +254,25 @@ where
             self.iter_dims
                 .iter()
                 .zip(packed)
-                // TODO: size for the predicates.
                 .map(|(sizestride, expr)| {
-                    let (_size, stride) = sizestride;
-                    (expr, stride.to_ir_size(builder))
+                    // Need this because of "by-move and by-ref" tricky rust error
+                    let (size, stride) = sizestride;
+                    // TODO: we shoud be able to optimize this and only have the predicates for the
+                    // computed (non-unpacked) dims.  Or let the user add a flag at least.
+                    let (min, max, expr) = match expr {
+                        ir::IndexExpr::Unchecked(ptr) => (None, None, *ptr),
+                        expr => (
+                            Some(ir::Size::new_const(0)),
+                            Some(size.to_ir_size(builder)),
+                            expr,
+                        ),
+                    };
+                    ir::IndexDimension {
+                        expr,
+                        min,
+                        max,
+                        stride: stride.to_ir_size(builder),
+                    }
                 })
                 .collect(),
         );
