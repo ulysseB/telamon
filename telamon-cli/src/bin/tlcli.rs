@@ -253,7 +253,7 @@ impl ManyBench {
         (bundle.check_fn)(context)
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
 
-        println!("cublas,{}", line, reference.into_iter().format(","));
+        println!("cublas,{}", reference.into_iter().format(","));
 
         let stdin = io::stdin();
         let handle = stdin.lock();
