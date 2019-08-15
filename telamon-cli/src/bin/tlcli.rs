@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::fs;
+use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::sync::{atomic, Arc, Mutex};
 
+use itertools::*;
 use serde_json;
 use structopt::StructOpt;
 
@@ -222,6 +224,49 @@ impl Codegen {
 
         let code = telamon::codegen::Function::build(&candidate);
         context.device().print(&code, &mut std::io::stdout());
+
+        Ok(())
+    }
+}
+
+#[derive(StructOpt)]
+struct ManyBench {
+    /// Kernel specification to use.
+    #[structopt(short = "k", long = "kernel")]
+    kernel: KernelParam,
+
+    #[structopt(long = "platform", short = "p", default_value = "cuda")]
+    platform: Platform,
+}
+
+impl ManyBench {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
+        let builder = self.platform.to_builder();
+        let mut context = builder.build_context();
+        let (bundle, context) = context.kernel_bundle(&self.kernel);
+        assert!(bundle.candidates.len() == 1);
+
+        let stdin = io::stdin();
+        let handle = stdin.lock();
+        for line in handle.lines() {
+            let line = line?;
+            let mut candidate = bundle.candidates[0].space.clone();
+            let actions: Vec<Action> = serde_json::from_reader(fs::File::open(&line)?)?;
+            for action in actions {
+                candidate = action
+                    .apply_to(candidate)
+                    .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+            }
+
+            let code = telamon::codegen::Function::build(&candidate);
+            let runtimes = context.benchmark(&code, 40);
+
+            if let Err(err) = (bundle.check_fn)(context) {
+                eprintln!("Error for {}: {}", line, err);
+            } else {
+                println!("{},{}", line, runtimes.into_iter().format(","));
+            }
+        }
 
         Ok(())
     }
@@ -517,6 +562,9 @@ enum Command {
     #[structopt(name = "benchmark")]
     Benchmark(Benchmark),
 
+    #[structopt(name = "manybench")]
+    ManyBench(ManyBench),
+
     #[structopt(name = "codegen")]
     Codegen(Codegen),
 
@@ -545,6 +593,7 @@ fn main() {
     env_logger::init();
 
     let result = match &args.command {
+        Command::ManyBench(many) => many.run(&args),
         Command::Benchmark(benchmark) => benchmark.run(&args),
         Command::Codegen(codegen) => codegen.run(&args),
         Command::Rebuild(rebuild) => rebuild.run(&args),
