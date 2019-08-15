@@ -12,7 +12,7 @@ use structopt::StructOpt;
 use telamon::device;
 use telamon::explorer::{
     self,
-    choice::{ActionEx as Action, Choice},
+    choice::{default_list, ActionEx as Action, Choice},
     config,
     eventlog::EventLog,
     mcts, Candidate,
@@ -248,24 +248,34 @@ impl ManyBench {
 
         let stdin = io::stdin();
         let handle = stdin.lock();
-        for line in handle.lines() {
+        'runs: for line in handle.lines() {
             let line = line?;
             let mut candidate = bundle.candidates[0].space.clone();
             let actions: Vec<Action> = serde_json::from_reader(fs::File::open(&line)?)?;
             for action in actions {
-                candidate = action
-                    .apply_to(candidate)
-                    .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+                candidate = match action.apply_to(candidate) {
+                    Ok(candidate) => candidate,
+                    Err(err) => {
+                        eprintln!("Action error for {}: {}", line, err);
+                        continue 'runs;
+                    }
+                }
+            }
+
+            if default_list(&candidate).next().is_some() {
+                eprintln!("Candidate is not fixed for {}", line);
+                continue 'runs;
             }
 
             let code = telamon::codegen::Function::build(&candidate);
             let runtimes = context.benchmark(&code, 40);
 
             if let Err(err) = (bundle.check_fn)(context) {
-                eprintln!("Error for {}: {}", line, err);
-            } else {
-                println!("{},{}", line, runtimes.into_iter().format(","));
+                eprintln!("Check error for {}: {}", line, err);
+                continue 'runs;
             }
+
+            println!("{},{}", line, runtimes.into_iter().format(","));
         }
 
         Ok(())
