@@ -246,6 +246,15 @@ impl ManyBench {
         let (bundle, context) = context.kernel_bundle(&self.kernel);
         assert!(bundle.candidates.len() == 1);
 
+        let reference = Bench::default()
+            .warmup(4)
+            .runs(40)
+            .benchmark_fn(&bundle.reference_fn);
+        (bundle.check_fn)(context)
+            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+
+        println!("cublas,{}", line, reference.into_iter().format(","));
+
         let stdin = io::stdin();
         let handle = stdin.lock();
         'runs: for line in handle.lines() {
