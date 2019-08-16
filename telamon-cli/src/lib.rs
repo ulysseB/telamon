@@ -14,6 +14,7 @@ use telamon::explorer::{
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 
 #[cfg(feature = "cuda")]
+#[macro_use]
 mod cudnn;
 
 #[derive(StructOpt)]
@@ -351,22 +352,74 @@ mod cuda_reference {
             let filter = get_array("filter", context);
             let output = get_array("output", context);
 
-            time_cuda(|| {
-                handle
-                    .cudnn
-                    .convolution_forward_implicit_gemm(
-                        &1f32 as *const f32 as *const _,
-                        &input_desc,
-                        input,
-                        &filter_desc,
-                        filter,
-                        &conv_desc,
-                        &0f32 as *const f32 as *const _,
-                        &output_desc,
-                        output,
-                    )
-                    .unwrap()
-            })
+            if std::env::var("TELAMON_IMPLICIT_PRECOMP_GEMM").is_ok() {
+                unsafe {
+                    let mut ws_size: usize = 0;
+                    cudnn_call!(cudnn_sys::cudnnGetConvolutionForwardWorkspaceSize(
+                        handle.cudnn.as_raw(),
+                        input_desc.as_raw(),
+                        filter_desc.as_raw(),
+                        conv_desc.as_raw(),
+                        output_desc.as_raw(),
+                        cudnn::ConvolutionForwardAlgo::ImplicitPrecompGemm.as_raw(),
+                        &mut ws_size,
+                    ))
+                    .unwrap();
+
+                    let mut ws_data: CUdeviceptr = 0;
+                    if ws_size > 0 {
+                        assert_eq!(
+                            cuMemAlloc_v2(&mut ws_data, ws_size),
+                            cudaError_t::CUDA_SUCCESS
+                        );
+                    }
+
+                    let result = time_cuda(|| {
+                        cudnn_call!(cudnn_sys::cudnnConvolutionForward(
+                            handle.cudnn.as_raw(),
+                            &1f32 as *const f32 as *const _,
+                            input_desc.as_raw(),
+                            input,
+                            filter_desc.as_raw(),
+                            filter,
+                            conv_desc.as_raw(),
+                            cudnn::ConvolutionForwardAlgo::ImplicitPrecompGemm.as_raw(),
+                            ws_data as *mut _,
+                            ws_size,
+                            &0f32 as *const f32 as *const _,
+                            output_desc.as_raw(),
+                            output,
+                        ))
+                        .unwrap()
+                    });
+
+                    if ws_size > 0 {
+                        assert_eq!(
+                            cuMemFree_v2(ws_data),
+                            cuda_sys::cuda::cudaError_t::CUDA_SUCCESS
+                        );
+                    }
+
+                    result
+                }
+            } else {
+                time_cuda(|| {
+                    handle
+                        .cudnn
+                        .convolution_forward_implicit_gemm(
+                            &1f32 as *const f32 as *const _,
+                            &input_desc,
+                            input,
+                            &filter_desc,
+                            filter,
+                            &conv_desc,
+                            &0f32 as *const f32 as *const _,
+                            &output_desc,
+                            output,
+                        )
+                        .unwrap()
+                })
+            }
         };
 
         Ok(time)

@@ -261,7 +261,12 @@ impl ManyBench {
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
         */
 
-        println!("cudnn_IMPLICIT_GEMM,{}", reference.into_iter().format(","));
+        let cuname = if std::env::var("TELAMON_IMPLICIT_PRECOMP_GEMM").is_ok() {
+            "IMPLICIT_PRECOMP_GEMM"
+        } else {
+            "IMPLICIT_GEMM"
+        };
+        println!("cudnn_{},{}", cuname, reference.into_iter().format(","));
 
         let stdin = io::stdin();
         let handle = stdin.lock();

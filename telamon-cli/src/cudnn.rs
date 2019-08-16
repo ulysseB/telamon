@@ -2,6 +2,7 @@ use std::os::raw::c_void;
 use std::ptr;
 use std::{error, fmt};
 
+use cuda_sys::cuda::*;
 use cudnn_sys::*;
 
 #[derive(Copy, Clone)]
@@ -24,7 +25,7 @@ pub enum CudnnErrorKind {
 
 #[derive(Debug)]
 pub struct CudnnError {
-    status: cudnnStatus_t,
+    pub status: cudnnStatus_t,
 }
 
 pub type Result<T> = std::result::Result<T, CudnnError>;
@@ -67,14 +68,15 @@ impl CudnnError {
     }
 }
 
+#[macro_export]
 macro_rules! cudnn_call {
     ($e:expr => $v:expr) => {
         {
-            let status: cudnnStatus_t = $e;
-            if status == CUDNN_STATUS_SUCCESS {
+            let status: ::cudnn_sys::cudnnStatus_t = $e;
+            if status == ::cudnn_sys::CUDNN_STATUS_SUCCESS {
                 Ok($v)
             } else {
-                Err(CudnnError { status })
+                Err($crate::cudnn::CudnnError { status })
             }
         }
     };
@@ -102,6 +104,36 @@ impl CudnnHandle {
         self.handle
     }
 
+    /*
+    pub fn convolution_forward<'a>(
+        &self,
+        x_desc: &'a TensorDescriptor,
+        w_desc: &'a FilterDescriptor,
+        descriptor: &'a ConvolutionDescriptor,
+        y_desc: &'a TensorDescriptor,
+        algo: ConvolutionForwardAlgo,
+    ) -> Result<ConvolutionForwardParams<'a>> {
+        let mut ws_size: usize = 0;
+        cudnn_call!(cudnnGetConvolutionForwardWorkspaceSize(
+            self.handle,
+            x_desc.as_raw(),
+            w_desc.as_raw(),
+            descriptor.as_raw(),
+            y_desc.as_raw(),
+            algo,
+            &mut ws_size,
+        ))?;
+
+        Ok(ConvolutionForwardParams {
+            x_desc,
+            w_desc,
+            descriptor,
+            y_desc,
+            algo,
+            ws_size,
+        })
+    } */
+
     pub unsafe fn convolution_forward_implicit_gemm(
         &self,
         alpha: *const c_void,
@@ -125,6 +157,54 @@ impl CudnnHandle {
             ConvolutionForwardAlgo::ImplicitGemm.as_raw(),
             ptr::null_mut(),
             0,
+            beta,
+            y_desc.as_raw(),
+            y
+        ))
+    }
+
+    pub unsafe fn convolution_forward_implicit_precomp_gemm(
+        &self,
+        alpha: *const c_void,
+        x_desc: &TensorDescriptor,
+        x: *const c_void,
+        w_desc: &FilterDescriptor,
+        w: *const c_void,
+        descriptor: &ConvolutionDescriptor,
+        beta: *const c_void,
+        y_desc: &TensorDescriptor,
+        y: *mut c_void,
+    ) -> Result<()> {
+        let mut ws_size: usize = 0;
+        cudnn_call!(cudnnGetConvolutionForwardWorkspaceSize(
+            self.handle,
+            x_desc.as_raw(),
+            w_desc.as_raw(),
+            descriptor.as_raw(),
+            y_desc.as_raw(),
+            ConvolutionForwardAlgo::ImplicitPrecompGemm.as_raw(),
+            &mut ws_size,
+        ))?;
+
+        let mut ws_data: CUdeviceptr = 0;
+        if ws_size > 0 {
+            assert_eq!(
+                cuMemAlloc_v2(&mut ws_data, ws_size),
+                cudaError_t::CUDA_SUCCESS
+            );
+        }
+
+        cudnn_call!(cudnnConvolutionForward(
+            self.handle,
+            alpha,
+            x_desc.as_raw(),
+            x,
+            w_desc.as_raw(),
+            w,
+            descriptor.as_raw(),
+            ConvolutionForwardAlgo::ImplicitPrecompGemm.as_raw(),
+            ws_data as *mut c_void,
+            ws_size,
             beta,
             y_desc.as_raw(),
             y
