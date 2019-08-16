@@ -345,8 +345,8 @@ mod cuda_reference {
         )?;
 
         let conv_desc = cudnn::ConvolutionDescriptor::new_2d(
-            1, // params.pad_h
-            1, // params.pad_w
+            params.pad_h(),
+            params.pad_w(),
             1,
             1,
             1,

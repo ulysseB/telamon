@@ -45,16 +45,10 @@ impl SearchSpace {
         for action in actions {
             let bad_action = action.clone();
             if apply_action(action, &mut domain, &mut unused_diff).is_err() {
-                println!("Bad action: {:?}", bad_action);
-                println!("{}", ir_instance);
                 return Err(());
             }
-
-            println!("Good action: {:?}", bad_action);
         }
-        println!("before {}", ir_instance);
         let actions = init_domain(&mut domain, &mut ir_instance)?;
-        println!("after {}", ir_instance);
         let mut space = SearchSpace {
             ir_instance: Arc::new(ir_instance),
             domain,

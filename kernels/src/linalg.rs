@@ -536,11 +536,11 @@ pub struct Conv2dP {
 }
 
 impl Conv2dP {
-    fn pad_h(&self) -> i32 {
+    pub fn pad_h(&self) -> i32 {
         self.filter_width / 2
     }
 
-    fn pad_w(&self) -> i32 {
+    pub fn pad_w(&self) -> i32 {
         self.filter_height / 2
     }
 
@@ -714,7 +714,7 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
         );
         let input = input.into_shape(input_shape).unwrap();
         let filter = self.filter.read_to_host(context);
-        println!("standard: {}", filter.is_standard_layout());
+        // println!("standard: {}", filter.is_standard_layout());
         assert_eq!(
             filter.shape(),
             &[
