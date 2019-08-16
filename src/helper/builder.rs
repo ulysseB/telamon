@@ -460,8 +460,6 @@ impl Builder {
                 let total_size = logical_dim.total_size().clone();
                 let induction_var =
                     self.induction_var(&0i32, vec![(dim, ir::Size::new_const(1))]);
-                println!("predicate indvar: {:?}", induction_var);
-                println!("{:?}", self.function.induction_var(induction_var));
                 predicates.push(ir::RangePredicate::new(induction_var, total_size));
             }
         }
