@@ -358,15 +358,22 @@ struct Rebuild {
     )]
     eventlog: PathBuf,
 
+    #[structopt(parse(from_os_str), short = "o", long = "output", default_value = ".")]
+    output: PathBuf,
+
     /// Identifier of the candidate node to rebuild.  This corresponds to the ID indicated in
     /// `watch.log`.
-    id: usize,
+    ids: Vec<usize>,
 }
 
 impl Rebuild {
-    fn find_candidate(&self) -> io::Result<(mcts::NodeId, f64, Vec<Action>)> {
+    fn run(&self, _args: &Opt) -> io::Result<()> {
         let mut nevals = 0;
         let mut tree = CandidateTree::new();
+
+        let mut target = self.ids.clone();
+        target.sort_unstable();
+        target.reverse();
 
         for record_bytes in EventLog::open(&self.eventlog)?.records() {
             match bincode::deserialize(&record_bytes?)
@@ -381,9 +388,20 @@ impl Rebuild {
                 } => tree.extend(id, discovery_time, parent, bound, &mut children),
                 mcts::Message::Trace { .. } => (),
                 mcts::Message::Evaluation { id, value, .. } => {
-                    if let Some(value) = value {
-                        if nevals == self.id {
-                            return Ok((id, value, tree.get_node(id).actions()));
+                    if let Some(score) = value {
+                        if Some(nevals) == target.last().cloned() {
+                            println!("Found candidate {} (score: {})", id, score);
+                            target.pop();
+                            let actions = tree.get_node(id).actions();
+                            let best_dir = self.output.join(format!("best_{}", nevals));
+                            std::fs::create_dir_all(&best_dir)?;
+                            let mut f =
+                                std::fs::File::create(best_dir.join("actions.json"))?;
+                            write!(f, "{}", serde_json::to_string(&actions)?)?;
+                        }
+
+                        if target.is_empty() {
+                            return Ok(());
                         }
 
                         nevals += 1;
@@ -396,15 +414,6 @@ impl Rebuild {
             io::ErrorKind::Other,
             "Unable to find candidate",
         ))
-    }
-
-    fn run(&self, _args: &Opt) -> io::Result<()> {
-        let (id, score, actions) = self.find_candidate()?;
-
-        println!("Found candidate {} (score: {})", id, score);
-        println!("{}", serde_json::to_string_pretty(&actions)?);
-
-        Ok(())
     }
 }
 
