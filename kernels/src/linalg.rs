@@ -609,7 +609,10 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
         let filter_dims = vec![k.clone(), &c * &r * &s];
         let filter_dims = vec![&c * &r * &s, k.clone()];
         let filter = TensorBuilder::new("filter", filter_dims)
-            // .transpose(0, 1) // XXX: transpose
+            .doif(
+                std::env::var("TELAMON_TRANSPOSE_CONV_FILTER").is_ok(),
+                |b| b.transpose(0, 1),
+            )
             .finish(builder);
         let output_dims = vec![n.clone(), k.clone(), p.clone(), q.clone()];
         let output_dims = vec![&n * &p * &q, k.clone()];
