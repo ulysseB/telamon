@@ -945,7 +945,7 @@ impl fmt::Display for KernelParam {
                 k,
                 r,
                 s,
-            } => write!(fmt, "conv2d_{}_{}_{}_{}_{}_{}_{}", n, c, h, w, k, r, s),
+            } => write!(fmt, "conv2d_{}_{}_{}_{}_{}_{}_{}_SAME", n, c, h, w, k, r, s),
             KernelParam::Gemm {
                 m,
                 n,
@@ -1104,6 +1104,15 @@ impl std::str::FromStr for KernelParam {
                 let k = parse_i32(next_part(&mut parts)?)?;
                 let r = parse_i32(next_part(&mut parts)?)?;
                 let s = parse_i32(next_part(&mut parts)?)?;
+                let _ = match next_part(&mut parts) {
+                    Ok("SAME") => (),
+                    Err(_) => (),
+                    _ => {
+                        return Err(ParseKernelError {
+                            kind: KernelErrorKind::InvalidName,
+                        })
+                    }
+                };
                 Conv2d {
                     n,
                     c,
