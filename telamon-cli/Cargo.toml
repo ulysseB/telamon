@@ -19,7 +19,6 @@ bincode = "1.0"
 streaming-stats = "0.2"
 num_cpus = "1.8.0"
 itertools = "0.8"
-nvml-wrapper = { version = "0.4.1", optional = true }
 cudnn-sys = { path = "../deps/cudnn-sys" }
 
 telamon = { path = "../" }
@@ -30,5 +29,5 @@ telamon-x86 = { path = "../backend/x86", optional = true }
 
 [features]
 default = ["cuda"]
-cuda = ["telamon-cuda/real_gpu", "cuda-sys", "libc", "nvml-wrapper"]
+cuda = ["telamon-cuda/real_gpu", "cuda-sys", "libc"]
 x86 = ["telamon-x86"]
