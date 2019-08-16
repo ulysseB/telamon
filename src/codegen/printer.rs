@@ -1209,7 +1209,9 @@ pub trait InstPrinter {
                                 let src = IntExpr::named(&src, t);
                                 let div_by = rolling.div_by();
 
-                                let div = if std::env::var("TELAMON_MAGIC").is_err() {
+                                let div = if false
+                                    && std::env::var("TELAMON_MAGIC").is_err()
+                                {
                                     (&src / IntExpr::named(div_by, t))
                                 } else {
                                     let div_magic = IntExpr::named(

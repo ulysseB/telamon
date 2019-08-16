@@ -524,9 +524,6 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
     }
 }
 
-const PAD_H: i32 = 1;
-const PAD_W: i32 = 1;
-
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Conv2dP {
     pub batch: i32,
@@ -539,12 +536,20 @@ pub struct Conv2dP {
 }
 
 impl Conv2dP {
+    fn pad_h(&self) -> i32 {
+        self.filter_width / 2
+    }
+
+    fn pad_w(&self) -> i32 {
+        self.filter_height / 2
+    }
+
     pub fn out_height(&self) -> i32 {
-        self.in_height - self.filter_height + 1 + 2 * PAD_H
+        self.in_height - self.filter_height + 1 + 2 * self.pad_h()
     }
 
     pub fn out_width(&self) -> i32 {
-        self.in_width - self.filter_width + 1 + 2 * PAD_W
+        self.in_width - self.filter_width + 1 + 2 * self.pad_w()
     }
 
     fn output_shape(&self) -> (usize, usize, usize, usize) {
@@ -604,7 +609,7 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
         let filter_dims = vec![k.clone(), &c * &r * &s];
         let filter_dims = vec![&c * &r * &s, k.clone()];
         let filter = TensorBuilder::new("filter", filter_dims)
-            .transpose(0, 1) // XXX: transpose
+            // .transpose(0, 1) // XXX: transpose
             .finish(builder);
         let output_dims = vec![n.clone(), k.clone(), p.clone(), q.clone()];
         let output_dims = vec![&n * &p * &q, k.clone()];
@@ -663,8 +668,8 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
                     vec![
                         n.clone().unchecked(),
                         c.clone().unchecked(),
-                        (p + r + (-PAD_H)),
-                        (q + s + (-PAD_W)),
+                        (p + r + (-self.params.pad_h())),
+                        (q + s + (-self.params.pad_w())),
                     ]
                 } else {
                     unreachable!()
@@ -688,8 +693,6 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
     }
 
     fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
-        // XXX
-        return Array4::<S>::zeros(self.params.output_shape());
         let input_shape = (
             self.params.batch as usize,
             self.params.in_channels as usize,
@@ -739,8 +742,8 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
                         for r in 0..self.params.filter_height as usize {
                             for s in 0..self.params.filter_width as usize {
                                 for c in 0..self.params.in_channels as usize {
-                                    let h = (p + r) as i32 - PAD_H;
-                                    let w = (q + s) as i32 - PAD_W;
+                                    let h = (p + r) as i32 - self.params.pad_h();
+                                    let w = (q + s) as i32 - self.params.pad_w();
                                     if h >= 0
                                         && w >= 0
                                         && h < self.params.in_height

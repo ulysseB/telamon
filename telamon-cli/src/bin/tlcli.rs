@@ -256,10 +256,12 @@ impl ManyBench {
             .warmup(4)
             .runs(40)
             .benchmark_fn(&bundle.reference_fn);
+        /*
         (bundle.check_fn)(context)
             .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+        */
 
-        println!("cublas,{}", reference.into_iter().format(","));
+        println!("cudnn_IMPLICIT_GEMM,{}", reference.into_iter().format(","));
 
         let stdin = io::stdin();
         let handle = stdin.lock();
@@ -282,7 +284,9 @@ impl ManyBench {
                 continue 'runs;
             }
 
-            let code = telamon::codegen::Function::build(&candidate);
+            let code = telamon::codegen::FunctionBuilder::new(&candidate)
+                .predicated(true)
+                .build();
             let runtimes = context.benchmark(&code, 40);
 
             if let Err(err) = (bundle.check_fn)(context) {
