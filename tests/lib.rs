@@ -1,18 +1,27 @@
-//! Contains integration tests for Exhaust.
-mod common;
+//! Contains integration tests for Telamon.
 
-use crate::common::*;
-use telamon::device::{fake, Context};
+use log::debug;
+
+use telamon::device::{fake, Context, EvalMode};
 use telamon::helper;
 use telamon::ir::{self, Size, Type};
 use telamon::search_space::*;
+use telamon::{codegen, explorer};
+
+/// Find the best candidate for a function and outputs it.
+pub fn gen_best(context: &Context, space: SearchSpace) {
+    let mut config = explorer::Config::from_settings_toml();
+    config.num_workers = 1;
+    let best = explorer::find_best(&config, context, vec![space], None).unwrap();
+    context.device().gen_code(&best, &mut std::io::sink());
+}
 
 /// Obtains the best implementation for an empty function.
 #[test]
 fn empty() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     gen_best(
         &context,
         helper::Builder::new(signature.into(), context.device()).get(),
@@ -42,7 +51,7 @@ fn two_add() {
 fn inst_dim_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let dim0 = builder.open_dim(Size::new_const(64));
     let inst0 = builder.mov(&0i32);
@@ -83,7 +92,7 @@ fn inst_dim_order() {
 fn inst_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let src = builder.mov(&1f32);
     let var = builder.get_inst_variable(src);
@@ -101,7 +110,7 @@ fn inst_variable_order() {
 fn dim_map_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let src_dim = builder.open_dim(ir::Size::new_const(16));
@@ -141,7 +150,7 @@ fn dim_map_variable_order() {
 fn last_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let dim = builder.open_dim(ir::Size::new_const(16));
@@ -167,7 +176,7 @@ fn last_variable_order() {
 fn nested_thread_dims() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size4.clone(), DimKind::THREAD);
@@ -202,7 +211,7 @@ fn nested_thread_dims() {
 fn max_thread_on_addinst() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     builder.open_dim_ex(Size::new_const(1024), DimKind::THREAD);
     let d1 = builder.open_dim(Size::new_const(2));
@@ -220,7 +229,7 @@ fn max_thread_on_addinst() {
 fn max_thread_on_setkind() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim(Size::new_const(1024));
     let d1 = builder.open_dim(Size::new_const(2));
@@ -281,7 +290,7 @@ fn block_dims() {
 fn vector_dims() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let base_addr = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
     let d0 = builder.open_dim(Size::new_const(4));
@@ -340,7 +349,7 @@ fn unroll_dims() {
 fn reduce_dim_invariants() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let init = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
     let d0 = builder.open_dim(Size::new_const(4));
@@ -377,7 +386,7 @@ fn reduce_dim_invariants() {
 fn rename_thread() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d_n_1 = &builder.open_dim_ex(Size::new_const(8), DimKind::THREAD);
     builder.mov(&0i32);
@@ -390,7 +399,7 @@ fn rename_thread() {
 fn dim_merge() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     builder.mov(&0i32);
@@ -404,7 +413,7 @@ fn dim_merge() {
 fn loop_fusion() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
@@ -422,7 +431,7 @@ fn loop_fusion() {
 fn unrolled_loop_unfused_simple() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
@@ -440,7 +449,7 @@ fn unrolled_loop_unfused_simple() {
 fn temporary_memory_gen_simple() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
@@ -458,7 +467,7 @@ fn temporary_memory_gen_simple() {
 fn unrolled_loop_unfused_reduction() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let d0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
@@ -477,7 +486,7 @@ fn unrolled_loop_unfused_reduction() {
 fn two_thread_dim_map() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     // Generate a variable in each thread.
     let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
@@ -498,7 +507,7 @@ fn double_dim_map() {
     // FIXME: investigate Failed lowering that should be cut earlier
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
 
     let mut builder = helper::Builder::new(signature.into(), context.device());
     // Load from a and b.
@@ -526,7 +535,7 @@ fn double_dim_map() {
 fn multi_dim_to_same_vector_level() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
 
     builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);
@@ -547,7 +556,7 @@ fn multi_dim_to_same_vector_level() {
 fn two_level_vectorization() {
     let _ = env_logger::try_init();
     let context = fake::Context::<fake::Device>::default();
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let inner_vec = builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);

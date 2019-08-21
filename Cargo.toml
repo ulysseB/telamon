@@ -17,10 +17,6 @@ name = "memory"
 harness = false
 
 [[example]]
-name = "matmul"
-required-features = ["cuda"]
-
-[[example]]
 name = "print_event_log"
 
 [build-dependencies]
@@ -63,20 +59,15 @@ flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
-telajax = {path = "telajax", optional = true}
-
 
 [dev-dependencies]
 criterion = "0.2.4"
 jemalloc-ctl = "0.1"
-telamon-cuda = { path = "backend/cuda", default-features = false }
 
 [features]
 default = []
 format_exh = []
 lex = []
-cuda = ["telamon-cuda/real_gpu"]
-mppa = ["telajax"]
 
 [workspace]
 members = [

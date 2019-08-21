@@ -42,9 +42,9 @@ pub struct Signature {
 
 impl Signature {
     /// Creates a new signature without any parameter.
-    pub fn new(name: String) -> Self {
+    pub fn new<N: Into<String>>(name: N) -> Self {
         Signature {
-            name,
+            name: name.into(),
             params: vec![],
         }
     }
