@@ -457,6 +457,25 @@
 <span id="457">457</span>
 <span id="458">458</span>
 <span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -506,6 +525,10 @@
     <span class="doccomment">/// certain range above the best Therefore, if cut_under is 20%, we can discard any</span>
     <span class="doccomment">/// candidate whose bound is above 80% of the current best.</span>
     <span class="kw">pub</span> <span class="ident">distance_to_best</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Restart the search every n evaluations.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Only supported by the MCTS search algorithm.</span>
+    <span class="kw">pub</span> <span class="ident">restart_every_n_evals</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Exploration algorithm to use. Needs to be last for TOML serialization, because it is a table.</span>
     <span class="kw">pub</span> <span class="ident">algorithm</span>: <span class="ident">SearchAlgorithm</span>,
 }
@@ -589,6 +612,7 @@
             <span class="ident">timeout</span>: <span class="prelude-val">None</span>,
             <span class="ident">max_evaluations</span>: <span class="prelude-val">None</span>,
             <span class="ident">distance_to_best</span>: <span class="prelude-val">None</span>,
+            <span class="ident">restart_every_n_evals</span>: <span class="prelude-val">None</span>,
         }
     }
 }
@@ -810,6 +834,16 @@
     <span class="ident">InstFlag</span>,
     <span class="ident">Threads</span>,
     <span class="ident">ThreadSize</span>,
+
+    <span class="doccomment">/// Exposes choices from Order defining whether two dimension are</span>
+    <span class="doccomment">/// fused (explicitly sets Order::MERGED or explicitly eliminates</span>
+    <span class="doccomment">/// Order:MERGED)</span>
+    <span class="ident">DimFusion</span>,
+
+    <span class="doccomment">/// Exposes choices from Order defining whether two dimension are</span>
+    <span class="doccomment">/// nested (explicitly sets Order::INNER, Order::OUTER or</span>
+    <span class="doccomment">/// eliminates these two orders)</span>
+    <span class="ident">DimNesting</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">ChoiceGroup</span> {
@@ -826,6 +860,8 @@
             <span class="ident">InstFlag</span> <span class="op">=&gt;</span> <span class="string">&quot;inst_flag&quot;</span>,
             <span class="ident">Threads</span> <span class="op">=&gt;</span> <span class="string">&quot;threads&quot;</span>,
             <span class="ident">ThreadSize</span> <span class="op">=&gt;</span> <span class="string">&quot;thread_size&quot;</span>,
+            <span class="ident">DimFusion</span> <span class="op">=&gt;</span> <span class="string">&quot;dim_fusion&quot;</span>,
+            <span class="ident">DimNesting</span> <span class="op">=&gt;</span> <span class="string">&quot;dim_nesting&quot;</span>,
         })
     }
 }
@@ -858,6 +894,8 @@
             <span class="string">&quot;inst_flag&quot;</span> <span class="op">=&gt;</span> <span class="ident">InstFlag</span>,
             <span class="string">&quot;threads&quot;</span> <span class="op">=&gt;</span> <span class="ident">Threads</span>,
             <span class="string">&quot;thread_size&quot;</span> <span class="op">=&gt;</span> <span class="ident">ThreadSize</span>,
+            <span class="string">&quot;dim_fusion&quot;</span> <span class="op">=&gt;</span> <span class="ident">DimFusion</span>,
+            <span class="string">&quot;dim_nesting&quot;</span> <span class="op">=&gt;</span> <span class="ident">DimNesting</span>,
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParseChoiceGroupError</span>(<span class="ident">s</span>.<span class="ident">to_string</span>())),
         })
     }

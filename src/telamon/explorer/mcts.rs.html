@@ -2080,6 +2080,91 @@
 <span id="2080">2080</span>
 <span id="2081">2081</span>
 <span id="2082">2082</span>
+<span id="2083">2083</span>
+<span id="2084">2084</span>
+<span id="2085">2085</span>
+<span id="2086">2086</span>
+<span id="2087">2087</span>
+<span id="2088">2088</span>
+<span id="2089">2089</span>
+<span id="2090">2090</span>
+<span id="2091">2091</span>
+<span id="2092">2092</span>
+<span id="2093">2093</span>
+<span id="2094">2094</span>
+<span id="2095">2095</span>
+<span id="2096">2096</span>
+<span id="2097">2097</span>
+<span id="2098">2098</span>
+<span id="2099">2099</span>
+<span id="2100">2100</span>
+<span id="2101">2101</span>
+<span id="2102">2102</span>
+<span id="2103">2103</span>
+<span id="2104">2104</span>
+<span id="2105">2105</span>
+<span id="2106">2106</span>
+<span id="2107">2107</span>
+<span id="2108">2108</span>
+<span id="2109">2109</span>
+<span id="2110">2110</span>
+<span id="2111">2111</span>
+<span id="2112">2112</span>
+<span id="2113">2113</span>
+<span id="2114">2114</span>
+<span id="2115">2115</span>
+<span id="2116">2116</span>
+<span id="2117">2117</span>
+<span id="2118">2118</span>
+<span id="2119">2119</span>
+<span id="2120">2120</span>
+<span id="2121">2121</span>
+<span id="2122">2122</span>
+<span id="2123">2123</span>
+<span id="2124">2124</span>
+<span id="2125">2125</span>
+<span id="2126">2126</span>
+<span id="2127">2127</span>
+<span id="2128">2128</span>
+<span id="2129">2129</span>
+<span id="2130">2130</span>
+<span id="2131">2131</span>
+<span id="2132">2132</span>
+<span id="2133">2133</span>
+<span id="2134">2134</span>
+<span id="2135">2135</span>
+<span id="2136">2136</span>
+<span id="2137">2137</span>
+<span id="2138">2138</span>
+<span id="2139">2139</span>
+<span id="2140">2140</span>
+<span id="2141">2141</span>
+<span id="2142">2142</span>
+<span id="2143">2143</span>
+<span id="2144">2144</span>
+<span id="2145">2145</span>
+<span id="2146">2146</span>
+<span id="2147">2147</span>
+<span id="2148">2148</span>
+<span id="2149">2149</span>
+<span id="2150">2150</span>
+<span id="2151">2151</span>
+<span id="2152">2152</span>
+<span id="2153">2153</span>
+<span id="2154">2154</span>
+<span id="2155">2155</span>
+<span id="2156">2156</span>
+<span id="2157">2157</span>
+<span id="2158">2158</span>
+<span id="2159">2159</span>
+<span id="2160">2160</span>
+<span id="2161">2161</span>
+<span id="2162">2162</span>
+<span id="2163">2163</span>
+<span id="2164">2164</span>
+<span id="2165">2165</span>
+<span id="2166">2166</span>
+<span id="2167">2167</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Search space exploration using MCTS-style algorithm</span>
 <span class="doccomment">//!</span>
@@ -2165,6 +2250,14 @@
     <span class="ident">PerfModel</span> { <span class="ident">cut</span>: <span class="ident">f64</span> },
     <span class="doccomment">/// All child nodes are dead.</span>
     <span class="ident">Backtrack</span>,
+}
+
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Reset</span> {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>);
+}
+
+<span class="kw">impl</span> <span class="ident">Reset</span> <span class="kw">for</span> () {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {}
 }
 
 <span class="doccomment">/// The internal structure of a node.  This should only be accessed through `Node` getters.</span>
@@ -2334,6 +2427,17 @@
     }
 }
 
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">N</span>: <span class="ident">Reset</span>, <span class="ident">E</span>: <span class="ident">Reset</span><span class="op">&gt;</span> <span class="ident">Reset</span> <span class="kw">for</span> <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">expanded</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="bool-val">false</span>;
+        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">candidate</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="prelude-val">None</span>;
+        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">reset</span>();
+        <span class="kw">for</span> <span class="ident">child</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">children</span> {
+            <span class="ident">child</span>.<span class="ident">reset</span>();
+        }
+    }
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> <span class="ident">ops</span>::<span class="ident">Index</span><span class="op">&lt;</span><span class="ident">EdgeIndex</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Edge</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>;
 
@@ -2416,6 +2520,16 @@
     <span class="doccomment">/// Algorithm-specific data associated with the edge.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">E</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">data</span>
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">N</span>: <span class="ident">Reset</span>, <span class="ident">E</span>: <span class="ident">Reset</span><span class="op">&gt;</span> <span class="ident">Reset</span> <span class="kw">for</span> <span class="ident">Edge</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">node</span>.<span class="ident">read</span>().<span class="ident">unwrap</span>().<span class="ident">as_ref</span>() {
+            <span class="ident">node</span>.<span class="ident">reset</span>();
+        }
+
+        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">data</span>.<span class="ident">reset</span>();
     }
 }
 
@@ -3243,6 +3357,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MctsStore</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
     <span class="ident">root</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>,
 
+    <span class="ident">space</span>: <span class="ident">SearchSpace</span>,
+
     <span class="ident">default_policy</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">TreePolicy</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span>,
 
     <span class="ident">tree_policy</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">TreePolicy</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span>,
@@ -3251,6 +3367,8 @@
     <span class="ident">cut</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
 
     <span class="ident">cut_epoch</span>: <span class="ident">AtomicUsize</span>,
+
+    <span class="ident">restart_id</span>: <span class="ident">AtomicUsize</span>,
 
     <span class="doccomment">/// Whether evaluation should be stopped</span>
     <span class="ident">stop</span>: <span class="ident">AtomicBool</span>,
@@ -3291,14 +3409,16 @@
             <span class="ident">epoch</span>,
         )
         .<span class="ident">node</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>));
-        <span class="ident">root</span>.<span class="ident">store_candidate</span>(<span class="ident">space</span>);
+        <span class="ident">root</span>.<span class="ident">store_candidate</span>(<span class="ident">space</span>.<span class="ident">clone</span>());
 
         <span class="ident">MctsStore</span> {
             <span class="ident">root</span>,
+            <span class="ident">space</span>,
             <span class="ident">default_policy</span>,
             <span class="ident">tree_policy</span>,
             <span class="ident">cut</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">initial_cut</span>.<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>)),
             <span class="ident">cut_epoch</span>: <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>),
+            <span class="ident">restart_id</span>: <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>),
             <span class="ident">stop</span>: <span class="ident">AtomicBool</span>::<span class="ident">new</span>(<span class="bool-val">false</span>),
             <span class="ident">id_counter</span>,
             <span class="ident">logger</span>,
@@ -3339,17 +3459,29 @@
     }
 }
 
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Payload</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> {
+    <span class="ident">trace</span>: <span class="ident">Trace</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>,
+    <span class="ident">restart_id</span>: <span class="ident">usize</span>,
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span> <span class="ident">Store</span> <span class="kw">for</span> <span class="ident">MctsStore</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">N</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">Default</span>,
-    <span class="ident">E</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">Default</span>,
+    <span class="ident">N</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">Default</span> <span class="op">+</span> <span class="ident">Reset</span>,
+    <span class="ident">E</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="ident">Debug</span> <span class="op">+</span> <span class="ident">Default</span> <span class="op">+</span> <span class="ident">Reset</span>,
 {
-    <span class="kw">type</span> <span class="ident">PayLoad</span> <span class="op">=</span> <span class="ident">Trace</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+    <span class="kw">type</span> <span class="ident">PayLoad</span> <span class="op">=</span> <span class="ident">Payload</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">E</span><span class="op">&gt;</span>;
 
     <span class="kw">type</span> <span class="ident">Event</span> <span class="op">=</span> <span class="ident">Message</span>;
 
     <span class="kw">fn</span> <span class="ident">update_cut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_cut</span>: <span class="ident">f64</span>) {
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">write</span>().<span class="ident">expect</span>(<span class="string">&quot;cut: poisoned&quot;</span>) <span class="op">=</span> <span class="ident">new_cut</span>;
+        <span class="comment">// If an initial cut was specified in the configuration file, `update_cut` will be called</span>
+        <span class="comment">// with the first implementation found, even if it is not better than the previous cut.</span>
+        <span class="comment">//</span>
+        <span class="comment">// When this happens, we should keep using the provided initial cut instead of blindly</span>
+        <span class="comment">// using the new cut.</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cut_mut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">write</span>().<span class="ident">expect</span>(<span class="string">&quot;cut: poisoned&quot;</span>);
+        <span class="kw-2">*</span><span class="ident">cut_mut</span> <span class="op">=</span> <span class="ident">new_cut</span>.<span class="ident">min</span>(<span class="kw-2">*</span><span class="ident">cut_mut</span>);
+
         <span class="self">self</span>.<span class="ident">cut_epoch</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
 
         <span class="comment">// TODO: trim the tree?</span>
@@ -3358,9 +3490,15 @@
     <span class="kw">fn</span> <span class="ident">commit_evaluation</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">_actions</span>: <span class="kw-2">&amp;</span><span class="ident">List</span><span class="op">&lt;</span><span class="ident">choice</span>::<span class="ident">ActionEx</span><span class="op">&gt;</span>,
-        <span class="ident">trace</span>: <span class="self">Self</span>::<span class="ident">PayLoad</span>,
+        <span class="ident">payload</span>: <span class="self">Self</span>::<span class="ident">PayLoad</span>,
         <span class="ident">eval</span>: <span class="ident">f64</span>,
     ) {
+        <span class="comment">// Discard old evaluations that were meant for a previous restart</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">restart_id</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>) <span class="op">&gt;</span> <span class="ident">payload</span>.<span class="ident">restart_id</span> {
+            <span class="kw">return</span>;
+        }
+
+        <span class="kw">let</span> <span class="ident">trace</span> <span class="op">=</span> <span class="ident">payload</span>.<span class="ident">trace</span>;
         <span class="kw">let</span> <span class="ident">result_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">epoch</span>.<span class="ident">elapsed</span>();
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">id</span>();
         <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">eval</span>.<span class="ident">is_finite</span>() { <span class="prelude-val">Some</span>(<span class="ident">eval</span>) } <span class="kw">else</span> { <span class="prelude-val">None</span> };
@@ -3429,9 +3567,20 @@
                     <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">bound</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>(),
                     <span class="ident">trace</span>.<span class="ident">node</span>.<span class="ident">actions</span>(),
                 ),
-                <span class="ident">trace</span>,
+                <span class="ident">Payload</span> {
+                    <span class="ident">trace</span>,
+                    <span class="ident">restart_id</span>: <span class="self">self</span>.<span class="ident">restart_id</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>),
+                },
             )
         })
+    }
+
+    <span class="kw">fn</span> <span class="ident">restart</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="comment">// Update the restart_id before resetting to ensure that the monitor thread doesn&#39;t go</span>
+        <span class="comment">// updating the wrong tree.</span>
+        <span class="self">self</span>.<span class="ident">restart_id</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">SeqCst</span>);
+        <span class="self">self</span>.<span class="ident">root</span>.<span class="ident">reset</span>();
+        <span class="self">self</span>.<span class="ident">root</span>.<span class="ident">store_candidate</span>(<span class="self">self</span>.<span class="ident">space</span>.<span class="ident">clone</span>());
     }
 
     <span class="kw">fn</span> <span class="ident">stop_exploration</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
@@ -3810,6 +3959,12 @@
     <span class="ident">num_visits</span>: <span class="ident">AtomicUsize</span>,
 }
 
+<span class="kw">impl</span> <span class="ident">Reset</span> <span class="kw">for</span> <span class="ident">CommonStats</span> {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">num_visits</span>.<span class="ident">store</span>(<span class="number">0</span>, <span class="ident">Ordering</span>::<span class="ident">SeqCst</span>);
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CommonStats</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">CommonStats</span> {
@@ -3837,6 +3992,14 @@
     <span class="ident">sum_evaluations</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
 
     <span class="ident">common</span>: <span class="ident">CommonStats</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Reset</span> <span class="kw">for</span> <span class="ident">UCTStats</span> {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">best_evaluation</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">NEG_INFINITY</span>;
+        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">sum_evaluations</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="number">0f64</span>;
+        <span class="self">self</span>.<span class="ident">common</span>.<span class="ident">reset</span>();
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">UCTStats</span> {
@@ -4044,6 +4207,13 @@
     <span class="doccomment">/// All evaluations seen for the pointed-to node.</span>
     <span class="ident">evaluations</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&gt;</span>,
     <span class="ident">common</span>: <span class="ident">CommonStats</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Reset</span> <span class="kw">for</span> <span class="ident">TAGStats</span> {
+    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">evaluations</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="ident">Evaluations</span>::<span class="ident">new</span>();
+        <span class="self">self</span>.<span class="ident">common</span>.<span class="ident">reset</span>();
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">TAGStats</span> {

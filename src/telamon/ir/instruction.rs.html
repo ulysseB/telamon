@@ -270,6 +270,20 @@
 <span id="270">270</span>
 <span id="271">271</span>
 <span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">ir</span>::{
@@ -358,6 +372,20 @@
     <span class="doccomment">/// Returns an iterator over the operands of this instruction.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Operand</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">operands</span>()
+    }
+
+    <span class="doccomment">/// Iterate over the dimensions that appear in `Reduce` operands for this instruction.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_reduced_dims</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
+        <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">operands</span>().<span class="ident">into_iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">operand</span><span class="op">|</span> {
+            <span class="kw">match</span> <span class="ident">operand</span> {
+                <span class="ident">Operand</span>::<span class="ident">Reduce</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="ident">reduce_dims</span>) <span class="op">=&gt;</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">reduce_dims</span>.<span class="ident">into_iter</span>().<span class="ident">cloned</span>())
+                }
+                <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
+            }
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">flatten</span>()
+        })
     }
 
     <span class="doccomment">/// Returns the type of the variable produced by an instruction.</span>
