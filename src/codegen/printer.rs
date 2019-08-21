@@ -114,7 +114,7 @@ pub trait InstPrinter {
     /// Name an operand, vectorized on the given dimensions.
     fn name_operand<'a>(
         vector_levels: &[Vec<Dimension>; 2],
-        op: &ir::Operand,
+        op: &'a ir::Operand,
         namer: &'a NameMap<Self::ValuePrinter>,
     ) -> Cow<'a, str>;
 

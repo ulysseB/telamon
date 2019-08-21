@@ -612,7 +612,7 @@ impl InstPrinter for MppaPrinter {
 
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
-        op: &ir::Operand,
+        op: &'a ir::Operand,
         name_map: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());

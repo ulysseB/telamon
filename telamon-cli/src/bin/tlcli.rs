@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::sync::{atomic, Arc, Mutex};
+use std::sync::atomic;
 
 use serde_json;
 use structopt::StructOpt;
@@ -15,7 +15,6 @@ use telamon::explorer::{
     eventlog::EventLog,
     mcts, Candidate,
 };
-use telamon::ir::IrDisplay;
 use telamon::model::{bound, Bound};
 use telamon::offline_analysis::tree::CandidateTree;
 use telamon::search_space::SearchSpace;
@@ -342,7 +341,7 @@ impl Stats {
                                 }
                                 len += 1;
                             }
-                            mcts::Event::KillChild(index, cause_) => {
+                            mcts::Event::KillChild(_index, cause_) => {
                                 let info = deadinfo
                                     .entry((Cause::from(cause_), has_size))
                                     .or_insert((0u64, 0u32));

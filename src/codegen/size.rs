@@ -1,23 +1,25 @@
+use std::fmt;
+use std::sync::Arc;
+
+use num;
+use utils::unwrap;
+
 use crate::ir;
 use crate::search_space::{NumSet, SearchSpace};
-use num;
-use std;
-use std::fmt;
-use utils::unwrap;
 
 /// The size of an iteration dimension. The size is of the form:
 /// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
 /// where the reminder of the division is null.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Size<'a> {
+pub struct Size {
     factor: u32,
-    dividend: Vec<&'a ir::Parameter>,
+    dividend: Vec<Arc<ir::Parameter>>,
     divisor: u32,
 }
 
-impl<'a> Size<'a> {
+impl Size {
     /// Creates a new 'Size'.
-    pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
+    pub fn new(factor: u32, dividend: Vec<Arc<ir::Parameter>>, divisor: u32) -> Self {
         assert!(divisor != 0);
         let mut new = Size {
             factor,
@@ -29,7 +31,7 @@ impl<'a> Size<'a> {
     }
 
     /// Converts an `ir::Size` to `Self`.
-    pub fn from_ir(size: &'a ir::PartialSize, space: &SearchSpace) -> Self {
+    pub fn from_ir(size: &ir::PartialSize, space: &SearchSpace) -> Self {
         let (cst_factor, param_factors, dim_size_factors) = size.factors();
         let dim_size_divisors = size.divisors();
         let factor = cst_factor
@@ -43,7 +45,7 @@ impl<'a> Size<'a> {
             .product();
         Size::new(
             factor,
-            param_factors.into_iter().map(|p| &**p).collect(),
+            param_factors.into_iter().cloned().collect(),
             divisor,
         )
     }
@@ -58,7 +60,7 @@ impl<'a> Size<'a> {
     }
 
     /// Returns the dividends.
-    pub fn dividend(&self) -> &[&'a ir::Parameter] {
+    pub fn dividend(&self) -> &[Arc<ir::Parameter>] {
         &self.dividend
     }
 
@@ -80,8 +82,8 @@ impl<'a> Size<'a> {
     }
 }
 
-impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
-    fn mul_assign(&mut self, rhs: &'b Size<'a>) {
+impl std::ops::MulAssign<&'_ Size> for Size {
+    fn mul_assign(&mut self, rhs: &'_ Size) {
         self.factor *= rhs.factor;
         self.dividend.extend(rhs.dividend.iter().cloned());
         self.divisor *= rhs.divisor;
@@ -89,7 +91,7 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
     }
 }
 
-impl<'a> fmt::Display for Size<'a> {
+impl fmt::Display for Size {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut pre = false;
         if self.factor != 1 {
