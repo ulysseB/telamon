@@ -302,7 +302,7 @@ impl CudaPrinter {
         let params = fun
             .device_code_args()
             .map(|p| match *p {
-                ParamVal::External(p, _) => format!("&{}", p.name),
+                ParamVal::External(ref p, _) => format!("&{}", p.name),
                 ParamVal::Size(ref size) => {
                     let extra_var = format!("_extra_{}", next_extra_var_id);
                     next_extra_var_id += 1;
@@ -586,7 +586,7 @@ impl InstPrinter for CudaPrinter {
 
     fn name_operand<'a>(
         vector_levels: &[Vec<Dimension>; 2],
-        op: &ir::Operand,
+        op: &'a ir::Operand,
         name_map: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_levels[0].is_empty());

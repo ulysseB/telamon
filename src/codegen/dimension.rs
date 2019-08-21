@@ -30,7 +30,7 @@ pub struct Dimension<'a> {
     /// The induction levels corresponding to this dimension.
     induction_levels: Vec<InductionLevel<'a>>,
     /// The size of this iteration dimension.
-    size: codegen::Size<'a>,
+    size: codegen::Size,
 }
 
 impl<'a> Dimension<'a> {
@@ -45,7 +45,7 @@ impl<'a> Dimension<'a> {
     }
 
     /// Returns the size of the dimensions.
-    pub fn size(&self) -> &codegen::Size<'a> {
+    pub fn size(&self) -> &codegen::Size {
         &self.size
     }
 
@@ -77,7 +77,7 @@ impl<'a> Dimension<'a> {
     pub fn host_values<'b>(
         &'b self,
         space: &'b SearchSpace,
-    ) -> impl Iterator<Item = codegen::ParamVal<'a>> + 'b {
+    ) -> impl Iterator<Item = codegen::ParamVal> + 'b {
         let size_param = if self.kind == DimKind::LOOP {
             codegen::ParamVal::from_size(&self.size)
         } else {
@@ -151,7 +151,7 @@ pub struct InductionLevel<'a> {
     ///
     /// Warning: The dimension here corresponds to the IR dimension represented by this level; it
     /// does *not* have the same size as the increment!
-    pub increment: Option<(ir::DimId, codegen::Size<'a>)>,
+    pub increment: Option<(ir::DimId, codegen::Size)>,
     /// The base of the induction, i.e. the value the variable is initialized to before the first
     /// iteration.
     pub base: InductionVarValue<'a>,
@@ -167,7 +167,7 @@ impl<'a> InductionLevel<'a> {
     pub fn host_values(
         &self,
         space: &SearchSpace,
-    ) -> impl Iterator<Item = codegen::ParamVal<'a>> {
+    ) -> impl Iterator<Item = codegen::ParamVal> {
         self.increment
             .as_ref()
             .and_then(|&(_, ref s)| codegen::ParamVal::from_size(s))
@@ -187,7 +187,7 @@ impl<'a> InductionVar<'a> {
     pub fn host_values<'b>(
         &'b self,
         space: &SearchSpace,
-    ) -> impl Iterator<Item = codegen::ParamVal<'a>> {
+    ) -> impl Iterator<Item = codegen::ParamVal> {
         self.value.host_values(space).into_iter()
     }
 }
@@ -267,7 +267,7 @@ impl<'a> InductionVarValue<'a> {
     }
 
     /// Returns the values to pass from the host to the device to implement `self`.
-    fn host_values(&self, space: &SearchSpace) -> Option<codegen::ParamVal<'a>> {
+    fn host_values(&self, space: &SearchSpace) -> Option<codegen::ParamVal> {
         self.operand
             .and_then(|x| codegen::ParamVal::from_operand(x, space))
     }
@@ -336,7 +336,7 @@ pub fn register_induction_vars<'a>(
     (ind_vars, precomputed_levels)
 }
 
-type IndVarIncrement<'a> = (ir::DimId, codegen::Size<'a>);
+type IndVarIncrement = (ir::DimId, codegen::Size);
 
 /// Retrieves the list of induction levels that can be computed at the beginning of the
 /// thread and the induction levels that are updated during loops. Both lists are sorted
@@ -344,7 +344,7 @@ type IndVarIncrement<'a> = (ir::DimId, codegen::Size<'a>);
 fn get_ind_var_levels<'a>(
     ind_var: &'a ir::InductionVar,
     space: &SearchSpace,
-) -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>) {
+) -> (Vec<IndVarIncrement>, Vec<IndVarIncrement>) {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
     for &(dim, ref size) in ind_var.dims() {
         let size = codegen::Size::from_ir(size, space);

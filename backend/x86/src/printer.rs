@@ -518,7 +518,7 @@ impl InstPrinter for X86printer {
 
     fn name_operand<'a>(
         vector_dims: &[Vec<Dimension>; 2],
-        op: &ir::Operand,
+        op: &'a ir::Operand,
         value_printer: &'a NameMap<ValuePrinter>,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
