@@ -297,6 +297,62 @@ mod cuda_reference {
         }
     }
 
+    /// Reference implementation for `ResNetCell`.
+    fn resnetcell_reference(
+        handle: &CublasHandle,
+        params: &linalg::ResNetCellP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED!");
+    }
+
+    /// Reference implementation for `ResNetCellTopHalf`.
+    fn resnetcelltophalf_reference(
+        handle: &CublasHandle,
+        params: &linalg::ResNetCellTopHalfP,
+        context: &cuda::Context,
+    ) -> Result<f64, ()> {
+        panic!("NOT IMPLEMENTED!");
+    }
+
+    /// Reference implementation for `ResNetCellBottomHalf`.
+    fn resnetcellbottomhalf_reference(
+        handle: &CublasHandle,
+        params: &linalg::ResNetCellBottomHalfP,
+        context: &cuda::Context,
+    ) -> Result<f64, ()> {
+        panic!("NOT IMPLEMENTED!");
+    }
+
+    /// Reference implementation for the transformer cell.
+    fn transformercell_reference(
+        handle: &CublasHandle,
+        params: &linalg::TransformerCellP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED!");
+    }
+
+    /// Reference implementation for the first operations of the
+    /// transformer cell.
+    fn transformercelltophalf_reference(
+        handle: &CublasHandle,
+        params: &linalg::TransformerCellTopHalfP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED");
+    }
+
+    /// Reference implementation for the last operations of the
+    /// transformer cell.
+    fn transformercellbottomhalf_reference(
+        handle: &CublasHandle,
+        params: &linalg::TransformerCellBottomHalfP,
+        context: &cuda::Context,
+    ) -> f64 {
+        panic!("NOT IMPLEMENTED");
+    }
+
     impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CublasHandle {
         type Context = cuda::Context<'a>;
 
@@ -352,6 +408,78 @@ mod cuda_reference {
             gesummv_reference(self, params, context)
         }
     }
+
+    impl<'a> Reference<'a, linalg::ResNetCell<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::ResNetCellP,
+            context: &Self::Context,
+        ) -> f64 {
+            resnetcell_reference(self, params, context)
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::ResNetCellTopHalf<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::ResNetCellTopHalfP,
+            context: &Self::Context,
+        ) -> f64 {
+            resnetcelltophalf_reference(self, params, context).expect("")
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::ResNetCellBottomHalf<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::ResNetCellBottomHalfP,
+            context: &Self::Context,
+        ) -> f64 {
+            resnetcellbottomhalf_reference(self, params, context).expect("")
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::TransformerCell<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::TransformerCellP,
+            context: &Self::Context,
+        ) -> f64 {
+            transformercell_reference(self, params, context)
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::TransformerCellTopHalf<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::TransformerCellTopHalfP,
+            context: &Self::Context,
+        ) -> f64 {
+            transformercelltophalf_reference(self, params, context)
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::TransformerCellBottomHalf<'a, f32>> for CublasHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::TransformerCellBottomHalfP,
+            context: &Self::Context,
+        ) -> f64 {
+            transformercellbottomhalf_reference(self, params, context)
+        }
+    }
 }
 
 #[cfg(feature = "cuda")]
@@ -360,11 +488,62 @@ pub use cuda_reference::CublasHandle;
 /// Helper enum to create the supported kernel parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelParam {
-    Axpy { n: i32 },
-    MatVec { m: i32, n: i32 },
-    Gesummv { m: i32, n: i32 },
-    Gemm { m: i32, n: i32, k: i32 },
-    BatchMM { b: i32, m: i32, n: i32, k: i32 },
+    Axpy {
+        n: i32,
+    },
+    MatVec {
+        m: i32,
+        n: i32,
+    },
+    Gesummv {
+        m: i32,
+        n: i32,
+    },
+    Gemm {
+        m: i32,
+        n: i32,
+        k: i32,
+    },
+    BatchMM {
+        b: i32,
+        m: i32,
+        n: i32,
+        k: i32,
+    },
+    ResNetCell {
+        m: i32,
+        n: i32,
+        k: i32,
+        activation_fun: Option<linalg::compose::ActivationFunction>,
+    },
+    ResNetCellTopHalf {
+        m: i32,
+        n: i32,
+        k: i32,
+        activation_fun: Option<linalg::compose::ActivationFunction>,
+    },
+    ResNetCellBottomHalf {
+        m: i32,
+        n: i32,
+        k: i32,
+        activation_fun: Option<linalg::compose::ActivationFunction>,
+    },
+    TransformerCell {
+        m: i32,
+        n: i32,
+        p: i32,
+        r: i32,
+    },
+    TransformerCellTopHalf {
+        m: i32,
+        n: i32,
+        p: i32,
+    },
+    TransformerCellBottomHalf {
+        m: i32,
+        n: i32,
+        r: i32,
+    },
 }
 
 impl KernelParam {
@@ -410,6 +589,51 @@ impl KernelParam {
                     context,
                 )
             }
+            KernelParam::ResNetCell {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => build::<'_, '_, linalg::ResNetCell<'_, f32>, C>(
+                linalg::ResNetCellP::new(m, n, k).activation_fun(activation_fun),
+                context,
+            ),
+            KernelParam::ResNetCellTopHalf {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => build::<'_, '_, linalg::ResNetCellTopHalf<'_, f32>, C>(
+                linalg::ResNetCellTopHalfP::new(m, n, k, activation_fun),
+                context,
+            ),
+            KernelParam::ResNetCellBottomHalf {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => build::<'_, '_, linalg::ResNetCellBottomHalf<'_, f32>, C>(
+                linalg::ResNetCellBottomHalfP::new(m, n, k, activation_fun),
+                context,
+            ),
+            KernelParam::TransformerCell { m, n, p, r } => {
+                build::<'_, '_, linalg::TransformerCell<'_, f32>, C>(
+                    linalg::TransformerCellP::new(m, n, p, r),
+                    context,
+                )
+            }
+            KernelParam::TransformerCellTopHalf { m, n, p } => {
+                build::<'_, '_, linalg::TransformerCellTopHalf<'_, f32>, C>(
+                    linalg::TransformerCellTopHalfP::new(m, n, p),
+                    context,
+                )
+            }
+            KernelParam::TransformerCellBottomHalf { m, n, r } => {
+                build::<'_, '_, linalg::TransformerCellBottomHalf<'_, f32>, C>(
+                    linalg::TransformerCellBottomHalfP::new(m, n, r),
+                    context,
+                )
+            }
         }
     }
 }
@@ -423,6 +647,54 @@ impl fmt::Display for KernelParam {
             KernelParam::Gemm { m, n, k } => write!(fmt, "matmul_{}_{}_{}", m, n, k),
             KernelParam::BatchMM { b, m, n, k } => {
                 write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
+            }
+            KernelParam::ResNetCell {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => write!(
+                fmt,
+                "resnetcell_{}_{}_{}_{}",
+                m,
+                n,
+                k,
+                linalg::compose::ActivationFunction::opt_to_display(activation_fun)
+            ),
+            KernelParam::ResNetCellTopHalf {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => write!(
+                fmt,
+                "resnetcelltophalf_{}_{}_{}_{}",
+                m,
+                n,
+                k,
+                linalg::compose::ActivationFunction::opt_to_display(activation_fun)
+            ),
+            KernelParam::ResNetCellBottomHalf {
+                m,
+                n,
+                k,
+                activation_fun,
+            } => write!(
+                fmt,
+                "resnetcellbottomhalf_{}_{}_{}_{}",
+                m,
+                n,
+                k,
+                linalg::compose::ActivationFunction::opt_to_display(activation_fun)
+            ),
+            KernelParam::TransformerCell { m, n, p, r } => {
+                write!(fmt, "transformercell_{}_{}_{}_{}", m, n, p, r)
+            }
+            KernelParam::TransformerCellTopHalf { m, n, p } => {
+                write!(fmt, "transformercelltophalf_{}_{}_{}", m, n, p)
+            }
+            KernelParam::TransformerCellBottomHalf { m, n, r } => {
+                write!(fmt, "transformercellbottomhalf_{}_{}_{}", m, n, r)
             }
         }
     }
@@ -452,6 +724,9 @@ pub enum KernelErrorKind {
 
     /// A non-integer value was found where an integer value was expected.
     IntError(std::num::ParseIntError),
+
+    /// An invalid activation function was found.
+    ActivationFunctionError(linalg::compose::ActivationFunctionParseError),
 }
 
 impl ParseKernelError {
@@ -475,6 +750,9 @@ impl fmt::Display for ParseKernelError {
                 fmt.write_str("extraneous unexpected kernel parameter")
             }
             KernelErrorKind::IntError(error) => fmt::Display::fmt(error, fmt),
+            KernelErrorKind::ActivationFunctionError(error) => {
+                fmt::Display::fmt(error, fmt)
+            }
         }
     }
 }
@@ -492,6 +770,16 @@ impl From<std::num::ParseIntError> for ParseKernelError {
     fn from(error: std::num::ParseIntError) -> ParseKernelError {
         ParseKernelError {
             kind: KernelErrorKind::IntError(error),
+        }
+    }
+}
+
+impl From<telamon_kernels::compose::ActivationFunctionParseError> for ParseKernelError {
+    fn from(
+        error: telamon_kernels::compose::ActivationFunctionParseError,
+    ) -> ParseKernelError {
+        ParseKernelError {
+            kind: KernelErrorKind::ActivationFunctionError(error),
         }
     }
 }
@@ -550,6 +838,70 @@ impl std::str::FromStr for KernelParam {
                 let n = parse_i32(next_part(&mut parts)?)?;
                 let k = parse_i32(next_part(&mut parts)?)?;
                 BatchMM { b, m, n, k }
+            }
+            "resnetcell" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let activation_fun =
+                    linalg::compose::ActivationFunction::opt_from_string(next_part(
+                        &mut parts,
+                    )?)?;
+                ResNetCell {
+                    m,
+                    n,
+                    k,
+                    activation_fun,
+                }
+            }
+            "resnetcelltophalf" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let activation_fun =
+                    linalg::compose::ActivationFunction::opt_from_string(next_part(
+                        &mut parts,
+                    )?)?;
+                ResNetCellTopHalf {
+                    m,
+                    n,
+                    k,
+                    activation_fun,
+                }
+            }
+            "resnetcellbottomhalf" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let activation_fun =
+                    linalg::compose::ActivationFunction::opt_from_string(next_part(
+                        &mut parts,
+                    )?)?;
+                ResNetCellBottomHalf {
+                    m,
+                    n,
+                    k,
+                    activation_fun,
+                }
+            }
+            "transformercell" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let p = parse_i32(next_part(&mut parts)?)?;
+                let r = parse_i32(next_part(&mut parts)?)?;
+                TransformerCell { m, n, p, r }
+            }
+            "transformercelltophalf" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let p = parse_i32(next_part(&mut parts)?)?;
+                TransformerCellTopHalf { m, n, p }
+            }
+            "transformercellbottomhalf" => {
+                let m = parse_i32(next_part(&mut parts)?)?;
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let r = parse_i32(next_part(&mut parts)?)?;
+                TransformerCellBottomHalf { m, n, r }
             }
             _ => {
                 return Err(ParseKernelError {

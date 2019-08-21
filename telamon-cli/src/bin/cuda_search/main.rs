@@ -179,6 +179,42 @@ fn main() {
                     idx,
                 )
                 .run(&config, &executor, &reference),
+                ResNetCell { m, n, k, activation_fun } => Benchmark::<'_, linalg::ResNetCell<'_, f32>>::new(
+                    linalg::ResNetCellP::new(m, n, k).activation_fun(activation_fun),
+                    format!("ResNetCell_{}_{}_{}_{}", m, n, k, telamon_kernels::linalg::compose::ActivationFunction::opt_to_display(&activation_fun)),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                ResNetCellTopHalf { m, n, k, activation_fun } => Benchmark::<'_, linalg::ResNetCellTopHalf<'_, f32>>::new(
+                    linalg::ResNetCellTopHalfP::new(m, n, k, activation_fun),
+                    format!("ResNetCellTopHalf_{}_{}_{}_{}", m, n, k, telamon_kernels::linalg::compose::ActivationFunction::opt_to_display(&activation_fun)),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                ResNetCellBottomHalf { m, n, k, activation_fun } => Benchmark::<'_, linalg::ResNetCellBottomHalf<'_, f32>>::new(
+                    linalg::ResNetCellBottomHalfP::new(m, n, k, activation_fun),
+                    format!("ResNetCellBottomHalf_{}_{}_{}_{}", m, n, k, telamon_kernels::linalg::compose::ActivationFunction::opt_to_display(&activation_fun)),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                TransformerCell { m, n, p, r } => Benchmark::<'_, linalg::TransformerCell<'_, f32>>::new(
+                    linalg::TransformerCellP::new(m, n, p, r),
+                    format!("TransformerCell_{}_{}_{}_{}", m, n, p, r),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                TransformerCellTopHalf { m, n, p } => Benchmark::<'_, linalg::TransformerCellTopHalf<'_, f32>>::new(
+                    linalg::TransformerCellTopHalfP::new(m, n, p),
+                    format!("TransformerCellTopHalf_{}_{}_{}", m, n, p),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
+                TransformerCellBottomHalf { m, n, r } => Benchmark::<'_, linalg::TransformerCellBottomHalf<'_, f32>>::new(
+                    linalg::TransformerCellBottomHalfP::new(m, n, r),
+                    format!("TransformerCellBottomHalf_{}_{}_{}", m, n, r),
+                    idx,
+                )
+                .run(&config, &executor, &reference),
             }
         }
     }
