@@ -52,9 +52,6 @@ pub struct NameMap<'a, 'b, VP: ValuePrinter> {
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
     current_indexes: FxHashMap<ir::DimId, usize>,
-    /// Total number threads.
-    #[cfg(feature = "mppa")]
-    total_num_threads: u32,
     /// Tracks the name of induction variables partial names.
     induction_vars: FxHashMap<ir::IndVarId, String>,
     induction_levels: FxHashMap<(ir::IndVarId, ir::DimId), String>,
@@ -113,8 +110,6 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
             variables,
             num_loop: 0,
             current_indexes: FxHashMap::default(),
-            #[cfg(feature = "mppa")]
-            total_num_threads: function.num_threads(),
             size_casts: FxHashMap::default(),
             indexes,
             params,
@@ -160,12 +155,6 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
 
     pub fn value_printer_mut(&mut self) -> &mut VP {
         self.value_printer
-    }
-
-    /// Returns the total number of threads.
-    #[cfg(feature = "mppa")]
-    pub fn total_num_threads(&self) -> u32 {
-        self.total_num_threads
     }
 
     /// Generates a variable of the given `Type`.

@@ -1,12 +1,38 @@
 #![cfg(feature = "cuda")]
-mod common;
-
-use crate::common::*;
 use itertools::Itertools;
-use telamon::device::{ArrayArgumentExt, Context};
+use log::debug;
+
+use telamon::device::{ArrayArgumentExt, Context, EvalMode};
 use telamon::search_space::*;
+use telamon::{codegen, explorer};
 use telamon::{helper, ir};
 use telamon_cuda as cuda;
+
+/// Find the best candidate for a function and outputs it.
+pub fn gen_best(context: &Context, space: SearchSpace) {
+    let mut config = explorer::Config::from_settings_toml();
+    config.num_workers = 1;
+    let best = explorer::find_best(&config, context, vec![space], None).unwrap();
+    context.device().gen_code(&best, &mut std::io::sink());
+}
+
+/// Checks the result of all valid candidates.
+pub fn check_candidates<F>(space: SearchSpace, ctx: &Context, mut check: F)
+where
+    F: FnMut(),
+{
+    explorer::gen_space(
+        ctx,
+        space,
+        |_| (),
+        |candidate| {
+            debug!("testing candidate with actions {:?}", candidate.actions);
+            let fun = codegen::Function::build(&candidate.space);
+            ctx.evaluate(&fun, EvalMode::FindBest).unwrap();
+            check();
+        },
+    );
+}
 
 /// Tests the printing of unrolled dimensions.
 #[test]
@@ -14,7 +40,7 @@ fn unrolled_dims() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_64 = builder.cst_size(64);
     let d0 = builder.open_dim_ex(size_64, DimKind::UNROLL);
@@ -29,7 +55,7 @@ fn block_thread_dims() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_64 = builder.cst_size(64);
     let d0 = builder.open_dim_ex(size_64.clone(), DimKind::BLOCK);
@@ -95,7 +121,7 @@ fn thread_reduction_map() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
@@ -114,7 +140,7 @@ fn inst_order() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
 
     let size_32 = builder.cst_size(32);
@@ -294,7 +320,7 @@ fn merge_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
 
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
@@ -323,7 +349,7 @@ fn merge_1() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
 
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
@@ -349,7 +375,7 @@ fn dim_map_reduce_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
 
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_16 = builder.cst_size(16);
@@ -375,7 +401,7 @@ fn dim_map_active() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
 
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_32 = builder.cst_size(32);
@@ -400,7 +426,7 @@ fn test0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature();
+    let signature = ir::Signature::new("empty");
 
     let mut builder = helper::Builder::new(signature.into(), context.device());
     let size_32 = builder.cst_size(32);
