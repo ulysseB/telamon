@@ -28,20 +28,16 @@ pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 
 use fxhash::FxHashMap;
-use num::bigint::BigInt;
-use num::rational::Ratio;
-use num::ToPrimitive;
 use telamon::codegen;
 use telamon::ir;
-use utils::*;
 
 #[derive(Default)]
-pub(crate) struct ValuePrinter {
+pub(crate) struct NameGenerator {
     num_var: FxHashMap<ir::Type, usize>,
     num_sizes: usize,
 }
 
-impl ValuePrinter {
+impl NameGenerator {
     /// Generate a variable name prefix from a type.
     fn gen_prefix(t: ir::Type) -> &'static str {
         match t {
@@ -58,21 +54,9 @@ impl ValuePrinter {
     }
 }
 
-impl codegen::ValuePrinter for ValuePrinter {
-    fn get_const_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
-        assert!(len <= 64);
-        let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
-        let binary = unsafe { std::mem::transmute::<f64, u64>(f) };
-        format!("0D{:016X}", binary)
-    }
-
-    fn get_const_int(&self, val: &BigInt, len: u16) -> String {
-        assert!(len <= 64);
-        format!("{}", unwrap!(val.to_i64()))
-    }
-
+impl codegen::NameGenerator for NameGenerator {
     fn name(&mut self, t: ir::Type) -> String {
-        let prefix = ValuePrinter::gen_prefix(t);
+        let prefix = NameGenerator::gen_prefix(t);
         let entry = self.num_var.entry(t).or_insert(0);
         let name = format!("%{}{}", prefix, *entry);
         *entry += 1;

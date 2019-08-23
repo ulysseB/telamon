@@ -1,7 +1,7 @@
-use crate::ValuePrinter;
+use crate::NameGenerator;
 use itertools::Itertools;
-use std::borrow::Cow;
-use std::fmt::Write as WriteFmt;
+use std::fmt::{self, Write as WriteFmt};
+use telamon::codegen::llir::IntoVector;
 use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
@@ -13,14 +13,112 @@ pub(crate) struct X86printer {
     buffer: String,
 }
 
+/// Formatting trait for C99 values.
+///
+/// This is similar to the standard library's `Display` trait, except that it prints values in a
+/// syntax compatible with the C99 standard.
+pub trait C99Display {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
+
+    /// Helper function to wrap `self` into a `Display` implementation which will call back into
+    /// `C99Display::fmt`.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::fmt;
+    ///
+    /// impl C99Display for String {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(fmt, "\"{}\"", self.escape_default())
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(r#"x"y"#.c99().to_string(), r#""x\"y""#);
+    /// ```
+    fn c99(&self) -> DisplayC99<'_, Self> {
+        DisplayC99 { inner: self }
+    }
+}
+
+/// Helper struct for printing values in C99 syntax.
+///
+/// This `struct` implements the `Display` trait by using a `C99Display` implementation. It is
+/// created by the `c99` method on `C99Display` instances.
+pub struct DisplayC99<'a, T: ?Sized> {
+    inner: &'a T,
+}
+
+impl<T: fmt::Debug + ?Sized> fmt::Debug for DisplayC99<'_, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.inner, fmt)
+    }
+}
+
+impl<T: C99Display + ?Sized> fmt::Display for DisplayC99<'_, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        C99Display::fmt(self.inner, fmt)
+    }
+}
+
+impl C99Display for llir::Register<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.name())
+    }
+}
+
+impl C99Display for llir::Operand<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::Operand::*;
+
+        match self {
+            Register(register) => C99Display::fmt(register, fmt),
+            &IntLiteral(ref val, bits) => {
+                assert!(bits <= 64);
+                fmt::Display::fmt(val, fmt)
+            }
+            &FloatLiteral(ref val, bits) => {
+                use num::{Float, ToPrimitive};
+
+                assert!(bits <= 64);
+                let f = val.numer().to_f64().unwrap() / val.denom().to_f64().unwrap();
+
+                // Print in C99 hexadecimal floating point representation
+                let (mantissa, exponent, sign) = f.integer_decode();
+                let signchar = if sign < 0 { "-" } else { "" };
+
+                // Assume that floats and doubles in the C implementation have
+                // 32 and 64 bits, respectively
+                let floating_suffix = match bits {
+                    32 => "f",
+                    64 => "",
+                    _ => panic!("Cannot print floating point value with {} bits", bits),
+                };
+
+                write!(
+                    fmt,
+                    "{}0x{:x}p{}{}",
+                    signchar, mantissa, exponent, floating_suffix
+                )
+            }
+        }
+    }
+}
+
+impl<T: C99Display> C99Display for llir::Vector<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            llir::Vector::Scalar(scalar) => C99Display::fmt(scalar, fmt),
+            llir::Vector::Vector(_) => panic!("x86 backend does not support vectors."),
+        }
+    }
+}
+
 impl X86printer {
     /// Declares all parameters of the function with the appropriate type
-    fn param_decl(
-        &mut self,
-        param: &ParamVal,
-        value_printer: &NameMap<ValuePrinter>,
-    ) -> String {
-        let name = value_printer.name_param(param.key());
+    fn param_decl(&mut self, param: &ParamVal, namegen: &NameMap<'_>) -> String {
+        let name = namegen.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
                 format!("{} {}", Self::get_type(*par_type), name)
@@ -32,14 +130,13 @@ impl X86printer {
         }
     }
 
-    /// Declared all variables that have been required from the value_printer
-    fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
-        let value_printer = name_map.value_printer();
+    /// Declared all variables that have been required from the namegen
+    fn var_decls(&mut self, namegen: &NameGenerator) -> String {
         let print_decl = |(&t, &n)| {
             if let Type::PtrTo(..) = t {
                 unreachable!("Type PtrTo are never inserted in this map");
             }
-            let prefix = ValuePrinter::gen_prefix(t);
+            let prefix = NameGenerator::gen_prefix(t);
             let mut s = format!("{} ", Self::get_type(t));
             s.push_str(
                 &(0..n)
@@ -50,18 +147,18 @@ impl X86printer {
             s.push_str(";\n  ");
             s
         };
-        let other_var_decl = value_printer
+        let other_var_decl = namegen
             .num_var
             .iter()
             .map(print_decl)
             .collect_vec()
             .join("\n  ");
-        if value_printer.num_glob_ptr == 0 {
+        if namegen.num_glob_ptr == 0 {
             other_var_decl
         } else {
             format!(
                 "intptr_t {};\n{}",
-                &(0..value_printer.num_glob_ptr)
+                &(0..namegen.num_glob_ptr)
                     .map(|i| format!("ptr{}", i))
                     .collect_vec()
                     .join(", "),
@@ -74,7 +171,7 @@ impl X86printer {
     fn decl_par_indexes(
         &mut self,
         function: &Function,
-        value_printer: &mut NameMap<ValuePrinter>,
+        namegen: &mut NameMap<'_>,
     ) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
@@ -82,7 +179,7 @@ impl X86printer {
         for (ind, dim) in function.thread_dims().iter().enumerate() {
             decls.push(format!(
                 "{} = tid.t{};\n",
-                value_printer.name_index(dim.id()),
+                namegen.name_index(dim.id()).name(),
                 ind
             ));
         }
@@ -91,8 +188,9 @@ impl X86printer {
 
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function) -> String {
-        let mut value_printer = ValuePrinter::default();
-        let name_map = &mut NameMap::new(function, &mut value_printer);
+        let mut namegen = NameGenerator::default();
+        let interner = Interner::default();
+        let name_map = &mut NameMap::new(&interner, function, &mut namegen);
         let param_decls = function
             .device_code_args()
             .map(|v| self.param_decl(v, name_map))
@@ -119,7 +217,7 @@ impl X86printer {
             unwrap!(writeln!(
                 self.buffer,
                 "{var_name} = {name};// LD_PARAM",
-                var_name = name_map.name_param_val(val.key()),
+                var_name = name_map.name_param_val(val.key()).c99(),
                 name = name_map.name_param(val.key())
             ));
         }
@@ -128,7 +226,7 @@ impl X86printer {
             match block.alloc_scheme() {
                 AllocationScheme::Shared => panic!("No shared mem in cpu!!"),
                 AllocationScheme::PrivatisedGlobal => {
-                    self.privatise_global_block(block, name_map, function)
+                    Printer::new(self, name_map).privatise_global_block(block, function)
                 }
                 AllocationScheme::Global => (),
             }
@@ -140,15 +238,15 @@ impl X86printer {
             }
             for level in dim.induction_levels() {
                 if let Some((_, ref incr)) = level.increment {
-                    let name = name_map.declare_size_cast(incr, level.t());
-                    if let Some(name) = name {
+                    let reg = name_map.declare_size_cast(incr, level.t());
+                    if let Some(reg) = reg {
                         let old_name = name_map.name_size(incr, Type::I(32));
                         self.print_unary_op(
                             [1, 1],
                             ir::UnaryOp::Cast(level.t()),
                             Type::I(32),
-                            &name,
-                            &old_name,
+                            reg.into_vector(),
+                            old_name.into_vector(),
                         );
                     }
                 }
@@ -162,11 +260,11 @@ impl X86printer {
                 .flat_map(|d| d.induction_levels()),
         );
         for level in ind_levels {
-            self.parallel_induction_level(level, name_map);
+            Printer::new(self, name_map).parallel_induction_level(level);
         }
         // BODY
-        self.cfg(function, function.cfg(), name_map);
-        let var_decls = self.var_decls(&name_map);
+        Printer::new(self, name_map).cfg(function, function.cfg());
+        let var_decls = self.var_decls(&namegen);
         return_string.push_str(&var_decls);
         return_string.push_str(&self.buffer);
         // Close function bracket
@@ -356,17 +454,15 @@ impl X86printer {
 }
 
 impl InstPrinter for X86printer {
-    type ValuePrinter = ValuePrinter;
-
     fn print_binop(
         &mut self,
         vector_factors: [u32; 2],
         op: ir::BinOp,
         _: Type,
         _: op::Rounding,
-        result: &str,
-        lhs: &str,
-        rhs: &str,
+        result: llir::VRegister<'_>,
+        lhs: llir::VOperand<'_>,
+        rhs: llir::VOperand<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
 
@@ -386,13 +482,19 @@ impl InstPrinter for X86printer {
             unwrap!(writeln!(
                 self.buffer,
                 "{} = {} {} {};",
-                result, lhs, op, rhs
+                result.c99(),
+                lhs.c99(),
+                op,
+                rhs.c99()
             ));
         } else {
             unwrap!(writeln!(
                 self.buffer,
                 "{} = {}({}, {});",
-                result, op, lhs, rhs
+                result.c99(),
+                op,
+                lhs.c99(),
+                rhs.c99()
             ));
         }
     }
@@ -402,22 +504,29 @@ impl InstPrinter for X86printer {
         vector_factors: [u32; 2],
         operator: ir::UnaryOp,
         _: Type,
-        result: &str,
-        operand: &str,
+        result: llir::VRegister<'_>,
+        operand: llir::VOperand<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
-        unwrap!(write!(self.buffer, "{} = ", result));
+        unwrap!(write!(self.buffer, "{} = ", result.c99()));
         match operator {
             ir::UnaryOp::Mov => {
-                unwrap!(writeln!(self.buffer, "{};", operand));
+                unwrap!(writeln!(self.buffer, "{};", operand.c99()));
             }
 
             ir::UnaryOp::Cast(t) => {
-                unwrap!(write!(self.buffer, "({}){};", Self::get_type(t), operand));
+                unwrap!(write!(
+                    self.buffer,
+                    "({}){};",
+                    Self::get_type(t),
+                    operand.c99()
+                ));
             }
 
             ir::UnaryOp::Exp(t) => match t {
-                ir::Type::F(32) => unwrap!(write!(self.buffer, "expf({});", operand)),
+                ir::Type::F(32) => {
+                    unwrap!(write!(self.buffer, "expf({});", operand.c99()))
+                }
                 _ => panic!("Exp not implemented for type {}", t),
             },
         };
@@ -429,13 +538,19 @@ impl InstPrinter for X86printer {
         _: Type,
         _: op::Rounding,
         mode: MulMode,
-        result: &str,
-        op1: &str,
-        op2: &str,
+        result: llir::VRegister<'_>,
+        op1: llir::VOperand<'_>,
+        op2: llir::VOperand<'_>,
     ) {
         assert_ne!(mode, MulMode::High);
         assert_eq!(vector_factors, [1, 1]);
-        unwrap!(writeln!(self.buffer, "{} = {} * {};", result, op1, op2));
+        unwrap!(writeln!(
+            self.buffer,
+            "{} = {} * {};",
+            result.c99(),
+            op1.c99(),
+            op2.c99()
+        ));
     }
 
     fn print_mad(
@@ -444,17 +559,20 @@ impl InstPrinter for X86printer {
         _: Type,
         _: op::Rounding,
         mode: MulMode,
-        result: &str,
-        mlhs: &str,
-        mrhs: &str,
-        arhs: &str,
+        result: llir::VRegister<'_>,
+        mlhs: llir::VOperand<'_>,
+        mrhs: llir::VOperand<'_>,
+        arhs: llir::VOperand<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         assert_ne!(mode, MulMode::High);
         unwrap!(writeln!(
             self.buffer,
             "{} = {} * {} + {};",
-            result, mlhs, mrhs, arhs
+            result.c99(),
+            mlhs.c99(),
+            mrhs.c99(),
+            arhs.c99(),
         ));
     }
 
@@ -464,16 +582,16 @@ impl InstPrinter for X86printer {
         return_type: Type,
         _: MemSpace,
         _: InstFlag,
-        result: &str,
-        addr: &str,
+        result: llir::VRegister<'_>,
+        addr: llir::Operand<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         unwrap!(writeln!(
             self.buffer,
             "{} = *({}*){} ;",
-            result,
+            result.c99(),
             Self::get_type(return_type),
-            addr
+            addr.c99()
         ));
     }
 
@@ -483,20 +601,20 @@ impl InstPrinter for X86printer {
         val_type: Type,
         _: MemSpace,
         _: InstFlag,
-        predicate: Option<&str>,
-        addr: &str,
-        val: &str,
+        predicate: Option<llir::Register<'_>>,
+        addr: llir::Operand<'_>,
+        val: llir::VOperand<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         if let Some(predicate) = predicate {
-            unwrap!(write!(self.buffer, "if ({})", predicate));
+            unwrap!(write!(self.buffer, "if ({})", predicate.c99()));
         }
         unwrap!(writeln!(
             self.buffer,
             "*({}*){} = {} ;",
             Self::get_type(val_type),
-            addr,
-            val
+            addr.c99(),
+            val.c99(),
         ));
     }
 
@@ -514,73 +632,5 @@ impl InstPrinter for X86printer {
 
     fn print_sync(&mut self) {
         unwrap!(writeln!(self.buffer, "pthread_barrier_wait(tid.barrier);"));
-    }
-
-    fn name_operand<'a>(
-        vector_dims: &[Vec<Dimension>; 2],
-        op: &'a ir::Operand,
-        value_printer: &'a NameMap<ValuePrinter>,
-    ) -> Cow<'a, str> {
-        assert!(vector_dims[0].is_empty());
-        assert!(vector_dims[1].is_empty());
-        value_printer.name_op(op)
-    }
-
-    fn name_inst<'a>(
-        vector_dims: &[Vec<Dimension>; 2],
-        inst: ir::InstId,
-        value_printer: &'a NameMap<ValuePrinter>,
-    ) -> Cow<'a, str> {
-        assert!(vector_dims[0].is_empty());
-        assert!(vector_dims[1].is_empty());
-        value_printer.name_inst(inst).into()
-    }
-
-    /// Prints a standard loop as a C for loop
-    fn standard_loop(
-        &mut self,
-        fun: &Function,
-        dim: &Dimension,
-        cfgs: &[Cfg],
-        namer: &mut NameMap<Self::ValuePrinter>,
-    ) {
-        let idx = namer.name_index(dim.id()).to_string();
-        let mut ind_var_vec = vec![];
-        let ind_levels = dim.induction_levels();
-        for level in ind_levels.iter() {
-            let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
-            let ind_var = namer.name_induction_var(level.ind_var, dim_id);
-            let base_components = level.base.components().map(|v| namer.name(v));
-            match base_components.collect_vec()[..] {
-                [ref base] => self.print_move(level.t(), &ind_var, &base),
-                [ref lhs, ref rhs] => self.print_add_int(level.t(), &ind_var, lhs, rhs),
-                _ => panic!(),
-            };
-            ind_var_vec.push(ind_var.into_owned());
-        }
-
-        let size = namer.name_size(dim.size(), Type::I(32)).to_string();
-
-        unwrap!(writeln!(
-            self.buffer,
-            "/* Loop for dimension {dim_id} */\nfor({idx} = 0; {idx} < {dim_size}; {idx}++) {{",
-            dim_id = dim.id(),
-            idx = idx,
-            dim_size = size
-        ));
-
-        self.cfg_vec(fun, cfgs, namer);
-        for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
-            if let Some((_, ref increment)) = level.increment {
-                let step = namer.name_size(increment, level.t());
-                self.print_add_int(level.t(), &ind_var, &ind_var, &step);
-            };
-        }
-
-        unwrap!(writeln!(
-            self.buffer,
-            "}} /* End Loop for dimension {} */",
-            dim_id = dim.id()
-        ));
     }
 }

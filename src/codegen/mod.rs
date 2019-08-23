@@ -2,6 +2,7 @@
 mod cfg;
 mod dimension;
 mod function;
+pub mod llir;
 mod name_map;
 mod printer;
 mod size;
@@ -10,8 +11,8 @@ mod variable;
 pub use self::cfg::Cfg;
 pub use self::dimension::{Dimension, InductionLevel, InductionVar};
 pub use self::function::*;
-pub use self::name_map::{NameMap, Operand, ValuePrinter};
-pub use self::printer::{InstPrinter, MulMode};
+pub use self::name_map::{Interner, NameGenerator, NameMap, Operand};
+pub use self::printer::{InstPrinter, MulMode, Printer};
 pub use self::size::Size;
 pub use self::variable::Variable;
 

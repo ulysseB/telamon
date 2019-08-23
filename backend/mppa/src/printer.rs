@@ -1,4 +1,4 @@
-use crate::ValuePrinter;
+use crate::NameGenerator;
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
@@ -15,11 +15,7 @@ pub struct MppaPrinter {
 
 impl MppaPrinter {
     /// Declares all parameters of the function with the appropriate type
-    fn param_decl(
-        &mut self,
-        param: &ParamVal,
-        name_map: &NameMap<ValuePrinter>,
-    ) -> String {
+    fn param_decl(&mut self, param: &ParamVal, name_map: &NameMap<'_>) -> String {
         let name = name_map.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => {
@@ -32,16 +28,15 @@ impl MppaPrinter {
         }
     }
 
-    /// Declared all variables that have been required from the value_printer
-    fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
-        let value_printer = name_map.value_printer();
+    /// Declared all variables that have been required from the namegen
+    fn var_decls(&mut self, namegen: &NameGenerator) -> String {
         let print_decl = |(&t, &n)| {
             // Type is never supposed to be PtrTo here as we handle ptr types in a different way
             if let ir::Type::PtrTo(..) = t {
                 unreachable!("Type PtrTo are never inserted in this map");
             }
-            let prefix = ValuePrinter::gen_prefix(t);
-            let mut s = format!("{} ", ValuePrinter::get_string(t));
+            let prefix = NameGenerator::gen_prefix(t);
+            let mut s = format!("{} ", NameGenerator::get_string(t));
             s.push_str(
                 &(0..n)
                     .map(|i| format!("{}{}", prefix, i))
@@ -51,18 +46,18 @@ impl MppaPrinter {
             s.push_str(";\n  ");
             s
         };
-        let other_var_decl = value_printer
+        let other_var_decl = namegen
             .num_var
             .iter()
             .map(print_decl)
             .collect_vec()
             .join("\n  ");
-        if value_printer.num_glob_ptr == 0 {
+        if namegen.num_glob_ptr == 0 {
             other_var_decl
         } else {
             format!(
                 "intptr_t {};\n{}",
-                &(0..value_printer.num_glob_ptr)
+                &(0..namegen.num_glob_ptr)
                     .map(|i| format!("ptr{}", i))
                     .collect_vec()
                     .join(", "),
@@ -75,7 +70,7 @@ impl MppaPrinter {
     fn decl_par_indexes(
         &mut self,
         function: &Function,
-        name_map: &NameMap<ValuePrinter>,
+        name_map: &NameMap<'_>,
     ) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
@@ -94,7 +89,7 @@ impl MppaPrinter {
     pub fn function<'a: 'b, 'b>(
         &mut self,
         function: &'b Function<'a>,
-        name_map: &mut NameMap<'b, '_, ValuePrinter>,
+        name_map: &mut NameMap<'b, '_>,
     ) -> String {
         let param_decls = function
             .device_code_args()
@@ -124,7 +119,7 @@ impl MppaPrinter {
             match block.alloc_scheme() {
                 AllocationScheme::Shared => panic!("No shared mem in cpu!!"),
                 AllocationScheme::PrivatisedGlobal => {
-                    self.privatise_global_block(block, name_map, function)
+                    Printer::new(self, name_map).privatise_global_block(block, function)
                 }
                 AllocationScheme::Global => (),
             }
@@ -158,11 +153,11 @@ impl MppaPrinter {
                 .flat_map(|d| d.induction_levels()),
         );
         for level in ind_levels {
-            self.parallel_induction_level(level, name_map);
+            Printer::new(self, name_map).parallel_induction_level(level);
         }
         // BODY
-        self.cfg(function, function.cfg(), name_map);
-        let var_decls = self.var_decls(name_map);
+        Printer::new(self, name_map).cfg(function, function.cfg());
+        let var_decls = self.var_decls(&namegen);
         return_string.push_str(&var_decls);
         return_string.push_str(&self.buffer);
         // Close function bracket
@@ -319,11 +314,7 @@ impl MppaPrinter {
 
     /// Turns the argument of wrapper into an array of void pointers
     /// Necessary to call pthread with it
-    fn build_ptr_struct(
-        &self,
-        func: &Function,
-        name_map: &NameMap<ValuePrinter>,
-    ) -> String {
+    fn build_ptr_struct(&self, func: &Function, name_map: &NameMap<'_>) -> String {
         func.device_code_args()
             .enumerate()
             .map(|(i, arg)| {
@@ -341,7 +332,7 @@ impl MppaPrinter {
     pub fn wrapper_function<'a: 'b, 'b>(
         &mut self,
         func: &'b Function<'a>,
-        name_map: &mut NameMap<'b, '_, ValuePrinter>,
+        name_map: &mut NameMap<'b, '_>,
         id: usize,
     ) -> String {
         let fun_str = self.function(func, name_map);
@@ -404,7 +395,7 @@ impl MppaPrinter {
     pub fn print_ocl_wrapper(
         &mut self,
         fun: &Function,
-        name_map: &mut NameMap<ValuePrinter>,
+        name_map: &mut NameMap<'_>,
         id: usize,
     ) -> String {
         let arg_names = fun
@@ -447,8 +438,6 @@ impl MppaPrinter {
 }
 
 impl InstPrinter for MppaPrinter {
-    type ValuePrinter = ValuePrinter;
-
     fn print_binop(
         &mut self,
         vector_factors: [u32; 2],
@@ -607,74 +596,6 @@ impl InstPrinter for MppaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "if (pthread_barrier_wait(tid->barrier)) {{printf(\"barrier error\\n\"); return;}}\n",
-        ));
-    }
-
-    fn name_operand<'a>(
-        vector_dims: &[Vec<Dimension>; 2],
-        op: &'a ir::Operand,
-        name_map: &'a NameMap<ValuePrinter>,
-    ) -> Cow<'a, str> {
-        assert!(vector_dims[0].is_empty());
-        assert!(vector_dims[1].is_empty());
-        name_map.name_op(op)
-    }
-
-    fn name_inst<'a>(
-        vector_dims: &[Vec<Dimension>; 2],
-        inst: ir::InstId,
-        name_map: &'a NameMap<ValuePrinter>,
-    ) -> Cow<'a, str> {
-        assert!(vector_dims[0].is_empty());
-        assert!(vector_dims[1].is_empty());
-        name_map.name_inst(inst).into()
-    }
-
-    /// Prints a standard loop as a C for loop
-    fn standard_loop(
-        &mut self,
-        fun: &Function,
-        dim: &Dimension,
-        cfgs: &[Cfg],
-        namer: &mut NameMap<Self::ValuePrinter>,
-    ) {
-        let idx = namer.name_index(dim.id()).to_string();
-        let mut ind_var_vec = vec![];
-        let ind_levels = dim.induction_levels();
-        for level in ind_levels.iter() {
-            let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
-            let ind_var = namer.name_induction_var(level.ind_var, dim_id);
-            let base_components = level.base.components().map(|v| namer.name(v));
-            match base_components.collect_vec()[..] {
-                [ref base] => self.print_move(level.t(), &ind_var, &base),
-                [ref lhs, ref rhs] => self.print_add_int(level.t(), &ind_var, lhs, rhs),
-                _ => panic!(),
-            };
-            ind_var_vec.push(ind_var.into_owned());
-        }
-
-        let size = namer.name_size(dim.size(), Type::I(32)).to_string();
-
-        unwrap!(writeln!(
-            self.buffer,
-            "/* Loop for dimension {dim_id} */\nfor({idx} = 0; {idx} < {dim_size}; {idx}++) {{",
-            dim_id = dim.id(),
-            idx = idx,
-            dim_size = size
-        ));
-
-        self.cfg_vec(fun, cfgs, namer);
-        for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
-            if let Some((_, ref increment)) = level.increment {
-                let step = namer.name_size(increment, level.t());
-                self.print_add_int(level.t(), &ind_var, &ind_var, &step);
-            };
-        }
-
-        unwrap!(writeln!(
-            self.buffer,
-            "}} /* End Loop for dimension {} */",
-            dim_id = dim.id()
         ));
     }
 }

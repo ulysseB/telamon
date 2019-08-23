@@ -1,15 +1,23 @@
-use crate::codegen::{
-    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
-};
-use crate::ir::{self, dim, DimMap, InstId, Type};
+use std::borrow::{Borrow, Cow, ToOwned};
+use std::cell::RefCell;
+use std::collections::hash_map;
+use std::convert::TryFrom;
+use std::fmt;
+
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
-use std;
-use std::borrow::Cow;
-use std::collections::hash_map;
+use num::{Float, ToPrimitive};
+use typed_arena::Arena;
 use utils::*;
+
+use crate::codegen::{
+    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
+};
+use crate::ir::{self, dim, DimMap, InstId, Type};
+
+use super::llir::{self, Register};
 
 // TODO(cleanup): refactor
 
@@ -22,11 +30,7 @@ pub enum Operand<'a> {
 
 /// Print the appropriate String for a given value on target
 /// Values could be constants or variables.
-pub trait ValuePrinter {
-    /// Provides a string representing a floating point constant.
-    fn get_const_float(&self, _: &Ratio<BigInt>, _: u16) -> String;
-    /// Provides a string representing an integer constant.
-    fn get_const_int(&self, _: &BigInt, _: u16) -> String;
+pub trait NameGenerator {
     /// Provides a name for a variable of the given type.
     fn name(&mut self, t: Type) -> String;
     /// Generates a name for a parameter.
@@ -34,45 +38,75 @@ pub trait ValuePrinter {
 }
 
 /// Maps variables to names.
-// TODO(cc_perf): use an arena rather that ref-counted strings
-pub struct NameMap<'a, 'b, VP: ValuePrinter> {
+pub struct NameMap<'a> {
+    interner: &'a Interner<str>,
+
     /// Provides fresh names.
-    value_printer: &'b mut VP,
+    namegen: RefCell<&'a mut dyn NameGenerator>,
     /// Keeps track of the names of the variables used in the kernel
-    variables: FxHashMap<ir::VarId, VariableNames>,
+    variables: FxHashMap<ir::VarId, VariableNames<Register<'a>>>,
     /// Keeps track of the name of the values produced by instructions.
-    insts: FxHashMap<InstId, VariableNames>,
+    insts: FxHashMap<InstId, VariableNames<Register<'a>>>,
     /// Keeps track of loop index names.
-    indexes: FxHashMap<ir::DimId, RcStr>,
+    indexes: FxHashMap<ir::DimId, Register<'a>>,
     /// Keeps track of parameter names, both in the code and in the arguments.
-    params: FxHashMap<ParamValKey<'a>, (String, String)>,
+    params: FxHashMap<ParamValKey<'a>, (Register<'a>, &'a str)>,
     /// Keeps track of memory block address names.
-    mem_blocks: FxHashMap<ir::MemId, String>,
+    mem_blocks: FxHashMap<ir::MemId, Register<'a>>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
     current_indexes: FxHashMap<ir::DimId, usize>,
     /// Tracks the name of induction variables partial names.
-    induction_vars: FxHashMap<ir::IndVarId, String>,
-    induction_levels: FxHashMap<(ir::IndVarId, ir::DimId), String>,
+    induction_vars: FxHashMap<ir::IndVarId, llir::Operand<'a>>,
+    induction_levels: FxHashMap<(ir::IndVarId, ir::DimId), Register<'a>>,
     /// Casted sizes.
-    size_casts: FxHashMap<(&'a codegen::Size, ir::Type), String>,
+    size_casts: FxHashMap<(&'a codegen::Size, ir::Type), Register<'a>>,
     /// Guard to use in front of instructions with side effects.
-    side_effect_guard: Option<RcStr>,
+    side_effect_guard: Option<Register<'a>>,
 }
 
-impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
+/// An interner, used to convert owned objects into a long-lived borrowed version.
+///
+/// This is essentially a wrapper around an `Arena` which avoids leaking the `typed_arena`
+/// dependency.
+pub struct Interner<B: ToOwned + ?Sized> {
+    arena: Arena<B::Owned>,
+}
+
+impl<B: ToOwned + ?Sized> Default for Interner<B> {
+    fn default() -> Self {
+        Interner {
+            arena: Arena::new(),
+        }
+    }
+}
+
+impl<B: ToOwned + ?Sized> Interner<B> {
+    /// Stores the owned object into the inerner's local storage and returns a reference to the
+    /// stored object.
+    pub fn intern(&self, owned: B::Owned) -> &B {
+        (*self.arena.alloc(owned)).borrow()
+    }
+}
+
+impl<'a> NameMap<'a> {
     /// Creates a new `NameMap`.
-    pub fn new(function: &'a Function<'a>, value_printer: &'b mut VP) -> Self {
+    pub fn new(
+        interner: &'a Interner<str>,
+        function: &'a Function<'a>,
+        namegen: &'a mut dyn NameGenerator,
+    ) -> Self {
         let mut mem_blocks = FxHashMap::default();
         // Setup parameters names.
         let params = function
             .device_code_args()
             .map(|val| {
-                let var_name = value_printer.name(val.t());
-                let param_name = value_printer.name_param(val.key());
+                let var_name =
+                    Register::new(interner.intern(namegen.name(val.t())), val.t());
+                let param_name = interner.intern(namegen.name_param(val.key()));
                 if let ParamValKey::GlobalMem(id) = val.key() {
-                    mem_blocks.insert(id, var_name.clone());
+                    mem_blocks.insert(id, var_name);
                 }
                 (val.key(), (var_name, param_name))
             })
@@ -80,32 +114,52 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         // Name dimensions indexes.
         let mut indexes = FxHashMap::default();
         for dim in function.dimensions() {
-            let name = RcStr::new(value_printer.name(Type::I(32)));
+            let name = interner.intern(namegen.name(Type::I(32)));
             for id in dim.dim_ids() {
-                indexes.insert(id, name.clone());
+                indexes.insert(id, Register::new(name, Type::I(32)));
             }
         }
         // Name induction levels.
         let mut induction_levels = FxHashMap::default();
         let mut induction_vars = FxHashMap::default();
         for level in function.induction_levels() {
-            let name = value_printer.name(level.t());
+            let name = interner.intern(namegen.name(level.t()));
             if let Some((dim, _)) = level.increment {
-                induction_levels.insert((level.ind_var, dim), name);
+                induction_levels
+                    .insert((level.ind_var, dim), Register::new(name, level.t()));
             } else {
-                induction_vars.insert(level.ind_var, name);
+                induction_vars
+                    .insert(level.ind_var, Register::new(name, level.t()).into());
             }
         }
         // Name shared memory blocks. Global mem blocks are named by parameters.
         for mem_block in function.mem_blocks() {
             if mem_block.alloc_scheme() == AllocationScheme::Shared {
-                let name = value_printer.name(mem_block.ptr_type());
+                let name = Register::new(
+                    interner.intern(namegen.name(mem_block.ptr_type())),
+                    mem_block.ptr_type(),
+                );
                 mem_blocks.insert(mem_block.id(), name);
             }
         }
-        let variables = VariableNames::create(function, value_printer);
+        let mut variables: FxHashMap<_, VariableNames<_>> = FxHashMap::default();
+        for var in function.variables() {
+            let names = match var.alias() {
+                None => VariableNames::new(var.instantiation_dims(), |_| {
+                    Register::new(interner.intern(namegen.name(var.t())), var.t())
+                }),
+                Some(alias) => {
+                    // `codegen::Function` lists variables that depend on an alias after the
+                    // alias so we know the alias is already in `vars_names`.
+                    variables[&alias.other_variable()].create_alias(alias.dim_mapping())
+                }
+            };
+            variables.insert(var.id(), names);
+        }
+
         let mut name_map = NameMap {
-            value_printer,
+            interner,
+            namegen: RefCell::new(namegen),
             insts: FxHashMap::default(),
             variables,
             num_loop: 0,
@@ -124,7 +178,7 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
                 // In the first case, the value is computed elsewhere.
                 [] => (),
                 [value] => {
-                    let name = name_map.name(value).to_string();
+                    let name = name_map.name(value);
                     name_map.induction_vars.insert(var.id, name);
                 }
                 _ => panic!(
@@ -149,17 +203,9 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         name_map
     }
 
-    pub fn value_printer(&self) -> &VP {
-        self.value_printer
-    }
-
-    pub fn value_printer_mut(&mut self) -> &mut VP {
-        self.value_printer
-    }
-
     /// Generates a variable of the given `Type`.
-    pub fn gen_name(&mut self, t: Type) -> String {
-        self.value_printer.name(t)
+    pub fn gen_name(&self, t: Type) -> Register<'a> {
+        Register::new(self.interner.intern(self.namegen.borrow_mut().name(t)), t)
     }
 
     /// Generates an ID for a loop.
@@ -169,7 +215,7 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         id
     }
 
-    pub fn name<'c>(&'c self, operand: Operand<'c>) -> Cow<'c, str> {
+    pub fn name(&self, operand: Operand<'a>) -> llir::Operand<'a> {
         match operand {
             Operand::Operand(op) => self.name_op(op),
             Operand::InductionLevel(ind_var, level) => {
@@ -179,63 +225,73 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Asigns a name to an operand.
-    pub fn name_op<'c>(&'c self, operand: &'c ir::Operand) -> Cow<'c, str> {
+    pub fn name_op(&self, operand: &'a ir::Operand) -> llir::Operand<'a> {
         self.name_op_with_indexes(operand, Cow::Borrowed(&self.current_indexes))
     }
 
     /// Returns the name of the operand, for the given indexes on the given dimensions.
-    fn name_op_with_indexes<'c>(
-        &'c self,
-        operand: &'c ir::Operand,
+    fn name_op_with_indexes(
+        &self,
+        operand: &'a ir::Operand,
         indexes: Cow<FxHashMap<ir::DimId, usize>>,
-    ) -> Cow<'c, str> {
+    ) -> llir::Operand<'a> {
         match operand {
             ir::Operand::Int(val, len) => {
-                Cow::Owned(self.value_printer.get_const_int(val, *len))
+                llir::Operand::IntLiteral(Cow::Borrowed(val), *len)
             }
             ir::Operand::Float(val, len) => {
-                Cow::Owned(self.value_printer.get_const_float(val, *len))
+                llir::Operand::FloatLiteral(Cow::Borrowed(val), *len)
             }
             ir::Operand::Inst(id, _, dim_map, _)
             | ir::Operand::Reduce(id, _, dim_map, _) => {
-                Cow::Borrowed(self.name_mapped_inst(*id, indexes.into_owned(), dim_map))
+                self.name_mapped_inst(*id, indexes, dim_map).into()
             }
             ir::Operand::Index(id) => {
-                if let Some(idx) = indexes.get(id) {
-                    Cow::Owned(format!("{}", idx))
+                if let Some(&idx) = indexes.get(id) {
+                    llir::Operand::int(i32::try_from(idx).unwrap())
                 } else {
-                    Cow::Borrowed(&self.indexes[id])
+                    self.indexes[id].into()
                 }
             }
-            ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(&*p)),
-            ir::Operand::Addr(id) => self.name_addr(*id),
+            ir::Operand::Param(p) => {
+                self.name_param_val(ParamValKey::External(&*p)).into()
+            }
+            ir::Operand::Addr(id) => self.name_addr(*id).into(),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(*id, None),
             ir::Operand::Variable(val_id, _t) => {
-                Cow::Borrowed(&self.variables[val_id].get_name(&indexes))
+                self.variables[val_id].get_name(&indexes).into()
             }
         }
     }
 
     /// Returns the name of the instruction.
-    pub fn name_inst(&self, inst: ir::InstId) -> &str {
-        self.name_mapped_inst(inst, self.current_indexes.clone(), &dim::Map::empty())
+    pub fn name_inst(&self, inst: ir::InstId) -> Register<'a> {
+        self.name_mapped_inst(
+            inst,
+            Cow::Borrowed(&self.current_indexes),
+            &dim::Map::empty(),
+        )
     }
 
     pub fn indexed_inst_name(
         &self,
         inst: ir::InstId,
         indexes: &[(ir::DimId, u32)],
-    ) -> &str {
-        let mut indexes_map = self.current_indexes.clone();
-        indexes_map.extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
+    ) -> Register<'a> {
+        let mut indexes_map = Cow::Borrowed(&self.current_indexes);
+        if !indexes.is_empty() {
+            indexes_map
+                .to_mut()
+                .extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
+        }
         self.name_mapped_inst(inst, indexes_map, &DimMap::empty())
     }
 
-    pub fn indexed_op_name<'c>(
-        &'c self,
-        op: &'c ir::Operand,
+    pub fn indexed_op_name(
+        &self,
+        op: &'a ir::Operand,
         indexes: &[(ir::DimId, u32)],
-    ) -> Cow<'c, str> {
+    ) -> llir::Operand<'a> {
         let mut indexes_map = self.current_indexes.clone();
         indexes_map.extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
         self.name_op_with_indexes(op, Cow::Owned(indexes_map))
@@ -245,16 +301,19 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     fn name_mapped_inst(
         &self,
         id: InstId,
-        mut indexes: FxHashMap<ir::DimId, usize>,
+        mut indexes: Cow<FxHashMap<ir::DimId, usize>>,
         dim_map: &DimMap,
-    ) -> &str {
+    ) -> Register<'a> {
         for &(lhs, rhs) in dim_map.iter() {
-            indexes.remove(&rhs).map(|idx| indexes.insert(lhs, idx));
+            indexes
+                .to_mut()
+                .remove(&rhs)
+                .map(|idx| indexes.to_mut().insert(lhs, idx));
         }
-        self.insts[&id].get_name(&indexes)
+        *self.insts[&id].get_name(&indexes)
     }
 
-    /// Declares an instruction to the value_printer.
+    /// Declares an instruction to the namegen.
     fn decl_inst(&mut self, inst: &Instruction) {
         // We temporarily rely on `VariableNames` to generate instruction names until we
         // remove the need to rename variables altogether.
@@ -263,7 +322,9 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
             .instantiation_dims()
             .iter()
             .map(|&(dim, size)| (dim, size as usize));
-        let names = VariableNames::new(t, dims, self.value_printer);
+        let names = VariableNames::new(dims, |_| {
+            Register::new(self.interner.intern(self.namegen.borrow_mut().name(t)), t)
+        });
         assert!(self.insts.insert(inst.id(), names).is_none());
     }
 
@@ -292,8 +353,8 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Returns the name of an index.
-    pub fn name_index(&self, dim_id: ir::DimId) -> &str {
-        &self.indexes[&dim_id]
+    pub fn name_index(&self, dim_id: ir::DimId) -> Register<'a> {
+        self.indexes[&dim_id]
     }
 
     /// Set the current index of an unrolled dimension.
@@ -311,19 +372,21 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
     }
 
     /// Returns the name of a variable representing a parameter.
-    pub fn name_param(&self, param: ParamValKey<'a>) -> Cow<str> {
-        Cow::Borrowed(&self.params[&param].1)
+    pub fn name_param<'c>(&'c self, param: ParamValKey<'c>) -> &'a str {
+        &self.params.get(&param).unwrap().1
     }
 
     /// Returns the name of a variable representing a parameter value.
-    pub fn name_param_val(&self, param: ParamValKey<'a>) -> Cow<str> {
-        let name = &unwrap!(self.params.get(&param), "cannot find {:?} entry", param).0;
-        Cow::Borrowed(name)
+    pub fn name_param_val<'c>(&'c self, param: ParamValKey<'c>) -> Register<'a> {
+        self.params
+            .get(&param)
+            .unwrap_or_else(|| panic!("cannot find {:?} entry", param))
+            .0
     }
 
     /// Returns the name of the address of a memory block.
-    pub fn name_addr(&self, id: ir::MemId) -> Cow<str> {
-        Cow::Borrowed(&self.mem_blocks[&id])
+    pub fn name_addr(&self, id: ir::MemId) -> Register<'a> {
+        self.mem_blocks[&id]
     }
 
     /// Assigns a name to an induction variable.
@@ -332,11 +395,11 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         &self,
         var: ir::IndVarId,
         dim: Option<ir::DimId>,
-    ) -> Cow<str> {
+    ) -> llir::Operand<'a> {
         if let Some(dim) = dim {
-            Cow::Borrowed(&self.induction_levels[&(var, dim)])
+            self.induction_levels[&(var, dim)].into()
         } else {
-            Cow::Borrowed(&self.induction_vars[&var])
+            self.induction_vars[&var].clone()
         }
     }
 
@@ -346,15 +409,16 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         &mut self,
         size: &'a codegen::Size,
         t: ir::Type,
-    ) -> Option<String> {
+    ) -> Option<Register<'a>> {
         if size.dividend().is_empty() || t == Type::I(32) {
             return None;
         }
         match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
-            hash_map::Entry::Vacant(entry) => {
-                Some(entry.insert(self.value_printer.name(t)).to_string())
-            }
+            hash_map::Entry::Vacant(entry) => Some(*entry.insert(Register::new(
+                self.interner.intern(self.namegen.borrow_mut().name(t)),
+                t,
+            ))),
         }
     }
 
@@ -363,31 +427,82 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
         &'c self,
         size: &'c codegen::Size,
         expected_t: ir::Type,
-    ) -> Cow<'c, str> {
+    ) -> llir::Operand<'a> {
         match (size.dividend(), expected_t) {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);
-                Cow::Owned(size.factor().to_string())
+                llir::Operand::int(i32::try_from(size.factor()).unwrap())
             }
             ([p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 => {
-                self.name_param_val(ParamValKey::External(&**p))
+                self.name_param_val(ParamValKey::External(&**p)).into()
             }
-            (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)),
-            _ => {
-                let size = unwrap!(self.size_casts.get(&(size, expected_t)));
-                Cow::Borrowed(size)
-            }
+            (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)).into(),
+            _ => self.size_casts.get(&(size, expected_t)).unwrap().into(),
         }
     }
 
     /// Returns the side-effect guard, if any is set.
-    pub fn side_effect_guard(&self) -> Option<RcStr> {
-        self.side_effect_guard.clone()
+    pub fn side_effect_guard(&self) -> Option<Register<'a>> {
+        self.side_effect_guard
     }
 
     /// Sets the predicate to use in front of side-effect instruction.
-    pub fn set_side_effect_guard(&mut self, guard: Option<RcStr>) {
+    pub fn set_side_effect_guard(&mut self, guard: Option<Register<'a>>) {
         self.side_effect_guard = guard;
+    }
+
+    fn vectorize<F, T>(
+        &self,
+        vector_levels: &[Vec<Dimension>; 2],
+        get_name: F,
+    ) -> llir::Vector<T>
+    where
+        F: Fn(&[(ir::DimId, u32)]) -> T,
+    {
+        assert!(vector_levels[0].is_empty());
+
+        if vector_levels[1].is_empty() {
+            return llir::Vector::Scalar(get_name(&[]));
+        }
+
+        let sizes = vector_levels
+            .iter()
+            .flat_map(|level| level.iter().map(|d| d.size().as_int().unwrap()))
+            .collect::<Vec<_>>();
+        llir::Vector::Vector(
+            NDRange::new(&sizes)
+                .map(|indices| {
+                    get_name(
+                        &vector_levels
+                            .iter()
+                            .flatten()
+                            .zip_eq(indices)
+                            .map(|(d, idx)| (d.id(), idx))
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .collect(),
+        )
+    }
+
+    /// Name an operand, vectorized on the given dimensions.
+    pub fn vector_operand(
+        &self,
+        vector_levels: &[Vec<Dimension>; 2],
+        op: &'a ir::Operand,
+    ) -> llir::Vector<llir::Operand<'a>> {
+        self.vectorize(vector_levels, |indices| self.indexed_op_name(op, indices))
+    }
+
+    /// Names an instruction, vectorized on the given dimensions.
+    pub fn vector_inst(
+        &self,
+        vector_levels: &[Vec<Dimension>; 2],
+        inst: ir::InstId,
+    ) -> llir::Vector<llir::Register<'a>> {
+        self.vectorize(vector_levels, |indices| {
+            self.indexed_inst_name(inst, indices)
+        })
     }
 }
 
@@ -399,9 +514,9 @@ impl<'a, 'b, VP: ValuePrinter> NameMap<'a, 'b, VP> {
 /// tracks a shared tensor of names and how to map dimension indexes to the tensor
 /// indexes.
 #[derive(Clone, Debug)]
-struct VariableNames {
+struct VariableNames<T> {
     indexes: Vec<VarNameIndex>,
-    names: std::rc::Rc<NDArray<String>>,
+    names: std::rc::Rc<NDArray<T>>,
 }
 
 /// Indicates how to compute indexes in the n-dimensional arrays that store a value names.
@@ -413,9 +528,9 @@ enum VarNameIndex {
     Last,
 }
 
-impl VariableNames {
+impl<T> VariableNames<T> {
     /// Returns the name of the variable for the given dimension indexes.
-    fn get_name(&self, dim_indexes: &FxHashMap<ir::DimId, usize>) -> &str {
+    fn get_name(&self, dim_indexes: &FxHashMap<ir::DimId, usize>) -> &T {
         let indexes = self
             .indexes
             .iter()
@@ -430,36 +545,18 @@ impl VariableNames {
         &self.names[&indexes]
     }
 
-    /// Creates the mapping from variables to names.
-    fn create(
-        function: &codegen::Function,
-        value_printer: &mut dyn ValuePrinter,
-    ) -> FxHashMap<ir::VarId, Self> {
-        let mut vars_names = FxHashMap::<_, Self>::default();
-        for var in function.variables() {
-            let names = if let Some(alias) = var.alias() {
-                // `codegen::Function` lists variables that depend on an alias after the
-                // alias so we know the alias is already in `vars_names`.
-                vars_names[&alias.other_variable()].create_alias(alias.dim_mapping())
-            } else {
-                Self::new(var.t(), var.instantiation_dims(), value_printer)
-            };
-            vars_names.insert(var.id(), names);
-        }
-        vars_names
-    }
-
     /// Creates a new set of names for a variable instantiated along the given dimensions.
-    fn new<IT>(t: ir::Type, dims: IT, value_printer: &mut dyn ValuePrinter) -> Self
+    fn new<IT, F>(dims: IT, fresh: F) -> Self
     where
         IT: IntoIterator<Item = (ir::DimId, usize)>,
+        F: FnMut(usize) -> T,
     {
         let (indexes, dim_sizes): (Vec<_>, Vec<_>) = dims
             .into_iter()
             .map(|(dim, size)| (VarNameIndex::FromDim(dim), size))
             .unzip();
         let num_names = dim_sizes.iter().product::<usize>();
-        let names = (0..num_names).map(|_| value_printer.name(t)).collect();
+        let names = (0..num_names).map(fresh).collect();
         VariableNames {
             indexes,
             names: std::rc::Rc::new(NDArray::new(dim_sizes, names)),
@@ -497,16 +594,17 @@ impl VariableNames {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::ir;
 
-    /// A `ValuePrinter` for use in tests.
+    use super::*;
+
+    /// A `NameGenerator` for use in tests.
     #[derive(Default)]
-    pub struct FakeValuePrinter {
+    pub struct FakeNameGenerator {
         next_name: usize,
     }
 
-    impl ValuePrinter for FakeValuePrinter {
+    impl NameGenerator for FakeNameGenerator {
         fn name(&mut self, _: ir::Type) -> String {
             let name = format!("%{}", self.next_name);
             self.next_name += 1;
@@ -515,14 +613,6 @@ mod tests {
 
         fn name_param(&mut self, _: ParamValKey) -> String {
             self.name(ir::Type::I(0))
-        }
-
-        fn get_const_float(&self, _: &Ratio<BigInt>, _: u16) -> String {
-            "1.0".to_owned()
-        }
-
-        fn get_const_int(&self, _: &BigInt, _: u16) -> String {
-            "1".to_owned()
         }
     }
 
@@ -540,9 +630,9 @@ mod tests {
 
         // Test without alias.
         let t = ir::Type::F(32);
-        let mut value_printer = FakeValuePrinter::default();
+        let mut namegen = FakeNameGenerator::default();
         let root_names =
-            VariableNames::new(t, vec![(dim0, 3), (dim1, 5)], &mut value_printer);
+            VariableNames::new(vec![(dim0, 3), (dim1, 5)], |_| namegen.name(t));
         let name_1_3 = root_names.get_name(&mk_index(&[(dim0, 1), (dim1, 3)]));
         let name_2_4 = root_names.get_name(&mk_index(&[(dim0, 2), (dim1, 4)]));
         assert!(name_1_3 != name_2_4);
