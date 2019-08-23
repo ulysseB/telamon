@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fmt, fs, io};
 
-use log::warn;
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
@@ -355,6 +354,7 @@ pub use cuda_reference::CublasHandle;
 
 #[cfg(feature = "x86")]
 mod x86_reference {
+    use log::warn;
     use telamon_kernels::linalg;
 
     use super::Reference;
