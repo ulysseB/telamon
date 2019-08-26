@@ -358,8 +358,8 @@ impl Condition {
     ) -> Condition {
         self.evaluate(inputs, input_mapping, ir_desc)
             .as_bool()
-            .map(|b| Condition::Bool(b))
-            .unwrap_or(self.clone())
+            .map(Condition::Bool)
+            .unwrap_or_else(|| self.clone())
     }
 
     /// Evaluates the condition. Requires the mapping to be instantiated.
@@ -470,7 +470,7 @@ impl Adaptable for Condition {
                 Condition::Enum {
                     input: new_input,
                     values: values.clone(),
-                    negate: negate,
+                    negate,
                     inverse: inverse ^ inversed,
                 }
             }
@@ -484,7 +484,7 @@ impl Adaptable for Condition {
                 Condition::CmpCode {
                     lhs: new_lhs,
                     rhs: rhs.adapt(adaptator),
-                    op: op,
+                    op,
                 }
             }
             Condition::CmpInput {
@@ -498,7 +498,7 @@ impl Adaptable for Condition {
                 Condition::CmpInput {
                     lhs: new_lhs,
                     rhs: new_rhs,
-                    op: op,
+                    op,
                     inverse: inverse ^ lhs_inversed ^ rhs_inversed,
                 }
             }
@@ -532,8 +532,8 @@ impl CmpOp {
     }
 
     /// Returns the equivalent operator for when the operator are inversed.
-    pub fn inverse(&self) -> Self {
-        match *self {
+    pub fn inverse(self) -> Self {
+        match self {
             CmpOp::Lt => CmpOp::Gt,
             CmpOp::Gt => CmpOp::Lt,
             CmpOp::Leq => CmpOp::Geq,
@@ -544,16 +544,16 @@ impl CmpOp {
     }
 
     /// Indicates if the operator returns true when both operands are equals.
-    pub fn allows_eq(&self) -> bool {
-        match *self {
+    pub fn allows_eq(self) -> bool {
+        match self {
             CmpOp::Lt | CmpOp::Gt | CmpOp::Neq => false,
             CmpOp::Leq | CmpOp::Geq | CmpOp::Eq => true,
         }
     }
 
     /// Evaluates the operator on the given `ValueSet`s.
-    pub fn evaluate(&self, lhs: &ValueSet, rhs: &ValueSet) -> Trivalent {
-        match *self {
+    pub fn evaluate(self, lhs: &ValueSet, rhs: &ValueSet) -> Trivalent {
+        match self {
             CmpOp::Lt | CmpOp::Gt | CmpOp::Leq | CmpOp::Geq => Trivalent::Maybe,
             CmpOp::Eq if lhs.is_constrained().is_true() => lhs.is(rhs) & rhs.is(lhs),
             CmpOp::Eq => lhs.is(rhs) & rhs.is(lhs) & Trivalent::Maybe,
@@ -573,15 +573,16 @@ where
     IT: IntoIterator<Item = &'a RcStr>,
 {
     let inverser = |x| if inverse { choice.inverse(x) } else { x };
-    let mut values: FxHashSet<_> = values.into_iter().map(inverser).collect();
+    let values: FxHashSet<_> = values.into_iter().map(inverser).collect();
     if negate {
-        values = choice
+        choice
             .values()
             .keys()
             .filter(|&x| !values.contains(x))
-            .collect();
+            .collect()
+    } else {
+        values
     }
-    values
 }
 
 /// Creates a `ValueSet` from the list of enum values.
@@ -596,7 +597,7 @@ where
 {
     let values = normalize_values(values, negate, inverse, choice)
         .into_iter()
-        .map(|x| x.clone())
+        .cloned()
         .collect();
     ValueSet::enum_values(choice.name().clone(), values)
 }
@@ -685,7 +686,7 @@ impl ValueSet {
     pub fn enum_values(enum_: RcStr, values: BTreeSet<RcStr>) -> Self {
         ValueSet::Enum {
             enum_name: enum_,
-            values: values,
+            values,
             inputs: Default::default(),
         }
     }
@@ -729,7 +730,7 @@ impl ValueSet {
                 is_full,
                 ref cmp_inputs,
                 ref cmp_code,
-                universe: _,
+                ..
             } => !is_full && cmp_inputs.is_empty() && cmp_code.is_empty(),
         }
     }
@@ -798,13 +799,13 @@ impl ValueSet {
                 ref mut is_full,
                 ref mut cmp_inputs,
                 ref mut cmp_code,
-                universe: _,
+                ..
             } => {
                 if let ValueSet::Integer {
                     is_full: other_full,
                     cmp_inputs: other_inputs,
                     cmp_code: other_code,
-                    universe: _,
+                    ..
                 } = other
                 {
                     if *is_full || other_full {
@@ -911,7 +912,7 @@ impl ValueSet {
                                         .cloned();
                                     new_values.extend(values);
                                 } else {
-                                    new_values.extend(values.into_iter().cloned());
+                                    new_values.extend(values.iter().cloned());
                                 }
                                 for &(new_input, neg2, inv) in inputs {
                                     new_inputs.insert((new_input, negate ^ neg2, inv));

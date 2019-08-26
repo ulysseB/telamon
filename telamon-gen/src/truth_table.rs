@@ -521,8 +521,8 @@ pub mod test {
     fn mk_enum_cond(input: usize, values: &[&str]) -> ir::Condition {
         let values = values.iter().map(|&s| s.into()).collect();
         ir::Condition::Enum {
-            input: input,
-            values: values,
+            input,
+            values,
             negate: false,
             inverse: false,
         }

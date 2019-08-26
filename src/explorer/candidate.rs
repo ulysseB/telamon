@@ -72,7 +72,7 @@ impl Candidate {
         path: P,
         context: &dyn Context,
         eval: f64,
-        err: &String,
+        err: &str,
     ) -> io::Result<()> {
         std::fs::create_dir_all(path.as_ref()).unwrap();
 

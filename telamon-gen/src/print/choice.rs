@@ -104,7 +104,7 @@ impl<'a> Ast<'a> {
             .enumerate()
             .map(|(id, f)| filter::Filter::new(f, id, choice, ir_desc))
             .collect();
-        let ref ctx = ast::Context::new(ir_desc, choice, &[], &[]);
+        let ctx = &ast::Context::new(ir_desc, choice, &[], &[]);
         let arguments = choice
             .arguments()
             .iter()
@@ -187,7 +187,7 @@ impl<'a> FilterAction<'a> {
     ) -> Self {
         let set = ast::Variable::with_name("values");
         let forall_vars = &action.filter.forall_vars;
-        let ref ctx = ast::Context::new(ir_desc, choice, forall_vars, &[]);
+        let ctx = &ast::Context::new(ir_desc, choice, forall_vars, &[]);
         let conflicts = ast::Conflict::choice_args(choice, &ctx);
         let body = FilterCall::new(&action.filter, set, conflicts, 0, ctx);
         let constraints = ast::SetConstraint::new(&action.set_constraints, ctx);
@@ -265,7 +265,7 @@ impl<'a> OnChangeAction<'a> {
         // Setup the context and variable names.
         let forall_vars = action.forall_vars.iter().chain(action.action.variables());
         let inputs = action.action.inputs();
-        let ref ctx = ast::Context::new(ir_desc, choice, forall_vars, inputs);
+        let ctx = &ast::Context::new(ir_desc, choice, forall_vars, inputs);
         let mut conflicts = ast::Conflict::choice_args(choice, ctx);
         // Declare loop nests.
         let loop_nest = {

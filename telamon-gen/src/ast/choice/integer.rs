@@ -23,7 +23,7 @@ impl IntegerDef {
         &self,
         context: &CheckerContext,
     ) -> Result<(), TypeError> {
-        for VarDef { name: _, ref set } in self.variables.iter() {
+        for VarDef { ref set, .. } in self.variables.iter() {
             if !context.check_set_define(set) {
                 let name: &String = set.name.deref();
 

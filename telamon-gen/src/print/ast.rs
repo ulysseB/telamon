@@ -145,7 +145,7 @@ impl<'a> Context<'a> {
 
     /// Returns the name of the variable and the set it iterates on.
     pub fn var_def(&self, var: ir::Variable) -> (Variable<'a>, &'a ir::Set) {
-        let ref entry = self.vars[&var];
+        let entry = &self.vars[&var];
         (entry.0.clone(), &entry.1)
     }
 
@@ -305,7 +305,7 @@ impl<'a> LoopNest<'a> {
             .map(|var| Self::build_level(var, ctx, outer_vars, skip_new_objs))
             .collect();
         LoopNest {
-            levels: levels,
+            levels,
             triangular: false,
         }
     }
@@ -339,7 +339,7 @@ impl<'a> LoopNest<'a> {
         };
         let levels = vec![(lhs, set.clone(), vec![]), (rhs, set, vec![conflict])];
         LoopNest {
-            levels: levels,
+            levels,
             triangular: true,
         }
     }
@@ -369,7 +369,7 @@ impl<'a> LoopNest<'a> {
 }
 
 /// Performs variable substitution in a piece of rust code.
-pub fn code<'a>(code: &ir::Code, ctx: &Context) -> String {
+pub fn code(code: &ir::Code, ctx: &Context) -> String {
     let mut s = code.code.to_string();
     s = s.replace("$fun", "ir_instance");
     for &(sub, ref var) in &code.vars {

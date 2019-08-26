@@ -35,7 +35,7 @@ pub fn partial_iterators<'a>(
         .iter()
         .flat_map(|choice_ast| {
             let choice = ir_desc.get_choice(choice_ast.name());
-            let ref ctx = ast::Context::new(ir_desc, choice, &[], &[]);
+            let ctx = &ast::Context::new(ir_desc, choice, &[], &[]);
             let args = choice
                 .arguments()
                 .sets()
@@ -83,8 +83,8 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
             ..
         } = *choice.choice_def()
         {
-            let ref ctx = ast::Context::new(ir_desc, choice, incr_iter, &[]);
-            let ref counter = ir::ChoiceInstance {
+            let ctx = &ast::Context::new(ir_desc, choice, incr_iter, &[]);
+            let counter = &ir::ChoiceInstance {
                 choice: choice.name().clone(),
                 vars: (0..choice.arguments().len())
                     .map(ir::Variable::Arg)
@@ -94,7 +94,7 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
             for (pos, set) in incr_iter.iter().enumerate() {
                 // Setup the context.
                 let obj = ast::Variable::with_name("obj");
-                let ref mut ctx = ctx.set_var_name(ir::Variable::Forall(pos), obj);
+                let ctx = &mut ctx.set_var_name(ir::Variable::Forall(pos), obj);
                 if let Some(arg) = set.arg() {
                     ctx.mut_var_name(arg, Variable::with_name("arg"));
                 }
@@ -144,10 +144,10 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                         .flat_map(|conflict| conflict.generate_ast(arg_set, ctx))
                         .collect()
                     })
-                    .unwrap_or(vec![]);
+                    .unwrap_or_else(Vec::new);
                 // Create the loop nest.
-                let ref mut conflicts =
-                    PartialIterator::current_new_obj_conflicts(set).collect();
+                let conflicts =
+                    &mut PartialIterator::current_new_obj_conflicts(set).collect();
                 let mut loop_nest =
                     ast::LoopNest::new(counter_loops, ctx, conflicts, true);
                 conflicts.extend(PartialIterator::new_objs_conflicts(ir_desc, set));

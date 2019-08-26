@@ -77,7 +77,7 @@ impl<'a> Rollout<'a> {
 
     /// Perform one rollout step: select a set of actions according to the choice ordering, apply
     /// them, and select among the resulting candidates according to the rollout policy.
-    fn step<'c>(&self, candidate: &Candidate) -> Result<Candidate, RolloutError> {
+    fn step(&self, candidate: &Candidate) -> Result<Candidate, RolloutError> {
         if let Some(choice) = choice::list(self.choice_order, &candidate.space).next() {
             let mut children = candidate.apply_choice(self.context, choice);
             if let Some(idx) = self.node_order.pick_candidate(&children, self.cut) {
@@ -92,7 +92,7 @@ impl<'a> Rollout<'a> {
 
     /// Repeatedly perform rollout steps on the `candidate` until it is fully specified or a
     /// deadend is reached, in which case `None` is returned.
-    pub fn descend<'c>(&self, mut candidate: Candidate) -> Option<Candidate> {
+    pub fn descend(&self, mut candidate: Candidate) -> Option<Candidate> {
         loop {
             match self.step(&candidate) {
                 Ok(next) => candidate = next,

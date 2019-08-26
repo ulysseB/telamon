@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#![deny(bare_trait_objects, unused_lifetimes)]
 #![warn(clippy::all)]
 #![allow(clippy::block_in_if_condition_stmt)]
-#![deny(bare_trait_objects)]
 
 pub mod codegen;
 #[macro_use]

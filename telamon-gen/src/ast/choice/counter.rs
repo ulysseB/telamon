@@ -25,6 +25,7 @@ pub struct CounterDef {
 
 impl CounterDef {
     /// Creates an action to update the a counter when incr is modified.
+    #[allow(clippy::too_many_arguments)]
     fn gen_incr_counter(
         &self,
         counter: &RcStr,
@@ -59,6 +60,7 @@ impl CounterDef {
 
     /// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action
     /// so that the referencing counter is updated when the referenced counter is changed.
+    #[allow(clippy::too_many_arguments)]
     fn counter_val_choice(
         &self,
         counter: &ChoiceInstance,
@@ -119,6 +121,7 @@ impl CounterDef {
     /// Creates a choice to store the increment condition of a counter. Returns the
     /// corresponding choice instance from the point of view of the counter and the
     /// condition on wich the counter must be incremented.
+    #[allow(clippy::too_many_arguments)]
     fn gen_increment(
         &self,
         counter: &str,
@@ -132,42 +135,40 @@ impl CounterDef {
     ) -> (ir::ChoiceInstance, ir::ValueSet) {
         // TODO(cleanup): the choice the counter increment is based on must be declared
         // before the increment. It should not be the case.
-        match conditions[..] {
-            [Condition::Is {
-                ref lhs,
-                ref rhs,
-                is,
-            }] => {
-                let incr = lhs.type_check(&ir_desc, var_map);
-                // Ensure all forall values are usefull.
-                let mut foralls = FxHashSet::default();
-                for &v in &incr.vars {
-                    if let ir::Variable::Forall(i) = v {
-                        foralls.insert(i);
-                    }
-                }
-                if foralls.len() == iter_vars.len() {
-                    // Generate the increment condition.
-                    let choice = ir_desc.get_choice(&incr.choice);
-                    let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
-                    let values = type_check_enum_values(enum_, rhs.clone());
-                    let values = if is {
-                        values
-                    } else {
-                        enum_
-                            .values()
-                            .keys()
-                            .filter(|&v| !values.contains(v))
-                            .cloned()
-                            .collect()
-                    };
-                    return (
-                        incr,
-                        ir::ValueSet::enum_values(enum_.name().clone(), values),
-                    );
+        if let [Condition::Is {
+            ref lhs,
+            ref rhs,
+            is,
+        }] = conditions[..]
+        {
+            let incr = lhs.type_check(&ir_desc, var_map);
+            // Ensure all forall values are usefull.
+            let mut foralls = FxHashSet::default();
+            for &v in &incr.vars {
+                if let ir::Variable::Forall(i) = v {
+                    foralls.insert(i);
                 }
             }
-            _ => (),
+            if foralls.len() == iter_vars.len() {
+                // Generate the increment condition.
+                let choice = ir_desc.get_choice(&incr.choice);
+                let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
+                let values = type_check_enum_values(enum_, rhs.clone());
+                let values = if is {
+                    values
+                } else {
+                    enum_
+                        .values()
+                        .keys()
+                        .filter(|&v| !values.contains(v))
+                        .cloned()
+                        .collect()
+                };
+                return (
+                    incr,
+                    ir::ValueSet::enum_values(enum_.name().clone(), values),
+                );
+            }
         }
         // Create the new choice.
         let bool_choice: RcStr = "Bool".into();

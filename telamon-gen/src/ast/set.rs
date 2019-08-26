@@ -55,7 +55,7 @@ impl SetDef {
             .map(|(k, _, _)| k.data)
             .collect::<Vec<ir::SetDefKey>>();
 
-        for ref key in ir::SetDefKey::REQUIRED.iter() {
+        for key in ir::SetDefKey::REQUIRED.iter() {
             if !keys.contains(&key) {
                 Err(TypeError::MissingEntry {
                     object_name: self.name.data.to_owned(),
@@ -103,8 +103,7 @@ impl SetDef {
         context: &CheckerContext,
     ) -> Result<(), TypeError> {
         if let Some(VarDef {
-            name: _,
-            set: ref subset,
+            set: ref subset, ..
         }) = self.arg
         {
             if !context.check_set_define(subset) {
@@ -187,6 +186,7 @@ impl SetDef {
 
     /// Creates a counter for the number of objects that can represent another object in
     /// a quotient set. Returns the name of the counter.
+    #[allow(clippy::too_many_arguments)]
     fn create_repr_counter(
         &self,
         set_name: RcStr,
@@ -367,6 +367,7 @@ impl SetDef {
     }
 
     /// Type checks the define's condition.
+    #[allow(clippy::too_many_arguments)]
     pub fn define(
         self,
         context: &CheckerContext,

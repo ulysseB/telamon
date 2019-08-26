@@ -205,12 +205,12 @@ impl<L> Function<L> {
     }
 
     /// Returns the list of instructions of the function.
-    pub fn insts<'b>(&'b self) -> impl Iterator<Item = &'b Instruction<L>> {
+    pub fn insts(&self) -> impl Iterator<Item = &Instruction<L>> {
         self.body.insts.iter()
     }
 
     /// Returns the list of dimensions of the function.
-    pub fn dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<L>> + Clone {
+    pub fn dims(&self) -> impl Iterator<Item = &Dimension<L>> + Clone {
         self.body.dims.iter()
     }
 
@@ -220,7 +220,7 @@ impl<L> Function<L> {
     }
 
     /// Returns the list of stastic dimensions in the function.
-    pub fn static_dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<L>> {
+    pub fn static_dims(&self) -> impl Iterator<Item = &Dimension<L>> {
         self.body.static_dims.iter().map(move |&id| self.dim(id))
     }
 
@@ -316,9 +316,9 @@ impl<L> Function<L> {
     }
 
     /// Iterates over induction variables.
-    pub fn induction_vars<'b>(
-        &'b self,
-    ) -> impl Iterator<Item = (ir::IndVarId, &'b ir::InductionVar<L>)> {
+    pub fn induction_vars(
+        &self,
+    ) -> impl Iterator<Item = (ir::IndVarId, &ir::InductionVar<L>)> {
         self.body
             .induction_vars
             .iter()

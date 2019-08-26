@@ -1,6 +1,7 @@
 // Enables `quote!` to work on bigger chunks of code.
 #![recursion_limit = "256"]
-#![allow(clippy::all)]
+#![deny(bare_trait_objects, unused_lifetimes)]
+#![warn(clippy::all)]
 
 use utils::generated_file;
 pub mod ast;
@@ -73,7 +74,7 @@ pub fn process_file(
 
 /// Parses a constraint description file.
 pub fn process<T: io::Write>(
-    input: Option<&mut io::Read>,
+    input: Option<&mut dyn io::Read>,
     output: &mut T,
     input_path: &path::Path,
 ) -> Result<(), error::Error> {

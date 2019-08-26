@@ -81,8 +81,8 @@ impl Lexer {
             yyset_lineno(0, scanner);
             Lexer {
                 filename: None,
-                scanner: scanner,
-                buffer: buffer,
+                scanner,
+                buffer,
                 lookahead_token: None,
                 include: None,
                 sublevel: None,
@@ -91,7 +91,7 @@ impl Lexer {
     }
 
     /// Returns a lexer interface for a input stream.
-    pub fn from_input(input: &mut io::Read) -> Self {
+    pub fn from_input(input: &mut dyn io::Read) -> Self {
         let mut buffer = Vec::new();
 
         input.read_to_end(&mut buffer).unwrap();
@@ -210,332 +210,330 @@ impl Iterator for Lexer {
                 }
                 self.include = None;
                 self.next()
+            } else if self.lookahead_token.is_some() {
+                self.lookahead_token.take()
             } else {
-                if self.lookahead_token.is_some() {
-                    self.lookahead_token.take()
-                } else {
-                    // The function [yylex](https://westes.github.io/flex/manual/Generated-Scanner.html)
-                    // returns statement in one of the actions, the scanner may then
-                    // be called again and it will resume scanning where it left off.
-                    let code: YyToken = yylex(self.scanner);
-                    // The accessor function [yyget_extra](https://westes.github.io/flex/manual/Extra-Data.html)
-                    // returns a extra copy.
-                    let extra: YyExtraType = yyget_extra(self.scanner);
-                    match code {
-                        YyToken::InvalidToken => {
-                            let out = yyget_text(self.scanner);
+                // The function [yylex](https://westes.github.io/flex/manual/Generated-Scanner.html)
+                // returns statement in one of the actions, the scanner may then
+                // be called again and it will resume scanning where it left off.
+                let code: YyToken = yylex(self.scanner);
+                // The accessor function [yyget_extra](https://westes.github.io/flex/manual/Extra-Data.html)
+                // returns a extra copy.
+                let extra: YyExtraType = yyget_extra(self.scanner);
+                match code {
+                    YyToken::InvalidToken => {
+                        let out = yyget_text(self.scanner);
 
-                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Err(LexicalError {
-                                    cause: Spanned {
-                                        beg: Position::new_optional(
-                                            extra.beg,
-                                            self.filename.to_owned(),
-                                        ),
-                                        end: Position::new_optional(
-                                            extra.end,
-                                            self.filename.to_owned(),
-                                        ),
-                                        data: ErrorKind::InvalidToken {
-                                            token: s.to_owned(),
-                                        },
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Err(LexicalError {
+                                cause: Spanned {
+                                    beg: Position::new_optional(
+                                        extra.beg,
+                                        self.filename.to_owned(),
+                                    ),
+                                    end: Position::new_optional(
+                                        extra.end,
+                                        self.filename.to_owned(),
+                                    ),
+                                    data: ErrorKind::InvalidToken {
+                                        token: s.to_owned(),
                                     },
-                                }))
-                            })
-                        }
-                        YyToken::Include => {
-                            let out = yyget_text(self.scanner);
-
-                            CStr::from_ptr(out)
-                                .to_str()
-                                .ok()
-                                .and_then(|s: &str| self.include(extra, s))
-                        }
-                        YyToken::ChoiceIdent => {
-                            let out = yyget_text(self.scanner);
-
-                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Ok((
-                                    Position::new_optional(
-                                        extra.beg,
-                                        self.filename.to_owned(),
-                                    ),
-                                    Token::ChoiceIdent(s.to_owned()),
-                                    Position::new_optional(
-                                        extra.end,
-                                        self.filename.to_owned(),
-                                    ),
-                                )))
-                            })
-                        }
-                        YyToken::SetIdent => {
-                            let out = yyget_text(self.scanner);
-
-                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Ok((
-                                    Position::new_optional(
-                                        extra.beg,
-                                        self.filename.to_owned(),
-                                    ),
-                                    Token::SetIdent(s.to_owned()),
-                                    Position::new_optional(
-                                        extra.end,
-                                        self.filename.to_owned(),
-                                    ),
-                                )))
-                            })
-                        }
-                        YyToken::ValueIdent => {
-                            let out = yyget_text(self.scanner);
-
-                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Ok((
-                                    Position::new_optional(
-                                        extra.beg,
-                                        self.filename.to_owned(),
-                                    ),
-                                    Token::ValueIdent(s.to_owned()),
-                                    Position::new_optional(
-                                        extra.end,
-                                        self.filename.to_owned(),
-                                    ),
-                                )))
-                            })
-                        }
-                        YyToken::Var => {
-                            let out = yyget_text(self.scanner);
-
-                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Ok((
-                                    Position::new_optional(
-                                        extra.beg,
-                                        self.filename.to_owned(),
-                                    ),
-                                    Token::Var(s.to_owned()),
-                                    Position::new_optional(
-                                        extra.end,
-                                        self.filename.to_owned(),
-                                    ),
-                                )))
-                            })
-                        }
-                        YyToken::Code => {
-                            let out = yyget_text(self.scanner);
-                            CStr::from_ptr(out)
-                                .to_str()
-                                .ok()
-                                .and_then(|s: &str| self.code(extra, s))
-                        }
-                        YyToken::Doc => {
-                            let out = yyget_text(self.scanner);
-
-                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Ok((
-                                    Position::new_optional(
-                                        extra.beg,
-                                        self.filename.to_owned(),
-                                    ),
-                                    Token::Doc(s.to_owned()),
-                                    Position::new_optional(
-                                        extra.end,
-                                        self.filename.to_owned(),
-                                    ),
-                                )))
-                            })
-                        }
-                        YyToken::Alias => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Alias,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Counter => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Counter,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Define => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Define,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Enum => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Enum,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Forall => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Forall,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::In => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::In,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Is => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Is,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Not => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Not,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Require => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Require,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Requires => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Requires,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::CounterKind => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::CounterKind(extra.data.counter_kind),
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Value => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Value,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::When => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::When,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Trigger => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Trigger,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::CounterVisibility => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::CounterVisibility(extra.data.counter_visibility),
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Base => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Base,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::SetDefkey => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::SetDefKey(extra.data.set_def_key),
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Set => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Set,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::SubsetOf => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::SubsetOf,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Disjoint => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Disjoint,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Quotient => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Quotient,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Of => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Of,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Bool => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Bool(extra.data.boolean),
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Colon => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Colon,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Comma => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Comma,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::LParen => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::LParen,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::RParen => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::RParen,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::BitOr => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::BitOr,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Or => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Or,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::And => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::And,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::CmpOp => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::CmpOp(extra.data.cmp_op),
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Equal => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Equal,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::End => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::End,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Symmetric => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Symmetric,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::AntiSymmetric => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::AntiSymmetric,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Arrow => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Arrow,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Divide => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Divide,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        YyToken::Integer => Some(Ok((
-                            Position::new_optional(extra.beg, self.filename.to_owned()),
-                            Token::Integer,
-                            Position::new_optional(extra.end, self.filename.to_owned()),
-                        ))),
-                        // Return None to signal EOF.for a reached end of the string.
-                        YyToken::EOF => None,
+                                },
+                            }))
+                        })
                     }
+                    YyToken::Include => {
+                        let out = yyget_text(self.scanner);
+
+                        CStr::from_ptr(out)
+                            .to_str()
+                            .ok()
+                            .and_then(|s: &str| self.include(extra, s))
+                    }
+                    YyToken::ChoiceIdent => {
+                        let out = yyget_text(self.scanner);
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                Position::new_optional(
+                                    extra.beg,
+                                    self.filename.to_owned(),
+                                ),
+                                Token::ChoiceIdent(s.to_owned()),
+                                Position::new_optional(
+                                    extra.end,
+                                    self.filename.to_owned(),
+                                ),
+                            )))
+                        })
+                    }
+                    YyToken::SetIdent => {
+                        let out = yyget_text(self.scanner);
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                Position::new_optional(
+                                    extra.beg,
+                                    self.filename.to_owned(),
+                                ),
+                                Token::SetIdent(s.to_owned()),
+                                Position::new_optional(
+                                    extra.end,
+                                    self.filename.to_owned(),
+                                ),
+                            )))
+                        })
+                    }
+                    YyToken::ValueIdent => {
+                        let out = yyget_text(self.scanner);
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                Position::new_optional(
+                                    extra.beg,
+                                    self.filename.to_owned(),
+                                ),
+                                Token::ValueIdent(s.to_owned()),
+                                Position::new_optional(
+                                    extra.end,
+                                    self.filename.to_owned(),
+                                ),
+                            )))
+                        })
+                    }
+                    YyToken::Var => {
+                        let out = yyget_text(self.scanner);
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                Position::new_optional(
+                                    extra.beg,
+                                    self.filename.to_owned(),
+                                ),
+                                Token::Var(s.to_owned()),
+                                Position::new_optional(
+                                    extra.end,
+                                    self.filename.to_owned(),
+                                ),
+                            )))
+                        })
+                    }
+                    YyToken::Code => {
+                        let out = yyget_text(self.scanner);
+                        CStr::from_ptr(out)
+                            .to_str()
+                            .ok()
+                            .and_then(|s: &str| self.code(extra, s))
+                    }
+                    YyToken::Doc => {
+                        let out = yyget_text(self.scanner);
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                Position::new_optional(
+                                    extra.beg,
+                                    self.filename.to_owned(),
+                                ),
+                                Token::Doc(s.to_owned()),
+                                Position::new_optional(
+                                    extra.end,
+                                    self.filename.to_owned(),
+                                ),
+                            )))
+                        })
+                    }
+                    YyToken::Alias => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Alias,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Counter => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Counter,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Define => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Define,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Enum => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Enum,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Forall => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Forall,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::In => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::In,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Is => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Is,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Not => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Not,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Require => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Require,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Requires => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Requires,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::CounterKind => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::CounterKind(extra.data.counter_kind),
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Value => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Value,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::When => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::When,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Trigger => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Trigger,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::CounterVisibility => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::CounterVisibility(extra.data.counter_visibility),
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Base => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Base,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::SetDefkey => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::SetDefKey(extra.data.set_def_key),
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Set => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Set,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::SubsetOf => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::SubsetOf,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Disjoint => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Disjoint,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Quotient => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Quotient,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Of => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Of,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Bool => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Bool(extra.data.boolean),
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Colon => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Colon,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Comma => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Comma,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::LParen => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::LParen,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::RParen => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::RParen,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::BitOr => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::BitOr,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Or => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Or,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::And => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::And,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::CmpOp => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::CmpOp(extra.data.cmp_op),
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Equal => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Equal,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::End => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::End,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Symmetric => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Symmetric,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::AntiSymmetric => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::AntiSymmetric,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Arrow => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Arrow,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Divide => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Divide,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    YyToken::Integer => Some(Ok((
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::Integer,
+                        Position::new_optional(extra.end, self.filename.to_owned()),
+                    ))),
+                    // Return None to signal EOF.for a reached end of the string.
+                    YyToken::EOF => None,
                 }
             }
         }

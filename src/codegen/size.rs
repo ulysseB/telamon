@@ -43,11 +43,7 @@ impl Size {
             .iter()
             .map(|&d| dim_size(d, space))
             .product();
-        Size::new(
-            factor,
-            param_factors.into_iter().cloned().collect(),
-            divisor,
-        )
+        Size::new(factor, param_factors.to_vec(), divisor)
     }
 
     /// Returns the size of a dimension if it is staticaly known.
@@ -93,11 +89,12 @@ impl std::ops::MulAssign<&'_ Size> for Size {
 
 impl fmt::Display for Size {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut pre = false;
-        if self.factor != 1 {
+        let mut pre = if self.factor != 1 {
             write!(fmt, "{}", self.factor)?;
-            pre = true;
-        }
+            true
+        } else {
+            false
+        };
 
         for p in &self.dividend {
             if pre {

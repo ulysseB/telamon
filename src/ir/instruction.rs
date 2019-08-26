@@ -92,7 +92,7 @@ impl<L> Instruction<L> {
         self.operator.operands().into_iter().flat_map(|operand| {
             match operand {
                 Operand::Reduce(_, _, _, reduce_dims) => {
-                    Some(reduce_dims.into_iter().cloned())
+                    Some(reduce_dims.iter().cloned())
                 }
                 _ => None,
             }
@@ -275,11 +275,7 @@ impl<L> ir::IrDisplay<L> for Instruction<L> {
             fmt,
             "{:?}[{}]: {}",
             self.id,
-            self.iteration_dims()
-                .iter()
-                .sorted()
-                .into_iter()
-                .format(", "),
+            self.iteration_dims().iter().sorted().format(", "),
             self.operator.display(function)
         )
     }

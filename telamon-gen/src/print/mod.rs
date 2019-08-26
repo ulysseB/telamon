@@ -220,6 +220,7 @@ fn ifeq(h: &Helper, r: &Handlebars, rc: &mut RenderContext) -> RenderResult {
 macro_rules! iter_printer {
     ($iter: expr, $item: pat, $($format_args: tt)*) => {
         crate::print::Printer(move |f: &mut Formatter| {
+            #[allow(clippy::for_loop_over_option)]
             for $item in $iter { write!(f, $($format_args)*)?; }
             Ok(())
         })
@@ -322,7 +323,7 @@ pub fn print(ir_desc: &ir::IrDesc) -> String {
 /// # Examples
 ///
 /// See the `stable_topological_sort_tests` module.
-fn stable_topological_sort<'a, N, P, I>(
+fn stable_topological_sort<N, P, I>(
     nodes: &[N],
     predecessors: P,
 ) -> Result<Vec<N>, (Vec<N>, Vec<N>)>
@@ -732,7 +733,7 @@ fn value_def_order<'a>(
                 .collect_vec()
                 .into_iter()
                 .chain(values),
-        ) as Box<Iterator<Item = _>>
+        ) as Box<dyn Iterator<Item = _>>
     } else {
         Box::new(enum_.values().iter())
     }

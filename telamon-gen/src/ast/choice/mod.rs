@@ -53,7 +53,7 @@ impl ChoiceDef {
 impl From<Statement> for ChoiceDef {
     fn from(stmt: Statement) -> Self {
         match stmt {
-            Statement::ChoiceDef(def) => def,
+            Statement::ChoiceDef(def) => *def,
             _ => unreachable!(),
         }
     }

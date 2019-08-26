@@ -70,12 +70,8 @@ impl Ast {
     /// Type-checks the statements in the correct order.
     pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for choice_def in self.choice_defs.iter() {
-            match choice_def {
-                ChoiceDef::CounterDef(counter_def) => {
-                    counter_def
-                        .register_counter(&mut self.ir_desc, &mut self.constraints);
-                }
-                _ => {}
+            if let ChoiceDef::CounterDef(counter_def) = choice_def {
+                counter_def.register_counter(&mut self.ir_desc, &mut self.constraints);
             }
         }
         for trigger in self.triggers.iter() {
@@ -98,9 +94,9 @@ impl Ast {
 /// A toplevel definition or constraint.
 #[derive(Debug, Clone)]
 pub enum Statement {
-    ChoiceDef(ChoiceDef),
+    ChoiceDef(Box<ChoiceDef>),
     TriggerDef(TriggerDef),
-    SetDef(SetDef),
+    SetDef(Box<SetDef>),
     Require(Constraint),
 }
 
@@ -113,6 +109,7 @@ impl Statement {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn define(
         self,
         context: &mut CheckerContext,
@@ -370,7 +367,7 @@ impl Condition {
                 ir::Condition::CmpCode {
                     lhs: add_input(lhs, ir_desc, var_map, inputs),
                     rhs: type_check_code(rhs, var_map),
-                    op: op,
+                    op,
                 }
             }
             Condition::CmpInput { lhs, rhs, op } => {
@@ -383,7 +380,7 @@ impl Condition {
                 ir::Condition::CmpInput {
                     lhs: lhs_input,
                     rhs: rhs_input,
-                    op: op,
+                    op,
                     inverse: false,
                 }
             }
@@ -422,7 +419,7 @@ fn add_input(
     let input_id = inputs.len();
     inputs.push(ir::ChoiceInstance {
         choice: choice.name,
-        vars: vars,
+        vars,
     });
     input_id
 }

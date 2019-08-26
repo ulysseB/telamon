@@ -74,7 +74,7 @@ fn iter_new_objects(
     let obj_arg_pattern = arg_id
         .as_ref()
         .map(|arg| quote! { (#arg, #obj_id) })
-        .unwrap_or(obj_id.clone().into_token_stream());
+        .unwrap_or_else(|| obj_id.clone().into_token_stream());
     let arg_def = arg_id.as_ref().map(|id| {
         let getter = id.fetch_object(None);
         quote! { let #arg = #getter; }
