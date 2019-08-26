@@ -473,7 +473,7 @@ impl ChoiceAction {
     }
 
     /// Returns the list of variables to allocate.
-    pub fn variables<'a>(&'a self) -> Box<Iterator<Item = &'a ir::Set> + 'a> {
+    pub fn variables<'a>(&'a self) -> Box<dyn Iterator<Item = &'a ir::Set> + 'a> {
         match self {
             ChoiceAction::RemoteFilter(remote_call) => {
                 Box::new(remote_call.filter.forall_vars.iter()) as Box<_>

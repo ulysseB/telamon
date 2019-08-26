@@ -91,7 +91,7 @@ impl Lexer {
     }
 
     /// Returns a lexer interface for a input stream.
-    pub fn from_input(input: &mut io::Read) -> Self {
+    pub fn from_input(input: &mut dyn io::Read) -> Self {
         let mut buffer = Vec::new();
 
         input.read_to_end(&mut buffer).unwrap();

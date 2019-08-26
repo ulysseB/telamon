@@ -73,7 +73,7 @@ pub fn process_file(
 
 /// Parses a constraint description file.
 pub fn process<T: io::Write>(
-    input: Option<&mut io::Read>,
+    input: Option<&mut dyn io::Read>,
     output: &mut T,
     input_path: &path::Path,
 ) -> Result<(), error::Error> {

@@ -44,7 +44,7 @@ pub trait SetRef<'a> {
     }
 
     /// Returns the path of sets to access a super-set.
-    fn path_to_superset(&self, superset: &SetRef) -> Vec<SetRefImpl<'a>> {
+    fn path_to_superset(&self, superset: &dyn SetRef) -> Vec<SetRefImpl<'a>> {
         let mut out = Vec::new();
         let mut current = self.as_ref();
         while current != superset.as_ref() {

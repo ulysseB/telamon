@@ -732,7 +732,7 @@ fn value_def_order<'a>(
                 .collect_vec()
                 .into_iter()
                 .chain(values),
-        ) as Box<Iterator<Item = _>>
+        ) as Box<dyn Iterator<Item = _>>
     } else {
         Box::new(enum_.values().iter())
     }
