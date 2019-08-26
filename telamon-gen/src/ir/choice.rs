@@ -35,9 +35,9 @@ impl Choice {
     ) -> Self {
         let value_type = def.value_type();
         Choice {
-            name: name,
-            doc: doc,
-            arguments: arguments,
+            name,
+            doc,
+            arguments,
             choice_def: def,
             on_change: Vec::new(),
             filter_actions: Vec::new(),
@@ -128,6 +128,7 @@ pub enum ChoiceArguments {
     },
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl ChoiceArguments {
     /// Creates a new `ChoiceArguments`.
     pub fn new(mut vars: Vec<(RcStr, ir::Set)>, symmetric: bool, inverse: bool) -> Self {
@@ -139,16 +140,16 @@ impl ChoiceArguments {
             ChoiceArguments::Symmetric {
                 names: [lhs, rhs],
                 t: t0,
-                inverse: inverse,
+                inverse,
             }
         } else {
             assert!(!inverse);
-            ChoiceArguments::Plain { vars: vars }
+            ChoiceArguments::Plain { vars }
         }
     }
 
     /// Returns the name of the arguments.
-    pub fn names<'a>(&'a self) -> impl Iterator<Item = &'a RcStr> {
+    pub fn names(&self) -> impl Iterator<Item = &RcStr> {
         match *self {
             ChoiceArguments::Plain { ref vars } => {
                 Either::Left(vars.iter().map(|x| &x.0))
@@ -204,6 +205,7 @@ impl ChoiceArguments {
 
 /// Specifies how the `Choice` is defined.
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum ChoiceDef {
     /// The `Choice` can take a small set of predefined values.
     Enum(RcStr),
@@ -414,7 +416,7 @@ impl OnChangeAction {
 
     /// Returns the action for the symmetric of the choice.
     pub fn inverse(&self, ir_desc: &ir::IrDesc) -> Self {
-        let ref mut adaptator = ir::Adaptator::default();
+        let adaptator = &mut ir::Adaptator::default();
         adaptator.set_variable(ir::Variable::Arg(0), ir::Variable::Arg(1));
         adaptator.set_variable(ir::Variable::Arg(1), ir::Variable::Arg(0));
         let mut out = self.adapt(adaptator);
@@ -473,7 +475,7 @@ impl ChoiceAction {
     }
 
     /// Returns the list of variables to allocate.
-    pub fn variables<'a>(&'a self) -> Box<Iterator<Item = &'a ir::Set> + 'a> {
+    pub fn variables<'a>(&'a self) -> Box<dyn Iterator<Item = &'a ir::Set> + 'a> {
         match self {
             ChoiceAction::RemoteFilter(remote_call) => {
                 Box::new(remote_call.filter.forall_vars.iter()) as Box<_>

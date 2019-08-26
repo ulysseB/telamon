@@ -40,6 +40,7 @@ struct Opt {
     exclude_evaluations: bool,
 }
 
+#[allow(clippy::cognitive_complexity)]
 fn main() -> io::Result<()> {
     env_logger::try_init().unwrap();
 
@@ -67,8 +68,8 @@ fn main() -> io::Result<()> {
                 debug!("Node (ID {}) [discovery time: {:?}]", id, discovery_time);
 
                 t.extend(
-                    id.into(),
-                    discovery_time.clone(),
+                    id,
+                    discovery_time,
                     parent,
                     bound.clone(),
                     &mut children.clone(),
@@ -106,15 +107,15 @@ fn main() -> io::Result<()> {
                     // beginning of the first event of the trace and
                     // the end timestamp to the end of the last event
                     if trace_start.is_none() {
-                        trace_start = Some(start.clone());
+                        trace_start = Some(start);
                     }
 
-                    trace_end = Some(end.clone());
+                    trace_end = Some(end);
 
                     match timed_event.value {
                         // Explicit selection of a candidate
                         Event::SelectNode(id) => {
-                            curr_node_id = id.into();
+                            curr_node_id = id;
 
                             if !opt.exclude_traces {
                                 tw.write_candidate_select_action(
@@ -269,11 +270,11 @@ fn main() -> io::Result<()> {
                 result_time,
             } => {
                 if value.is_some() {
-                    t.get_node(id.into()).set_score(value.unwrap());
+                    t.get_node(id).set_score(value.unwrap());
                 }
 
                 if !opt.exclude_evaluations {
-                    tw.write_candidate_evaluate_action(id.into(), result_time, value)?;
+                    tw.write_candidate_evaluate_action(id, result_time, value)?;
                 }
             }
         }

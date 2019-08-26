@@ -44,7 +44,7 @@ pub trait SetRef<'a> {
     }
 
     /// Returns the path of sets to access a super-set.
-    fn path_to_superset(&self, superset: &SetRef) -> Vec<SetRefImpl<'a>> {
+    fn path_to_superset(&self, superset: &dyn SetRef) -> Vec<SetRefImpl<'a>> {
         let mut out = Vec::new();
         let mut current = self.as_ref();
         while current != superset.as_ref() {
@@ -165,7 +165,7 @@ impl Set {
                 .reverse_constraint
                 .as_ref()
                 .map(|b| b.borrow())
-                .unwrap_or(reverse_def.arg().unwrap())
+                .unwrap_or_else(|| reverse_def.arg().unwrap())
                 .clone();
             let mut reverse = Set::new(&reverse_def, Some(self_var));
             if !(&reverse).is_subset_of(arg) {
@@ -433,8 +433,8 @@ pub enum SetDefKey {
 
 impl SetDefKey {
     /// Returns the variables defined for the key.
-    pub fn env(&self) -> Vec<&'static str> {
-        match *self {
+    pub fn env(self) -> Vec<&'static str> {
+        match self {
             SetDefKey::ItemType | SetDefKey::IdType | SetDefKey::Prefix => vec![],
             SetDefKey::ItemGetter => vec!["fun", "id"],
             SetDefKey::IdGetter => vec!["fun", "item"],
@@ -447,8 +447,8 @@ impl SetDefKey {
     }
 
     /// Indicates if the environement contains the set argument.
-    pub fn is_arg_in_env(&self) -> bool {
-        match *self {
+    pub fn is_arg_in_env(self) -> bool {
+        match self {
             SetDefKey::ItemGetter
             | SetDefKey::Iter
             | SetDefKey::FromSuperset

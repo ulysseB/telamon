@@ -29,7 +29,7 @@ impl<'a> Filter<'a> {
     ) -> Self {
         trace!("filter {}_{}", choice.name(), id);
         let arguments = &filter.arguments[choice.arguments().len()..];
-        let ref ctx = Context::new(ir_desc, choice, arguments, &filter.inputs);
+        let ctx = &Context::new(ir_desc, choice, arguments, &filter.inputs);
         let arguments = filter
             .arguments
             .iter()

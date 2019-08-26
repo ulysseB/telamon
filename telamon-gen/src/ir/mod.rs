@@ -40,12 +40,12 @@ impl IrDesc {
     }
 
     /// List the choice definitions.
-    pub fn choices<'a>(&'a self) -> impl Iterator<Item = &'a Choice> {
+    pub fn choices(&self) -> impl Iterator<Item = &Choice> {
         self.choices.values()
     }
 
     /// List the enum definitions.
-    pub fn enums<'a>(&'a self) -> impl Iterator<Item = &'a Enum> {
+    pub fn enums(&self) -> impl Iterator<Item = &Enum> {
         self.enums.values()
     }
 
@@ -119,7 +119,7 @@ impl IrDesc {
                 .iter()
                 .enumerate()
                 .map(|(i, _)| Variable::Arg(i))
-                .chain((0..forall_vars.len()).map(|i| Variable::Forall(i)))
+                .chain((0..forall_vars.len()).map(Variable::Forall))
                 .collect();
             FilterRef::Function {
                 choice: choice.clone(),
@@ -254,7 +254,7 @@ impl IrDesc {
         // If the changed choice is symmetric, the inverse filter should also be called.
         if self.get_choice(&changed.choice).arguments().is_symmetric() {
             let vars = vec![changed.vars[1], changed.vars[0]];
-            let ref changed = ChoiceInstance {
+            let changed = &ChoiceInstance {
                 choice: changed.choice.clone(),
                 vars,
             };
@@ -372,7 +372,7 @@ impl IrDesc {
         // Add the remaining variables as foralls. We keep the foralls in the order they were
         // given, so the sets are still defined after their parameters.
         let vars = vars.into_iter().sorted_by_key(|x| x.0);
-        for (forall_id, (mapped_var, set)) in vars.into_iter().enumerate() {
+        for (forall_id, (mapped_var, set)) in vars.enumerate() {
             adaptator.set_variable(mapped_var, Variable::Forall(forall_id));
             match mapped_var {
                 Variable::Arg(_) => arg_foralls.push(set),
@@ -495,8 +495,8 @@ pub enum CounterKind {
 
 impl CounterKind {
     /// Returns the neutral element of the operand.
-    pub fn zero(&self) -> u32 {
-        match *self {
+    pub fn zero(self) -> u32 {
+        match self {
             CounterKind::Add => 0,
             CounterKind::Mul => 1,
         }
@@ -521,9 +521,9 @@ impl Enum {
         inverse: Option<Vec<(RcStr, RcStr)>>,
     ) -> Self {
         Enum {
-            name: name,
-            doc: doc,
-            inverse: inverse,
+            name,
+            doc,
+            inverse,
             values: IndexMap::default(),
             aliases: IndexMap::default(),
         }
@@ -735,11 +735,11 @@ pub mod test {
                                 })
                                 .collect();
                             EvalContext {
-                                ir_desc: ir_desc,
-                                enum_: enum_,
+                                ir_desc,
+                                enum_,
                                 var_sets: FxHashMap::default(),
-                                inputs_def: inputs_def,
-                                input_values: input_values,
+                                inputs_def,
+                                input_values,
                                 static_conds: static_conds
                                     .iter()
                                     .zip_eq(cond_values)

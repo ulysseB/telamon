@@ -10,6 +10,7 @@ use std::time::Duration;
 
 /// Constants from Aftermath
 const AM_TRACE_VERSION: u32 = 18;
+#[allow(clippy::identity_op)]
 const AM_TELAMON_CANDIDATE_FLAG_INTERNAL_NODE: u32 = (1 << 0);
 const AM_TELAMON_CANDIDATE_FLAG_ROLLOUT_NODE: u32 = (1 << 1);
 const AM_TELAMON_CANDIDATE_FLAG_IMPLEMENTATION: u32 = (1 << 2);
@@ -17,6 +18,7 @@ const AM_TELAMON_CANDIDATE_FLAG_DEADEND: u32 = (1 << 3);
 const AM_TELAMON_CANDIDATE_FLAG_PERFMODEL_BOUND_VALID: u32 = (1 << 4);
 const AM_TELAMON_CANDIDATE_FLAG_SCORE_VALID: u32 = (1 << 5);
 
+#[allow(clippy::identity_op)]
 const AM_TELAMON_CANDIDATE_EVALUATION_FLAG_SCORE_VALID: u8 = (1 << 0);
 
 const HIERARCHY_DEFAULT_ID: u32 = 0;
@@ -70,13 +72,13 @@ impl From<FrameType> for u32 {
 
 /// Converts a Duration to a u64 in nanoseconds
 fn duration_ns(d: Duration) -> u64 {
-    d.as_secs() * 1_000_000_000u64 + d.subsec_nanos() as u64
+    d.as_secs() * 1_000_000_000u64 + u64::from(d.subsec_nanos())
 }
 
 /// Converts a Duration to a u64 in nanoseconds, or to 0 if the Option
 /// is None
 fn duration_ns_or_default(d: Option<Duration>) -> u64 {
-    d.map_or(0, |d| duration_ns(d))
+    d.map_or(0, duration_ns)
 }
 
 /// Writer producing trace files in Aftermath format
@@ -97,7 +99,7 @@ impl TraceWriter {
 
     /// Writes a u8 to the output file
     fn write_u8(&mut self, val: u8) -> Result<(), io::Error> {
-        self.bw.write(&[val])?;
+        self.bw.write_all(&[val])?;
 
         Ok(())
     }
@@ -141,7 +143,7 @@ impl TraceWriter {
 
     /// Writes the header for an Aftermath trace to the output file
     pub fn write_default_header(&mut self) -> Result<(), io::Error> {
-        self.bw.write(b"OSTV")?;
+        self.bw.write_all(b"OSTV")?;
         self.write_u32(AM_TRACE_VERSION)
     }
 
@@ -438,6 +440,7 @@ impl TraceWriter {
     }
 
     /// Writes a single candidate select child action to the output file
+    #[allow(clippy::too_many_arguments)]
     pub fn write_candidate_select_child_action(
         &mut self,
         thread_id: u32,
@@ -547,7 +550,7 @@ impl TraceWriter {
     /// "Root" with one descendant per thread specified in
     /// `thread_ids`. The IDs of the hierarchy nodes correspond to the
     /// thread IDs incremented by 2.
-    pub fn write_hierarchy(&mut self, thread_ids: &Vec<u32>) -> Result<(), io::Error> {
+    pub fn write_hierarchy(&mut self, thread_ids: &[u32]) -> Result<(), io::Error> {
         // There is only one hierarchy, let this be 0
         self.write_hierarchy_description(HIERARCHY_DEFAULT_ID, "Threads")?;
 
@@ -597,10 +600,7 @@ impl TraceWriter {
 
     /// Writes the Aftermath event mappings for all threads in
     /// thread_ids to the output file.
-    pub fn write_event_mappings(
-        &mut self,
-        thread_ids: &Vec<u32>,
-    ) -> Result<(), io::Error> {
+    pub fn write_event_mappings(&mut self, thread_ids: &[u32]) -> Result<(), io::Error> {
         for tid in thread_ids {
             self.write_event_mapping(*tid)?;
         }

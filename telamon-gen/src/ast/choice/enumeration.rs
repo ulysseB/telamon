@@ -168,25 +168,24 @@ impl EnumDef {
         if self
             .statements
             .iter()
-            .find(|item| item.is_symmetric() || item.is_antisymmetric())
-            .is_some()
+            .any(|item| item.is_symmetric() || item.is_antisymmetric())
+            && self.variables.len() != 2
         {
-            if self.variables.len() != 2 {
-                Err(TypeError::BadSymmetricArg {
-                    object_name: self.name.to_owned(),
-                    object_variables: self
-                        .variables
-                        .iter()
-                        .map(|variable: &VarDef| {
-                            let set_name: &String = variable.set.name.deref();
+            Err(TypeError::BadSymmetricArg {
+                object_name: self.name.to_owned(),
+                object_variables: self
+                    .variables
+                    .iter()
+                    .map(|variable: &VarDef| {
+                        let set_name: &String = variable.set.name.deref();
 
-                            (variable.name.to_owned().into(), set_name.to_owned())
-                        })
-                        .collect::<Vec<(Spanned<String>, String)>>(),
-                })?;
-            }
+                        (variable.name.to_owned().into(), set_name.to_owned())
+                    })
+                    .collect::<Vec<(Spanned<String>, String)>>(),
+            })
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     /// This checkls that the parameters share the same type.
@@ -194,33 +193,30 @@ impl EnumDef {
         if self
             .statements
             .iter()
-            .find(|item| item.is_symmetric() || item.is_antisymmetric())
-            .is_some()
+            .any(|item| item.is_symmetric() || item.is_antisymmetric())
         {
-            match self.variables.as_slice() {
-                [VarDef {
-                    name: _,
-                    set: SetRef { name, .. },
-                }, VarDef {
-                    name: _,
-                    set: SetRef { name: rhs_name, .. },
-                }] => {
-                    if name != rhs_name {
-                        Err(TypeError::BadSymmetricArg {
-                            object_name: self.name.to_owned(),
-                            object_variables: self
-                                .variables
-                                .iter()
-                                .map(|variable| {
-                                    let set_name: &String = variable.set.name.deref();
+            if let [VarDef {
+                set: SetRef { name, .. },
+                ..
+            }, VarDef {
+                set: SetRef { name: rhs_name, .. },
+                ..
+            }] = self.variables.as_slice()
+            {
+                if name != rhs_name {
+                    Err(TypeError::BadSymmetricArg {
+                        object_name: self.name.to_owned(),
+                        object_variables: self
+                            .variables
+                            .iter()
+                            .map(|variable| {
+                                let set_name: &String = variable.set.name.deref();
 
-                                    (variable.name.to_owned().into(), set_name.to_owned())
-                                })
-                                .collect::<Vec<(Spanned<String>, String)>>(),
-                        })?;
-                    }
+                                (variable.name.to_owned().into(), set_name.to_owned())
+                            })
+                            .collect::<Vec<(Spanned<String>, String)>>(),
+                    })?;
                 }
-                _ => {}
             }
         }
         Ok(())
@@ -231,7 +227,7 @@ impl EnumDef {
         &self,
         context: &CheckerContext,
     ) -> Result<(), TypeError> {
-        for VarDef { name: _, ref set } in self.variables.iter() {
+        for VarDef { ref set, .. } in self.variables.iter() {
             if !context.check_set_define(set) {
                 let name: &String = set.name.deref();
 

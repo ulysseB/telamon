@@ -94,7 +94,7 @@ pub type InstGenerator = dyn Fn(&dyn AutoOperand, &&str, &mut Builder) -> ir::In
 /// * `n_chained`: the number of chained instructions in each loop iteration.
 /// * `arg`: a value that my be used as an operand by instruction.
 /// * `out`: an array to store the computation result.
-pub fn inst_chain<'a, T>(
+pub fn inst_chain<T>(
     signature: Arc<Signature>,
     device: Arc<dyn Device>,
     inst_gen: &InstGenerator,

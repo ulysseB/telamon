@@ -21,7 +21,7 @@ impl TriggerDef {
     pub fn register_trigger(&self, ir_desc: &mut ir::IrDesc) {
         trace!("defining trigger '{}'", self.code);
         // Type check the code and the conditions.
-        let ref mut var_map = VarMap::default();
+        let var_map = &mut VarMap::default();
         let foralls = self
             .foralls
             .iter()

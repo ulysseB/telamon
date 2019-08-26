@@ -1,5 +1,7 @@
 //! Defines the CUDA target.
-#![deny(bare_trait_objects)]
+#![deny(bare_trait_objects, unused_lifetimes)]
+#![warn(clippy::all)]
+
 #[cfg(feature = "real_gpu")]
 mod api;
 #[cfg(not(feature = "real_gpu"))]

@@ -15,16 +15,16 @@ rc_choice_ident: RcStr = {
 
 statement: ast::Statement = {
     stmt_set => {
-        ast::Statement::SetDef(<>)
+        ast::Statement::SetDef(Box::new(<>))
     },
     stmt_quotient => {
-        ast::Statement::SetDef(<>)
+        ast::Statement::SetDef(Box::new(<>))
     },
     stmt_integer => {
-        ast::Statement::ChoiceDef(<>)
+        ast::Statement::ChoiceDef(Box::new(<>))
     },
     stmt_enum => {
-        ast::Statement::ChoiceDef(<>)
+        ast::Statement::ChoiceDef(Box::new(<>))
     },
     spanned<trigger> <foralls: (forall <var_def> ":")*> <code: code> when
         <conditions: non_empty_list<condition, and>> => {
@@ -38,11 +38,11 @@ statement: ast::Statement = {
                 <name: spanned<rc_choice_ident>>
         "(" <vars: choice_vars> ")" ":" <body: counter_body> end => {
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
-            ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(
+            ast::Statement::ChoiceDef(Box::new(ast::ChoiceDef::CounterDef(
                 ast::CounterDef {
                     name, doc, visibility, vars, body,
                 }
-            ))
+            )))
     },
     spanned<require> <constraint> => {
         ast::Statement::Require(<>)

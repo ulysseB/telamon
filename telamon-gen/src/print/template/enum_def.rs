@@ -20,7 +20,7 @@ impl {type_name} {{
     }}
 
     /// Lists the alternatives contained in the domain.
-    pub fn list<'a>(&self) -> impl Iterator<Item=Self> + 'static {{
+    pub fn list(&self) -> impl Iterator<Item=Self> + 'static {{
         let bits = self.bits;
         (0..{num_values}).map(|x| 1 << x)
             .filter(move |x| (bits & x) != 0)

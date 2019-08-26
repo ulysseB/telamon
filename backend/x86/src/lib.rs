@@ -1,5 +1,6 @@
 //! Defines the CPU target.
-#![deny(bare_trait_objects)]
+#![deny(bare_trait_objects, unused_lifetimes)]
+#![warn(clippy::all)]
 
 mod compile;
 mod context;
