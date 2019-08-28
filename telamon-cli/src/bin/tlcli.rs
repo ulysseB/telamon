@@ -146,9 +146,17 @@ impl Bounds {
             num_cpus::get(),
             device::EvalMode::TestBound,
             &|evaluator| loop {
-                if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= self.num_runs {
-                    if num_tested.fetch_sub(1, atomic::Ordering::SeqCst) > self.num_runs {
-                        break;
+                // We want to keep the collapsible if to make the order in which `fetch_add` and
+                // `fetch_sub` explicit.
+                #[allow(clippy::collapsible_if)]
+                {
+                    if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= self.num_runs
+                    {
+                        if num_tested.fetch_sub(1, atomic::Ordering::SeqCst)
+                            > self.num_runs
+                        {
+                            break;
+                        }
                     }
                 }
 
@@ -189,7 +197,7 @@ impl Bounds {
             for bound in bounds {
                 write!(handle, ",{}", bound).unwrap();
             }
-            write!(handle, "\n").unwrap();
+            writeln!(handle).unwrap();
         });
 
         Ok(())
@@ -535,12 +543,12 @@ impl Stats {
                                 node = node
                                     .child(index.into())
                                     .unwrap_or_else(|| panic!("no child"));
-                                match node.action().unwrap_or_else(|| panic!("no action"))
+                                if let Action::Action(
+                                    telamon::search_space::Action::Size(..),
+                                ) =
+                                    node.action().unwrap_or_else(|| panic!("no action"))
                                 {
-                                    Action::Action(
-                                        telamon::search_space::Action::Size(..),
-                                    ) => has_size = true,
-                                    _ => (),
+                                    has_size = true
                                 }
                                 len += 1;
                             }
@@ -613,7 +621,7 @@ impl Stats {
         println!(
             "Deadends: {} (avg depth: {})",
             ndead + ndead_size,
-            (ddepth + ddepth_size) as f64 / (ndead + ndead_size) as f64
+            (ddepth + ddepth_size) as f64 / f64::from(ndead + ndead_size)
         );
 
         for ((cause, has_size), (cdepth, cnum)) in deadinfo.into_iter() {
@@ -626,7 +634,7 @@ impl Stats {
                     " (without size)"
                 },
                 cnum,
-                cdepth as f64 / cnum as f64
+                cdepth as f64 / f64::from(cnum)
             );
         }
 
