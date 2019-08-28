@@ -2,9 +2,9 @@
 #![allow(clippy::many_single_char_names)]
 use std::sync::Arc;
 
+pub use crate::compose::ActivationFunction;
 use crate::compose::{
     matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul, tensor_mad,
-    ActivationFunction,
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};

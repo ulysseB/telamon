@@ -1,11 +1,5 @@
 //! Benchmarks how fast it is to decend in the search tree.
-#[macro_use]
-extern crate criterion;
-extern crate env_logger;
-#[macro_use]
-extern crate lazy_static;
-
-use criterion::Criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 
 mod common;
 

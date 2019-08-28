@@ -41,12 +41,6 @@ x86 = ["telamon-x86"]
 default = ["x86"]
 
 [[bench]]
-name = "cuda-search"
-path = "benches/cuda_search.rs"
-harness = false
-required-features = ["cuda"]
-
-[[bench]]
 name = "cuda-deadend"
 path = "benches/cuda_deadend.rs"
 harness = false

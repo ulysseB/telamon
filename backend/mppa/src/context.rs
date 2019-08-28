@@ -101,7 +101,7 @@ impl KernelArg {
 pub struct Context {
     device: Arc<mppa::Mppa>,
     executor: &'static telajax::Device,
-    parameters: FxHashMap<String, Arc<Argument>>,
+    parameters: FxHashMap<String, Arc<dyn Argument>>,
     writeback_slots: ArrayQueue<MppaArray>,
 }
 
@@ -128,7 +128,7 @@ impl Context {
         }
     }
 
-    fn bind_param(&mut self, name: String, value: Arc<Argument>) {
+    fn bind_param(&mut self, name: String, value: Arc<dyn Argument>) {
         self.parameters.insert(name, value);
     }
 
@@ -183,7 +183,7 @@ impl Context {
     }
 
     /// Returns a parameter given its name.
-    pub fn get_param(&self, name: &str) -> &Argument {
+    pub fn get_param(&self, name: &str) -> &dyn Argument {
         self.parameters[name].as_ref()
     }
 
@@ -261,7 +261,7 @@ impl device::Context for Context {
         &self,
         num_workers: usize,
         _mode: EvalMode,
-        inner: &(Fn(&mut device::AsyncEvaluator<'d>) + Sync),
+        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'d>) + Sync),
     ) {
         // FIXME: execute in parallel
         let (send, recv) = mpsc::sync_channel(EXECUTION_QUEUE_SIZE);
@@ -317,7 +317,10 @@ impl<'a> device::ArgMap<'a> for Context {
     ) -> Arc<dyn ArrayArgument + 'a> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let buffer_arc = Arc::new(MppaArray::new(self.executor, size));
-        self.bind_param(param.name.clone(), Arc::clone(&buffer_arc) as Arc<Argument>);
+        self.bind_param(
+            param.name.clone(),
+            Arc::clone(&buffer_arc) as Arc<dyn Argument>,
+        );
         buffer_arc
     }
 }

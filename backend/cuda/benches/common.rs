@@ -1,5 +1,8 @@
 //! Defines a matrix-matrix multiply kernel.
 #![allow(dead_code)]
+#![cfg(feature = "real_gpu")]
+
+use lazy_static::lazy_static;
 use rand::Rng;
 use std::sync::Arc;
 use telamon::explorer::choice::ActionEx;

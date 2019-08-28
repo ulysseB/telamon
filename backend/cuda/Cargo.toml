@@ -30,6 +30,8 @@ xdg = { version = "2.1", optional = true }
 
 [dev-dependencies]
 regex = "0.2"
+rand = "0.5.5"
+criterion = "0.2.4"
 
 [features]
 real_gpu = [
@@ -50,4 +52,9 @@ required-features = ["real_gpu"]
 [[bench]]
 name = "model"
 path = "benches/model/main.rs"
+required-features = ["real_gpu"]
+
+[[bench]]
+name = "descent"
+harness = false
 required-features = ["real_gpu"]

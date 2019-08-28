@@ -13,7 +13,7 @@ use utils::unwrap;
 pub struct Mppa;
 
 impl device::Device for Mppa {
-    fn print(&self, _fun: &Function, out: &mut Write) {
+    fn print(&self, _fun: &Function, out: &mut dyn Write) {
         unwrap!(write!(out, "Basic MPPA"));
     }
 
@@ -83,8 +83,8 @@ impl device::Device for Mppa {
         _: &SearchSpace,
         _: &FxHashMap<ir::DimId, model::size::Range>,
         _: &FxHashMap<ir::StmtId, model::Nesting>,
-        _: &ir::Statement,
-        _: &device::Context,
+        _: &dyn ir::Statement,
+        _: &dyn device::Context,
     ) -> model::HwPressure {
         // TODO(model): implement model
         model::HwPressure::zero(self)

@@ -11,7 +11,7 @@ pub mod explorer;
 pub mod ir;
 pub mod search_space;
 
-use libc::{c_char, c_int, c_uint, size_t, uint32_t};
+use libc::{c_char, c_int, c_uint, size_t};
 use telamon::device;
 use telamon::explorer::config::Config;
 use telamon::helper::{MemInit, TilingPattern};
@@ -26,10 +26,10 @@ use telamon_x86 as x86;
 
 /// Description of the evaluation context. In particular, in contains the
 /// mapping between argument names and argument values.
-pub struct Context(pub(crate) *const device::Context);
+pub struct Context(pub(crate) *const dyn device::Context);
 
 /// Description of the targeted device.
-pub struct Device(*const device::Device);
+pub struct Device(*const dyn device::Device);
 
 /// Initializes the logger.
 #[no_mangle]
@@ -97,11 +97,11 @@ pub unsafe extern "C" fn kernel_matmul_new(
     transpose_a: c_int,
     transpose_b: c_int,
     generic: c_int,
-    tile_m: *const uint32_t,
+    tile_m: *const u32,
     tile_m_len: size_t,
-    tile_n: *const uint32_t,
+    tile_n: *const u32,
     tile_n_len: size_t,
-    tile_k: *const uint32_t,
+    tile_k: *const u32,
     tile_k_len: size_t,
 ) -> *mut KernelParameters {
     Box::into_raw(Box::new(KernelParameters::MatMul(linalg::FusedMMP {

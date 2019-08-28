@@ -8,14 +8,6 @@ edition = "2018"
 readme = "README.md"
 repository = "https://github.com/ulysseB/telamon/"
 
-[[bench]]
-name = "descent"
-harness = false
-
-[[bench]]
-name = "memory"
-harness = false
-
 [[example]]
 name = "print_event_log"
 
@@ -59,10 +51,6 @@ flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
-
-[dev-dependencies]
-criterion = "0.2.4"
-jemalloc-ctl = "0.1"
 
 [features]
 default = []

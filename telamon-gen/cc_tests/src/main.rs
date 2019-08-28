@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports, clippy::all)]
+#![allow(dead_code, unused_imports, clippy::all, bare_trait_objects)]
 
 // Keep the extern crate here to automatically import the `generated_file` macro into all scopes.
 // Could be cleaned up at some point.

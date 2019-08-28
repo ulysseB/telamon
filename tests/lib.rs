@@ -1,15 +1,13 @@
 //! Contains integration tests for Telamon.
 
-use log::debug;
-
-use telamon::device::{fake, Context, EvalMode};
+use telamon::device::{fake, Context};
+use telamon::explorer;
 use telamon::helper;
 use telamon::ir::{self, Size, Type};
 use telamon::search_space::*;
-use telamon::{codegen, explorer};
 
 /// Find the best candidate for a function and outputs it.
-pub fn gen_best(context: &Context, space: SearchSpace) {
+pub fn gen_best(context: &dyn Context, space: SearchSpace) {
     let mut config = explorer::Config::from_settings_toml();
     config.num_workers = 1;
     let best = explorer::find_best(&config, context, vec![space], None).unwrap();

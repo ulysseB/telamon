@@ -227,11 +227,11 @@ pub struct Operand(ir::Operand<()>);
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_int(
     t: *const ir::Type,
-    value: libc::int64_t,
+    value: i64,
 ) -> *mut Operand {
     unwrap_or_exit!(ir::TypeError::check_integer(*t), null);
     let type_len = unwrap!((*t).len_byte()) as u16;
-    let operand = ir::Operand::new_int(value.into(), 8 * type_len);
+    let operand = ir::Operand::new_int((num::BigInt::from(value), 8 * type_len));
     Box::into_raw(Box::new(Operand(operand)))
 }
 
@@ -245,7 +245,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_float(
     unwrap_or_exit!(ir::TypeError::check_float(*t), null);
     let type_len = unwrap!((*t).len_byte()) as u16;
     let value = unwrap!(Ratio::from_float(value));
-    let operand = ir::Operand::new_float(value, type_len);
+    let operand = ir::Operand::new_float((value, type_len));
     Box::into_raw(Box::new(Operand(operand)))
 }
 
