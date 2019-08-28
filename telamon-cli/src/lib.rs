@@ -1,6 +1,8 @@
+#![deny(bare_trait_objects, unused_lifetimes)]
+#![allow(clippy::many_single_char_names)]
+
 use std::error::Error;
 use std::ffi::OsStr;
-use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fmt, fs, io};
@@ -112,6 +114,7 @@ mod cuda_reference {
 
     pub struct CublasHandle(cublasHandle_t);
 
+    #[allow(clippy::new_without_default)]
     impl CublasHandle {
         /// Initialize a new handle.
         pub fn new() -> Self {
@@ -152,12 +155,11 @@ mod cuda_reference {
         check_cuda(cuEventElapsedTime(&mut time, start, stop));
         check_cuda(cuEventDestroy_v2(start));
         check_cuda(cuEventDestroy_v2(stop));
-        time as f64 * 1.0e6f64
+        f64::from(time) * 1.0e6f64
     }
 
     unsafe fn get_array<T>(name: &str, context: &cuda::Context) -> *mut T {
-        let ptr: *const *mut T = std::mem::transmute(context.get_param(name).raw_ptr());
-        *ptr
+        *(context.get_param(name).raw_ptr() as *const *mut T)
     }
 
     const CUBLAS_N: cublasOperation_t = cublasOperation_t_CUBLAS_OP_N;
@@ -166,7 +168,7 @@ mod cuda_reference {
     /// Reference implementation for the `Axpy` kernel.
     fn saxpy_reference(
         handle: &CublasHandle,
-        &(n, _): &(i32, bool),
+        (n, _): (i32, bool),
         context: &cuda::Context,
     ) -> f64 {
         let n = n as libc::c_int;
@@ -255,9 +257,9 @@ mod cuda_reference {
             } else {
                 (CUBLAS_N, n)
             };
-            let stride_a = (m * k) as libc::c_long;
-            let stride_b = if params.batch_b { n * k } else { 0 } as libc::c_long;
-            let stride_c = (m * n) as libc::c_long;
+            let stride_a = libc::c_long::from(m * k);
+            let stride_b = libc::c_long::from(if params.batch_b { n * k } else { 0 });
+            let stride_c = libc::c_long::from(m * n);
             time_cuda(|| {
                 check_cublas(cublasSgemmStridedBatched(
                     handle.0, op_b, op_a, n, m, k, &1., b, ldb, stride_b, a, lda,
@@ -296,7 +298,7 @@ mod cuda_reference {
         type Context = cuda::Context<'a>;
 
         fn eval_reference(&self, params: &(i32, bool), context: &Self::Context) -> f64 {
-            saxpy_reference(self, params, context)
+            saxpy_reference(self, *params, context)
         }
     }
 
@@ -644,7 +646,7 @@ impl std::str::FromStr for KernelParam {
         use KernelParam::*;
 
         fn parse_i32(s: &str) -> Result<i32, std::num::ParseIntError> {
-            if let Some(pos) = s.find("p") {
+            if let Some(pos) = s.find('p') {
                 let (base, exp) = s.split_at(pos);
                 Ok(base.parse::<i32>()?.pow(exp[1..].parse::<u32>()?))
             } else {
@@ -727,6 +729,7 @@ impl std::str::FromStr for KernelParam {
 pub enum Platform {
     X86,
     Cuda,
+    __Unsupported,
 }
 
 impl std::str::FromStr for Platform {
@@ -772,9 +775,10 @@ impl PlatformContextBuilder {
     pub fn build_context(&self) -> PlatformContext<'_> {
         match self {
             #[cfg(feature = "x86")]
-            PlatformContextBuilder::X86 => {
-                PlatformContext::X86(telamon_x86::Context::default(), PhantomData)
-            }
+            PlatformContextBuilder::X86 => PlatformContext::X86(
+                telamon_x86::Context::default(),
+                std::marker::PhantomData,
+            ),
             #[cfg(feature = "cuda")]
             PlatformContextBuilder::Cuda(executor) => {
                 PlatformContext::Cuda(telamon_cuda::Context::new(executor))
@@ -786,7 +790,7 @@ impl PlatformContextBuilder {
 /// An abstraction over multiple platform's contexts.
 pub enum PlatformContext<'a> {
     #[cfg(feature = "x86")]
-    X86(telamon_x86::Context, PhantomData<&'a ()>),
+    X86(telamon_x86::Context, std::marker::PhantomData<&'a ()>),
     #[cfg(feature = "cuda")]
     Cuda(telamon_cuda::Context<'a>),
 }
