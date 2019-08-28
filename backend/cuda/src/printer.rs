@@ -1,13 +1,107 @@
 //! Provides functions to print PTX code.
-use crate::{Gpu, ValuePrinter};
-use itertools::Itertools;
-use std::borrow::Cow;
-use std::fmt::Write as WriteFmt;
+use std::fmt::{self, Write as WriteFmt};
 use std::io::Write;
+
+use utils::*;
+
+use itertools::Itertools;
+use telamon::codegen::llir::IntoVector;
 use telamon::codegen::*;
 use telamon::ir::{self, op, Type};
 use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
-use utils::*;
+
+use crate::{Gpu, NameGenerator};
+
+/// Formatting trait for PTX values.
+///
+/// This is similar to the standard library's `Display` trait, except that it prints values in PTX
+/// syntax.
+pub trait PTXDisplay {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
+
+    /// Helper function to wrap `self` into a `Display` implementation which will call back into
+    /// `PTXDisplay::fmt`.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use std::fmt;
+    ///
+    /// impl PTXDisplay for String {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(fmt, "\"{}\"", self.escape_default())
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(r#"x"y"#.ptx().to_string(), r#""x\"y""#);
+    /// ```
+    fn ptx(&self) -> DisplayPTX<'_, Self> {
+        DisplayPTX { inner: self }
+    }
+}
+
+/// Helper struct for printing values in PTX syntax.
+///
+/// This `struct` implements the `Display` trait by using a `PTXDisplay` implementation. It is
+/// created by the `ptx` method on `PTXDisplay` instances.
+pub struct DisplayPTX<'a, T: ?Sized> {
+    inner: &'a T,
+}
+
+impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for DisplayPTX<'a, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.inner, fmt)
+    }
+}
+
+impl<'a, T: PTXDisplay + ?Sized> fmt::Display for DisplayPTX<'a, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        PTXDisplay::fmt(self.inner, fmt)
+    }
+}
+
+impl PTXDisplay for llir::Register<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.name())
+    }
+}
+
+impl PTXDisplay for llir::Operand<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::Operand::*;
+
+        match self {
+            Register(register) => write!(fmt, "{}", register.ptx()),
+            &IntLiteral(ref val, bits) => {
+                assert!(bits <= 64);
+                fmt::Display::fmt(val, fmt)
+            }
+            &FloatLiteral(ref val, bits) => {
+                use num::ToPrimitive;
+                assert!(bits <= 64);
+
+                write!(
+                    fmt,
+                    "0D{:016X}",
+                    (val.numer().to_f64().unwrap() / val.denom().to_f64().unwrap())
+                        .to_bits()
+                )
+            }
+        }
+    }
+}
+
+impl<T: PTXDisplay> PTXDisplay for llir::ScalarOrVector<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            llir::ScalarOrVector::Scalar(scalar) => PTXDisplay::fmt(scalar, fmt),
+            llir::ScalarOrVector::Vector(ts) => {
+                write!(fmt, "{{{}}}", ts.iter().map(PTXDisplay::ptx).format(", "))
+            }
+        }
+    }
+}
 
 #[derive(Default)]
 pub(crate) struct CudaPrinter {
@@ -66,14 +160,13 @@ impl CudaPrinter {
         }
     }
 
-    /// Prints the variables declared by the `ValuePrinter`.
-    fn var_decls(&mut self, name_map: &NameMap<ValuePrinter>) -> String {
-        let value_printer = name_map.value_printer();
+    /// Prints the variables declared by the `NameGenerator`.
+    fn var_decls(&mut self, namegen: &NameGenerator) -> String {
         let print_decl = |(&t, n)| {
-            let prefix = ValuePrinter::gen_prefix(t);
+            let prefix = NameGenerator::gen_prefix(t);
             format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)
         };
-        value_printer
+        namegen
             .num_var
             .iter()
             .map(print_decl)
@@ -82,21 +175,18 @@ impl CudaPrinter {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(
-        function: &Function,
-        name_map: &mut NameMap<ValuePrinter>,
-    ) -> String {
+    fn decl_par_indexes(function: &Function, name_map: &mut NameMap<'_>) -> String {
         let mut decls = vec![];
         // Load block indexes.
         for (dim, dir) in function.block_dims().iter().zip(&["x", "y", "z"]) {
             let index = name_map.name_index(dim.id());
-            decls.push(format!("mov.u32 {}, %ctaid.{};", index, dir));
+            decls.push(format!("mov.u32 {}, %ctaid.{};", index.ptx(), dir));
         }
         // Compute thread indexes.
         for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
             decls.push(format!(
                 "mov.s32 {}, %tid.{};",
-                name_map.name_index(dim.id()),
+                name_map.name_index(dim.id()).ptx(),
                 dir
             ));
         }
@@ -104,13 +194,9 @@ impl CudaPrinter {
     }
 
     /// Declares a shared memory block.
-    fn shared_mem_decl(
-        &mut self,
-        block: &MemoryRegion,
-        name_map: &mut NameMap<ValuePrinter>,
-    ) {
+    fn shared_mem_decl(&mut self, block: &MemoryRegion, name_map: &mut NameMap<'_>) {
         let ptr_type_name = Self::get_type(Type::I(32));
-        let name = name_map.name_addr(block.id());
+        let name = name_map.name_addr(block.id()).name();
         unwrap!(writeln!(
             self.buffer,
             "  .shared.align 16 .u8 {vec_name}[{size}];\
@@ -175,11 +261,7 @@ impl CudaPrinter {
     }
 
     /// Prints a parameter decalartion.
-    fn param_decl(
-        &mut self,
-        param: &ParamVal,
-        name_map: &NameMap<ValuePrinter>,
-    ) -> String {
+    fn param_decl(&mut self, param: &ParamVal, name_map: &NameMap<'_>) -> String {
         format!(
             ".param .{t}{attr} {name}",
             t = Self::get_type(param.t()),
@@ -204,8 +286,9 @@ impl CudaPrinter {
 
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function, gpu: &Gpu) -> String {
-        let mut value_printer = ValuePrinter::default();
-        let name_map = &mut NameMap::new(function, &mut value_printer);
+        let mut namegen = NameGenerator::default();
+        let interner = Interner::default();
+        let name_map = &mut NameMap::new(&interner, function, &mut namegen);
         let param_decls = function
             .device_code_args()
             .map(|v| self.param_decl(v, name_map))
@@ -217,7 +300,7 @@ impl CudaPrinter {
                 self.buffer,
                 "  ld.param.{t} {var_name}, [{name}];",
                 t = Self::get_type(val.t()),
-                var_name = name_map.name_param_val(val.key()),
+                var_name = name_map.name_param_val(val.key()).ptx(),
                 name = name_map.name_param(val.key())
             ));
         }
@@ -231,7 +314,7 @@ impl CudaPrinter {
             match block.alloc_scheme() {
                 AllocationScheme::Shared => self.shared_mem_decl(block, name_map),
                 AllocationScheme::PrivatisedGlobal => {
-                    self.privatise_global_block(block, name_map, function)
+                    Printer::new(self, name_map).privatise_global_block(block, function)
                 }
                 AllocationScheme::Global => (),
             }
@@ -243,15 +326,15 @@ impl CudaPrinter {
             }
             for level in dim.induction_levels() {
                 if let Some((_, ref incr)) = level.increment {
-                    let name = name_map.declare_size_cast(incr, level.t());
-                    if let Some(name) = name {
+                    let reg = name_map.declare_size_cast(incr, level.t());
+                    if let Some(reg) = reg {
                         let old_name = name_map.name_size(incr, Type::I(32));
                         self.print_unary_op(
                             [1, 1],
                             ir::UnaryOp::Cast(level.t()),
                             Type::I(32),
-                            &name,
-                            &old_name,
+                            reg.into_vector(),
+                            old_name.into_vector(),
                         );
                     }
                 }
@@ -264,10 +347,10 @@ impl CudaPrinter {
                 .flat_map(|d| d.induction_levels()),
         );
         for level in ind_levels {
-            self.parallel_induction_level(level, name_map);
+            Printer::new(self, name_map).parallel_induction_level(level);
         }
-        self.cfg(function, function.cfg(), name_map);
-        let var_decls = self.var_decls(&name_map);
+        Printer::new(self, name_map).cfg(function, function.cfg());
+        let var_decls = self.var_decls(&namegen);
         let mut body = String::new();
         body.push_str(&var_decls);
         body.push_str(&"\n");
@@ -369,8 +452,6 @@ impl CudaPrinter {
 }
 
 impl InstPrinter for CudaPrinter {
-    type ValuePrinter = ValuePrinter;
-
     /// Print result = op1 op op2
     fn print_binop(
         &mut self,
@@ -378,9 +459,9 @@ impl InstPrinter for CudaPrinter {
         op: ir::BinOp,
         operands_type: Type,
         rounding: op::Rounding,
-        result: &str,
-        lhs: &str,
-        rhs: &str,
+        result: llir::RegVec<'_>,
+        lhs: llir::OpVec<'_>,
+        rhs: llir::OpVec<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         let op = Self::binary_op(op);
@@ -389,7 +470,12 @@ impl InstPrinter for CudaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "  {}{}.{} {}, {}, {};",
-            op, rounding, operands_type, result, lhs, rhs
+            op,
+            rounding,
+            operands_type,
+            result.ptx(),
+            lhs.ptx(),
+            rhs.ptx()
         ));
     }
 
@@ -399,8 +485,8 @@ impl InstPrinter for CudaPrinter {
         vector_factors: [u32; 2],
         operator: ir::UnaryOp,
         operand_type: ir::Type,
-        result: &str,
-        operand: &str,
+        result: llir::RegVec<'_>,
+        operand: llir::OpVec<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         let t_str = Self::get_type(operand_type);
@@ -409,7 +495,9 @@ impl InstPrinter for CudaPrinter {
             ir::UnaryOp::Mov => unwrap!(writeln!(
                 self.buffer,
                 "  mov.{} {}, {};",
-                t_str, result, operand
+                t_str,
+                result.ptx(),
+                operand.ptx()
             )),
             ir::UnaryOp::Exp(..) => {
                 // The expression exp(x) needs to be decomposed into
@@ -424,8 +512,8 @@ impl InstPrinter for CudaPrinter {
                             "mul.{t} {reg}, 0f3fb8aa3b, {operand}; // 0f3fb8aa3b = log2(e)\n
                              ex2.approx.{t} {reg}, {reg};",
                             t = t_str,
-                            reg = result,
-                            operand = operand
+                            reg = result.ptx(),
+                            operand = operand.ptx(),
                         ));
                     }
                     _ => panic!("No implementation of exp for type {}", operand_type),
@@ -447,8 +535,8 @@ impl InstPrinter for CudaPrinter {
                     rounding,
                     Self::get_type(cast_type),
                     t_str,
-                    result,
-                    operand
+                    result.ptx(),
+                    operand.ptx()
                 ));
             }
         };
@@ -461,9 +549,9 @@ impl InstPrinter for CudaPrinter {
         return_type: Type,
         round: op::Rounding,
         mul_mode: MulMode,
-        result: &str,
-        lhs: &str,
-        rhs: &str,
+        result: llir::RegVec<'_>,
+        lhs: llir::OpVec<'_>,
+        rhs: llir::OpVec<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         let operator = if round == op::Rounding::Exact {
@@ -475,7 +563,11 @@ impl InstPrinter for CudaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "  {}.{} {}, {}, {};",
-            operator, t, result, lhs, rhs
+            operator,
+            t,
+            result.ptx(),
+            lhs.ptx(),
+            rhs.ptx()
         ));
     }
 
@@ -486,10 +578,10 @@ impl InstPrinter for CudaPrinter {
         return_type: Type,
         round: op::Rounding,
         mul_mode: MulMode,
-        result: &str,
-        mlhs: &str,
-        mrhs: &str,
-        arhs: &str,
+        result: llir::RegVec<'_>,
+        mlhs: llir::OpVec<'_>,
+        mrhs: llir::OpVec<'_>,
+        arhs: llir::OpVec<'_>,
     ) {
         assert_eq!(vector_factors, [1, 1]);
         let operator = if round == op::Rounding::Exact {
@@ -501,7 +593,12 @@ impl InstPrinter for CudaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "  {}.{} {}, {}, {}, {};",
-            operator, t, result, mlhs, mrhs, arhs
+            operator,
+            t,
+            result.ptx(),
+            mlhs.ptx(),
+            mrhs.ptx(),
+            arhs.ptx(),
         ));
     }
 
@@ -512,8 +609,8 @@ impl InstPrinter for CudaPrinter {
         return_type: Type,
         mem_space: MemSpace,
         flag: InstFlag,
-        result: &str,
-        addr: &str,
+        result: llir::RegVec<'_>,
+        addr: llir::Operand<'_>,
     ) {
         let operator = Self::ld_operator(mem_space, flag);
         let vector = match vector_factors {
@@ -528,8 +625,8 @@ impl InstPrinter for CudaPrinter {
             operator,
             vector,
             Self::get_type(return_type),
-            result,
-            addr
+            result.ptx(),
+            addr.ptx(),
         ));
     }
 
@@ -540,9 +637,9 @@ impl InstPrinter for CudaPrinter {
         val_type: Type,
         mem_space: MemSpace,
         mem_flag: InstFlag,
-        predicate: Option<&str>,
-        addr: &str,
-        val: &str,
+        predicate: Option<llir::Register<'_>>,
+        addr: llir::Operand<'_>,
+        val: llir::OpVec<'_>,
     ) {
         let vector = match vector_factors {
             [1, 1] => "",
@@ -551,7 +648,7 @@ impl InstPrinter for CudaPrinter {
             p => panic!("invalid vector pattern: {:?}", p),
         };
         if let Some(predicate) = predicate {
-            unwrap!(write!(self.buffer, "@{} ", predicate));
+            unwrap!(write!(self.buffer, "@{} ", predicate.ptx()));
         }
         let operator = Self::st_operator(mem_space, mem_flag);
         unwrap!(writeln!(
@@ -560,8 +657,8 @@ impl InstPrinter for CudaPrinter {
             operator,
             vector,
             Self::get_type(val_type),
-            addr,
-            val
+            addr.ptx(),
+            val.ptx(),
         ));
     }
 
@@ -582,59 +679,5 @@ impl InstPrinter for CudaPrinter {
     /// Print wait on all threads
     fn print_sync(&mut self) {
         unwrap!(writeln!(self.buffer, "  bar.sync 0;"));
-    }
-
-    fn name_operand<'a>(
-        vector_levels: &[Vec<Dimension>; 2],
-        op: &'a ir::Operand,
-        name_map: &'a NameMap<ValuePrinter>,
-    ) -> Cow<'a, str> {
-        assert!(vector_levels[0].is_empty());
-        if vector_levels[1].is_empty() {
-            name_map.name_op(op)
-        } else {
-            let sizes = vector_levels[1]
-                .iter()
-                .map(|d| unwrap!(d.size().as_int()))
-                .collect_vec();
-            let names = NDRange::new(&sizes)
-                .map(|indexes| {
-                    let indexes_map = vector_levels[1]
-                        .iter()
-                        .zip_eq(indexes)
-                        .map(|(d, idx)| (d.id(), idx))
-                        .collect_vec();
-                    name_map.indexed_op_name(op, &indexes_map)
-                })
-                .format(", ");
-            Cow::Owned(format!("{{{}}}", names))
-        }
-    }
-
-    fn name_inst<'a>(
-        vector_levels: &[Vec<Dimension>; 2],
-        inst: ir::InstId,
-        name_map: &'a NameMap<ValuePrinter>,
-    ) -> Cow<'a, str> {
-        assert!(vector_levels[0].is_empty());
-        if vector_levels[1].is_empty() {
-            Cow::Borrowed(name_map.name_inst(inst))
-        } else {
-            let sizes = vector_levels[1]
-                .iter()
-                .map(|d| unwrap!(d.size().as_int()))
-                .collect_vec();
-            let names = NDRange::new(&sizes)
-                .map(|indexes| {
-                    let indexes_map = vector_levels[1]
-                        .iter()
-                        .zip_eq(indexes)
-                        .map(|(d, idx)| (d.id(), idx))
-                        .collect_vec();
-                    name_map.indexed_inst_name(inst, &indexes_map)
-                })
-                .format(", ");
-            Cow::Owned(format!("{{{}}}", names))
-        }
     }
 }

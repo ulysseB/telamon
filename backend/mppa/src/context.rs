@@ -1,6 +1,6 @@
 //! MPPA evaluation context.
 use crate::printer::MppaPrinter;
-use crate::{mppa, ValuePrinter};
+use crate::{mppa, NameGenerator};
 use crossbeam;
 use crossbeam::queue::ArrayQueue;
 use fxhash::FxHashMap;
@@ -135,8 +135,8 @@ impl Context {
     /// Compiles and sets the arguments of a kernel.
     fn setup_kernel(&self, fun: &Function) -> (telajax::Kernel, Vec<KernelArg>) {
         let id = ATOMIC_KERNEL_ID.fetch_add(1, Ordering::SeqCst);
-        let mut value_printer = ValuePrinter::default();
-        let mut name_map = NameMap::new(fun, &mut value_printer);
+        let mut namegen = NameGenerator::default();
+        let mut name_map = NameMap::new(fun, &mut namegen);
         let mut printer = MppaPrinter::default();
 
         let kernel_code = printer.wrapper_function(fun, &mut name_map, id);
@@ -172,7 +172,7 @@ impl Context {
     fn get_wrapper(
         &self,
         fun: &Function,
-        name_map: &mut NameMap<ValuePrinter>,
+        name_map: &mut NameMap<'_>,
         id: usize,
     ) -> Arc<telajax::Wrapper> {
         let mut printer = MppaPrinter::default();
@@ -192,7 +192,7 @@ impl Context {
     fn process_kernel_argument(
         &self,
         fun: &Function,
-        name_map: &mut NameMap<ValuePrinter>,
+        name_map: &mut NameMap<'_>,
     ) -> (Vec<usize>, Vec<KernelArg>) {
         fun.device_code_args()
             .map(|p| match p {
