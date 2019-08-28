@@ -30,8 +30,8 @@ fn print_candidates() {
             .unwrap();
 
         let function = codegen::Function::build(&implementation.space);
-        let mut value_printer = mppa::ValuePrinter::default();
-        let mut name_map = codegen::NameMap::new(&function, &mut value_printer);
+        let mut namegen = mppa::NameGenerator::default();
+        let mut name_map = codegen::NameMap::new(&function, &mut namegen);
         let mut printer = mppa::printer::MppaPrinter::default();
 
         let generated_code = printer.wrapper_function(&function, &mut name_map, 1);
