@@ -1,5 +1,7 @@
 //! Describes the different kinds of operands an instruction can have.
+use std::borrow::Cow;
 use std::fmt;
+use std::sync::Arc;
 
 use self::Operand::*;
 use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
@@ -9,8 +11,87 @@ use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use utils::unwrap;
+
+/// Trait for representing integer literals which can be used in the IR.
+///
+/// This is meant to be used as a trait bound in various functions accepting literals as arguments,
+/// and allows to write generic functions accepting both Rust primitive integer types and IR
+/// integers.
+pub trait IntLiteral<'a> {
+    /// Decompose `self` into a big integer and a bit width.
+    ///
+    /// The resulting value should be understood as having type `Type::I(bit_width)` and thus must
+    /// be representable with `bit_width` bits.
+    fn decompose(self) -> (Cow<'a, BigInt>, u16);
+}
+
+impl<'a> IntLiteral<'a> for (BigInt, u16) {
+    fn decompose(self) -> (Cow<'a, BigInt>, u16) {
+        (Cow::Owned(self.0), self.1)
+    }
+}
+
+impl<'a> IntLiteral<'a> for (&'a BigInt, u16) {
+    fn decompose(self) -> (Cow<'a, BigInt>, u16) {
+        (Cow::Borrowed(self.0), self.1)
+    }
+}
+
+/// Trait for representing floating-point literals which can be used in the IR.
+///
+/// This is meant to be used as a trait bound in various functions accepting literals as arguments,
+/// and allows to write generic functions accepting both Rust primitive floating-point types and IR
+/// floats.
+pub trait FloatLiteral<'a> {
+    /// Decompose `self` into a big rational and a bit width.
+    ///
+    /// The resulting value should be understood as having type `Type::F(bit_width)` and thus must
+    /// be representable with `bit_width` bits.
+    fn decompose(self) -> (Cow<'a, Ratio<BigInt>>, u16);
+}
+
+impl<'a> FloatLiteral<'a> for (Ratio<BigInt>, u16) {
+    fn decompose(self) -> (Cow<'a, Ratio<BigInt>>, u16) {
+        (Cow::Owned(self.0), self.1)
+    }
+}
+
+impl<'a> FloatLiteral<'a> for (&'a Ratio<BigInt>, u16) {
+    fn decompose(self) -> (Cow<'a, Ratio<BigInt>>, u16) {
+        (Cow::Borrowed(self.0), self.1)
+    }
+}
+
+macro_rules! impl_int_literal {
+    ($($t:ty),*) => {
+        $(impl<'a> IntLiteral<'a> for $t {
+            fn decompose(self) -> (Cow<'a, BigInt>, u16) {
+                (
+                    Cow::Owned(self.into()),
+                    8 * std::mem::size_of::<$t>() as u16,
+                )
+            }
+        })*
+    };
+}
+
+impl_int_literal!(i8, i16, i32, i64);
+
+macro_rules! impl_float_literal {
+    ($($t:ty),*) => {
+        $(impl<'a> FloatLiteral<'a> for $t {
+            fn decompose(self) -> (Cow<'a, Ratio<BigInt>>, u16) {
+                (
+                    Cow::Owned(Ratio::from_float(self).unwrap()),
+                    8 * std::mem::size_of::<$t>() as u16,
+                )
+            }
+        })*
+    };
+}
+
+impl_float_literal!(f32, f64);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoweringMap {
@@ -163,14 +244,17 @@ impl<L> Operand<L> {
     }
 
     /// Creates a new Int operand and checks its number of bits.
-    pub fn new_int(val: BigInt, len: u16) -> Self {
+    pub fn new_int<'a, T: IntLiteral<'a>>(lit: T) -> Self {
+        let (val, len) = lit.decompose();
         assert!(num_bits(&val) <= len);
-        Int(val, len)
+
+        Int(val.into_owned(), len)
     }
 
     /// Creates a new Float operand.
-    pub fn new_float(val: Ratio<BigInt>, len: u16) -> Self {
-        Float(val, len)
+    pub fn new_float<'a, T: FloatLiteral<'a>>(lit: T) -> Self {
+        let (val, len) = lit.decompose();
+        Float(val.into_owned(), len)
     }
 
     /// Renames a basic block id.

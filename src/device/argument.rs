@@ -2,10 +2,7 @@
 use crate::ir;
 use libc;
 use num::integer::div_rem;
-use num::rational::Ratio;
 use rand::Rng;
-use std;
-use utils::unwrap;
 
 /// Represents a value that can be used as a `Function` argument. Must ensures the type is a scalar
 /// and does not contains any reference.  Also must ensure that no two implementers should have the
@@ -66,7 +63,7 @@ macro_rules! float_scalar_argument {
             }
 
             fn as_operand<L>(&self) -> ir::Operand<L> {
-                ir::Operand::new_float(unwrap!(Ratio::from_float(*self)), size_bits!($ty))
+                ir::Operand::new_float(*self)
             }
 
             fn gen_random<R: Rng>(rng: &mut R) -> Self {
@@ -105,7 +102,7 @@ macro_rules! int_scalar_argument {
             }
 
             fn as_operand<L>(&self) -> ir::Operand<L> {
-                ir::Operand::new_int((*self).into(), size_bits!($ty))
+                ir::Operand::new_int(*self)
             }
 
             fn gen_random<R: Rng>(rng: &mut R) -> Self {
