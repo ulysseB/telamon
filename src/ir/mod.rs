@@ -29,7 +29,7 @@ pub use self::function::{Body, Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::instruction::{InstId, Instruction};
 pub use self::mem::MemId;
-pub use self::operand::{DimMapScope, LoweringMap, Operand};
+pub use self::operand::{DimMapScope, FloatLiteral, IntLiteral, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator, UnaryOp};
 pub use self::size::{PartialSize, Size};
 pub use self::statement::{Statement, StmtId};
