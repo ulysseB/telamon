@@ -1,3 +1,5 @@
+#![cfg(feature = "x86")]
+
 use telamon_kernels::{linalg, Kernel};
 use telamon_x86 as x86;
 
