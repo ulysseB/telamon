@@ -28,8 +28,8 @@ telamon-x86 = { path = "../backend/x86", optional = true }
 
 [features]
 default = ["cuda"]
-cuda = ["telamon-cuda/real_gpu", "cuda-sys", "libc"]
-x86 = ["telamon-x86"]
+cuda = ["telamon-kernels/cuda", "telamon-cuda/real_gpu", "cuda-sys", "libc"]
+x86 = ["telamon-x86", "telamon-kernels/x86"]
 
 [[example]]
 name = "matmul"
