@@ -3,16 +3,13 @@ use std::fmt;
 use crate::ir;
 use fxhash::FxHashSet;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 
 /// Unique identifier for `InductionVar`
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct IndVarId(pub u32);
 
 /// A multidimentional induction variable. No dimension should appear twice in dims.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct InductionVar<L = ir::LoweringMap> {
     dims: Vec<(ir::DimId, ir::PartialSize)>,
     base: ir::Operand<L>,

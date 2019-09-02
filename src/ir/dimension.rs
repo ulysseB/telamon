@@ -30,7 +30,7 @@ impl fmt::Display for DimId {
 }
 
 /// Represents an iteration dimension.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Dimension<L = ir::LoweringMap> {
     id: DimId,
     size: ir::PartialSize,
@@ -256,7 +256,7 @@ impl fmt::Display for LogicalDimId {
 }
 
 /// A logic dimension composed of multiple `Dimension`s.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct LogicalDim {
     id: LogicalDimId,
     static_dims: Vec<DimId>,
@@ -372,7 +372,7 @@ impl From<DimMappingId> for usize {
 }
 
 /// Specifies that two dimensions should be mapped together.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct DimMapping {
     id: DimMappingId,
     dims: [DimId; 2],

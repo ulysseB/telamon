@@ -11,11 +11,10 @@ use crate::search_space::MemSpace;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 use log::debug;
-use serde::{Deserialize, Serialize};
 use utils::*;
 
 /// Represents an argument of a function.
-#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Parameter {
     /// The name of the `Parameter`
     pub name: String,
@@ -32,7 +31,7 @@ impl fmt::Display for Parameter {
 }
 
 /// Holds the signature of a function.
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Signature {
     /// Mame of the function.
     pub name: String,
@@ -68,7 +67,7 @@ impl Signature {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct Body<L = ir::LoweringMap> {
     insts: SparseVec<ir::InstId, Instruction<L>>,
     dims: SparseVec<ir::DimId, Dimension<L>>,

@@ -10,7 +10,6 @@ use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
-use serde::{Deserialize, Serialize};
 use utils::unwrap;
 
 /// Trait for representing integer literals which can be used in the IR.
@@ -93,7 +92,7 @@ macro_rules! impl_float_literal {
 
 impl_float_literal!(f32, f64);
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct LoweringMap {
     /// Memory ID to use for the temporary array
     mem_id: ir::MemId,
@@ -165,7 +164,7 @@ impl LoweringMap {
 
 /// Indicates how dimensions can be mapped. The `L` type indicates how
 /// to lower mapped dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DimMapScope<L> {
     /// The dimensions are mapped within registers, without producing syncthreads.
     Local,
@@ -181,7 +180,7 @@ pub enum DimMapScope<L> {
 }
 
 /// Represents an instruction operand.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub enum Operand<L = LoweringMap> {
     /// An integer constant, on a given number of bits.
     Int(BigInt, u16),

@@ -33,7 +33,7 @@ impl std::fmt::Display for InstId {
 }
 
 /// Represents an instruction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Instruction<L = LoweringMap> {
     operator: Operator<L>,
     id: InstId,

@@ -29,7 +29,7 @@ impl fmt::Display for MemId {
 }
 
 /// A block of memory allocated on the device by the kernel.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct Block {
     id: MemId,
     uses: Vec<InstId>,
@@ -83,7 +83,7 @@ impl Block {
 }
 
 /// Holds the blocks of memory to allocate on the device.
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default)]
 pub struct BlockMap {
     blocks: ir::SparseVec<MemId, Block>,
     layouts: FxHashSet<MemId>,

@@ -2,12 +2,11 @@
 use self::Operator::*;
 use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
 use fxhash::FxHashSet;
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::{self, fmt};
 
 /// The rounding mode of an arithmetic operation.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(C)]
 pub enum Rounding {
     /// No rounding occurs.
@@ -47,7 +46,7 @@ impl Rounding {
 }
 
 /// Represents binary arithmetic operators.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub enum BinOp {
     /// Adds two operands.
@@ -110,7 +109,7 @@ impl BinOp {
 }
 
 /// Arithmetic operators with a single operand.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub enum UnaryOp {
     /// Simply copy the input.
@@ -142,7 +141,7 @@ impl UnaryOp {
 }
 
 /// The operation performed by an instruction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub enum Operator<L = LoweringMap> {
     /// A binary arithmetic operator.
     BinOp(BinOp, Operand<L>, Operand<L>, Rounding),

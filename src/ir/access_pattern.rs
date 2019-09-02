@@ -3,7 +3,6 @@ use crate::device::Device;
 use crate::ir;
 use crate::search_space::MemSpace;
 use fxhash::{FxHashMap, FxHashSet};
-use serde::{Deserialize, Serialize};
 
 /// A stride on a given dimensions.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -14,7 +13,7 @@ pub enum Stride {
     Unknown,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub enum AccessPattern {
     /// Unknown access pattern.
     Unknown(Option<ir::MemId>),

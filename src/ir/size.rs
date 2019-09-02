@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std;
 use std::fmt;
 use std::sync::Arc;
@@ -8,7 +7,7 @@ use utils::*;
 use crate::ir;
 
 /// A fully specified size.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Size {
     factor: u32,
     params: Vec<Arc<ir::Parameter>>,
@@ -103,7 +102,7 @@ where
 
 /// A size whose exact value is not yet decided. The value of `size` is
 /// `product(size.factors())/product(size.divisors())`.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PartialSize {
     static_factor: u32,
     param_factors: Vec<Arc<ir::Parameter>>,
