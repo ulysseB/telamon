@@ -75,10 +75,8 @@ fn main() {
 
                 debug!("Invoking backend for code generation");
                 let function = codegen::Function::build(&implementation.space);
-                let mut namegen = mppa::NameGenerator::default();
-                let mut name_map = codegen::NameMap::new(&function, &mut namegen);
-                let mut printer = mppa::printer::MppaPrinter::default();
-                let kernel_code = printer.wrapper_function(&function, &mut name_map, 1);
+                let kernel_code =
+                    mppa::printer::MppaPrinter::default().wrapper_function(&function, 1);
 
                 action_list.push((implementation.actions.reverse(), kernel_code));
                 impls_generated += 1;

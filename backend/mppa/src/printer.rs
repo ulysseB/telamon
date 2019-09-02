@@ -1,10 +1,10 @@
 use crate::NameGenerator;
 use itertools::Itertools;
 use std::fmt::Write as WriteFmt;
-use telamon::codegen::llir::IntoVector;
 use telamon::codegen::*;
-use telamon::ir::{self, op, Type};
-use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use telamon::ir::{self, Type};
+use telamon::search_space::{DimKind, Domain};
+use telamon_c::C99Display as _;
 use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -13,30 +13,35 @@ pub struct MppaPrinter {
     buffer: String,
 }
 
-impl MppaPrinter {
-    /// Declares all parameters of the function with the appropriate type
-    fn param_decl(&mut self, param: &ParamVal, name_map: &NameMap<'_>) -> String {
-        let name = name_map.name_param(param.key());
-        match param {
-            ParamVal::External(_, par_type) => {
-                format!("{} {}", Self::get_type(*par_type), name)
-            }
-            ParamVal::Size(_) => format!("uint32_t {}", name),
-            ParamVal::GlobalMem(_, _, par_type) => {
-                format!("{} {}", Self::get_type(*par_type), name)
+fn param_t(param: &ParamVal) -> String {
+    match param {
+        &ParamVal::External(ref param, par_type) => {
+            if let Some(elem_t) = param.elem_t {
+                format!("{}*", elem_t.c99())
+            } else {
+                par_type.c99().to_string()
             }
         }
+        ParamVal::Size(_) => "uint32_t".to_string(),
+        ParamVal::GlobalMem(_, _, par_type) => format!("{}*", par_type.c99()),
+    }
+}
+
+impl MppaPrinter {
+    /// Declares all parameters of the function with the appropriate type
+    fn param_decl(&self, param: &ParamVal) -> String {
+        format!("{} {}", param_t(param), param.key().ident())
     }
 
     /// Declared all variables that have been required from the namegen
-    fn var_decls(&mut self, namegen: &NameGenerator) -> String {
+    fn var_decls(&self, namegen: &NameGenerator) -> String {
         let print_decl = |(&t, &n)| {
             // Type is never supposed to be PtrTo here as we handle ptr types in a different way
             if let ir::Type::PtrTo(..) = t {
                 unreachable!("Type PtrTo are never inserted in this map");
             }
             let prefix = NameGenerator::gen_prefix(t);
-            let mut s = format!("{} ", NameGenerator::get_string(t));
+            let mut s = format!("{} ", t.c99());
             s.push_str(
                 &(0..n)
                     .map(|i| format!("{}{}", prefix, i))
@@ -46,12 +51,7 @@ impl MppaPrinter {
             s.push_str(";\n  ");
             s
         };
-        let other_var_decl = namegen
-            .num_var
-            .iter()
-            .map(print_decl)
-            .collect_vec()
-            .join("\n  ");
+        let other_var_decl = namegen.num_var.iter().map(print_decl).join("\n  ");
         if namegen.num_glob_ptr == 0 {
             other_var_decl
         } else {
@@ -67,11 +67,7 @@ impl MppaPrinter {
     }
 
     /// Declares block and thread indexes.
-    fn decl_par_indexes(
-        &mut self,
-        function: &Function,
-        name_map: &NameMap<'_>,
-    ) -> String {
+    fn decl_par_indexes(&self, function: &Function, name_map: &NameMap<'_>) -> String {
         assert!(function.block_dims().is_empty());
         let mut decls = vec![];
         // Compute thread indexes.
@@ -86,15 +82,14 @@ impl MppaPrinter {
     }
 
     /// Prints a `Function`.
-    pub fn function<'a: 'b, 'b>(
-        &mut self,
-        function: &'b Function<'a>,
-        name_map: &mut NameMap<'_>,
-    ) -> String {
+    fn function<'a: 'b, 'b>(&mut self, function: &'b Function<'a>) -> String {
+        let mut namegen = NameGenerator::default();
+        let interner = Interner::default();
+        let name_map = &mut NameMap::new(&interner, function, &mut namegen);
+
         let param_decls = function
             .device_code_args()
-            .map(|v| self.param_decl(v, name_map))
-            .collect_vec()
+            .map(|v| self.param_decl(v))
             .join(",\n  ");
         // SIGNATURE AND OPEN BRACKET
         let mut return_string = format!(
@@ -107,11 +102,18 @@ impl MppaPrinter {
         unwrap!(writeln!(self.buffer, "{}", idx_loads));
         // LOAD PARAM
         for val in function.device_code_args() {
+            let var_name = name_map.name_param_val(val.key());
             unwrap!(writeln!(
                 self.buffer,
-                "{var_name} = {name};// LD_PARAM",
-                var_name = name_map.name_param_val(val.key()).c99(),
-                name = name_map.name_param(val.key())
+                "{var_name} = {cast}{name}; // {param}",
+                cast = if val.elem_t().is_some() {
+                    format!("({})", var_name.t().c99())
+                } else {
+                    "".to_string()
+                },
+                var_name = var_name.c99(),
+                name = val.key().ident(),
+                param = val.key(),
             ));
         }
         // MEM DECL
@@ -134,12 +136,10 @@ impl MppaPrinter {
                     let reg = name_map.declare_size_cast(incr, level.t());
                     if let Some(reg) = reg {
                         let old_name = name_map.name_size(incr, Type::I(32));
-                        self.print_unary_op(
-                            [1, 1],
-                            ir::UnaryOp::Cast(level.t()),
-                            Type::I(32),
-                            reg.into_vector(),
-                            old_name.into_vector(),
+                        self.print_inst(
+                            llir::Instruction::cast(level.t(), reg, old_name)
+                                .unwrap()
+                                .into(),
                         );
                     }
                 }
@@ -167,48 +167,40 @@ impl MppaPrinter {
 
     /// Function takes parameters as an array of void* pointers
     /// This function converts back these pointers into their original types
-    fn fun_params_cast(&mut self, function: &Function) -> String {
+    fn fun_params_cast(&self, function: &Function) -> String {
         function
             .device_code_args()
             .enumerate()
-            .map(|(i, v)| {
-                match v {
-                    ParamVal::External(..) if v.is_pointer() => format!(
-                        "uintptr_t p{i} = (uintptr_t)*(args + {i});\n//printf(\"p{i} = \
-                         %p\\n\", (void *)p{i});\n",
-                        i = i
-                    ),
-                    ParamVal::External(_, par_type) => format!(
-                        "{t} p{i} = *({t}*)*(args + {i})",
-                        t = Self::get_type(*par_type),
-                        i = i
-                    ),
-                    ParamVal::Size(_) => format!(
-                        "uint32_t p{i} = *(uint32_t*)(void *)*(args + {i}); \
-                         //printf(\"p{i} = %d\\n\")",
-                        i = i
-                    ),
-                    // Are we sure we know the size at compile time ? I think we do
-                    ParamVal::GlobalMem(_, _, par_type) => format!(
-                        "{t} p{i} = ({t})*(args + {i})",
-                        t = Self::get_type(*par_type),
-                        i = i
-                    ),
-                }
+            .map(|(i, v)| match v {
+                ParamVal::External(..) => format!(
+                    "  {t} {p} = *({t}*)args[{i}];",
+                    t = param_t(v),
+                    p = v.key().ident(),
+                    i = i
+                ),
+                ParamVal::Size(_) => format!(
+                    r#"  uint32_t {p} = *(uint32_t*)(void *)args[{i}];
+//printf("{p} = %d\n", {p});"#,
+                    p = v.key().ident(),
+                    i = i
+                ),
+                // Are we sure we know the size at compile time ? I think we do
+                ParamVal::GlobalMem(_, _, par_type) => format!(
+                    "  {t} {p} = *({t}*)args[{i}];",
+                    p = v.key().ident(),
+                    t = par_type.c99(),
+                    i = i
+                ),
             })
-            .collect_vec()
-            .join(";\n  ")
+            .join("\n")
     }
 
     /// Declares the variables that will be used in C function call
     fn params_call(&mut self, function: &Function) -> String {
         function
             .device_code_args()
-            .enumerate()
-            .map(|x| x.0)
-            .map(|i| format!("p{}", i))
-            .collect_vec()
-            .join(", ")
+            .format_with(", ", |p, f| f(&format_args!("{}", p.key().ident())))
+            .to_string()
     }
 
     /// Build the right call for a nested loop on dimensions with linearized accesses that is, for
@@ -311,17 +303,10 @@ impl MppaPrinter {
 
     /// Turns the argument of wrapper into an array of void pointers
     /// Necessary to call pthread with it
-    fn build_ptr_struct(&self, func: &Function, name_map: &NameMap<'_>) -> String {
+    fn build_ptr_struct(&self, func: &Function) -> String {
         func.device_code_args()
             .enumerate()
-            .map(|(i, arg)| {
-                let name = name_map.name_param(arg.key());
-                if arg.is_pointer() {
-                    format!("args[{}] = (void *){}", i, name)
-                } else {
-                    format!("args[{}] = (void *)&{}", i, name)
-                }
-            })
+            .map(|(i, arg)| format!("args[{}] = (void *)&{}", i, arg.key().ident()))
             .join(";\n")
     }
 
@@ -329,10 +314,9 @@ impl MppaPrinter {
     pub fn wrapper_function<'a: 'b, 'b>(
         &mut self,
         func: &'b Function<'a>,
-        name_map: &mut NameMap<'b, '_>,
         id: usize,
     ) -> String {
-        let fun_str = self.function(func, name_map);
+        let fun_str = self.function(func);
         let fun_params = self.params_call(func);
         let (lower_bound, upper_n_arg) = func.device_code_args().size_hint();
         let n_args = if let Some(upper_bound) = upper_n_arg {
@@ -343,15 +327,14 @@ impl MppaPrinter {
         };
         let cl_arg_def = func
             .device_code_args()
-            .map(|v| self.param_decl(v, name_map))
-            .collect_vec()
+            .map(|v| self.param_decl(v))
             .join(",  ");
         format!(
             include_str!("template/host.c.template"),
             id = id,
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
-            build_ptr_struct = self.build_ptr_struct(func, name_map),
+            build_ptr_struct = self.build_ptr_struct(func),
             fun_name = func.name(),
             fun_str = fun_str,
             fun_params_cast = self.fun_params_cast(func),
@@ -389,28 +372,17 @@ impl MppaPrinter {
         }
     }
     /// Prints the OpenCL wrapper for a candidate implementation.
-    pub fn print_ocl_wrapper(
-        &mut self,
-        fun: &Function,
-        name_map: &mut NameMap<'_>,
-        id: usize,
-    ) -> String {
+    pub fn print_ocl_wrapper(&self, fun: &Function, id: usize) -> String {
         let arg_names = fun
             .device_code_args()
-            .format_with(", ", |p, f| {
-                f(&format_args!("{}", name_map.name_param(p.key())))
-            })
-            .to_string();
-        let cl_arg_defs = fun
-            .device_code_args()
-            .format_with(", ", |p, f| {
-                f(&format_args!(
-                    "{} {}",
-                    Self::cl_type_name(p.t()),
-                    name_map.name_param(p.key())
-                ))
-            })
-            .to_string();
+            .format_with(", ", |p, f| f(&format_args!("{}", p.key().ident())));
+        let cl_arg_defs = fun.device_code_args().format_with(", ", |p, f| {
+            f(&format_args!(
+                "{} {}",
+                Self::cl_type_name(p.t()),
+                p.key().ident(),
+            ))
+        });
         format!(
             include_str!("template/ocl_wrap.c.template"),
             fun_id = id,
@@ -418,203 +390,14 @@ impl MppaPrinter {
             cl_arg_defs = cl_arg_defs,
         )
     }
-
-    fn get_type(t: ir::Type) -> String {
-        match t {
-            ir::Type::PtrTo(..) => String::from("intptr_t"),
-            ir::Type::F(32) => String::from("float"),
-            ir::Type::F(64) => String::from("double"),
-            ir::Type::I(1) => String::from("int8_t"),
-            ir::Type::I(8) => String::from("int8_t"),
-            ir::Type::I(16) => String::from("int16_t"),
-            ir::Type::I(32) => String::from("int32_t"),
-            ir::Type::I(64) => String::from("int64_t"),
-            ref t => panic!("invalid type for the host: {}", t),
-        }
-    }
 }
 
 impl InstPrinter for MppaPrinter {
-    fn print_binop(
-        &mut self,
-        vector_factors: [u32; 2],
-        op: ir::BinOp,
-        _: Type,
-        _: op::Rounding,
-        result: llir::RegVec<'_>,
-        lhs: llir::OpVec<'_>,
-        rhs: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-
-        let (op, is_infix_op) = match op {
-            ir::BinOp::Add => ("+", true),
-            ir::BinOp::Sub => ("-", true),
-            ir::BinOp::Div => ("/", true),
-            ir::BinOp::And => ("&", true),
-            ir::BinOp::Or => ("|", true),
-            ir::BinOp::Lt => ("<", true),
-            ir::BinOp::Leq => ("<=", true),
-            ir::BinOp::Equals => ("==", true),
-            ir::BinOp::Max => ("telamon_op_max", false),
-        };
-
-        if is_infix_op {
-            unwrap!(writeln!(
-                self.buffer,
-                "{} = {} {} {};",
-                result.c99(),
-                lhs.c99(),
-                op,
-                rhs.c99(),
-            ));
-        } else {
-            unwrap!(writeln!(
-                self.buffer,
-                "{} = {}({}, {});",
-                result.c99(),
-                op,
-                lhs.c99(),
-                rhs.c99(),
-            ));
-        }
+    fn print_label(&mut self, label: llir::Label<'_>) {
+        writeln!(self.buffer, "{}", label.c99()).unwrap()
     }
 
-    fn print_unary_op(
-        &mut self,
-        vector_factors: [u32; 2],
-        operator: ir::UnaryOp,
-        _: Type,
-        result: llir::RegVec<'_>,
-        operand: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        unwrap!(write!(self.buffer, "{} = ", result.c99()));
-        match operator {
-            ir::UnaryOp::Mov => {
-                unwrap!(writeln!(self.buffer, "{};", operand.c99()));
-            }
-
-            ir::UnaryOp::Cast(t) => {
-                unwrap!(write!(
-                    self.buffer,
-                    "({}){};",
-                    Self::get_type(t),
-                    operand.c99()
-                ));
-            }
-
-            ir::UnaryOp::Exp(t) => match t {
-                ir::Type::F(32) => {
-                    unwrap!(write!(self.buffer, "expf({});", operand.c99()))
-                }
-                _ => panic!("Exp not implemented for type {}", t),
-            },
-        };
-    }
-
-    fn print_mul(
-        &mut self,
-        vector_factors: [u32; 2],
-        _: Type,
-        _: op::Rounding,
-        mode: MulMode,
-        result: llir::RegVec<'_>,
-        op1: llir::OpVec<'_>,
-        op2: llir::OpVec<'_>,
-    ) {
-        assert_ne!(mode, MulMode::High);
-        assert_eq!(vector_factors, [1, 1]);
-        unwrap!(writeln!(
-            self.buffer,
-            "{} = {} * {};",
-            result.c99(),
-            op1.c99(),
-            op2.c99()
-        ));
-    }
-
-    fn print_mad(
-        &mut self,
-        vector_factors: [u32; 2],
-        _: Type,
-        _: op::Rounding,
-        mode: MulMode,
-        result: llir::RegVec<'_>,
-        mlhs: llir::OpVec<'_>,
-        mrhs: llir::OpVec<'_>,
-        arhs: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        assert_ne!(mode, MulMode::High);
-        unwrap!(writeln!(
-            self.buffer,
-            "{} = {} * {} + {};",
-            result.c99(),
-            mlhs.c99(),
-            mrhs.c99(),
-            arhs.c99(),
-        ));
-    }
-
-    fn print_ld(
-        &mut self,
-        vector_factors: [u32; 2],
-        return_type: Type,
-        _: MemSpace,
-        _: InstFlag,
-        result: llir::RegVec<'_>,
-        addr: llir::Operand<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        unwrap!(writeln!(
-            self.buffer,
-            "{} = *({}*){} ;",
-            result.c99(),
-            Self::get_type(return_type),
-            addr.c99(),
-        ));
-    }
-
-    fn print_st(
-        &mut self,
-        vector_factors: [u32; 2],
-        val_type: Type,
-        _: MemSpace,
-        _: InstFlag,
-        predicate: Option<llir::Register<'_>>,
-        addr: llir::Operand<'_>,
-        val: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        if let Some(predicate) = predicate {
-            unwrap!(write!(self.buffer, "if ({})", predicate.c99()));
-        }
-        unwrap!(writeln!(
-            self.buffer,
-            "*({}*){} = {} ;",
-            Self::get_type(val_type),
-            addr.c99(),
-            val.c99(),
-        ));
-    }
-
-    fn print_label(&mut self, label_id: &str) {
-        unwrap!(writeln!(self.buffer, "LABEL_{}:", label_id));
-    }
-
-    fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        unwrap!(writeln!(
-            self.buffer,
-            "if({}) goto LABEL_{};",
-            cond, label_id
-        ));
-    }
-
-    fn print_sync(&mut self) {
-        unwrap!(writeln!(
-            self.buffer,
-            "if (pthread_barrier_wait(tid->barrier)) {{printf(\"barrier error\\n\"); return;}}\n",
-        ));
+    fn print_inst(&mut self, inst: llir::PredicatedInstruction<'_>) {
+        writeln!(self.buffer, "{}", inst.c99()).unwrap();
     }
 }

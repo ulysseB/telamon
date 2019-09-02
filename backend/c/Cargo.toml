@@ -1,0 +1,9 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>", "Nicolas Tollenaere <nicolas.tollenaere@inria.fr>", "Basile Clement <basile.clement@ens.fr>"]
+name = "telamon-c"
+version = "0.0.1"
+edition = "2018"
+
+[dependencies]
+num = { version = "0.2.0" }
+telamon = {path = "../../"}

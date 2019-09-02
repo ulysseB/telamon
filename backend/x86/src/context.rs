@@ -202,6 +202,12 @@ impl<'a> KernelEvaluator for Code<'a> {
     }
 }
 
+enum RawArg {
+    Scalar(*mut libc::c_void),
+    Size(i32),
+    Array(*mut libc::c_void),
+}
+
 /// Given a function string and its arguments as ThunkArg, compile to a binary, executes it and
 /// returns the time elapsed. Converts ThunkArgs to HoldTHunk as we want to allocate memory for
 /// temporary arrays at the last possible moment
@@ -217,8 +223,11 @@ fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
     unwrap!(source_file.write_all(fun_str.as_bytes()));
     let compile_status = compile::compile(source_file, &templib_name);
     if !compile_status.success() {
-        panic!("Could not compile file");
+        panic!("Could not compile file:\n{}", fun_str);
     }
+    // Lock the arguments and allocate temporary arrays
+    //
+    // `thunks` owns the array values
     let mut thunks = args
         .iter()
         .map(|arg| match arg {
@@ -233,15 +242,33 @@ fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
             }
         })
         .collect_vec();
-    let ptrs = thunks
+    // This contains the argument values, which might be references into `thunks`
+    //
+    // `raw_args` owns array pointers, *NOT* values
+    let mut raw_args = thunks
         .iter_mut()
         .map(|arg| match arg {
-            HoldThunk::ArrRef(arg) => arg.as_mut_ptr() as *mut libc::c_void,
-            HoldThunk::Scalar(ptr) => *ptr,
-            HoldThunk::Size(size) => size as *mut _ as *mut libc::c_void,
-            HoldThunk::Arr(array) => array.as_mut_ptr() as *mut libc::c_void,
+            HoldThunk::ArrRef(arg) => {
+                RawArg::Array(arg.as_mut_ptr() as *mut libc::c_void)
+            }
+            &mut HoldThunk::Scalar(ptr) => RawArg::Scalar(ptr),
+            &mut HoldThunk::Size(size) => RawArg::Size(size),
+            HoldThunk::Arr(array) => {
+                RawArg::Array(array.as_mut_ptr() as *mut libc::c_void)
+            }
         })
-        .collect_vec();
+        .collect::<Vec<_>>();
+    // This contains pointers to the arguments values held in `raw_args`
+    //
+    // `ptrs` is only references to the pointers stored in `raw_args
+    let ptrs = raw_args
+        .iter_mut()
+        .map(|raw| match raw {
+            &mut RawArg::Scalar(ptr) => ptr,
+            RawArg::Array(array) => array as *mut *mut libc::c_void as *mut libc::c_void,
+            RawArg::Size(size) => size as *mut i32 as *mut libc::c_void,
+        })
+        .collect::<Vec<_>>();
     let time = compile::link_and_exec(&templib_name, &String::from("entry_point"), ptrs);
     Ok(time)
 }

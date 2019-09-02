@@ -17,7 +17,6 @@ use telamon::{codegen, ir};
 #[derive(Default)]
 pub(crate) struct NameGenerator {
     num_var: FxHashMap<ir::Type, usize>,
-    num_sizes: usize,
     num_glob_ptr: usize,
 }
 
@@ -53,17 +52,6 @@ impl codegen::NameGenerator for NameGenerator {
                 let name = format!("{}{}", prefix, *entry);
                 *entry += 1;
                 name
-            }
-        }
-    }
-
-    fn name_param(&mut self, p: codegen::ParamValKey) -> String {
-        match p {
-            codegen::ParamValKey::External(p) => p.name.clone(),
-            codegen::ParamValKey::GlobalMem(mem) => format!("_gbl_mem_{}", mem.0),
-            codegen::ParamValKey::Size(_) => {
-                self.num_sizes += 1;
-                format!("_size_{}", self.num_sizes - 1)
             }
         }
     }

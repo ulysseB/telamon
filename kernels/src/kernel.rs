@@ -15,7 +15,11 @@ use rpds::list::List;
 use serde::{de::DeserializeOwned, Serialize};
 use std::io::{Read, Write};
 use std::sync::{atomic, Mutex};
-use telamon::explorer::{self, choice::ActionEx, local_selection, Candidate};
+use telamon::explorer::{
+    self,
+    choice::{self, ActionEx},
+    local_selection, Candidate,
+};
 use telamon::helper::{MemInit, SignatureBuilder};
 use telamon::model::Bound;
 use telamon::{codegen, device, ir};
@@ -197,7 +201,16 @@ pub trait Kernel<'a>: Sized + Sync {
                 .unwrap_or_else(|err| panic!("In kernel {}: {}", Self::name(), err))
         });
 
+        if choice::default_list(&implem.space).next().is_some() {
+            panic!("dump is not a fixed candidate")
+        }
+
         let device_fn = codegen::Function::build(&implem.space);
+        ctx.device().print(
+            &device_fn,
+            &mut std::fs::File::create("/tmp/code.c").unwrap(),
+        );
+
         ctx.evaluate(&device_fn, device::EvalMode::FindBest)
             .unwrap();
         if let Err(err) = kernel.check_result(&expected_output, ctx) {
