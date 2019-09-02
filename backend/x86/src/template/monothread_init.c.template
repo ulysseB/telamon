@@ -1,6 +1,0 @@
-thread_arg_t thread_args;
- thread_args.args = args;
- thread_args.tid.t0 = 0;
- thread_args.tid.barrier = &barrier;
-pthread_barrier_init(&barrier, NULL, 1);
-exec_wrap((void *)&thread_args);

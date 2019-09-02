@@ -12,7 +12,7 @@ pub use self::cfg::Cfg;
 pub use self::dimension::{Dimension, InductionLevel, InductionVar};
 pub use self::function::*;
 pub use self::name_map::{Interner, NameGenerator, NameMap, Operand};
-pub use self::printer::{C99Display, InstPrinter, MulMode, Printer};
+pub use self::printer::{IdentDisplay, InstPrinter, Printer};
 pub use self::size::Size;
 pub use self::variable::Variable;
 

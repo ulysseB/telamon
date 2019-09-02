@@ -4,10 +4,36 @@
 #include <pthread.h>
 #include <math.h>
 
-#define telamon_op_max(a, b) ((a) > (b) ? (a) : (b))
+#define __max(a, b) ((a) > (b) ? (a) : (b))
+#define __min(a, b) ((a) < (b) ? (a) : (b))
+
+#define __mul32Hi(a, b) (((int32_t)__mul32Wide(a, b)) >> 32)
+#define __mul32Wide(a, b) ((int64_t)a * (int64_t)b)
+
+#define __mad(a, b, c) (((a) * (b)) + (c))
+#define __mad32Hi(a, b, c) (__mul32Hi(a, b) + c)
+#define __mad32Wide(a, b, c) (__mul32Wide(a, b) + c)
+
+#define __fma(a, b, c) (((a) * (b)) + (c))
+
+#define __sync() if (check_pthread_barrier_wait(tid.barrier)) {{ \
+	printf("barrier error\n"); \
+	return; \
+}}
+
+/* Synchronizes at the barrier b, just like pthread_barrier_wait, but
+ * returns 0 on success for all threads instead of
+ * PTHREAD_BARRIER_SERIAL_THREAD for one abritrary thread and 0 for
+ * the remaining threads. */
+static int check_pthread_barrier_wait(pthread_barrier_t *b)
+{{
+  int res = pthread_barrier_wait(b);
+
+  return !(res == 0 || res == PTHREAD_BARRIER_SERIAL_THREAD);
+}}
 
 typedef struct thread_dim_id {{
-pthread_barrier_t * barrier;
+pthread_barrier_t *barrier;
 {dim_decl} }} thread_dim_id_t;
 
 typedef struct thread_args {{
@@ -19,20 +45,18 @@ typedef struct thread_args {{
 
 
 void execute(thread_dim_id_t tid, void** args) {{
-  {fun_params_cast};
-  {fun_name}(tid, {fun_params});
+{fun_params_cast}
+  {fun_name}(tid {fun_params});
 }}
 
 
 
-void * exec_wrap(void * args) {{
-  thread_arg_t thr_args = *(thread_arg_t *) args;
-  execute(thr_args.tid,  thr_args.args);
+void *exec_wrap(void *args) {{
+  thread_arg_t thread_args = *(thread_arg_t *) args;
+  execute(thread_args.tid,  thread_args.args);
   return NULL;
 }}
 
 void entry_point(void** args) {{
-  pthread_barrier_t barrier;
-  {gen_threads}
-  {thread_join}
+  {entry_point}
 }}

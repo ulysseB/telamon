@@ -32,12 +32,17 @@ impl Type {
         }
     }
 
+    /// Return the number of bits of the type
+    pub fn bitwidth(self) -> Option<u32> {
+        match self {
+            Type::I(bits) | Type::F(bits) => Some(u32::from(bits)),
+            _ => None,
+        }
+    }
+
     /// Returns the number of bytes of the type.
     pub fn len_byte(self) -> Option<u32> {
-        match self {
-            Type::I(i) | Type::F(i) => Some(u32::from(div_ceil(i, 8))),
-            Type::PtrTo(_) => None,
-        }
+        self.bitwidth().map(|bits| div_ceil(bits, 8))
     }
 }
 

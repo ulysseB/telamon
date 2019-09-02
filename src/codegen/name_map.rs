@@ -12,7 +12,7 @@ use crate::codegen::{
 };
 use crate::ir::{self, dim, DimMap, InstId, Type};
 
-use super::llir::{self, Register};
+use super::llir::{self, IntLiteral as _, Register};
 
 // TODO(cleanup): refactor
 
@@ -28,8 +28,6 @@ pub enum Operand<'a> {
 pub trait NameGenerator {
     /// Provides a name for a variable of the given type.
     fn name(&mut self, t: Type) -> String;
-    /// Generates a name for a parameter.
-    fn name_param(&mut self, p: ParamValKey) -> String;
 }
 
 /// Maps variables to names.
@@ -44,8 +42,8 @@ pub struct NameMap<'a> {
     insts: FxHashMap<InstId, VariableNames<Register<'a>>>,
     /// Keeps track of loop index names.
     indexes: FxHashMap<ir::DimId, Register<'a>>,
-    /// Keeps track of parameter names, both in the code and in the arguments.
-    params: FxHashMap<ParamValKey<'a>, (Register<'a>, &'a str)>,
+    /// Keeps track of parameter names in the code
+    params: FxHashMap<ParamValKey<'a>, Register<'a>>,
     /// Keeps track of memory block address names.
     mem_blocks: FxHashMap<ir::MemId, Register<'a>>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
@@ -99,11 +97,10 @@ impl<'a> NameMap<'a> {
             .map(|val| {
                 let var_name =
                     Register::new(interner.intern(namegen.name(val.t())), val.t());
-                let param_name = interner.intern(namegen.name_param(val.key()));
                 if let ParamValKey::GlobalMem(id) = val.key() {
                     mem_blocks.insert(id, var_name);
                 }
-                (val.key(), (var_name, param_name))
+                (val.key(), var_name)
             })
             .collect();
         // Name dimensions indexes.
@@ -204,10 +201,10 @@ impl<'a> NameMap<'a> {
     }
 
     /// Generates an ID for a loop.
-    pub fn gen_loop_id(&mut self) -> u32 {
+    pub fn gen_label(&mut self, prefix: &str) -> llir::Label<'a> {
         let id = self.num_loop;
         self.num_loop += 1;
-        id
+        llir::Label::new(self.interner.intern(format!("{}_{}", prefix, id)))
     }
 
     pub fn name(&self, operand: Operand<'a>) -> llir::Operand<'a> {
@@ -243,7 +240,7 @@ impl<'a> NameMap<'a> {
             }
             ir::Operand::Index(id) => {
                 if let Some(&idx) = indexes.get(id) {
-                    llir::Operand::int(i32::try_from(idx).unwrap())
+                    i32::try_from(idx).unwrap().int_literal()
                 } else {
                     self.indexes[id].into()
                 }
@@ -254,7 +251,7 @@ impl<'a> NameMap<'a> {
             ir::Operand::Addr(id) => self.name_addr(*id).into(),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(*id, None),
             ir::Operand::Variable(val_id, _t) => {
-                self.variables[val_id].get_name(&indexes).into()
+                (*self.variables[val_id].get_name(&indexes)).into()
             }
         }
     }
@@ -366,17 +363,12 @@ impl<'a> NameMap<'a> {
         }
     }
 
-    /// Returns the name of a variable representing a parameter.
-    pub fn name_param<'c>(&'c self, param: ParamValKey<'c>) -> &'a str {
-        &self.params.get(&param).unwrap().1
-    }
-
     /// Returns the name of a variable representing a parameter value.
     pub fn name_param_val<'c>(&'c self, param: ParamValKey<'c>) -> Register<'a> {
-        self.params
+        *self
+            .params
             .get(&param)
             .unwrap_or_else(|| panic!("cannot find {:?} entry", param))
-            .0
     }
 
     /// Returns the name of the address of a memory block.
@@ -426,13 +418,16 @@ impl<'a> NameMap<'a> {
         match (size.dividend(), expected_t) {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);
-                llir::Operand::int(i32::try_from(size.factor()).unwrap())
+                i32::try_from(size.factor())
+                    .unwrap()
+                    .typed_int_literal(expected_t)
+                    .unwrap()
             }
             ([p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 => {
                 self.name_param_val(ParamValKey::External(&**p)).into()
             }
             (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)).into(),
-            _ => self.size_casts.get(&(size, expected_t)).unwrap().into(),
+            _ => (*self.size_casts.get(&(size, expected_t)).unwrap()).into(),
         }
     }
 
@@ -604,10 +599,6 @@ mod tests {
             let name = format!("%{}", self.next_name);
             self.next_name += 1;
             name
-        }
-
-        fn name_param(&mut self, _: ParamValKey) -> String {
-            self.name(ir::Type::I(0))
         }
     }
 

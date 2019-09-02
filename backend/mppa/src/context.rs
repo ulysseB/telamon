@@ -135,12 +135,8 @@ impl Context {
     /// Compiles and sets the arguments of a kernel.
     fn setup_kernel(&self, fun: &Function) -> (telajax::Kernel, Vec<KernelArg>) {
         let id = ATOMIC_KERNEL_ID.fetch_add(1, Ordering::SeqCst);
-        let mut namegen = NameGenerator::default();
-        let mut name_map = NameMap::new(fun, &mut namegen);
-        let mut printer = MppaPrinter::default();
-
-        let kernel_code = printer.wrapper_function(fun, &mut name_map, id);
-        let wrapper = self.get_wrapper(fun, &mut name_map, id);
+        let kernel_code = MppaPrinter::default().wrapper_function(fun, id);
+        let wrapper = self.get_wrapper(fun, id);
 
         // Compiler and linker flags
         let cflags = std::ffi::CString::new("-mhypervisor").unwrap();
@@ -154,8 +150,7 @@ impl Context {
         kernel.set_num_clusters(1).unwrap();
 
         // Setting kernel arguments
-        let (mut arg_sizes, mut kernel_args) =
-            self.process_kernel_argument(fun, &mut name_map);
+        let (mut arg_sizes, mut kernel_args) = self.process_kernel_argument(fun);
         // This memory chunk is used to get the time taken by the kernel
         let out_mem = self.writeback_slots.pop().unwrap();
         kernel_args.push(KernelArg::GlobalMem(out_mem));
@@ -169,14 +164,8 @@ impl Context {
     }
 
     /// Returns the wrapper for the given signature.
-    fn get_wrapper(
-        &self,
-        fun: &Function,
-        name_map: &mut NameMap<'_>,
-        id: usize,
-    ) -> Arc<telajax::Wrapper> {
-        let mut printer = MppaPrinter::default();
-        let ocl_code = printer.print_ocl_wrapper(fun, name_map, id);
+    fn get_wrapper(&self, fun: &Function, id: usize) -> Arc<telajax::Wrapper> {
+        let ocl_code = MppaPrinter::default().print_ocl_wrapper(fun, id);
         let name = std::ffi::CString::new(format!("wrapper_{}", id)).unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
         Arc::new(self.executor.build_wrapper(&name, &ocl_code).unwrap())
@@ -189,17 +178,12 @@ impl Context {
 
     /// Process parameters so they can be passed to telajax correctly
     /// Returns a tuple of (Vec<argument size>, Vec<argument>)
-    fn process_kernel_argument(
-        &self,
-        fun: &Function,
-        name_map: &mut NameMap<'_>,
-    ) -> (Vec<usize>, Vec<KernelArg>) {
+    fn process_kernel_argument(&self, fun: &Function) -> (Vec<usize>, Vec<KernelArg>) {
         fun.device_code_args()
             .map(|p| match p {
-                ParamVal::External(..) => {
-                    let name = name_map.name_param(p.key());
-                    let arg = self.get_param(&name);
-                    (get_type_size(p.t()), KernelArg::External(arg.raw_ptr()))
+                ParamVal::External(p, _) => {
+                    let arg = self.get_param(&p.name);
+                    (get_type_size(p.t), KernelArg::External(arg.raw_ptr()))
                 }
                 ParamVal::GlobalMem(_, size, _) => {
                     let size = self.eval_size(size);
@@ -216,10 +200,9 @@ impl Context {
 }
 
 fn get_type_size(t: ir::Type) -> usize {
-    match t {
-        ir::Type::I(u) | ir::Type::F(u) => (u / 8) as usize,
-        ir::Type::PtrTo(_) => telajax::Mem::get_mem_size(),
-    }
+    t.len_byte()
+        .map(|x| x as usize)
+        .unwrap_or_else(telajax::Mem::get_mem_size)
 }
 
 impl device::Context for Context {

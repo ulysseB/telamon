@@ -6,7 +6,6 @@ use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
 
 use fxhash::FxHashMap;
-use itertools::*;
 use std::io::Write;
 
 use crate::printer::X86printer;
@@ -28,16 +27,7 @@ impl Cpu {
 
 impl device::Device for Cpu {
     fn print(&self, fun: &Function, out: &mut dyn Write) {
-        let mut printer = X86printer::default();
-        write!(out, "{}", printer.wrapper_function(fun)).unwrap();
-        write!(
-            out,
-            "{}",
-            fun.device_code_args()
-                .map(|x| format!("{:?}", x))
-                .format("\n")
-        )
-        .unwrap();
+        write!(out, "{}", X86printer::default().wrapper_function(fun)).unwrap();
     }
 
     fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
@@ -83,8 +73,8 @@ impl device::Device for Cpu {
     }
 
     fn pointer_type(&self, _: MemSpace) -> ir::Type {
-        // Use 0 as a dummy memory ID.
-        ir::Type::PtrTo(ir::MemId(0))
+        // TODO: pointer bitwidth
+        ir::Type::I(64)
     }
 
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {

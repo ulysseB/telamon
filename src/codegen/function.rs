@@ -12,7 +12,6 @@ use utils::*;
 
 use itertools::Itertools;
 use log::{debug, trace};
-use matches::matches;
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
@@ -213,12 +212,11 @@ impl ParamVal {
         }
     }
 
-    /// Indicates if the parameter is a pointer.
-    pub fn is_pointer(&self) -> bool {
+    pub fn elem_t(&self) -> Option<ir::Type> {
         match *self {
-            ParamVal::External(ref p, _) => matches!(p.t, ir::Type::PtrTo(_)),
-            ParamVal::GlobalMem(..) => true,
-            ParamVal::Size(_) => false,
+            ParamVal::External(ref p, _) => p.elem_t,
+            ParamVal::GlobalMem(_, _, elem_t) => Some(elem_t),
+            ParamVal::Size(_) => None,
         }
     }
 
@@ -240,6 +238,26 @@ pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
     Size(&'a codegen::Size),
     GlobalMem(ir::MemId),
+}
+
+impl fmt::Display for ParamValKey<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParamValKey::External(p) => fmt.write_str(&p.name),
+            ParamValKey::Size(size) => fmt::Display::fmt(size, fmt),
+            ParamValKey::GlobalMem(memid) => write!(fmt, "pointer to {}", memid),
+        }
+    }
+}
+
+impl codegen::IdentDisplay for ParamValKey<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ParamValKey::External(p) => fmt.write_str(&p.name),
+            ParamValKey::Size(size) => codegen::IdentDisplay::fmt(size, fmt),
+            ParamValKey::GlobalMem(mem) => write!(fmt, "_gbl_mem_{}", mem.0),
+        }
+    }
 }
 
 /// Generates the list of internal memory blocks, and creates the parameters needed to

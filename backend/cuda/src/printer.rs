@@ -5,10 +5,9 @@ use std::io::Write;
 use utils::*;
 
 use itertools::Itertools;
-use telamon::codegen::llir::IntoVector;
 use telamon::codegen::*;
-use telamon::ir::{self, op, Type};
-use telamon::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use telamon::ir::{self, Type};
+use telamon::search_space::{DimKind, Domain};
 
 use crate::{Gpu, NameGenerator};
 
@@ -63,7 +62,7 @@ impl<'a, T: PTXDisplay + ?Sized> fmt::Display for DisplayPTX<'a, T> {
 
 impl PTXDisplay for llir::Register<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str(self.name())
+        write!(fmt, "%{}", self.name())
     }
 }
 
@@ -96,9 +95,11 @@ impl<T: PTXDisplay> PTXDisplay for llir::ScalarOrVector<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             llir::ScalarOrVector::Scalar(scalar) => PTXDisplay::fmt(scalar, fmt),
-            llir::ScalarOrVector::Vector(ts) => {
-                write!(fmt, "{{{}}}", ts.iter().map(PTXDisplay::ptx).format(", "))
-            }
+            llir::ScalarOrVector::Vector(scalars) => write!(
+                fmt,
+                "{{{}}}",
+                scalars.iter().map(PTXDisplay::ptx).format(", ")
+            ),
         }
     }
 }
@@ -109,62 +110,11 @@ pub(crate) struct CudaPrinter {
 }
 
 impl CudaPrinter {
-    fn mul_mode(mode: MulMode) -> &'static str {
-        match mode {
-            MulMode::Wide => ".wide",
-            MulMode::Low => ".lo",
-            MulMode::High => ".hi",
-            MulMode::Empty => "",
-        }
-    }
-
-    fn get_inst_type(mode: MulMode, ret_type: Type) -> Type {
-        match mode {
-            MulMode::Wide => {
-                if let Type::I(n) = ret_type {
-                    Type::I(n / 2)
-                } else {
-                    panic!("get_inst_type should only be called with integer types")
-                }
-            }
-            _ => ret_type,
-        }
-    }
-
-    /// Prints a load operator.
-    fn ld_operator(space: MemSpace, flag: InstFlag) -> &'static str {
-        if space == MemSpace::SHARED {
-            "ld.shared"
-        } else {
-            match flag {
-                InstFlag::CACHE_SHARED => "ld.global.ca",
-                InstFlag::CACHE_GLOBAL => "ld.global.cg",
-                InstFlag::CACHE_READ_ONLY => "ld.global.nc",
-                InstFlag::NO_CACHE => "ld.global.cs",
-                _ => panic!("invalid load flag {:?}", flag),
-            }
-        }
-    }
-
-    /// Prints a store operator.
-    fn st_operator(space: MemSpace, flag: InstFlag) -> &'static str {
-        if space == MemSpace::SHARED {
-            "st.shared"
-        } else {
-            match flag {
-                InstFlag::CACHE_SHARED => "st.global.wb",
-                InstFlag::CACHE_GLOBAL => "st.global.cg",
-                InstFlag::NO_CACHE => "st.global.cs",
-                _ => panic!("invalid store flag {:?}", flag),
-            }
-        }
-    }
-
     /// Prints the variables declared by the `NameGenerator`.
     fn var_decls(&mut self, namegen: &NameGenerator) -> String {
         let print_decl = |(&t, n)| {
             let prefix = NameGenerator::gen_prefix(t);
-            format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)
+            format!(".reg.{} %{}<{}>;", t.ptx(), prefix, n)
         };
         namegen
             .num_var
@@ -195,15 +145,13 @@ impl CudaPrinter {
 
     /// Declares a shared memory block.
     fn shared_mem_decl(&mut self, block: &MemoryRegion, name_map: &mut NameMap<'_>) {
-        let ptr_type_name = Self::get_type(Type::I(32));
-        let name = name_map.name_addr(block.id()).name();
         unwrap!(writeln!(
             self.buffer,
-            "  .shared.align 16 .u8 {vec_name}[{size}];\
-             \n  mov.{t} {name}, {vec_name};",
-            vec_name = &name[1..],
-            name = name,
-            t = ptr_type_name,
+            "\
+  .shared.align 16 .u8 %shmem{id}[{size}];
+  mov.u32 {name}, %shmem{id};",
+            id = block.id().0,
+            name = name_map.name_addr(block.id()).ptx(),
             size = unwrap!(block.alloc_size().as_int())
         ));
     }
@@ -246,42 +194,13 @@ impl CudaPrinter {
         )
     }
 
-    fn binary_op(op: ir::BinOp) -> &'static str {
-        match op {
-            ir::BinOp::Add => "add",
-            ir::BinOp::Sub => "sub",
-            ir::BinOp::Div => "div",
-            ir::BinOp::And => "and",
-            ir::BinOp::Or => "or",
-            ir::BinOp::Lt => "setp.lt",
-            ir::BinOp::Leq => "setp.le",
-            ir::BinOp::Equals => "setp.eq",
-            ir::BinOp::Max => "max",
-        }
-    }
-
-    /// Prints a parameter decalartion.
-    fn param_decl(&mut self, param: &ParamVal, name_map: &NameMap<'_>) -> String {
+    /// Prints a parameter declaration.
+    fn param_decl(&mut self, param: &ParamVal) -> String {
         format!(
-            ".param .{t}{attr} {name}",
-            t = Self::get_type(param.t()),
-            attr = if param.is_pointer() {
-                ".ptr.global.align 16"
-            } else {
-                ""
-            },
-            name = name_map.name_param(param.key()),
+            ".param .{t} {name}",
+            t = param.t().ptx(),
+            name = param.key().ident(),
         )
-    }
-    /// Prints a rounding mode selector.
-    fn rounding(rounding: op::Rounding) -> &'static str {
-        match rounding {
-            op::Rounding::Exact => "",
-            op::Rounding::Nearest => ".rn",
-            op::Rounding::Zero => ".rz",
-            op::Rounding::Positive => ".rp",
-            op::Rounding::Negative => ".rm",
-        }
     }
 
     /// Prints a `Function`.
@@ -291,17 +210,16 @@ impl CudaPrinter {
         let name_map = &mut NameMap::new(&interner, function, &mut namegen);
         let param_decls = function
             .device_code_args()
-            .map(|v| self.param_decl(v, name_map))
-            .collect_vec()
+            .map(|v| self.param_decl(v))
             .join(",\n  ");
         // LOAD PARAMETERS
         for val in function.device_code_args() {
             unwrap!(writeln!(
                 self.buffer,
                 "  ld.param.{t} {var_name}, [{name}];",
-                t = Self::get_type(val.t()),
+                t = val.t().ptx(),
                 var_name = name_map.name_param_val(val.key()).ptx(),
-                name = name_map.name_param(val.key())
+                name = val.key().ident(),
             ));
         }
         // INDEX LOAD
@@ -329,12 +247,10 @@ impl CudaPrinter {
                     let reg = name_map.declare_size_cast(incr, level.t());
                     if let Some(reg) = reg {
                         let old_name = name_map.name_size(incr, Type::I(32));
-                        self.print_unary_op(
-                            [1, 1],
-                            ir::UnaryOp::Cast(level.t()),
-                            Type::I(32),
-                            reg.into_vector(),
-                            old_name.into_vector(),
+                        self.print_inst(
+                            llir::Instruction::cast(level.t(), reg, old_name)
+                                .unwrap()
+                                .into(),
                         );
                     }
                 }
@@ -379,7 +295,6 @@ impl CudaPrinter {
             .map(|x| &x.name as &str)
             .collect_vec()
             .join(", ");
-        let mut next_extra_var_id = 0;
         let mut extra_def = vec![];
         let mut extra_cleanup = vec![];
         let params = fun
@@ -387,26 +302,24 @@ impl CudaPrinter {
             .map(|p| match *p {
                 ParamVal::External(ref p, _) => format!("&{}", p.name),
                 ParamVal::Size(ref size) => {
-                    let extra_var = format!("_extra_{}", next_extra_var_id);
-                    next_extra_var_id += 1;
                     extra_def.push(format!(
                         "int32_t {} = {};",
-                        extra_var,
+                        p.key().ident(),
                         Self::host_size(size)
                     ));
-                    format!("&{}", extra_var)
+                    format!("&{}", p.key().ident())
                 }
                 ParamVal::GlobalMem(_, ref size, _) => {
-                    let extra_var = format!("_extra_{}", next_extra_var_id);
-                    next_extra_var_id += 1;
                     let size = Self::host_size(size);
-                    extra_def.push(format!("CUDeviceptr {};", extra_var));
+                    extra_def.push(format!("CUDeviceptr {};", p.key().ident()));
                     extra_def.push(format!(
                         "CHECK_CUDA(cuMemAlloc(&{}, {}));",
-                        extra_var, size
+                        p.key().ident(),
+                        size
                     ));
-                    extra_cleanup.push(format!("CHECK_CUDA(cuMemFree({}));", extra_var));
-                    format!("&{}", extra_var)
+                    extra_cleanup
+                        .push(format!("CHECK_CUDA(cuMemFree({}));", p.key().ident()));
+                    format!("&{}", p.key().ident())
                 }
             })
             .collect_vec()
@@ -439,245 +352,273 @@ impl CudaPrinter {
         );
         unwrap!(res);
     }
+}
 
-    /// Print a type in the backend
-    fn get_type(t: Type) -> String {
-        match t {
-            Type::I(1) => "pred".to_string(),
-            Type::I(size) => format!("s{size}", size = size),
-            Type::F(size) => format!("f{size}", size = size),
-            _ => panic!(),
+impl InstPrinter for CudaPrinter {
+    fn print_label(&mut self, label: llir::Label<'_>) {
+        unwrap!(writeln!(self.buffer, "{}:", label.name()));
+    }
+
+    fn print_inst(&mut self, inst: llir::PredicatedInstruction<'_>) {
+        writeln!(self.buffer, "{};", inst.ptx()).unwrap();
+    }
+}
+
+impl PTXDisplay for llir::UnOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::UnOp;
+
+        match self {
+            UnOp::Move { t } => write!(fmt, "mov.{}", t.ptx()),
+            UnOp::Cast { src_t, dst_t } => {
+                // Integer rounding is required for float-to-integer conversions, and for
+                // same-size float-to-float conversions where the value is rounded to an
+                // integer.  Integer rounding is illegal in all other instances. [1]
+                //
+                // When integer rounding is required, we choose to round to the nearest integer,
+                // choosing even if source is equidistant between integers.
+                //
+                // Floating-point rounding is required for float-to-float conversions that result
+                // in loss of precision, and for integer-to-float conversions.  Floating-point
+                // rounding is illegal in all other instances.
+                //
+                // When floating-point rounding is required, we choose to round the mantissa LSB
+                // towards even.
+                //
+                // [1]:
+                // https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#data-movement-and-conversion-instructions-cvt
+                let rnd = match (src_t, dst_t) {
+                    (ir::Type::F(_), ir::Type::I(_)) => ".rni",
+                    (ir::Type::I(_), ir::Type::F(_)) => ".rn",
+                    (ir::Type::F(src_bits), ir::Type::F(dst_bits))
+                        if dst_bits < src_bits =>
+                    {
+                        ".rn"
+                    }
+                    _ => "",
+                };
+                write!(fmt, "cvt{}.{}.{}", rnd, dst_t.ptx(), src_t.ptx())
+            }
+            UnOp::Exp { .. } => panic!("{}: non-atomic PTX instruction", self),
         }
     }
 }
 
-impl InstPrinter for CudaPrinter {
-    /// Print result = op1 op op2
-    fn print_binop(
-        &mut self,
-        vector_factors: [u32; 2],
-        op: ir::BinOp,
-        operands_type: Type,
-        rounding: op::Rounding,
-        result: llir::RegVec<'_>,
-        lhs: llir::OpVec<'_>,
-        rhs: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        let op = Self::binary_op(op);
-        let rounding = Self::rounding(rounding);
-        let operands_type = Self::get_type(operands_type);
-        unwrap!(writeln!(
-            self.buffer,
-            "  {}{}.{} {}, {}, {};",
-            op,
-            rounding,
-            operands_type,
-            result.ptx(),
-            lhs.ptx(),
-            rhs.ptx()
-        ));
-    }
+impl PTXDisplay for llir::BinOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::BinOp::*;
 
-    /// Prints result = operator operand.
-    fn print_unary_op(
-        &mut self,
-        vector_factors: [u32; 2],
-        operator: ir::UnaryOp,
-        operand_type: ir::Type,
-        result: llir::RegVec<'_>,
-        operand: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        let t_str = Self::get_type(operand_type);
-
-        match operator {
-            ir::UnaryOp::Mov => unwrap!(writeln!(
-                self.buffer,
-                "  mov.{} {}, {};",
-                t_str,
-                result.ptx(),
-                operand.ptx()
-            )),
-            ir::UnaryOp::Exp(..) => {
-                // The expression exp(x) needs to be decomposed into
-                // 2^(log2(e)*x).
-                //
-                // Only implemented for f32, since other types require
-                // significant software emulation
-                match operand_type {
-                    ir::Type::F(32) => {
-                        unwrap!(writeln!(
-                            self.buffer,
-                            "mul.{t} {reg}, 0f3fb8aa3b, {operand}; // 0f3fb8aa3b = log2(e)\n
-                             ex2.approx.{t} {reg}, {reg};",
-                            t = t_str,
-                            reg = result.ptx(),
-                            operand = operand.ptx(),
-                        ));
-                    }
-                    _ => panic!("No implementation of exp for type {}", operand_type),
-                }
-            }
-            ir::UnaryOp::Cast(cast_type) => {
-                let rounding = match (cast_type, operand_type) {
-                    (ir::Type::F(_), ir::Type::I(_))
-                    | (ir::Type::I(_), ir::Type::F(_)) => ir::op::Rounding::Nearest,
-                    (ir::Type::F(x), ir::Type::F(y)) if x < y => {
-                        ir::op::Rounding::Nearest
-                    }
-                    _ => ir::op::Rounding::Exact,
-                };
-                let rounding = Self::rounding(rounding);
-                unwrap!(writeln!(
-                    self.buffer,
-                    "cvt{}.{}.{} {}, {};",
-                    rounding,
-                    Self::get_type(cast_type),
-                    t_str,
-                    result.ptx(),
-                    operand.ptx()
-                ));
-            }
-        };
-    }
-
-    /// Print result = op1 * op2
-    fn print_mul(
-        &mut self,
-        vector_factors: [u32; 2],
-        return_type: Type,
-        round: op::Rounding,
-        mul_mode: MulMode,
-        result: llir::RegVec<'_>,
-        lhs: llir::OpVec<'_>,
-        rhs: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        let operator = if round == op::Rounding::Exact {
-            format!("mul{}", Self::mul_mode(mul_mode))
-        } else {
-            format!("mul{}", Self::rounding(round))
-        };
-        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
-        unwrap!(writeln!(
-            self.buffer,
-            "  {}.{} {}, {}, {};",
-            operator,
-            t,
-            result.ptx(),
-            lhs.ptx(),
-            rhs.ptx()
-        ));
-    }
-
-    /// Print result = mlhs * mrhs + arhs
-    fn print_mad(
-        &mut self,
-        vector_factors: [u32; 2],
-        return_type: Type,
-        round: op::Rounding,
-        mul_mode: MulMode,
-        result: llir::RegVec<'_>,
-        mlhs: llir::OpVec<'_>,
-        mrhs: llir::OpVec<'_>,
-        arhs: llir::OpVec<'_>,
-    ) {
-        assert_eq!(vector_factors, [1, 1]);
-        let operator = if round == op::Rounding::Exact {
-            format!("mad{}", Self::mul_mode(mul_mode))
-        } else {
-            format!("fma{}", Self::rounding(round))
-        };
-        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
-        unwrap!(writeln!(
-            self.buffer,
-            "  {}.{} {}, {}, {}, {};",
-            operator,
-            t,
-            result.ptx(),
-            mlhs.ptx(),
-            mrhs.ptx(),
-            arhs.ptx(),
-        ));
-    }
-
-    /// Print result = load [addr]
-    fn print_ld(
-        &mut self,
-        vector_factors: [u32; 2],
-        return_type: Type,
-        mem_space: MemSpace,
-        flag: InstFlag,
-        result: llir::RegVec<'_>,
-        addr: llir::Operand<'_>,
-    ) {
-        let operator = Self::ld_operator(mem_space, flag);
-        let vector = match vector_factors {
-            [1, 1] => "",
-            [1, 2] => ".v2",
-            [1, 4] => ".v4",
-            p => panic!("invalid vector pattern: {:?}", p),
-        };
-        unwrap!(writeln!(
-            self.buffer,
-            "  {}{}.{} {}, [{}];",
-            operator,
-            vector,
-            Self::get_type(return_type),
-            result.ptx(),
-            addr.ptx(),
-        ));
-    }
-
-    /// Print store val [addr]
-    fn print_st(
-        &mut self,
-        vector_factors: [u32; 2],
-        val_type: Type,
-        mem_space: MemSpace,
-        mem_flag: InstFlag,
-        predicate: Option<llir::Register<'_>>,
-        addr: llir::Operand<'_>,
-        val: llir::OpVec<'_>,
-    ) {
-        let vector = match vector_factors {
-            [1, 1] => "",
-            [1, 2] => ".v2",
-            [1, 4] => ".v4",
-            p => panic!("invalid vector pattern: {:?}", p),
-        };
-        if let Some(predicate) = predicate {
-            unwrap!(write!(self.buffer, "@{} ", predicate.ptx()));
+        match self {
+            // Integer Arithmetic Instructions
+            IAdd { arg_t } => write!(fmt, "add.{}", arg_t.ptx()),
+            ISub { arg_t } => write!(fmt, "sub.{}", arg_t.ptx()),
+            IDiv { arg_t } => write!(fmt, "div.{}", arg_t.ptx()),
+            IMul { arg_t, spec } => write!(fmt, "mul.{}.{}", spec.ptx(), arg_t.ptx()),
+            // Floating-Point Instructions
+            FAdd { t, rounding } => write!(fmt, "add.{}.{}", rounding.ptx(), t.ptx()),
+            FSub { t, rounding } => write!(fmt, "sub.{}.{}", rounding.ptx(), t.ptx()),
+            FMul { t, rounding } => write!(fmt, "mul.{}.{}", rounding.ptx(), t.ptx()),
+            FDiv { t, rounding } => write!(fmt, "div.{}.{}", rounding.ptx(), t.ptx()),
+            FMax { t } => write!(fmt, "max.{}", t.ptx()),
+            FMin { t } => write!(fmt, "min.{}", t.ptx()),
+            // Comparison and Selection Instructions
+            Set { op, arg_t } => write!(fmt, "setp.{}.{}", op.ptx(), arg_t.ptx()),
+            // Logic and Shift Instructions
+            And { t } => write!(fmt, "and.{}", t.ptx()),
+            Or { t } => write!(fmt, "or.{}", t.ptx()),
+            Xor { t } => write!(fmt, "xor.{}", t.ptx()),
         }
-        let operator = Self::st_operator(mem_space, mem_flag);
-        unwrap!(writeln!(
-            self.buffer,
-            "  {}{}.{} [{}], {};",
-            operator,
-            vector,
-            Self::get_type(val_type),
-            addr.ptx(),
-            val.ptx(),
-        ));
     }
+}
 
-    /// print a label where to jump
-    fn print_label(&mut self, label_id: &str) {
-        unwrap!(writeln!(self.buffer, "LOOP_{}:", label_id));
+impl PTXDisplay for llir::TernOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::TernOp::*;
+
+        match self {
+            IMad { arg_t, spec } => write!(fmt, "mad.{}.{}", spec.ptx(), arg_t.ptx()),
+            FFma { t, rounding } => write!(fmt, "fma.{}.{}", rounding.ptx(), t.ptx()),
+        }
     }
+}
 
-    /// Print if (cond) jump label(label_id)
-    fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        unwrap!(writeln!(
-            self.buffer,
-            "  @{} bra.uni LOOP_{};",
-            cond, label_id
-        ));
+impl PTXDisplay for llir::CmpOp {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(match self {
+            llir::CmpOp::Eq => "eq",
+            llir::CmpOp::Ne => "ne",
+            llir::CmpOp::Lt => "lt",
+            llir::CmpOp::Le => "le",
+            llir::CmpOp::Gt => "gt",
+            llir::CmpOp::Ge => "ge",
+        })
     }
+}
 
-    /// Print wait on all threads
-    fn print_sync(&mut self) {
-        unwrap!(writeln!(self.buffer, "  bar.sync 0;"));
+impl PTXDisplay for llir::FpRounding {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(match self {
+            llir::FpRounding::NearestEven => "rn",
+            llir::FpRounding::Zero => "rz",
+            llir::FpRounding::NegativeInfinite => "rm",
+            llir::FpRounding::PositiveInfinite => "rp",
+        })
+    }
+}
+
+impl PTXDisplay for llir::MulSpec {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(match self {
+            llir::MulSpec::Low => "lo",
+            llir::MulSpec::High => "hi",
+            llir::MulSpec::Wide => "wide",
+        })
+    }
+}
+
+impl PTXDisplay for llir::Address<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::Address;
+
+        match *self {
+            Address::Register(reg, offset) if offset == 0 => {
+                write!(fmt, "[{}]", reg.ptx())
+            }
+            Address::Register(reg, offset) => {
+                write!(fmt, "[{}{:+#x}]", reg.ptx(), offset)
+            }
+        }
+    }
+}
+
+impl PTXDisplay for llir::Label<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.name())
+    }
+}
+
+impl PTXDisplay for llir::StateSpace {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::StateSpace;
+
+        fmt.write_str(match self {
+            StateSpace::Global => "global",
+            StateSpace::Shared => "shared",
+        })
+    }
+}
+
+impl PTXDisplay for llir::LoadCacheOperator {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::LoadCacheOperator::*;
+
+        fmt.write_str(match self {
+            CacheAll => "ca",
+            CacheGlobal => "cg",
+            CacheStreaming => "cs",
+            CacheAllAndTexture => "nc",
+        })
+    }
+}
+
+impl PTXDisplay for llir::StoreCacheOperator {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::StoreCacheOperator::*;
+
+        fmt.write_str(match self {
+            WriteBack => "wb",
+            CacheGlobal => "cg",
+            CacheStreaming => "cs",
+        })
+    }
+}
+
+impl PTXDisplay for llir::LoadSpec {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, ".{}.{}", self.state_space(), self.cache_operator())?;
+        if self.vector_factor().get() > 1 {
+            write!(fmt, ".v{}", self.vector_factor())?;
+        }
+        write!(fmt, ".{}", self.t())
+    }
+}
+
+impl PTXDisplay for llir::StoreSpec {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, ".{}.{}", self.state_space(), self.cache_operator())?;
+        if self.vector_factor().get() > 1 {
+            write!(fmt, ".v{}", self.vector_factor())?;
+        }
+        write!(fmt, ".{}", self.t())
+    }
+}
+
+impl PTXDisplay for llir::PredicatedInstruction<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            fmt,
+            "{}{}",
+            self.predicate
+                .into_iter()
+                .format_with("", |predicate, f| f(&format_args!(
+                    "@{} ",
+                    predicate.ptx()
+                ))),
+            self.instruction.ptx()
+        )
+    }
+}
+
+impl PTXDisplay for llir::Instruction<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use llir::Instruction::*;
+
+        match self {
+            // The expression exp(x) needs to be decomposed into
+            // 2^(log2(e)*x).
+            //
+            // Only implemented for f32, since other types require
+            // significant software emulation
+            Unary(llir::UnOp::Exp { t }, d, [a]) if t == &ir::Type::F(32) => {
+                writeln!(
+                    fmt,
+                    "mul.{t} {d}, 0f3fb8aa3b, {a}; // 0f3fb8aa3b = log2(e)",
+                    t = t.ptx(),
+                    d = d.ptx(),
+                    a = a.ptx()
+                )?;
+                write!(fmt, "ex2.approx.{t} {d}, {d}", t = t.ptx(), d = d.ptx())
+            }
+            Unary(op, d, [a]) => write!(fmt, "{} {}, {}", op.ptx(), d.ptx(), a.ptx()),
+            Binary(op, d, [a, b]) => {
+                write!(fmt, "{} {}, {}, {}", op.ptx(), d.ptx(), a.ptx(), b.ptx())
+            }
+            Ternary(op, d, [a, b, c]) => write!(
+                fmt,
+                "{} {}, {}, {}, {}",
+                op.ptx(),
+                d.ptx(),
+                a.ptx(),
+                b.ptx(),
+                c.ptx()
+            ),
+            Load(spec, d, a) => write!(fmt, "ld{} {}, {}", spec.ptx(), d.ptx(), a.ptx()),
+            Store(spec, a, [b]) => {
+                write!(fmt, "st{} {}, {}", spec.ptx(), a.ptx(), b.ptx())
+            }
+            Jump(label) => write!(fmt, "bra.uni {}", label.ptx()),
+            Sync => write!(fmt, "bar.sync 0"),
+        }
+    }
+}
+
+impl PTXDisplay for ir::Type {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Type::I(1) => write!(fmt, "pred"),
+            Type::I(size) => write!(fmt, "s{size}", size = size),
+            Type::F(size) => write!(fmt, "f{size}", size = size),
+            _ => panic!("unexpected PTX type: {}", self),
+        }
     }
 }

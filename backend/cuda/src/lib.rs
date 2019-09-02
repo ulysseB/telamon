@@ -30,13 +30,11 @@ pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 
 use fxhash::FxHashMap;
-use telamon::codegen;
-use telamon::ir;
+use telamon::{codegen, ir};
 
 #[derive(Default)]
 pub(crate) struct NameGenerator {
     num_var: FxHashMap<ir::Type, usize>,
-    num_sizes: usize,
 }
 
 impl NameGenerator {
@@ -60,19 +58,8 @@ impl codegen::NameGenerator for NameGenerator {
     fn name(&mut self, t: ir::Type) -> String {
         let prefix = NameGenerator::gen_prefix(t);
         let entry = self.num_var.entry(t).or_insert(0);
-        let name = format!("%{}{}", prefix, *entry);
+        let name = format!("{}{}", prefix, *entry);
         *entry += 1;
         name
-    }
-
-    fn name_param(&mut self, p: codegen::ParamValKey) -> String {
-        match p {
-            codegen::ParamValKey::External(p) => p.name.clone(),
-            codegen::ParamValKey::GlobalMem(mem) => format!("_gbl_mem_{}", mem.0),
-            codegen::ParamValKey::Size(_) => {
-                self.num_sizes += 1;
-                format!("_size_{}", self.num_sizes - 1)
-            }
-        }
     }
 }

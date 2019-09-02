@@ -9,7 +9,41 @@
 #include <mppa_power.h>
 #include <mppa_remote.h>
 
-#define telamon_op_max(a, b) ((a) > (b) ? (a) : (b))
+#define __max(a, b) ((a) > (b) ? (a) : (b))
+#define __min(a, b) ((a) < (b) ? (a) : (b))
+
+#define __mul32Hi(a, b) (((int32_t)__mul32Wide(a, b)) >> 32)
+#define __mul32Wide(a, b) ((int64_t)a * (int64_t)b)
+
+#define __mad(a, b, c) (((a) * (b)) + (c))
+#define __mad32Hi(a, b, c) (__mul32Hi(a, b) + c)
+#define __mad32Wide(a, b, c) (__mul32Wide(a, b) + c)
+
+#define __fma(a, b, c) (((a) * (b)) + (c))
+
+#define __sync() if (check_pthread_barrier_wait(tid->barrier)) {{ \
+	printf("barrier error\n"); \
+	return; \
+}}
+
+/* Synchronizes at the barrier b, just like pthread_barrier_wait, but
+ * returns 0 on success for all threads instead of
+ * PTHREAD_BARRIER_SERIAL_THREAD for one abritrary thread and 0 for
+ * the remaining threads. */
+static int check_pthread_barrier_wait(pthread_barrier_t* b)
+{{
+  int res = pthread_barrier_wait(b);
+
+  /* The MPPA implementation for pthread_barrier_wait doesn't seem to
+   * implement the same behavior as POSIX, where one of the threads
+   * returns PTHREAD_BARRIER_SERIAL_THREAD when passing the barrier
+   * successfully. Instead, it always returns 0 for all threads upon
+   * success and a value different from 0 in case of an error. Hence,
+   * simply pass through the return value of
+   * pthread_barrier_wait(). */
+  return res;
+}}
+
 
 #define UTASK_BARRIER_NB (2)
 #define UTASK_SUCCESS (0)
