@@ -55,6 +55,16 @@ impl Size {
     pub fn max(&self) -> u32 {
         self.max_val
     }
+
+    /// The constant factor
+    pub fn factor(&self) -> u32 {
+        self.factor
+    }
+
+    /// Returns the dividend parameters
+    pub fn params(&self) -> &[Arc<ir::Parameter>] {
+        &self.params
+    }
 }
 
 impl Default for Size {
@@ -97,6 +107,15 @@ where
         self.factor *= rhs.factor;
         self.params.extend(rhs.params.iter().cloned());
         self.max_val = self.max_val.saturating_mul(rhs.max_val);
+    }
+}
+
+impl std::ops::Mul<u32> for Size {
+    type Output = Size;
+
+    fn mul(mut self, other: u32) -> Size {
+        self.factor *= other;
+        self
     }
 }
 

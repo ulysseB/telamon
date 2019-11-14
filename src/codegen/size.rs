@@ -1,5 +1,5 @@
-use std::fmt;
 use std::sync::Arc;
+use std::{fmt, ops};
 
 use num;
 use utils::unwrap;
@@ -30,7 +30,7 @@ impl Size {
         new
     }
 
-    /// Converts an `ir::Size` to `Self`.
+    /// Converts an `ir::PartialSize` to `Self`.
     pub fn from_ir(size: &ir::PartialSize, space: &SearchSpace) -> Self {
         let (cst_factor, param_factors, dim_size_factors) = size.factors();
         let dim_size_divisors = size.divisors();
@@ -78,12 +78,37 @@ impl Size {
     }
 }
 
-impl std::ops::MulAssign<&'_ Size> for Size {
-    fn mul_assign(&mut self, rhs: &'_ Size) {
-        self.factor *= rhs.factor;
-        self.dividend.extend(rhs.dividend.iter().cloned());
-        self.divisor *= rhs.divisor;
+impl ops::MulAssign<u32> for Size {
+    fn mul_assign(&mut self, other: u32) {
+        self.factor *= other;
+    }
+}
+
+impl ops::MulAssign<&'_ Size> for Size {
+    fn mul_assign(&mut self, other: &'_ Size) {
+        self.factor *= other.factor;
+        self.dividend.extend(other.dividend.iter().cloned());
+        self.divisor *= other.divisor;
         self.simplify();
+    }
+}
+
+impl ops::MulAssign<&'_ ir::Size> for Size {
+    fn mul_assign(&mut self, other: &'_ ir::Size) {
+        self.factor *= other.factor();
+        self.dividend.extend(other.params().iter().cloned());
+    }
+}
+
+impl<T> ops::Mul<T> for Size
+where
+    Size: ops::MulAssign<T>,
+{
+    type Output = Size;
+
+    fn mul(mut self, other: T) -> Self::Output {
+        self *= other;
+        self
     }
 }
 
@@ -109,6 +134,18 @@ impl fmt::Display for Size {
         }
 
         Ok(())
+    }
+}
+
+impl From<u32> for Size {
+    fn from(size: u32) -> Self {
+        Size::new(size, Vec::new(), 1u32)
+    }
+}
+
+impl From<&'_ ir::Size> for Size {
+    fn from(size: &'_ ir::Size) -> Self {
+        Size::new(size.factor(), size.params().to_vec(), 1u32)
     }
 }
 
