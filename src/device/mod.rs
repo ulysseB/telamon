@@ -41,8 +41,8 @@ pub trait Device: Send + Sync + 'static {
     fn max_vectorization(&self, op: &ir::Operator) -> [u32; 2];
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
-    /// Indicates the type of the pointer for the given memory space.
-    fn pointer_type(&self, mem_space: MemSpace) -> ir::Type;
+    /// Indicates the type of pointers to global memory.
+    fn global_pointer_type(&self) -> ir::Type;
     /// Indicates the memory flags supported by the operator.
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag;
     /// Returns the name of the device.

@@ -59,7 +59,7 @@ impl device::Device for Mppa {
         0
     }
 
-    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+    fn global_pointer_type(&self) -> ir::Type {
         // Use 0 as a dummy memory ID.
         ir::Type::PtrTo(ir::MemId(0))
     }

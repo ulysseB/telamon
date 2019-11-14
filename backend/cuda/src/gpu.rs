@@ -492,12 +492,8 @@ impl device::Device for Gpu {
         self.shared_mem_per_block
     }
 
-    fn pointer_type(&self, mem_space: MemSpace) -> ir::Type {
-        match mem_space {
-            MemSpace::GLOBAL => ir::Type::I(self.addr_size),
-            MemSpace::SHARED => ir::Type::I(32),
-            _ => panic!("invalid memory space {:?}", mem_space),
-        }
+    fn global_pointer_type(&self) -> ir::Type {
+        ir::Type::I(self.addr_size)
     }
 
     // Warning: this assumes only global memory accesses can use caches.

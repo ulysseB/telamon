@@ -660,7 +660,7 @@ mod tests {
         let mut builder = helper::Builder::new(signature, Arc::new(gpu.clone()));
         let t = ir::Type::F(32);
         let size = builder.cst_size(gpu.wrap_size);
-        let addr_base = builder.cast(&0i64, gpu.pointer_type(MemSpace::GLOBAL));
+        let addr_base = builder.cast(&0i64, gpu.global_pointer_type());
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_sector as i32), &addr_base);

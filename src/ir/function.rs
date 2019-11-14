@@ -7,7 +7,6 @@ use crate::ir::{
     self, Dimension, InstId, Instruction, IrDisplay, Operator, Statement, StmtId,
 };
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
-use crate::search_space::MemSpace;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 use log::debug;
@@ -61,7 +60,7 @@ impl Signature {
     pub fn add_array(&mut self, device: &dyn Device, name: String, elem_t: ir::Type) {
         self.params.push(Arc::new(Parameter {
             name,
-            t: device.pointer_type(MemSpace::GLOBAL),
+            t: device.global_pointer_type(),
             elem_t: Some(elem_t),
         }));
     }

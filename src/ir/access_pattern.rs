@@ -1,7 +1,6 @@
 /// Provides a way to represent the stride of a given variable.
 use crate::device::Device;
 use crate::ir;
-use crate::search_space::MemSpace;
 use fxhash::{FxHashMap, FxHashSet};
 
 /// A stride on a given dimensions.
@@ -70,6 +69,6 @@ impl AccessPattern {
         // We either have a memory ID or the array is located in global memory.
         self.mem_block()
             .map(ir::Type::PtrTo)
-            .unwrap_or_else(|| device.pointer_type(MemSpace::GLOBAL))
+            .unwrap_or_else(|| device.global_pointer_type())
     }
 }

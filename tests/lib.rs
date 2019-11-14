@@ -290,7 +290,7 @@ fn vector_dims() {
     let context = fake::Context::<fake::Device>::default();
     let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
-    let base_addr = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
+    let base_addr = builder.cast(&0i64, context.device().global_pointer_type());
     let d0 = builder.open_dim(Size::new_const(4));
     // Test with one vectorizable instruction
     let (addr, pattern) = builder.tensor_access(&base_addr, None, Type::I(8), &[&d0]);
@@ -349,7 +349,7 @@ fn reduce_dim_invariants() {
     let context = fake::Context::<fake::Device>::default();
     let signature = ir::Signature::new("empty");
     let mut builder = helper::Builder::new(signature.into(), context.device());
-    let init = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
+    let init = builder.cast(&0i64, context.device().global_pointer_type());
     let d0 = builder.open_dim(Size::new_const(4));
     let pattern = ir::AccessPattern::Unknown(None);
     let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);

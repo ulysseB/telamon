@@ -72,7 +72,7 @@ impl device::Device for Cpu {
         0
     }
 
-    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+    fn global_pointer_type(&self) -> ir::Type {
         // TODO: pointer bitwidth
         ir::Type::I(64)
     }

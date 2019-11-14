@@ -8,7 +8,7 @@ use crate::codegen;
 use crate::explorer::Candidate;
 use crate::ir;
 use crate::model::{self, HwPressure};
-use crate::search_space::{DimKind, InstFlag, MemSpace, SearchSpace};
+use crate::search_space::{DimKind, InstFlag, SearchSpace};
 
 use super::{
     ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, EvalMode, KernelEvaluator,
@@ -85,7 +85,7 @@ impl super::Device for Device {
         self.shared_mem_size
     }
 
-    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+    fn global_pointer_type(&self) -> ir::Type {
         ir::Type::I(32)
     }
 
