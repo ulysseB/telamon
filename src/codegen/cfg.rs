@@ -473,18 +473,16 @@ fn gen_events<'a>(
     }
     // Sort block dims.
     block_dims.sort_unstable_by(|lhs, rhs| {
-        if lhs.id() == rhs.id() {
-            return std::cmp::Ordering::Equal;
-        }
-        match space.domain().get_order(lhs.id().into(), rhs.id().into()) {
-            Order::OUTER => std::cmp::Ordering::Less,
-            Order::INNER => std::cmp::Ordering::Greater,
-            _ => panic!(
-                "invalid order between block dim {:?} and {:?}",
-                lhs.id(),
-                rhs.id()
-            ),
-        }
+        space
+            .nesting_order(lhs.id())
+            .partial_cmp(&rhs.id())
+            .unwrap_or_else(|| {
+                panic!(
+                    "invalid order between block dim {:?} and {:?}",
+                    lhs.id(),
+                    rhs.id()
+                )
+            })
     });
     // Sort and group thread dims.
     let mut sorted_thread_dims = Vec::with_capacity(3);

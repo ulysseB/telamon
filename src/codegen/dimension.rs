@@ -356,15 +356,10 @@ fn get_ind_var_levels<'a>(
         }
     }
     let cmp = |lhs: ir::DimId, rhs: ir::DimId| {
-        if lhs == rhs {
-            return std::cmp::Ordering::Equal;
-        }
-        match space.domain().get_order(lhs.into(), rhs.into()) {
-            Order::INNER => std::cmp::Ordering::Greater,
-            Order::OUTER => std::cmp::Ordering::Less,
-            Order::MERGED => std::cmp::Ordering::Equal,
-            _ => panic!("invalid order for induction variable dimensions"),
-        }
+        space
+            .nesting_order(lhs)
+            .partial_cmp(&rhs)
+            .unwrap_or_else(|| panic!("invalid order for induction variable dimensions"))
     };
     const_levels.sort_unstable_by(|lhs, rhs| cmp(lhs.0, rhs.0));
     mut_levels.sort_unstable_by(|lhs, rhs| cmp(lhs.0, rhs.0));

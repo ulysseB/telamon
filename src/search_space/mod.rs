@@ -1,4 +1,5 @@
 //! Search space datastructures and constraint propagation.
+use std::cmp;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -110,6 +111,114 @@ impl SearchSpace {
         );
 
         Ok(())
+    }
+
+    /// Returns a wrapper around a statement ID which can be compared according to nesting order
+    /// (outermost is smallest).
+    pub fn nesting_order<T: Into<ir::StmtId>>(&self, id: T) -> NestingOrder<'_> {
+        NestingOrder {
+            space: self,
+            id: id.into(),
+        }
+    }
+}
+
+/// Wrapper around a statement ID to compare it using nesting order.
+///
+/// `NestingOrder` implements `PartialEq<ir::StmtId>` and `PartialOrd<ir::StmtId>` such that merged
+/// statements are equal, and loop dimensions are lower than any statement nested inside them.
+pub struct NestingOrder<'a> {
+    space: &'a SearchSpace,
+    id: ir::StmtId,
+}
+
+impl cmp::PartialEq<ir::StmtId> for NestingOrder<'_> {
+    fn eq(&self, other: &ir::StmtId) -> bool {
+        if self.id == *other {
+            return true;
+        }
+
+        match self.space.domain().get_order(self.id, *other) {
+            Order::MERGED => true,
+            _ => false,
+        }
+    }
+
+    fn ne(&self, other: &ir::StmtId) -> bool {
+        if self.id == *other {
+            return false;
+        }
+
+        !self
+            .space
+            .domain()
+            .get_order(self.id, *other)
+            .intersects(Order::MERGED)
+    }
+}
+
+impl cmp::PartialEq<ir::DimId> for NestingOrder<'_> {
+    fn eq(&self, other: &ir::DimId) -> bool {
+        *self == ir::StmtId::Dim(*other)
+    }
+
+    fn ne(&self, other: &ir::DimId) -> bool {
+        *self != ir::StmtId::Dim(*other)
+    }
+}
+
+impl cmp::PartialOrd<ir::StmtId> for NestingOrder<'_> {
+    fn partial_cmp(&self, other: &ir::StmtId) -> Option<cmp::Ordering> {
+        if self.id == *other {
+            return Some(cmp::Ordering::Equal);
+        }
+
+        match self.space.domain().get_order(self.id, *other) {
+            Order::OUTER => Some(cmp::Ordering::Less),
+            Order::MERGED => Some(cmp::Ordering::Equal),
+            Order::INNER => Some(cmp::Ordering::Greater),
+            _ => None,
+        }
+    }
+
+    fn le(&self, other: &ir::StmtId) -> bool {
+        if self.id == *other {
+            return true;
+        }
+
+        (Order::OUTER | Order::MERGED)
+            .contains(self.space.domain().get_order(self.id, *other))
+    }
+
+    fn ge(&self, other: &ir::StmtId) -> bool {
+        if self.id == *other {
+            return true;
+        }
+
+        (Order::INNER | Order::MERGED)
+            .contains(self.space.domain().get_order(self.id, *other))
+    }
+}
+
+impl cmp::PartialOrd<ir::DimId> for NestingOrder<'_> {
+    fn partial_cmp(&self, other: &ir::DimId) -> Option<cmp::Ordering> {
+        self.partial_cmp(&ir::StmtId::Dim(*other))
+    }
+
+    fn lt(&self, other: &ir::DimId) -> bool {
+        *self < ir::StmtId::Dim(*other)
+    }
+
+    fn le(&self, other: &ir::DimId) -> bool {
+        *self <= ir::StmtId::Dim(*other)
+    }
+
+    fn gt(&self, other: &ir::DimId) -> bool {
+        *self > ir::StmtId::Dim(*other)
+    }
+
+    fn ge(&self, other: &ir::DimId) -> bool {
+        *self >= ir::StmtId::Dim(*other)
     }
 }
 
