@@ -9,7 +9,7 @@ build = "build.rs"
 
 [build-dependencies]
 cc = "1.0.12"
-bindgen = "0.37.4"
+bindgen = { version = "0.51", default-features = false, features = ["logging"] }
 cmake = "0.1.31"
 
 

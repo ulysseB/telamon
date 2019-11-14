@@ -1,0 +1,18 @@
+[package]
+authors = ["Basile Clement <basile.clement@ens.fr>"]
+build = "build.rs"
+name = "cuda-sys"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[build-dependencies]
+bindgen = { version = "0.51", default-features = false, features = ["logging"] }
+
+[features]
+cublas = []
+cublaslt = []
+curand = []
+cuda = []
+cudnn = []
+cupti = []

@@ -100,14 +100,14 @@ mod cuda_reference {
 
     /// Checks the cublas status and panics if an error occured.
     fn check_cublas(status: cublasStatus_t) {
-        if status != cublasStatus_t::SUCCESS {
+        if status != CUBLAS_STATUS_SUCCESS {
             panic!("error in cublas: {:?}", status);
         }
     }
 
     /// Checks a cuda status and panics if an error occured.
     fn check_cuda(status: CUresult) {
-        if status != cudaError_t::CUDA_SUCCESS {
+        if status != CUDA_SUCCESS {
             panic!("error in cuda: {:?}", status)
         }
     }
@@ -138,14 +138,8 @@ mod cuda_reference {
     unsafe fn time_cuda<F: FnOnce()>(f: F) -> f64 {
         let mut start = std::mem::uninitialized();
         let mut stop = std::mem::uninitialized();
-        check_cuda(cuEventCreate(
-            &mut start,
-            CUevent_flags_enum::CU_EVENT_DEFAULT as _,
-        ));
-        check_cuda(cuEventCreate(
-            &mut stop,
-            CUevent_flags_enum::CU_EVENT_DEFAULT as _,
-        ));
+        check_cuda(cuEventCreate(&mut start, CU_EVENT_DEFAULT));
+        check_cuda(cuEventCreate(&mut stop, CU_EVENT_DEFAULT));
         check_cuda(cuCtxSynchronize());
         check_cuda(cuEventRecord(start, std::ptr::null_mut()));
         f();
@@ -162,8 +156,8 @@ mod cuda_reference {
         *(context.get_param(name).raw_ptr() as *const *mut T)
     }
 
-    const CUBLAS_N: cublasOperation_t = cublasOperation_t_CUBLAS_OP_N;
-    const CUBLAS_T: cublasOperation_t = cublasOperation_t_CUBLAS_OP_T;
+    const CUBLAS_N: cublasOperation_t = CUBLAS_OP_N;
+    const CUBLAS_T: cublasOperation_t = CUBLAS_OP_T;
 
     /// Reference implementation for the `Axpy` kernel.
     fn saxpy_reference(
@@ -193,7 +187,7 @@ mod cuda_reference {
             let a = get_array("a", context);
             let y = get_array("y", context);
             time_cuda(|| {
-                let op = cublasOperation_t_CUBLAS_OP_T;
+                let op = CUBLAS_OP_T;
                 check_cublas(cublasSgemv_v2(
                     handle.0, op, n, m, &2., a, n, x, 1, &3., y, 1,
                 ))
@@ -283,7 +277,7 @@ mod cuda_reference {
             let x = get_array("x", context);
             let y = get_array("y", context);
             time_cuda(|| {
-                let op = cublasOperation_t_CUBLAS_OP_T;
+                let op = CUBLAS_OP_T;
                 check_cublas(cublasSgemv_v2(
                     handle.0, op, n, m, &3.1, a, n, x, 1, &0., y, 1,
                 ));
