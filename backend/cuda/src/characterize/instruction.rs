@@ -397,7 +397,8 @@ pub fn smx_bandwidth(
     strides: &[u32],
 ) -> Table<u64> {
     const MAX_WRAPS: u32 = 32;
-    let array_size = gpu.l1_cache_line / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
+    let array_size =
+        gpu.l1_cache_line() / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
     // Setup the results table.
     let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);
@@ -447,7 +448,8 @@ pub fn smx_store_bandwidth(
     strides: &[u32],
 ) -> Table<u64> {
     const MAX_WRAPS: u32 = 32;
-    let array_size = gpu.l1_cache_line / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
+    let array_size =
+        gpu.l1_cache_line() / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
     // Setup the results table.
     let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);

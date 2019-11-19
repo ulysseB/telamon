@@ -46,6 +46,7 @@ const EMPTY_INST_DESC: InstDesc = InstDesc {
 pub fn functional_desc(executor: &Executor) -> Gpu {
     let sm_major = executor.device_attribute(ComputeCapabilityMajor);
     let sm_minor = executor.device_attribute(ComputeCapabilityMinor);
+    let (l1_cache_sectors_per_line, l1_cache_sector) = l1_cache_line(sm_major, sm_minor);
     Gpu {
         name: executor.device_name(),
         sm_major: sm_major as u8,
@@ -58,7 +59,8 @@ pub fn functional_desc(executor: &Executor) -> Gpu {
         wrap_size: executor.device_attribute(WrapSize) as u32,
         thread_per_smx: thread_per_smx(sm_major, sm_minor),
         l1_cache_size: l1_cache_size(sm_major, sm_minor) as u32,
-        l1_cache_line: 128,
+        l1_cache_sector,
+        l1_cache_sectors_per_line,
         l2_cache_size: executor.device_attribute(L2CacheSize) as u32,
         l2_cache_line: 32,
         shared_bank_stride: shared_bank_stride(sm_major, sm_minor),
@@ -162,6 +164,30 @@ fn l1_cache_size(sm_major: i32, sm_minor: i32) -> u32 {
         // but can't be configured exactly -- the driver makes that choice for us.  We'll figure
         // out the proper behavior when we have the corresponding hardware.
         _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
+    }
+}
+
+/// Returns the number of L1 cache sectors per line and size of a sector in bytes.
+///
+/// The CPG says that L1 memory transactions are 128 bytes (see "Global memory" in Compute
+/// Capability 3.x, which is referred by later CCs), but this is incorrect starting with CC 5.x [1]
+/// [2].  Instead, L1 lines are split into multiple sectors, and loads from L2 are done at the
+/// sector granularity.  Cache tagging is shared across all sectors in a single line, which I
+/// understand to imply that a line with a single active sector will still take up the full line in
+/// cache capacity.
+///
+/// Fermi and Kepler have a single 128 bytes sector, while Maxwell and later have four 32 bytes
+/// sectors.  
+///
+/// [1]:
+/// https://stackoverflow.com/questions/56142674/memory-coalescing-and-nvprof-results-on-nvidia-pascal
+/// [2]:
+/// https://devtalk.nvidia.com/default/topic/1006066/cuda-programming-and-performance/pascal-l1-cache/
+fn l1_cache_line(sm_major: i32, sm_minor: i32) -> (u32, u32) {
+    match (sm_major, sm_minor) {
+        (3, _) => (1, 128),
+        (5, _) | (6, _) => (4, 32),
+        _ => panic!("Unknown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
