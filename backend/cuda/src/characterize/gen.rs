@@ -243,7 +243,7 @@ pub fn parallel_load(
     array: &str,
     out: &str,
 ) -> SearchSpace {
-    assert!(stride * 4 <= gpu.l1_cache_line);
+    assert!(stride * 4 <= gpu.l1_cache_line());
     let mut builder = Builder::new(signature, Arc::<Gpu>::clone(&gpu));
     let block_size = num_blocks.to_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
@@ -269,7 +269,7 @@ pub fn parallel_load(
     let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
     let d4_0 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = ir::AccessPattern::Unknown(None);
-    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
+    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line();
     let mut strides = vec![
         (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
         (&d4_0, ir::Size::new_const(num_wraps * wrap_stride)),
@@ -320,7 +320,7 @@ pub fn parallel_store(
     stride: u32,
     array: &str,
 ) -> SearchSpace {
-    assert!(stride * 4 <= gpu.l1_cache_line);
+    assert!(stride * 4 <= gpu.l1_cache_line());
     let mut builder = Builder::new(signature, Arc::<Gpu>::clone(&gpu));
     let block_size = num_blocks.to_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
@@ -338,7 +338,7 @@ pub fn parallel_store(
     let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
     let d4 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = ir::AccessPattern::Unknown(None);
-    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
+    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line();
     let mut strides = vec![
         (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
         (&d4, ir::Size::new_const(num_wraps * wrap_stride)),

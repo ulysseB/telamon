@@ -397,7 +397,14 @@ pub fn smx_bandwidth(
     strides: &[u32],
 ) -> Table<u64> {
     const MAX_WRAPS: u32 = 32;
-    let array_size = gpu.l1_cache_line / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
+    // This should probably be `l1_cache_sector`; but changing this causes crashes down the line.
+    // Since this benchmark is designed for Kepler architectures only (it relies on architectural
+    // behavior to distinguish between l1/l2 usage), the values are bogus for other architectures
+    // already.  Kepler has `l1_cache_sector == l1_cache_line`.
+    //
+    // NB: The l1 bandwidth is currently not used in the performance model.
+    let array_size =
+        gpu.l1_cache_line() / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
     // Setup the results table.
     let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);
@@ -447,7 +454,9 @@ pub fn smx_store_bandwidth(
     strides: &[u32],
 ) -> Table<u64> {
     const MAX_WRAPS: u32 = 32;
-    let array_size = gpu.l1_cache_line / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
+    // This should probably be `l1_cache_sector`; see the comment in `smx_bandwidth`.
+    let array_size =
+        gpu.l1_cache_line() / 4 * gpu.wrap_size * chained * unroll * MAX_WRAPS;
     // Setup the results table.
     let perf_counters = [PerfCounter::InstExecuted, PerfCounter::ElapsedCyclesSM];
     let counters = executor.create_perf_counter_set(&perf_counters);
