@@ -5,7 +5,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use log::trace;
 use num::Integer;
-use telamon::device::Context;
+use telamon::device::{Context, Device};
 use telamon::ir;
 use telamon::model::size;
 use telamon::search_space::*;
@@ -26,7 +26,9 @@ pub struct MemInfo {
     /// The number of L2 cache line loaded for each instruction.
     pub l2_coalescing: f64,
     /// The number of times the instruction must be issued to be completed.
-    pub replay_factor: f64,
+    pub issue_replays: f64,
+    /// The number of memory transactions needed to complete the instruction.
+    pub memory_transactions: f64,
     /// Indicates if the instruction accesses shared memory.
     pub access_shared: bool,
     /// Indicates if the instruction accesses global memory.
@@ -48,9 +50,9 @@ pub fn analyse(
             let is_shared = mem_space.is(MemSpace::SHARED);
             match pattern {
                 _ if flag.intersects(InstFlag::CACHE_READ_ONLY) => {
-                    unknown_info(is_shared, gpu)
+                    unknown_info(inst, is_shared, gpu)
                 }
-                ir::AccessPattern::Unknown { .. } => unknown_info(is_shared, gpu),
+                ir::AccessPattern::Unknown { .. } => unknown_info(inst, is_shared, gpu),
                 ir::AccessPattern::Tensor { ref dims, .. } => {
                     info(space, inst, dims, is_shared, gpu, sizes, ctx)
                 }
@@ -59,7 +61,7 @@ pub fn analyse(
         ir::Operator::TmpLd(.., mem) | ir::Operator::TmpSt(.., mem) => {
             let mem_space = space.domain().get_mem_space(mem);
             let is_shared = mem_space.is(MemSpace::SHARED);
-            unknown_info(is_shared, gpu)
+            unknown_info(inst, is_shared, gpu)
         }
         _ => panic!(),
     };
@@ -68,18 +70,37 @@ pub fn analyse(
 }
 
 /// Computes the `MemInfo` when the access pattern is unknown.
-fn unknown_info(is_shared_access: Trivalent, gpu: &Gpu) -> MemInfo {
+fn unknown_info(
+    inst: &ir::Instruction,
+    is_shared_access: Trivalent,
+    gpu: &Gpu,
+) -> MemInfo {
     let mut info = MemInfo::default();
     if is_shared_access.maybe_true() {
-        info.replay_factor = 1.0;
+        info.memory_transactions = 1.0;
         info.access_shared = true;
     }
     if is_shared_access.maybe_false() {
         info.l1_coalescing = 1.0 / f64::from(gpu.wrap_size);
         info.l2_coalescing = 1.0 / f64::from(gpu.wrap_size);
-        info.replay_factor = 1.0;
+        info.memory_transactions = 1.0;
         info.access_global = true;
     }
+    // Starting with Maxwell, memory replays are handled by the individual units and do not
+    // use extra issue slots.
+    //
+    // https://stackoverflow.com/questions/57492400/issued-load-store-instructions-for-replay
+    info.issue_replays = if gpu.sm_major >= 5 {
+        // Each single "instruction" occupies a n-th of an issue slot for a n-way vector
+        // instruction.
+        let max_vectorization = gpu
+            .max_vectorization(inst.operator())
+            .iter()
+            .product::<u32>();
+        1. / f64::from(max_vectorization)
+    } else {
+        info.memory_transactions
+    };
     info
 }
 
@@ -100,10 +121,11 @@ fn info(
     let mut info = MemInfo::default();
     let thread_dims = tensor_thread_dims(space, inst, dims, sizes, ctx);
     trace!("thread dims: {:?}", thread_dims);
-    info.replay_factor = std::f64::INFINITY;
+    info.memory_transactions = std::f64::INFINITY;
     if is_shared_access.maybe_true() {
-        let replay = shared_replay_factor(thread_dims.clone(), dims, sizes, space, gpu);
-        info.replay_factor = f64::min(replay, info.replay_factor);
+        let replay =
+            shared_memory_transactions(thread_dims.clone(), dims, sizes, space, gpu);
+        info.memory_transactions = f64::min(replay, info.memory_transactions);
         info.access_shared = true;
     }
     if is_shared_access.maybe_false() {
@@ -111,10 +133,33 @@ fn info(
             global_coalescing(thread_dims, space, gpu);
         info.l1_coalescing = l1_coalescing;
         info.l2_coalescing = l2_coalescing;
-        info.replay_factor = f64::min(replay, info.replay_factor);
+        info.memory_transactions = f64::min(replay, info.memory_transactions);
         info.access_global = true;
         // TODO(model): compute the miss ratio
     }
+
+    // Starting with Maxwell, memory replays are handled by the individual units and do not
+    // use extra issue slots.
+    //
+    // https://stackoverflow.com/questions/57492400/issued-load-store-instructions-for-replay
+    info.issue_replays = if gpu.sm_major >= 5 {
+        // Each single "instruction" occupies a n-th of an issue slot for a n-way vector
+        // instruction.
+        let max_vectorization = gpu
+            .max_vectorization(inst.operator())
+            .iter()
+            .product::<u32>();
+        let vectorization = dims
+            .iter()
+            .filter(|&(&d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
+            .map(|(d, _)| (sizes[&d].max as u32).min(max_vectorization))
+            .max()
+            .unwrap_or(1);
+        1. / f64::from(vectorization)
+    } else {
+        info.memory_transactions
+    };
+
     info
 }
 
@@ -362,7 +407,7 @@ fn increment_index(pos: usize, dims: &[ThreadDimInfo], indexes: &mut [u64]) -> b
 }
 
 /// Compute the replay factor caused by shared memory accesses.
-fn shared_replay_factor(
+fn shared_memory_transactions(
     thread_dims: Vec<ThreadDimInfo>,
     tensor_dims: &FxHashMap<ir::DimId, ir::PartialSize>,
     dim_sizes: &FxHashMap<ir::DimId, size::Range>,
@@ -389,7 +434,7 @@ fn shared_replay_factor(
     }
     let replay = offsets
         .iter()
-        .map(|offsets| offsets_shared_replay_factor(offsets, gpu))
+        .map(|offsets| offsets_shared_memory_transactions(offsets, gpu))
         .min()
         .unwrap();
     // Handle the case where a single thread must access two banks.
@@ -407,7 +452,7 @@ fn shared_replay_factor(
 }
 
 /// Computes the replay factor for a list of shared memory access.
-fn offsets_shared_replay_factor(offsets: &[u64], gpu: &Gpu) -> u32 {
+fn offsets_shared_memory_transactions(offsets: &[u64], gpu: &Gpu) -> u32 {
     // We only need to account for hits on the first bank. Other banks will have a smaller
     // replay factor.
     let mut hits: FxHashSet<_> = std::iter::once(0).collect();
@@ -653,7 +698,7 @@ mod tests {
         let inst_info = analyse(&space, &gpu, &inst, &size_map, &ctx);
         assert_eq!(inst_info.l1_coalescing, 1.0 / f64::from(gpu.wrap_size));
         assert_eq!(inst_info.l2_coalescing, 1.0 / f64::from(gpu.wrap_size));
-        assert_eq!(inst_info.replay_factor, 1.0);
+        assert_eq!(inst_info.memory_transactions, 1.0);
     }
 
     /// Tests `MemInfo` for global loads with full coalescing.
@@ -669,7 +714,7 @@ mod tests {
         let inst_info = analyse(&space, &gpu, &inst, &size_map, &ctx);
         assert_eq!(inst_info.l1_coalescing, 1.0);
         assert_eq!(inst_info.l2_coalescing, 1.0);
-        assert_eq!(inst_info.replay_factor, f64::from(gpu.wrap_size));
+        assert_eq!(inst_info.memory_transactions, f64::from(gpu.wrap_size));
     }
 
     fn thread_dim_info(
