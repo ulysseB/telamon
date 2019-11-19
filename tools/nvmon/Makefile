@@ -7,3 +7,6 @@ ifndef CUDA_HOME
 	$(error Please specify CUDA_HOME)
 endif
 	$(CC) $(CFLAGS) $< -o $@
+
+clean:
+	rm -f nvmon
