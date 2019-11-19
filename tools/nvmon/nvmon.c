@@ -246,45 +246,70 @@ void print_help(void) {
        " 	occurs once and prints the GPU name.\n"
        "\n"
        " - applicationClocks, <mClock in MHz>, <pClock in MHz>\n"
-       " 	occurs once and prints the current memory and GPU application clocks\n"
+       " 	occurs once and prints the current memory and GPU application "
+       "clocks\n"
        "\n"
        " - start, <time in microseconds>\n"
-       " 	occurs once and prints the start time.  There might be events (typically\n"
-       " 	pClock and mClock events) going further back than the start time if\n"
+       " 	occurs once and prints the start time.  There might be events "
+       "(typically\n"
+       " 	pClock and mClock events) going further back than the start "
+       "time if\n"
        " 	they were already present in the buffer.\n"
        "\n"
        " - temperature, <time in microseconds>, <temperature in C>\n"
-       " 	printed when the temperature goes above or beyond 90% of the GPU\n"
+       " 	printed when the temperature goes above or beyond 90% of the "
+       "GPU\n"
        "        slowdown threshold\n"
        "\n"
-       " - thermalHigh, <start time in microseconds>, <end time in microsecond>\n"
-       " 	with the interval during which the GPU was above 90% of the slowdown\n"
+       " - thermalHigh, <start time in microseconds>, <end time in "
+       "microsecond>\n"
+       " 	with the interval during which the GPU was above 90% of the "
+       "slowdown\n"
        "        threshold\n"
        "\n"
        " - thermalViolation, <range start in microseconds>, <range end in\n"
        "   microseconds>, 1\n"
-       "        with the interval during which a thermal violation occurred (the\n"
-       "        thermal violation occurred at some point during the interval, not the\n"
+       "        with the interval during which a thermal violation occurred "
+       "(the\n"
+       "        thermal violation occurred at some point during the interval, "
+       "not the\n"
        "        whole interval)\n"
        "\n"
-       " - powerViolation, <range start in microseconds>, <range end in microseconds>,\n"
+       " - powerViolation, <range start in microseconds>, <range end in "
+       "microseconds>,\n"
        "   <duration in nanoseconds>\n"
-       "        with the interval during which a power violation occured (as for\n"
-       "        thermalViolation, it occured at some point during the interval not the\n"
-       "        whole interval).  The duration in nanoseconds *should* be the actual\n"
-       "        duration of the violation but this doesn't match observations, so I am\n"
-       "        not sure what it measures exactly.  This is the difference between\n"
+       "        with the interval during which a power violation occured (as "
+       "for\n"
+       "        thermalViolation, it occured at some point during the interval "
+       "not the\n"
+       "        whole interval).  The duration in nanoseconds *should* be the "
+       "actual\n"
+       "        duration of the violation but this doesn't match observations, "
+       "so I am\n"
+       "        not sure what it measures exactly.  This is the difference "
+       "between\n"
        "        violationTime and nvmlDeviceGetViolationStatus.\n"
        "\n"
        " - pClock, <time in microseconds>, <pClock in MHz>\n"
-       " 	with the time at which the GPU clock changed and the new value\n"
+       " 	with the time at which the GPU clock changed and the new "
+       "value\n"
        "\n"
        " - mClock, <time in microseconds>, <pClock in MHz>\n"
-       " 	with the time at which the RAM clock changed and the new value\n"
+       " 	with the time at which the RAM clock changed and the new "
+       "value\n"
+       " - startThrottle, <time in microseconds>, <throttleReason>\n"
+       "        with the (approximate) time at which the throttling started\n"
        "\n"
-       "The program polls values every second and prints them until it is killed\n"
-       "using ^C.  Note that even though the polling interval is one second processor and\n"
-       "memory samples have a finer granularity (at least according to the documentation\n"
+       " - stopThrottle, <time in microseconds>, <throttleReason>\n"
+       "        with the (approximate) time at which the throttling stopped\n"
+       "\n"
+       "\n"
+       "The program polls values every second and prints them until it is "
+       "killed\n"
+       "using ^C.  Note that even though the polling interval is one second "
+       "processor and\n"
+       "memory samples have a finer granularity (at least according to the "
+       "documentation\n"
        "-- nvmlDeviceGetSamples doesn't seem to update more frequently than\n"
        "1/sec anyways).");
 }
@@ -321,6 +346,8 @@ void print_samples(void) {
   struct deviceInfo info;
   deviceInfoInitForDevice(&info, device);
 
+  unsigned long long throttleReasons = 0;
+
   for (;;) {
     samplesBufferFillFromDevice(&pClockSamples, device);
     samplesBufferFillFromDevice(&mClockSamples, device);
@@ -328,6 +355,51 @@ void print_samples(void) {
     deviceInfoUpdateViolationStatus(&info, device);
     samplesBufferUpdateViolationStatus(&pClockSamples, "pClock", 1);
     samplesBufferUpdateViolationStatus(&mClockSamples, "mClock", 1);
+
+    unsigned long long newThrottleReasons;
+    NVML_CHECK(
+        nvmlDeviceGetCurrentClocksThrottleReasons(device, &newThrottleReasons));
+
+#define FOR_THROTTLE_REASON(cond, reason, name)                                \
+  if ((cond) & (reason)) {                                                     \
+    THROTTLE_BODY(name);                                                       \
+  }
+
+#define FOR_THROTTLE_REASONS(cond)                                             \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonApplicationsClocksSetting, \
+                      "Application Clocks");                                   \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonDisplayClockSetting,       \
+                      "Display Clock");                                        \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonGpuIdle, "Idle");          \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwPowerBrakeSlowdown,      \
+                      "HW Power Brake");                                       \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwSlowdown,                \
+                      "HW Slowdown");                                          \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwThermalSlowdown,         \
+                      "HW Thermal Slowdown");                                  \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonSwPowerCap,                \
+                      "SW Power Cap");                                         \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonSwThermalSlowdown,         \
+                      "SW Thermal Slowdown");                                  \
+  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonSyncBoost, "Sync Boost");
+
+#define THROTTLE_BODY(name)                                                    \
+  {                                                                            \
+    printf("startThrottle, %llu, %s\n", info.powerViolationTime.referenceTime, \
+           name);                                                              \
+  }
+    FOR_THROTTLE_REASONS(newThrottleReasons & ~throttleReasons);
+#undef THROTTLE_BODY
+
+#define THROTTLE_BODY(name)                                                    \
+  {                                                                            \
+    printf("stopThrottle, %llu, %s\n", info.powerViolationTime.referenceTime,  \
+           name);                                                              \
+  }
+    FOR_THROTTLE_REASONS(~newThrottleReasons & throttleReasons);
+#undef THROTTLE_BODY
+
+    throttleReasons = newThrottleReasons;
 
     sleep(1);
   }
@@ -338,10 +410,10 @@ void print_samples(void) {
   NVML_CHECK(nvmlShutdown());
 }
 
-int main(int argc, char** argv) {
-  if(argc == 1) {
+int main(int argc, char **argv) {
+  if (argc == 1) {
     print_samples();
-  } else if(argc == 2 && strcmp(argv[1], "--help") == 0) {
+  } else if (argc == 2 && strcmp(argv[1], "--help") == 0) {
     print_help();
   } else {
     print_help();
