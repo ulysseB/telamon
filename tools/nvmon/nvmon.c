@@ -1,51 +1,7 @@
 /*
- * Helper script to monitor nvidia GPUs performance.
+ * Helper program to monitor nvidia GPUs performance.
  *
- * It will print to stdout events of the following kinds:
- *
- *  - name, <gpu name>
- *  	occurs once and prints the GPU name.
- *
- *  - applicationClocks, <mClock in MHz>, <pClock in MHz>
- *  	occurs once and prints the current memory and GPU application clocks
- *
- *  - start, <time in microseconds>
- *  	occurs once and prints the start time.  There might be event (typically
- *  	pClock and mClock events) going further back than the start time if
- *  	they were already present in the buffer.
- *
- *  - temperature, <time in microseconds>, <temperature in C>
- *  	when the temperature goes above or beyond 90% of the GPU slowdown
- * threshold
- *
- *  - thermalHigh, <start time in microseconds>, <end time in microsecond>
- *  	with the interval of time where the GPU was above 90% of the slowdown
- * threshold
- *
- *  - thermalViolation, <range start in microseconds>, <range end in
- * microseconds>, 1 with the interval of time during which a thermal violation
- * occured (the thermal violation occured at some point during the interval, not
- * the whole interval)
- *
- *  - powerViolation, <range start in microseconds>, <range end in
- * microseconds>, <duration in nanoseconds> with the interval of time during
- * which a power violation occured (as in thermal violation it occured at some
- * point during the interval not the whole interval).  The duration in
- * nanoseconds *should* be the actual duration of the violation but this doesn't
- * match observations, so I am not sure what it measures exactly.  This is the
- * difference in violationTime from nvmlDeviceGetViolationStatus.
- *
- *  - pClock, <time in microseconds>, <pClock in MHz>
- *  	with the time at which the GPU clock changed and the new value
- *
- *  - mClock, <time in microseconds>, <pClock in MHz>
- *  	with the time at which the RAM clock changed and the new value
- *
- * This runs as a daemon and polls values every second.  It needs to be killed
- * using ^C.  Note that even though we run every second we get processor and
- * memory samples with a somewhat finer granularity (at least according to the
- * documentation -- nvmlDeviceGetSamples don't seem to update at more than
- * 1/sec anyways).
+ * See help message in print_help() for a description.
  */
 
 #include <assert.h>
@@ -280,7 +236,60 @@ void deviceInfoInitForDevice(deviceInfo_t info, nvmlDevice_t device) {
   printf("start, %llu\n", info->powerViolationTime.referenceTime);
 }
 
-int main() {
+void print_help(void) {
+  puts("Usage: nvmon [--help]\n"
+       "Helper program to monitor performance of nvidia GPUs.\n"
+       "\n"
+       "Continuously prints to stdout events in the format:\n"
+       "\n"
+       " - name, <gpu name>\n"
+       " 	occurs once and prints the GPU name.\n"
+       "\n"
+       " - applicationClocks, <mClock in MHz>, <pClock in MHz>\n"
+       " 	occurs once and prints the current memory and GPU application clocks\n"
+       "\n"
+       " - start, <time in microseconds>\n"
+       " 	occurs once and prints the start time.  There might be events (typically\n"
+       " 	pClock and mClock events) going further back than the start time if\n"
+       " 	they were already present in the buffer.\n"
+       "\n"
+       " - temperature, <time in microseconds>, <temperature in C>\n"
+       " 	printed when the temperature goes above or beyond 90% of the GPU\n"
+       "        slowdown threshold\n"
+       "\n"
+       " - thermalHigh, <start time in microseconds>, <end time in microsecond>\n"
+       " 	with the interval during which the GPU was above 90% of the slowdown\n"
+       "        threshold\n"
+       "\n"
+       " - thermalViolation, <range start in microseconds>, <range end in\n"
+       "   microseconds>, 1\n"
+       "        with the interval during which a thermal violation occurred (the\n"
+       "        thermal violation occurred at some point during the interval, not the\n"
+       "        whole interval)\n"
+       "\n"
+       " - powerViolation, <range start in microseconds>, <range end in microseconds>,\n"
+       "   <duration in nanoseconds>\n"
+       "        with the interval during which a power violation occured (as for\n"
+       "        thermalViolation, it occured at some point during the interval not the\n"
+       "        whole interval).  The duration in nanoseconds *should* be the actual\n"
+       "        duration of the violation but this doesn't match observations, so I am\n"
+       "        not sure what it measures exactly.  This is the difference between\n"
+       "        violationTime and nvmlDeviceGetViolationStatus.\n"
+       "\n"
+       " - pClock, <time in microseconds>, <pClock in MHz>\n"
+       " 	with the time at which the GPU clock changed and the new value\n"
+       "\n"
+       " - mClock, <time in microseconds>, <pClock in MHz>\n"
+       " 	with the time at which the RAM clock changed and the new value\n"
+       "\n"
+       "The program polls values every second and prints them until it is killed\n"
+       "using ^C.  Note that even though the polling interval is one second processor and\n"
+       "memory samples have a finer granularity (at least according to the documentation\n"
+       "-- nvmlDeviceGetSamples doesn't seem to update more frequently than\n"
+       "1/sec anyways).");
+}
+
+void print_samples(void) {
   NVML_CHECK(nvmlInit());
 
   nvmlDevice_t device;
@@ -327,4 +336,17 @@ int main() {
   samplesBufferDestroy(&pClockSamples);
 
   NVML_CHECK(nvmlShutdown());
+}
+
+int main(int argc, char** argv) {
+  if(argc == 1) {
+    print_samples();
+  } else if(argc == 2 && strcmp(argv[1], "--help") == 0) {
+    print_help();
+  } else {
+    print_help();
+    return 1;
+  }
+
+  return 0;
 }
