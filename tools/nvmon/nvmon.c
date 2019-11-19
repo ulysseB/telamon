@@ -314,6 +314,31 @@ void print_help(void) {
        "1/sec anyways).");
 }
 
+void print_throttles(const char *what, unsigned long long referenceTime,
+                     unsigned long long throttleReasons) {
+#define THROTTLE_REASON(cond, reason, name)                                    \
+  if ((throttleReasons) & (reason)) {                                          \
+    printf("%s, %llu, %s\n", what, referenceTime, name);                       \
+  }
+
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonApplicationsClocksSetting,
+                  "Application Clocks");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonDisplayClockSetting,
+                  "Display Clock");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonGpuIdle, "Idle");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwPowerBrakeSlowdown,
+                  "HW Power Brake");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwSlowdown, "HW Slowdown");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwThermalSlowdown,
+                  "HW Thermal Slowdown");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonSwPowerCap, "SW Power Cap");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonSwThermalSlowdown,
+                  "SW Thermal Slowdown");
+  THROTTLE_REASON(cond, nvmlClocksThrottleReasonSyncBoost, "Sync Boost");
+
+#undef THROTTLE_REASON
+}
+
 void print_samples(void) {
   NVML_CHECK(nvmlInit());
 
@@ -360,44 +385,10 @@ void print_samples(void) {
     NVML_CHECK(
         nvmlDeviceGetCurrentClocksThrottleReasons(device, &newThrottleReasons));
 
-#define FOR_THROTTLE_REASON(cond, reason, name)                                \
-  if ((cond) & (reason)) {                                                     \
-    THROTTLE_BODY(name);                                                       \
-  }
-
-#define FOR_THROTTLE_REASONS(cond)                                             \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonApplicationsClocksSetting, \
-                      "Application Clocks");                                   \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonDisplayClockSetting,       \
-                      "Display Clock");                                        \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonGpuIdle, "Idle");          \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwPowerBrakeSlowdown,      \
-                      "HW Power Brake");                                       \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwSlowdown,                \
-                      "HW Slowdown");                                          \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonHwThermalSlowdown,         \
-                      "HW Thermal Slowdown");                                  \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonSwPowerCap,                \
-                      "SW Power Cap");                                         \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonSwThermalSlowdown,         \
-                      "SW Thermal Slowdown");                                  \
-  FOR_THROTTLE_REASON(cond, nvmlClocksThrottleReasonSyncBoost, "Sync Boost");
-
-#define THROTTLE_BODY(name)                                                    \
-  {                                                                            \
-    printf("startThrottle, %llu, %s\n", info.powerViolationTime.referenceTime, \
-           name);                                                              \
-  }
-    FOR_THROTTLE_REASONS(newThrottleReasons & ~throttleReasons);
-#undef THROTTLE_BODY
-
-#define THROTTLE_BODY(name)                                                    \
-  {                                                                            \
-    printf("stopThrottle, %llu, %s\n", info.powerViolationTime.referenceTime,  \
-           name);                                                              \
-  }
-    FOR_THROTTLE_REASONS(~newThrottleReasons & throttleReasons);
-#undef THROTTLE_BODY
+    print_throttles("startThrottle", info.powerViolationTime.referenceTime,
+                    newThrottleReasons & ~throttleReasons);
+    print_throttles("stopThrottle", info.powerViolationTime.referenceTime,
+                    ~newThrottleReasons & throttleReasons);
 
     throttleReasons = newThrottleReasons;
 
