@@ -102,8 +102,13 @@ pub struct Gpu {
     pub thread_per_smx: u32,
     /// The size in bytes of the L1 cache.
     pub l1_cache_size: u32,
-    /// The size in bytes of a L1 cache line.
-    pub l1_cache_line: u32,
+    /// The size in bytes of a L1 cache sector.
+    ///
+    /// One cache line is composed of multiple sectors, but memory is accessed at the granularity
+    /// of a single sector.  See crate::characterize::gpu::l1_cache_sector.
+    pub l1_cache_sector: u32,
+    /// The number of L1 cache sector per cache line.
+    pub l1_cache_sectors_per_line: u32,
     /// The size in bytes of the L2 cache.
     pub l2_cache_size: u32,
     /// The size in bytes of a L2 cache line.
@@ -191,7 +196,8 @@ impl Gpu {
             wrap_size: 32,
             thread_per_smx: 2048,
             l1_cache_size: 16348,
-            l1_cache_line: 128,
+            l1_cache_sector: 128,
+            l1_cache_sectors_per_line: 1,
             l2_cache_size: 393_216,
             l2_cache_line: 32,
             shared_bank_stride: 8,
@@ -412,6 +418,10 @@ impl Gpu {
         let wrap_size = u64::from(self.wrap_size);
         let n_wraps = (lcm_threads_per_block + wrap_size - 1) / wrap_size;
         (n_wraps * wrap_size) as f64 / lcm_threads_per_block as f64
+    }
+
+    pub fn l1_cache_line(&self) -> u32 {
+        self.l1_cache_sectors_per_line * self.l1_cache_sector
     }
 }
 

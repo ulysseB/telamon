@@ -501,7 +501,7 @@ fn offsets_global_coalescing(offsets: &[u64], gpu: &Gpu) -> (f64, f64, f64) {
     let mut l2_lines: FxHashSet<_> = std::iter::once(0).collect();
     // Compute the lines accessed by each tread in a wrap.
     for &offset in offsets {
-        l1_lines.insert(offset / u64::from(gpu.l1_cache_line));
+        l1_lines.insert(offset / u64::from(gpu.l1_cache_sector));
         l2_lines.insert(offset / u64::from(gpu.l2_cache_line));
     }
     trace!(
@@ -549,7 +549,7 @@ let mshr_miss = if reuse_distance > gpu.mshr_per_smx {
 } else if size == 1 {
 0.0
 } else {
-let num_lines = 1 + (stride*(size as i32-1))/gpu.l1_cache_line as i32;
+let num_lines = 1 + (stride*(size as i32-1))/gpu.l1_cache_sector as i32;
 f64::min(num_lines as f64/size as f64, 1.0)
 };
 trace!("dim: {:?}, kind: {:?}, reuse_distance: {}, stride: {}, mshr_miss: {}",
@@ -580,7 +580,7 @@ dynamic_nesting(dim, other_dim, space) == Some(Ordering::Greater)
 }).map(|other_dim| {
 let stride = eval_stride(pattern, other_dim.id(), sizes).unwrap_or(0) as u32;
 let size = sizes[&other_dim.id()] as u32;
-1 + std::cmp::min(size - 1, stride*(size-1)/gpu.l1_cache_line)
+1 + std::cmp::min(size - 1, stride*(size-1)/gpu.l1_cache_sector)
 }).product::<u32>() - 1
 }
 
@@ -663,8 +663,8 @@ mod tests {
         let addr_base = builder.cast(&0i64, gpu.pointer_type(MemSpace::GLOBAL));
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
-        let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
-        let stride = ir::Size::new_const(gpu.l1_cache_line);
+        let addr = builder.mad(&d0, &(gpu.l1_cache_sector as i32), &addr_base);
+        let stride = ir::Size::new_const(gpu.l1_cache_sector);
         let pattern = builder.tensor_access_pattern(None, vec![(&d0, stride)]);
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.order(&d0, &d1, d0_d1_order);
