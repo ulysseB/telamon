@@ -5,11 +5,13 @@
  */
 
 #include <assert.h>
-#include <nvml.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <nvml.h>
 
 #define NVML_CHECK(f)                                                          \
   {                                                                            \
@@ -19,6 +21,11 @@
       exit(1);                                                                 \
     }                                                                          \
   }
+
+static void on_sigterm(int signum) {
+  fflush(stdout);
+  exit(1);
+}
 
 struct samplesBuffer {
   nvmlSamplingType_t type;
@@ -43,7 +50,7 @@ void samplesBufferUpdateViolationStatus(samplesBuffer_t buffer,
     break;
 
   default:
-    fprintf(stderr, "Invalid buffer sample type\n");
+    fputs(stderr, "Invalid buffer sample type\n");
     exit(1);
   }
 
@@ -403,6 +410,16 @@ void print_samples(void) {
 
 int main(int argc, char **argv) {
   if (argc == 1) {
+    struct sigaction sa;
+    sa.sa_handler = on_sigterm;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+      fputs(stderr, "Failed to register SIGTERM handler");
+      exit(2);
+    }
+
     print_samples();
   } else if (argc == 2 && strcmp(argv[1], "--help") == 0) {
     print_help();
