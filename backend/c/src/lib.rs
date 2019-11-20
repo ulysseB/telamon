@@ -166,6 +166,7 @@ impl C99Display for llir::BinOp {
             IMul { spec, arg_t } => {
                 write!(fmt, "__mul{}{}", arg_t.bitwidth().unwrap(), spec.c99())
             }
+            IMax { .. } => write!(fmt, "__max"),
             // Floating-Point Instructions
             FAdd { .. } => write!(fmt, "+"),
             FSub { .. } => write!(fmt, "-"),

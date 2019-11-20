@@ -416,6 +416,7 @@ impl PTXDisplay for llir::BinOp {
             ISub { arg_t } => write!(fmt, "sub.{}", arg_t.ptx()),
             IDiv { arg_t } => write!(fmt, "div.{}", arg_t.ptx()),
             IMul { arg_t, spec } => write!(fmt, "mul.{}.{}", spec.ptx(), arg_t.ptx()),
+            IMax { arg_t } => write!(fmt, "max.{}", arg_t.ptx()),
             // Floating-Point Instructions
             FAdd { t, rounding } => write!(fmt, "add.{}.{}", rounding.ptx(), t.ptx()),
             FSub { t, rounding } => write!(fmt, "sub.{}.{}", rounding.ptx(), t.ptx()),
@@ -541,7 +542,7 @@ impl PTXDisplay for llir::LoadSpec {
         if self.vector_factor().get() > 1 {
             write!(fmt, ".v{}", self.vector_factor())?;
         }
-        write!(fmt, ".{}", self.t())
+        write!(fmt, ".{}", self.t().ptx())
     }
 }
 
@@ -551,7 +552,7 @@ impl PTXDisplay for llir::StoreSpec {
         if self.vector_factor().get() > 1 {
             write!(fmt, ".v{}", self.vector_factor())?;
         }
-        write!(fmt, ".{}", self.t())
+        write!(fmt, ".{}", self.t().ptx())
     }
 }
 
