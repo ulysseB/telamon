@@ -445,6 +445,7 @@ pub enum BinOp {
     ISub { arg_t: ir::Type },
     IDiv { arg_t: ir::Type },
     IMul { arg_t: ir::Type, spec: MulSpec },
+    IMax { arg_t: ir::Type },
     // Floating-Point Instructions
     FAdd { t: ir::Type, rounding: FpRounding },
     FSub { t: ir::Type, rounding: FpRounding },
@@ -470,6 +471,7 @@ impl fmt::Display for BinOp {
             ISub { arg_t } => write!(fmt, "sub.{}", arg_t),
             IDiv { arg_t } => write!(fmt, "div.{}", arg_t),
             IMul { arg_t, spec } => write!(fmt, "mul.{}.{}", spec, arg_t),
+            IMax { arg_t } => write!(fmt, "max.{}", arg_t),
             // Floating-Point Instructions
             FAdd { t, rounding } => write!(fmt, "add.{}.{}", rounding, t),
             FSub { t, rounding } => write!(fmt, "sub.{}.{}", rounding, t),
@@ -516,6 +518,7 @@ impl BinOp {
             ity::I(_) if rounding != ir::op::Rounding::Exact => {
                 return Err(InstructionError::invalid_rounding_for_type(rounding, arg_t))
             }
+            ity::I(_) => (),
             ity::F(_) => match op {
                 iop::Add | iop::Sub | iop::Div => (),
                 iop::Max => {
@@ -562,6 +565,7 @@ impl BinOp {
                 arg_t,
             },
             (iop::Max, ity::F(_)) => BinOp::FMax { t: arg_t },
+            (iop::Max, ity::I(_)) => BinOp::IMax { arg_t },
             _ => return Err(InstructionError::invalid_binop_for_type(op, arg_t)),
         })
     }
@@ -608,6 +612,7 @@ impl BinOp {
             | ISub { arg_t }
             | IDiv { arg_t }
             | IMul { arg_t, .. }
+            | IMax { arg_t }
             | Set { arg_t, .. } => [arg_t, arg_t],
             FAdd { t, .. }
             | FSub { t, .. }
@@ -626,7 +631,7 @@ impl BinOp {
         use BinOp::*;
 
         match self {
-            IAdd { arg_t } | ISub { arg_t } | IDiv { arg_t } => arg_t,
+            IAdd { arg_t } | ISub { arg_t } | IDiv { arg_t } | IMax { arg_t } => arg_t,
             IMul { arg_t, spec } => spec.ret_t(arg_t),
             Set { .. } => ir::Type::I(1),
             FAdd { t, .. }
@@ -663,6 +668,7 @@ impl BinOp {
         infer_iadd, IAdd { arg_t }, unify_itype;
         infer_isub, ISub { arg_t }, unify_itype;
         infer_idiv, IDiv { arg_t }, unify_itype;
+        infer_imax, IMax { arg_t }, unify_itype;
         infer_fadd, FAdd { t, rounding: FpRounding }, unify_ftype;
         infer_fsub, FSub { t, rounding: FpRounding }, unify_ftype;
         infer_fdiv, FDiv { t, rounding: FpRounding }, unify_ftype;
@@ -951,6 +957,7 @@ impl<'a> Instruction<'a> {
         imul_high(d, a, b) = imul_ex[MulSpec::High];
         imul_wide(d, a, b) = imul_ex[MulSpec::Wide];
         idiv(d, a, b), BinOp::infer_idiv, binary;
+        imax(d, a, b), BinOp::infer_imax, binary;
 
         fadd_ex[rounding: FpRounding](d, a, b), BinOp::infer_fadd, binary;
         fadd(d, a, b) = fadd_ex[FpRounding::NearestEven];
