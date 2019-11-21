@@ -5,6 +5,7 @@
 #define ERROR_BUFF_SIZE 500
 
 static const char* ptx = "{ptx_code}";
+static size_t ptx_len = {ptx_len};
 
 // Checks the result of a CUDA dirver API call and exits in case of error.
 static void check_cuda(CUresult err, const char* file, const int line) {{
@@ -22,15 +23,32 @@ static void check_cuda(CUresult err, const char* file, const int line) {{
 #define CHECK_CUDA(err) check_cuda(err, __FILE__, __LINE__)
 
 // Compiles the generated PTX code and stores it in the given module and function.
+//
+// NB: We use cuLinkCreate / cuLinkAddData / cuLinkComplete for the compilation
+// process to match what is done during the search.  For currently unknown
+// reasons, passing the PTX directly to cuModuleLoadDataEx does not generate
+// the same code and can have wildly different performance characteristics.
 void cuda_compile_{name}(CUmodule *module, CUfunction *function) {{
   char error_buff[ERROR_BUFF_SIZE+1];
   CUjit_option options[] = 
     {{CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES}};
   void* option_values[] = {{(void*)error_buff, (void*)ERROR_BUFF_SIZE}};
-  CUresult err = cuModuleLoadDataEx(module, ptx, 2, options, option_values);
+
+  CUlinkState state;
+  CUresult err = cuLinkCreate(2, options, option_values, &state);
   if (option_values[1]) {{ fprintf(stderr, "%s\n", error_buff); }}
   CHECK_CUDA(err);
+
+  CHECK_CUDA(cuLinkAddData(state, CU_JIT_INPUT_PTX, (void *)ptx, ptx_len, NULL, 0, NULL, NULL));
+
+  void* cubin_data;;
+  size_t cubin_size;
+  CHECK_CUDA(cuLinkComplete(state, &cubin_data, &cubin_size));
+
+  CHECK_CUDA(cuModuleLoadData(module, cubin_data));
   CHECK_CUDA(cuModuleGetFunction(function, *module, "{name}"));
+
+  CHECK_CUDA(cuLinkDestroy(state));
 }}
 
 // Executes the generated kernel and returns the execution time in milliseconds.
