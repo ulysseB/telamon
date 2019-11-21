@@ -20,7 +20,13 @@ impl<'a> Module<'a> {
     pub fn new(context: &'a CudaContext, code: &str, opt_level: usize) -> Self {
         debug!("compiling... {}", code);
         let c_str = unwrap!(CString::new(code));
-        let module = unsafe { compile_ptx(context, c_str.as_ptr(), opt_level) };
+        let module = unsafe {
+            let cubin_obj =
+                compile_ptx_to_cubin(context, c_str.as_ptr(), code.len(), opt_level);
+            let module = load_cubin(context, cubin_obj.data as *const libc::c_void);
+            free_cubin_object(cubin_obj);
+            module
+        };
         Module { module, context }
     }
 

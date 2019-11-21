@@ -19,11 +19,6 @@ extern "C" {
     pub fn init_cuda(seed: u64) -> *mut CudaContext;
     pub fn free_cuda(context: *mut CudaContext);
     pub fn device_name(context: *const CudaContext) -> *mut libc::c_char;
-    pub fn compile_ptx(
-        context: *const CudaContext,
-        ptx_code: *const libc::c_char,
-        opt_level: libc::size_t,
-    ) -> *mut CudaModule;
     pub fn load_cubin(
         context: *const CudaContext,
         image: *const libc::c_void,

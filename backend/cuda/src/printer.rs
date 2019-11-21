@@ -333,11 +333,13 @@ impl CudaPrinter {
             .map(|p| format!("{} {}", Self::host_type(p.t), p.name))
             .collect_vec()
             .join(", ");
+        let ptx_code = self.function(fun, gpu);
         let res = write!(
             out,
             include_str!("template/host.c"),
             name = fun.name(),
-            ptx_code = self.function(fun, gpu).replace("\n", "\\n\\\n"),
+            ptx_code = ptx_code.replace("\n", "\\n\\\n"),
+            ptx_len = ptx_code.len(),
             extern_params = extern_params,
             extern_param_names = extern_param_names,
             param_vec = format!("{{ {} }}", params),

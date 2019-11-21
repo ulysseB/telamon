@@ -125,11 +125,16 @@ typedef struct CubinObject {
   size_t data_size;
 } CubinObject;
 
+// Compiles a PTX string into a cubin object.  The options passed to
+// cuLinkCreate can be used to set the optimization level.
+//
+// The cubin object should be loaded through `load_cubin`, which goes through
+// to cuModuleLoadData.
 CubinObject compile_ptx_to_cubin(CudaContext* ctx,
                                  char* ptx_code,
                                  size_t ptx_size,
                                  size_t opt_lvl) {
-  (void)(ctx);
+  HARD_CHECK_CUDA(cuCtxSetCurrent(ctx->ctx));
   char error_buff[ERROR_BUFF_SIZE+1];
   void* option_values[] = {
     (void*)error_buff,
@@ -152,27 +157,6 @@ CubinObject compile_ptx_to_cubin(CudaContext* ctx,
 void free_cubin_object(CubinObject object) {
   HARD_CHECK_CUDA(cuLinkDestroy(*object.state));
   free(object.state);
-}
-
-// Compiles a PTX file into a CUDA module. The options passed to cuModuleLoadDataEx can
-// be used to set the optimization level and to retreive the number of registers used and
-// the errors encountered.
-CUmodule* compile_ptx(CudaContext* ctx, const char* ptx_code, size_t opt_lvl) {
-  HARD_CHECK_CUDA(cuCtxSetCurrent(ctx->ctx));
-  CUmodule* module = malloc(sizeof(CUmodule));
-  char error_buff[ERROR_BUFF_SIZE+1];
-  void* option_values[] = {
-    (void*)error_buff,
-    (void*)ERROR_BUFF_SIZE,
-    (void*)opt_lvl,
-  };
-  CUresult err = cuModuleLoadDataEx(
-    module, ptx_code, NUM_JIT_OPTIONS, jit_options, option_values);
-  if (option_values[1]) {
-    fprintf(stderr, "%s\n", error_buff);
-  }
-  HARD_CHECK_CUDA(err);
-  return module;
 }
 
 /// Loads a cubin object.
