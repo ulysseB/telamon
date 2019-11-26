@@ -14,17 +14,28 @@
 #include <nvml.h>
 
 #define NVML_CHECK(f)                                                          \
-  {                                                                            \
+  do {                                                                         \
     nvmlReturn_t __status = (f);                                               \
     if (__status != NVML_SUCCESS) {                                            \
-      fprintf(stderr, "%s:%d:FAILURE: %d", __FILE__, __LINE__, __status);      \
-      exit(1);                                                                 \
+      panic("NVML error %d", __status);                                        \
     }                                                                          \
-  }
+  } while (0)
+
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+
+#define eputs(x) fputs(x, stderr)
+
+#define panic(...)                                                             \
+  do {                                                                         \
+    eprintf("%s:%d:", __FILE__, __LINE__);                                     \
+    eprintf(__VA_ARGS__);                                                      \
+    eputs("\n");                                                               \
+    exit(1);                                                                   \
+  } while (0)
 
 static void on_sigterm(int signum) {
   fflush(stdout);
-  exit(1);
+  exit(0);
 }
 
 struct samplesBuffer {
@@ -50,8 +61,7 @@ void samplesBufferUpdateViolationStatus(samplesBuffer_t buffer,
     break;
 
   default:
-    fputs(stderr, "Invalid buffer sample type\n");
-    exit(1);
+    panic("Invalid buffer sample type");
   }
 
   if (buffer->length < 1) {
@@ -365,8 +375,7 @@ void print_samples(void) {
   NVML_CHECK(nvmlDeviceGetPersistenceMode(device, &persistenceMode));
 
   if (persistenceMode != NVML_FEATURE_ENABLED) {
-    printf("Persistence mode is disabled.");
-    exit(1);
+    panic("Persistence mode is disabled.");
   }
 
   struct samplesBuffer pClockSamples;
@@ -416,8 +425,7 @@ int main(int argc, char **argv) {
     sa.sa_flags = 0;
 
     if (sigaction(SIGTERM, &sa, NULL) == -1) {
-      fputs(stderr, "Failed to register SIGTERM handler");
-      exit(2);
+      panic("Failed to register SIGTERM handler.");
     }
 
     print_samples();
