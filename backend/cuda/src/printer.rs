@@ -430,6 +430,7 @@ impl PTXDisplay for llir::BinOp {
             And { t } => write!(fmt, "and.{}", t.ptx()),
             Or { t } => write!(fmt, "or.{}", t.ptx()),
             Xor { t } => write!(fmt, "xor.{}", t.ptx()),
+            Shr { t } => write!(fmt, "shr.{}", t.ptx()),
         }
     }
 }

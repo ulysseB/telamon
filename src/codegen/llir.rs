@@ -459,6 +459,7 @@ pub enum BinOp {
     And { t: ir::Type },
     Or { t: ir::Type },
     Xor { t: ir::Type },
+    Shr { t: ir::Type },
 }
 
 impl fmt::Display for BinOp {
@@ -485,6 +486,7 @@ impl fmt::Display for BinOp {
             And { t } => write!(fmt, "and.{}", t),
             Or { t } => write!(fmt, "or.{}", t),
             Xor { t } => write!(fmt, "xor.{}", t),
+            Shr { t } => write!(fmt, "shr.{}", t),
         }
     }
 }
@@ -623,6 +625,7 @@ impl BinOp {
             | And { t }
             | Or { t }
             | Xor { t } => [t, t],
+            Shr { t } => [t, ir::Type::I(32)],
         }
     }
 
@@ -642,7 +645,8 @@ impl BinOp {
             | FMin { t }
             | And { t }
             | Or { t }
-            | Xor { t } => t,
+            | Xor { t }
+            | Shr { t } => t,
         }
     }
 
@@ -678,6 +682,15 @@ impl BinOp {
         infer_and, And { t }, unify_itype;
         infer_xor, Xor { t }, unify_itype;
         infer_or, Or { t }, unify_itype;
+    }
+
+    pub fn infer_shr(
+        d: Option<ir::Type>,
+        ab: [ir::Type; 2],
+    ) -> Result<Self, InstructionError> {
+        let t = unify_itype(d.into_iter().chain(iter::once(ab[0])))?;
+        unify_itype(iter::once(ab[1]).chain(iter::once(ir::Type::I(32))))?;
+        Ok(BinOp::Shr { t })
     }
 
     pub fn infer_imul(
@@ -981,6 +994,7 @@ impl<'a> Instruction<'a> {
         and(d, a, b), BinOp::infer_and, binary;
         xor(d, a, b), BinOp::infer_xor, binary;
         or(d, a, b), BinOp::infer_or, binary;
+        shr(d, a, b), BinOp::infer_shr, binary;
     }
 
     pub fn imul<D, A, B>(d: D, a: A, b: B) -> Result<Self, InstructionError>

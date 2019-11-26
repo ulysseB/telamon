@@ -145,7 +145,8 @@ fn is_infix(binop: llir::BinOp) -> bool {
         | Set { .. }
         | And { .. }
         | Or { .. }
-        | Xor { .. } => true,
+        | Xor { .. }
+        | Shr { .. } => true,
         _ => false,
     }
 }
@@ -180,6 +181,7 @@ impl C99Display for llir::BinOp {
             And { .. } => write!(fmt, "&"),
             Or { .. } => write!(fmt, "|"),
             Xor { .. } => write!(fmt, "^"),
+            Shr { .. } => write!(fmt, ">>"),
         }
     }
 }
