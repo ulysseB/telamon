@@ -63,13 +63,20 @@ autoboost_val_for_info() {
 autoboost_val() {
     local GPUIDX="$1"
 
-    for VAL in on off
+    for VAL in on off N/A
     do
 	local REQLINE="^\s*auto\s\+boost\s\+default\s*:\s*$VAL\$"
 
 	if nvidia-smi -i $GPUIDX -q -d CLOCK | grep -i -q "$REQLINE" 2>&1
 	then
-	    echo $VAL
+	    # Interpret unavailable autoboost as "off"
+	    if [ $VAL = "N/A" ]
+	    then
+		echo "off"
+	    else
+		echo $VAL
+	    fi
+
 	    break
 	fi
     done
