@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -u
+
+die() {
+    echo "$1" >&2
+    exit 1
+}
+
+HOSTNAME=`hostname`
+
+#
+# Hand-tuned frequencies with stable performance
+#
+case "$HOSTNAME" in
+    citrouille)
+	GPUFREQ="1404"
+	;;
+    ficus)
+	GPUFREQ="max"
+	;;
+    potiron)
+	GPUFREQ="911"
+	;;
+    *)
+	die "No configuration specified for host $HOSTNAME."
+	;;
+esac
+
+expenv-check --autoboost-disabled \
+	     --cpu-governor=performance \
+	     --gpu-freq=$GPUFREQ \
+	     --gpu-memfreq=max \
+	     "$@"
+
+exit $?
