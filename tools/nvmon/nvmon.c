@@ -255,6 +255,8 @@ void print_help(void) {
        " - applicationClocks, <mClock in MHz>, <pClock in MHz>\n"
        " 	occurs once and prints the current memory and GPU application "
        "clocks\n"
+       "        mClock and/or pClock may be `0` in case application clocks are "
+       "not supported\n"
        "\n"
        " - start, <time in microseconds>\n"
        " 	occurs once and prints the start time.  There might be events "
@@ -347,6 +349,8 @@ void print_throttles(const char *what, unsigned long long referenceTime,
 }
 
 void print_samples(void) {
+  nvmlReturn_t status;
+
   NVML_CHECK(nvmlInit());
 
   nvmlDevice_t device;
@@ -357,8 +361,20 @@ void print_samples(void) {
   printf("name, %s\n", name);
 
   unsigned int mClock, pClock;
-  NVML_CHECK(nvmlDeviceGetApplicationsClock(device, NVML_CLOCK_MEM, &mClock));
-  NVML_CHECK(nvmlDeviceGetApplicationsClock(device, NVML_CLOCK_SM, &pClock));
+  status = nvmlDeviceGetApplicationsClock(device, NVML_CLOCK_MEM, &mClock);
+  if (status == NVML_ERROR_NOT_SUPPORTED) {
+    mClock = 0;
+  } else {
+    NVML_CHECK(status);
+  }
+
+  status = nvmlDeviceGetApplicationsClock(device, NVML_CLOCK_SM, &pClock);
+  if (status == NVML_ERROR_NOT_SUPPORTED) {
+    pClock = 0;
+  } else {
+    NVML_CHECK(status);
+  }
+
   printf("applicationClocks, %u, %u\n", mClock, pClock);
 
   nvmlEnableState_t persistenceMode;
