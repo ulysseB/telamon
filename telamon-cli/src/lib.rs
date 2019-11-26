@@ -112,24 +112,30 @@ mod cuda_reference {
         }
     }
 
-    pub struct CublasHandle(cublasHandle_t);
+    pub struct CudaHandle {
+        cublas_raw: cublasHandle_t,
+        cudnn: cudnn::CudnnHandle,
+    }
 
     #[allow(clippy::new_without_default)]
-    impl CublasHandle {
+    impl CudaHandle {
         /// Initialize a new handle.
         pub fn new() -> Self {
             unsafe {
-                let mut handle = std::mem::uninitialized();
-                check_cublas(cublasCreate_v2(&mut handle));
-                CublasHandle(handle)
+                let mut cublas_raw = std::mem::uninitialized();
+                check_cublas(cublasCreate_v2(&mut cublas_raw));
+                CudaHandle {
+                    cublas_raw,
+                    cudnn: cudnn::CudnnHandle::new().unwrap(),
+                }
             }
         }
     }
 
-    impl Drop for CublasHandle {
+    impl Drop for CudaHandle {
         fn drop(&mut self) {
             unsafe {
-                check_cublas(cublasDestroy_v2(self.0));
+                check_cublas(cublasDestroy_v2(self.cublas_raw));
             }
         }
     }
@@ -156,12 +162,9 @@ mod cuda_reference {
         *(context.get_param(name).raw_ptr() as *const *mut T)
     }
 
-    const CUBLAS_N: cublasOperation_t = CUBLAS_OP_N;
-    const CUBLAS_T: cublasOperation_t = CUBLAS_OP_T;
-
     /// Reference implementation for the `Axpy` kernel.
     fn saxpy_reference(
-        handle: &CublasHandle,
+        handle: &CudaHandle,
         (n, _): (i32, bool),
         context: &cuda::Context,
     ) -> f64 {
@@ -170,13 +173,15 @@ mod cuda_reference {
         unsafe {
             let x = get_array("x", context);
             let y = get_array("y", context);
-            time_cuda(|| check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1)))
+            time_cuda(|| {
+                check_cublas(cublasSaxpy_v2(handle.cublas_raw, n, alpha, x, 1, y, 1))
+            })
         }
     }
 
     /// Reference implementation for the matrix-vector multiplication.
     fn matvec_reference(
-        handle: &CublasHandle,
+        handle: &CudaHandle,
         &(m, n, _): &(i32, i32, bool),
         context: &cuda::Context,
     ) -> f64 {
@@ -188,16 +193,15 @@ mod cuda_reference {
             let y = get_array("y", context);
             time_cuda(|| {
                 let op = CUBLAS_OP_T;
-                check_cublas(cublasSgemv_v2(
-                    handle.0, op, n, m, &2., a, n, x, 1, &3., y, 1,
-                ))
+                let cublas = handle.cublas_raw;
+                check_cublas(cublasSgemv_v2(cublas, op, n, m, &2., a, n, x, 1, &3., y, 1))
             })
         }
     }
 
     /// Reference implementation for the matrix-matrix multiplication.
     fn matmul_reference(
-        handle: &CublasHandle,
+        handle: &CudaHandle,
         params: &linalg::FusedMMP,
         context: &cuda::Context,
     ) -> f64 {
@@ -210,18 +214,19 @@ mod cuda_reference {
             let b = get_array("b", context);
             let c = get_array("c", context);
             let (op_a, lda) = if params.transpose_a {
-                (CUBLAS_T, m)
+                (CUBLAS_OP_T, m)
             } else {
-                (CUBLAS_N, k)
+                (CUBLAS_OP_N, k)
             };
             let (op_b, ldb) = if params.transpose_b {
-                (CUBLAS_T, k)
+                (CUBLAS_OP_T, k)
             } else {
-                (CUBLAS_N, n)
+                (CUBLAS_OP_N, n)
             };
             time_cuda(|| {
+                let cublas = handle.cublas_raw;
                 check_cublas(cublasSgemm_v2(
-                    handle.0, op_b, op_a, n, m, k, &1., b, ldb, a, lda, &0., c, n,
+                    cublas, op_b, op_a, n, m, k, &1., b, ldb, a, lda, &0., c, n,
                 ));
             })
         }
@@ -229,7 +234,7 @@ mod cuda_reference {
 
     /// Reference implementation for the matrix-matrix multiplication.
     fn batchmm_reference(
-        handle: &CublasHandle,
+        handle: &CudaHandle,
         params: &linalg::BatchMMP,
         context: &cuda::Context,
     ) -> f64 {
@@ -242,22 +247,23 @@ mod cuda_reference {
             let b = get_array("b", context);
             let c = get_array("c", context);
             let (op_a, lda) = if params.transpose_a {
-                (CUBLAS_T, m)
+                (CUBLAS_OP_T, m)
             } else {
-                (CUBLAS_N, k)
+                (CUBLAS_OP_N, k)
             };
             let (op_b, ldb) = if params.transpose_b {
-                (CUBLAS_T, k)
+                (CUBLAS_OP_T, k)
             } else {
-                (CUBLAS_N, n)
+                (CUBLAS_OP_N, n)
             };
             let stride_a = libc::c_long::from(m * k);
             let stride_b = libc::c_long::from(if params.batch_b { n * k } else { 0 });
             let stride_c = libc::c_long::from(m * n);
             time_cuda(|| {
+                let cublas = handle.cublas_raw;
                 check_cublas(cublasSgemmStridedBatched(
-                    handle.0, op_b, op_a, n, m, k, &1., b, ldb, stride_b, a, lda,
-                    stride_a, &0., c, n, stride_c, batch,
+                    cublas, op_b, op_a, n, m, k, &1., b, ldb, stride_b, a, lda, stride_a,
+                    &0., c, n, stride_c, batch,
                 ));
             })
         }
@@ -265,7 +271,7 @@ mod cuda_reference {
 
     /// Reference implementation for `Gesummv`.
     fn gesummv_reference(
-        handle: &CublasHandle,
+        handle: &CudaHandle,
         &(m, n, _): &(i32, i32, bool),
         context: &cuda::Context,
     ) -> f64 {
@@ -278,17 +284,18 @@ mod cuda_reference {
             let y = get_array("y", context);
             time_cuda(|| {
                 let op = CUBLAS_OP_T;
+                let cublas = handle.cublas_raw;
                 check_cublas(cublasSgemv_v2(
-                    handle.0, op, n, m, &3.1, a, n, x, 1, &0., y, 1,
+                    cublas, op, n, m, &3.1, a, n, x, 1, &0., y, 1,
                 ));
                 check_cublas(cublasSgemv_v2(
-                    handle.0, op, n, m, &4.1, b, n, x, 1, &1., y, 1,
+                    cublas, op, n, m, &4.1, b, n, x, 1, &1., y, 1,
                 ));
             })
         }
     }
 
-    impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CublasHandle {
+    impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CudaHandle {
         type Context = cuda::Context<'a>;
 
         fn eval_reference(&self, params: &(i32, bool), context: &Self::Context) -> f64 {
@@ -296,7 +303,7 @@ mod cuda_reference {
         }
     }
 
-    impl<'a> Reference<'a, linalg::MatVec<'a, f32>> for CublasHandle {
+    impl<'a> Reference<'a, linalg::MatVec<'a, f32>> for CudaHandle {
         type Context = cuda::Context<'a>;
 
         fn eval_reference(
@@ -308,7 +315,7 @@ mod cuda_reference {
         }
     }
 
-    impl<'a> Reference<'a, linalg::FusedMM<'a, f32>> for CublasHandle {
+    impl<'a> Reference<'a, linalg::FusedMM<'a, f32>> for CudaHandle {
         type Context = cuda::Context<'a>;
 
         fn eval_reference(
@@ -320,7 +327,7 @@ mod cuda_reference {
         }
     }
 
-    impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for CublasHandle {
+    impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for CudaHandle {
         type Context = cuda::Context<'a>;
 
         fn eval_reference(
@@ -332,7 +339,7 @@ mod cuda_reference {
         }
     }
 
-    impl<'a> Reference<'a, linalg::Gesummv<'a, f32>> for CublasHandle {
+    impl<'a> Reference<'a, linalg::Gesummv<'a, f32>> for CudaHandle {
         type Context = cuda::Context<'a>;
 
         fn eval_reference(
@@ -346,7 +353,7 @@ mod cuda_reference {
 }
 
 #[cfg(feature = "cuda")]
-pub use cuda_reference::CublasHandle;
+pub use cuda_reference::CudaHandle;
 
 #[cfg(feature = "x86")]
 mod x86_reference {
@@ -805,7 +812,7 @@ impl<'a> PlatformContext<'a> {
             }
             #[cfg(feature = "cuda")]
             PlatformContext::Cuda(context) => {
-                let (bundle, context) = kernel.to_bundle(context, CublasHandle::new());
+                let (bundle, context) = kernel.to_bundle(context, CudaHandle::new());
                 (bundle, context as &dyn Context)
             }
         }

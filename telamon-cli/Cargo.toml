@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 structopt = "0.2"
 cuda-sys = { path = "../deps/cuda-sys", optional = true }
+cudnn = { path = "../deps/cudnn", optional = true }
 libc = { version = "0.2", optional = true }
 env_logger = "0.5"
 log = "0.4"
@@ -28,7 +29,7 @@ telamon-x86 = { path = "../backend/x86", optional = true }
 
 [features]
 default = ["cuda"]
-cuda = ["telamon-cuda/real_gpu", "cuda-sys/cuda", "cuda-sys/cublas", "libc"]
+cuda = ["telamon-cuda/real_gpu", "cuda-sys/cuda", "cudnn", "cuda-sys/cublas", "libc"]
 x86 = ["telamon-x86", "telamon-kernels/x86"]
 
 [[example]]
