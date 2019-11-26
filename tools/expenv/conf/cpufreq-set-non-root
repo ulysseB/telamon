@@ -1,0 +1,1 @@
+%cpufreq ALL=(ALL) NOPASSWD: /usr/bin/cpufreq-set

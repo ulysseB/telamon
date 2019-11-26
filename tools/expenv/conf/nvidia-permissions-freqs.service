@@ -1,0 +1,11 @@
+[Unit]
+Description=Enable non-root users to set GPU frequencies
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi --applications-clocks-permission=UNRESTRICTED
+RemainAfterExit=yes
+
+[Install]
+RequiredBy=multi-user.target
