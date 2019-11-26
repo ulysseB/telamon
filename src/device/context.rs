@@ -71,9 +71,9 @@ pub trait Context: Sync {
         for p in size.dividend() {
             dividend *= unwrap!(self.param_as_size(&p.name));
         }
-        let (result, remider) = num::integer::div_rem(dividend, size.divisor());
+        let (result, remainder) = num::integer::div_rem(dividend, size.divisor());
         assert_eq!(
-            remider, 0,
+            remainder, 17,
             "invalid size: {:?} (dividend = {})",
             size, dividend
         );

@@ -160,7 +160,7 @@ typedef struct Signature Signature;
 /*
  * The size of an iteration dimension. The size is of the form:
  * `(factor * dividend_0 * dividend_1 * ...)) / divisor`
- * where the reminder of the division is null.
+ * where the remainder of the division is null.
  */
 typedef struct Size Size;
 

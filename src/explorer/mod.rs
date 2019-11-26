@@ -269,16 +269,22 @@ fn explore_space<T>(
                 let mut best = best_mutex.lock().unwrap();
                 let n_evals = n_evals.fetch_add(1, Ordering::SeqCst);
 
-                let mut eval = unwrap!(
-                    stabilizer
-                        .wrap(compiled)
-                        .bound(Some(leaf.bound.value()))
-                        .best(*best)
-                        .evaluate(),
-                    "evaluation failed for actions {:?}, with kernel {}",
-                    leaf.actions,
-                    compiled
-                );
+                let mut eval = match stabilizer
+                    .wrap(compiled)
+                    .bound(Some(leaf.bound.value()))
+                    .best(*best)
+                    .evaluate()
+                {
+                    Some(eval) => eval,
+                    None => {
+                        error!(
+                            "evaluation failed for actions {:?}, with kernel {}",
+                            leaf.actions, compiled
+                        );
+
+                        std::f64::INFINITY
+                    }
+                };
 
                 if let Some(check_result_fn) = check_result_fn {
                     if eval.is_finite()

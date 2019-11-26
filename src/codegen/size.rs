@@ -9,7 +9,7 @@ use crate::search_space::{NumSet, SearchSpace};
 
 /// The size of an iteration dimension. The size is of the form:
 /// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
-/// where the reminder of the division is null.
+/// where the remainder of the division is null.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Size {
     factor: u32,
