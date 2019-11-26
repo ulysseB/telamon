@@ -1,0 +1,11 @@
+[Unit]
+Description=Enable persistence mode
+Before=nvidia-disable-autoboost.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi -pm 1
+RemainAfterExit=yes
+
+[Install]
+RequiredBy=nvidia-disable-autoboost.service

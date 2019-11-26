@@ -1,0 +1,387 @@
+#!/bin/bash
+
+FORCE="false"
+
+CHECK_CPUGOV="false"
+REQ_CPUGOV=""
+
+CHECK_GPUFREQ="false"
+REQ_ACTUAL_GPUFREQ=""
+REQ_SYMBOLIC_GPUFREQ=""
+
+CHECK_GPUMEMFREQ="false"
+REQ_ACTUAL_GPUMEMFREQ=""
+REQ_SYMBOLIC_GPUMEMFREQ=""
+
+CHECK_GPUFREQS="false"
+
+CHECK_GPUAUTOBOOST="false"
+REQ_GPUAUTOBOOST=""
+
+VERBOSE="false"
+
+die() {
+    echo "$1" >&2
+    exit 1
+}
+
+print_help() {
+    echo "Usage: $0 [options]"
+    echo "Check GPU and CPU settings for experiments. By default, settings are"
+    echo "only checked and the script fails if one or more settings do not match"
+    echo "the expected settings. Settings are only adjusted if the --force flag"
+    echo "is specified."
+    echo
+    echo "Options:"
+    echo "  -a, --max-all            Check for maximum performance (equivalent to"
+    echo "                           --cpu-governor=performance --autoboost-enabled"
+    echo "                           --gpu-freq=max --gpu-memfreq=max)"
+    echo "  -c G,--cpu-governor=G    Check if cpu governor is G (e.g., performance)"
+    echo "  -d, --autoboost-disabled Check if GPU autoboost is disabled"
+    echo "  -e, --autoboost-enabled  Check if GPU autoboost is enabled"
+    echo "  -f, --force              Try to enforce desired settings if current settings"
+    echo "                           are different"
+    echo "  -g F, --gpu-freq=F       Check if gpu frequency is F (in MHz) or max"
+    echo "  -h, --help               Show this help"
+    echo "  -m F, --gpu-memfreq=F    Check if gpu memory frequency is F (in MHz) or max"
+    echo "  -n, --max-no-boost       Check for maximum performance without autoboost"
+    echo "                           (equivalent to --cpu-governor=performance"
+    echo "                           --autoboost-disabled --gpu-freq=max"
+    echo "                           --gpu-memfreq=max)"
+    echo "  -v, --verbose            Verbose output on errors"
+}
+
+num_gpus() {
+    nvidia-smi -L | wc -l
+}
+
+autoboost_val_for_info() {
+    [ "$1" = "On" -o "$1" = "on" ] && echo "ENABLED"
+    [ "$1" = "Off" -o "$1" = "off" ] && echo "DISABLED"
+}
+
+autoboost_val() {
+    local GPUIDX="$1"
+
+    for VAL in on off
+    do
+	local REQLINE="^\s*auto\s\+boost\s\+default\s*:\s*$VAL\$"
+
+	if nvidia-smi -i $GPUIDX -q -d CLOCK | grep -i -q "$REQLINE" 2>&1
+	then
+	    echo $VAL
+	    break
+	fi
+    done
+}
+
+autoboost_force() {
+    local GPUIDX="$1"
+    local VAL=`autoboost_val_for_info $REQ_GPUAUTOBOOST`
+
+    nvidia-smi -i $GPUIDX --auto-boost-default=$VAL >/dev/null || \
+    	die "Could not set autoboost to $REQ_GPUAUTOBOOST"
+}
+
+gpu_mhz_val() {
+    local GPUIDX="$1"
+    local PARAM="$2"
+
+    nvidia-smi -i $GPUIDX \
+	       --query-gpu=$2 \
+	       --format=csv,noheader | \
+	grep -o "[0-9]\+\s\+MHz" | grep -o "[0-9]\+"
+}
+
+gpufreq_val() {
+    local GPUIDX="$1"
+    gpu_mhz_val $GPUIDX clocks.applications.graphics
+}
+
+gpumemfreq_val() {
+    local GPUIDX="$1"
+    gpu_mhz_val $GPUIDX clocks.default_applications.mem
+}
+
+gpufreq_val_max() {
+    local GPUIDX="$1"
+    gpu_mhz_val $GPUIDX clocks.max.sm
+}
+
+gpumemfreq_val_max() {
+    local GPUIDX="$1"
+    gpu_mhz_val $GPUIDX clocks.max.mem
+}
+
+gpufreqs_val() {
+    local MFREQ=`gpumemfreq_val "$@"`
+    local FREQ=`gpufreq_val "$@"`
+
+    echo "$MFREQ,$FREQ"
+}
+
+gpufreqs_force() {
+    local GPUIDX="$1"
+    local REQVAL="$REQ_ACTUAL_GPUMEMFREQ,$REQ_ACTUAL_GPUFREQ"
+
+    echo nvidia-smi -i $GPUIDX --applications-clocks=$REQVAL > foo.log
+    
+    nvidia-smi -i $GPUIDX --applications-clocks=$REQVAL >/dev/null || \
+    	die "Could not set max GPU application clock to $REQ_ACTUAL_GPUFREQ " \
+	    "and max application memory clock to $REQ_ACTUAL_GPUMEMFREQ"
+}
+
+generic_check() {
+    local DO_CHECK="$1"
+    local CHECK_NAME="$2"
+    local VAL_FUN="$3"
+    local REQVAL="$4"
+    local FORCE_FUN="$5"
+    local INDEXENTITY="$6"
+    local INDEX="$7"
+
+    [ $DO_CHECK = "false" ] && return 0
+
+    printf_verbose "%s" \
+	"Checking if $CHECK_NAME is $REQVAL on $INDEXENTITY $INDEX... "
+
+    local VAL=`$VAL_FUN $INDEX`
+
+    if [ "$VAL" != "$REQVAL" ]
+    then
+	echo_verbose "no [is: $VAL]"
+
+	if [ $FORCE = "true" ]
+	then
+	    printf_verbose "%s" \
+	      "Forcing $CHECK_NAME to \"$REQVAL\" on $INDEXENTITY $INDEX... "
+	    `$FORCE_FUN $INDEX`
+	    echo_verbose "done"
+
+	    printf_verbose "%s" \
+	      "Re-checking if $CHECK_NAME is $REQVAL on $INDEXENTITY $INDEX... "
+	    local VAL=`$VAL_FUN $INDEX`
+
+	    if [ "$VAL" != "$REQVAL" ]
+	    then
+		echo_verbose "no [is: $VAL]"
+		exit 1
+	    else
+		echo_verbose "yes"
+	    fi
+	else
+	    exit 1
+	fi
+    else
+	echo_verbose "yes"
+    fi
+}
+
+printf_verbose() {
+    [ $VERBOSE = "true" ] && printf "$@"
+}
+
+echo_verbose() {
+    [ $VERBOSE = "true" ] && echo "$@"
+}
+
+num_cpus() {
+    cat /proc/cpuinfo  | grep '^\s*processor\s*:\s*[0-9]\+$' | wc -l
+}
+
+cpugovernor_val() {
+    local NUM_CPUS=`num_cpus`
+    LAST_GOV=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+
+    for CPU in `seq 1 $(($NUM_CPUS - 1))`
+    do
+	CURR_GOV=`cat /sys/devices/system/cpu/cpu$CPU/cpufreq/scaling_governor`
+	if [ $CURR_GOV != $LAST_GOV ]
+	then
+	    echo "various"
+	    return
+	fi
+    done
+
+    echo $CURR_GOV
+}
+
+cpugovernor_force() {
+    local NUM_CPUS=`num_cpus`
+
+    for CPU in `seq 0 $(($NUM_CPUS - 1))`
+    do
+	sudo --non-interactive cpufreq-set -c $CPU -g $REQ_CPUGOV || \
+	    die "Could not set scaling governor to $REQ_CPUGOV for cpu $CPU"
+    done
+}
+
+while [ $# -gt 0 ]
+do
+    case "$1" in
+	-a|--max-all)
+	    CHECK_GPUAUTOBOOST="true"
+	    REQ_GPUAUTOBOOST="on"
+	    
+	    CHECK_CPUGOV="true"
+	    REQ_CPUGOV="performance"
+
+	    CHECK_GPUFREQ="true"
+	    REQ_SYMBOLIC_GPUFREQ="max"
+
+	    CHECK_GPUMEMFREQ="true"
+	    REQ_SYMBOLIC_GPUMEMFREQ="max"
+	    ;;
+	-c)
+	    [ ! -z "$2" ] || die "No governor specified for option -c"
+	    CHECK_CPUGOV="true"
+	    REQ_CPUGOV="$2"
+	    shift
+	    ;;
+	--cpu-governor=*)
+	    CHECK_CPUGOV="true"
+	    REQ_CPUGOV=${1#*=}
+	    ;;
+	-d|--autoboost-disabled)
+	    CHECK_GPUAUTOBOOST="true"
+	    REQ_GPUAUTOBOOST="off"
+	    ;;
+	-e|--autoboost-enabled)
+	    CHECK_GPUAUTOBOOST="true"
+	    REQ_GPUAUTOBOOST="on"
+	    ;;
+	-f|--force)
+	    FORCE="true"
+	    ;;
+	-g)
+	    [ ! -z "$2" ] || die "No frequency specified for option -g"
+	    CHECK_GPUFREQ="true"
+	    REQ_SYMBOLIC_GPUFREQ="$2"
+	    shift
+	    ;;
+	--gpu-freq=*)
+	    CHECK_GPUFREQ="true"
+	    REQ_SYMBOLIC_GPUFREQ=${1#*=}
+	    ;;
+	--gpu-memfreq=*)
+	    CHECK_GPUMEMFREQ="true"
+	    REQ_SYMBOLIC_GPUMEMFREQ=${1#*=}
+	    ;;
+	-h|--help)
+	    print_help
+	    exit 0
+	    ;;
+	-m)
+	    [ ! -z "$2" ] || die "No frequency specified for option -m"
+	    CHECK_GPUMEMFREQ="true"
+	    REQ_SYMBOLIC_GPUMEMFREQ="$2"
+	    shift
+	    ;;
+	-n|--max-no-boost)
+	    CHECK_GPUAUTOBOOST="true"
+	    REQ_GPUAUTOBOOST="off"
+	    
+	    CHECK_CPUGOV="true"
+	    REQ_CPUGOV="performance"
+
+	    CHECK_GPUFREQ="true"
+	    REQ_SYMBOLIC_GPUFREQ="max"
+
+	    CHECK_GPUMEMFREQ="true"
+	    REQ_SYMBOLIC_GPUMEMFREQ="max"
+	    ;;
+	-v|--verbose)
+	    VERBOSE="true"
+	    ;;
+	*)
+	    echo "Unknown option $1"
+	    exit 1
+	    ;;
+    esac
+
+    shift
+done
+
+# Check that either none or both the core an memory frequency are set
+# for the GPU
+if [ $FORCE = "true" -a \
+	    \( \( $CHECK_GPUFREQ = "true" -a $CHECK_GPUMEMFREQ = "false" \) -o \
+	    \( $CHECK_GPUFREQ = "false" -a $CHECK_GPUMEMFREQ = "true" \) \) ]
+then
+    die "GPU and GPU memory frequencies must be set at the same time"
+fi
+
+#
+# CPU checks
+#
+generic_check $CHECK_CPUGOV \
+	      "cpu scaling governor" \
+	      cpugovernor_val \
+	      "$REQ_CPUGOV" \
+	      cpugovernor_force \
+	      cpus all
+
+#
+# GPU checks
+#
+
+NUM_GPUS=`num_gpus`
+
+for GPUIDX in `seq 0 $((NUM_GPUS - 1))`
+do
+    generic_check $CHECK_GPUAUTOBOOST \
+		  "autoboost" \
+		  autoboost_val \
+		  "$REQ_GPUAUTOBOOST" \
+		  autoboost_force \
+		  gpu $GPUIDX
+
+    # If GPU frequencies set to "max", determine actual frequencies
+
+    if [ "$REQ_SYMBOLIC_GPUFREQ" = "max" ]
+    then
+        REQ_ACTUAL_GPUFREQ=`gpufreq_val_max $GPUIDX`
+    else
+	REQ_ACTUAL_GPUFREQ=$REQ_SYMBOLIC_GPUFREQ
+    fi
+
+    if [ "$REQ_SYMBOLIC_GPUMEMFREQ" = "max" ]
+    then
+        REQ_ACTUAL_GPUMEMFREQ=`gpumemfreq_val_max $GPUIDX`
+    else
+	REQ_ACTUAL_GPUMEMFREQ=$REQ_SYMBOLIC_GPUMEMFREQ
+    fi
+
+    
+    if [ $FORCE = "true" ]
+    then
+	# If force checked: force-check both frequencies at the same
+	# time
+	if [ \( $CHECK_GPUFREQ = "true" -a $CHECK_GPUMEMFREQ = "true" \) ]
+	then
+	    generic_check true \
+			  "gpu max app frequency" \
+			  gpufreqs_val \
+			  "$REQ_ACTUAL_GPUMEMFREQ,$REQ_ACTUAL_GPUFREQ" \
+			  gpufreqs_force \
+			  gpu $GPUIDX
+	fi
+    else
+	# If not force-checked, check frequencies individually
+	generic_check $CHECK_GPUFREQ \
+		      "gpu max app sm frequency" \
+		      gpufreq_val \
+		      "$REQ_ACTUAL_GPUFREQ" \
+		      gpufreq_force \
+		      gpu $GPUIDX
+
+	generic_check $CHECK_GPUFREQ \
+		      "gpu max app memory frequency" \
+		      gpumemfreq_val \
+		      "$REQ_ACTUAL_GPUMEMFREQ" \
+		      gpumemfreq_force \
+		      gpu $GPUIDX
+    fi
+done
+
+exit 0

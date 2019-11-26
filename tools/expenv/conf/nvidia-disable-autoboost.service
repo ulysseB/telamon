@@ -1,0 +1,11 @@
+[Unit]
+Description=Disable autoboost
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi --auto-boost-default=DISABLED -i 0
+RemainAfterExit=yes
+
+[Install]
+RequiredBy=multi-user.target

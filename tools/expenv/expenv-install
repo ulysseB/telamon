@@ -1,0 +1,113 @@
+#!/bin/bash
+
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+check_src_file() {
+    local FILE="$1"
+
+    [ -f "$FILE" ] ||
+	die "Configuration file $FILE not found. " \
+	    "You probably need to run $0 from its root directory."    
+}
+
+install_src_file() {
+    local SRC="$1"
+    local TGT="$2"
+    local MODE="$3"
+
+    printf "Installing $TGT... "
+    install -g root -o root -m $MODE "$SRC" "$TGT" || \
+	die "Could not install $TGT"
+    echo "done."
+}
+
+MODPROBED_DIR="/etc/modprobe.d"
+SYSTEMD_DIR="/etc/systemd/system"
+BIN_DIR="/usr/bin"
+SUDOERSD_DIR="/etc/sudoers.d"
+
+SERVICES="nvidia-disable-autoboost \
+nvidia-permissions-freqs \
+nvidia-permissions-autoboost \
+nvidia-enable-persistence"
+
+cd "`dirname $0`"
+
+################################################################################
+# Pre-installation checks
+################################################################################
+
+[ -d "$MODPROBED_DIR" ] || \
+    die "Modprobe include directory not found ($MODPROBED_DIR)"
+
+[ -d "$SYSTEMD_DIR" ] || \
+    die "Systemd include directory not found ($SYSTEMD_DIR)"
+
+[ -d "$BIN_DIR" ] || \
+    die "Directory for binaries not found ($BIN_DIR)"
+
+[ -d "$SUDOERSD_DIR" ] || \
+    die "Directory for sudo configuration files not found ($SUDOERSD_DIR)"
+
+check_src_file "expenv-check"
+check_src_file "conf/nvidia-cupti-allow-nonadmin.conf"
+
+for SERVICE in $SERVICES
+do
+    check_src_file "conf/$SERVICE.service"
+done
+
+#
+# Allow non-root users to use CUPTI
+#
+
+TGT_FILE="$MODPROBED_DIR/nvidia-cupti-allow-nonadmin.conf"
+
+install_src_file "conf/nvidia-cupti-allow-nonadmin.conf" "$TGT_FILE" 0644
+
+#
+# Install services
+#
+for SERVICE in $SERVICES
+do
+    install_src_file "conf/$SERVICE.service" \
+		     "$SYSTEMD_DIR/$SERVICE.service" 0644
+
+    printf "Enabling service $SERVICE... "
+    systemctl -q enable $SERVICE || die "Could not enable service $SERVICE"
+    echo "done."
+done
+
+#
+# Install scripts
+#
+
+install_src_file "expenv-check" "$BIN_DIR/expenv-check" 0655
+
+#
+# Install sudoers files
+#
+
+install_src_file "conf/cpufreq-set-non-root" \
+		 "$SUDOERSD_DIR/cpufreq-set-non-root" 0644
+
+if grep -q '^cpufreq:' /etc/group
+then
+    echo "Group cpufreq already exists, nothing to do."
+else
+    printf "%s" "Adding group cpufreq... "
+    addgroup --quiet cpufreq
+    echo "done."
+fi
+
+################################################################################
+
+echo
+echo "Setup complete. Next steps:"
+echo " - Add users to the cpufreq group"
+echo " - Reboot for the modprobe configuration to take effect."
+
+exit 0
