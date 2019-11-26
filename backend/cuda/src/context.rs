@@ -4,7 +4,7 @@ use crate::{Executor, Gpu, JITDaemon, Kernel};
 ///! Defines the CUDA evaluation context.
 use crossbeam;
 use fxhash::FxHashMap;
-use log::{debug, info};
+use log::{debug, error, info};
 use std::f64;
 use std::fmt;
 use std::sync::{atomic, mpsc, Arc};
@@ -148,13 +148,16 @@ impl<'a> device::Context for Context<'a> {
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
             let res = scope.builder().name(eval_thread_name).spawn(move |_| {
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
-                    callback.call(
-                        candidate,
-                        &mut RealtimeThunk {
-                            thunk,
-                            smx_clock: self.gpu_model.smx_clock,
-                        },
-                    );
+                    match thunk {
+                        Some(thunk) => callback.call(
+                            candidate,
+                            &mut RealtimeThunk {
+                                thunk,
+                                smx_clock: self.gpu_model.smx_clock,
+                            },
+                        ),
+                        None => callback.call(candidate, &mut ErrorThunk { _priv: () }),
+                    }
                 }
             });
             unwrap!(res);
@@ -169,7 +172,7 @@ impl<'a> device::Context for Context<'a> {
     }
 }
 
-type AsyncPayload<'b> = (explorer::Candidate, Thunk<'b>, AsyncCallback<'b>);
+type AsyncPayload<'b> = (explorer::Candidate, Option<Thunk<'b>>, AsyncCallback<'b>);
 
 pub struct AsyncEvaluator<'b> {
     context: &'b Context<'b>,
@@ -189,19 +192,61 @@ where
     ) {
         let thunk = {
             let dev_fun = codegen::Function::build(&candidate.space);
-            let gpu = &self.context.gpu();
             debug!(
                 "compiling kernel with bound {} and actions {:?}",
                 candidate.bound, candidate.actions
             );
+
             // TODO(cc_perf): cuModuleLoadData is waiting the end of any running kernel
             let kernel = Kernel::compile_remote(
                 &dev_fun,
-                gpu,
+                &self.context.gpu(),
                 self.context.executor(),
                 &mut self.ptx_daemon,
             );
-            kernel.gen_thunk(self.context)
+
+            // In case kernel compilation fails, we try to catch the failure and keep going.
+            //
+            // Ideally, the compilation code would be structured so as to not use incoherent
+            // assertions and have a failure path using `Result` directly.  Unfortunately that will
+            // not be the case for the foreseeable future -- and being able to ignore the corner
+            // cases where some underlying assertion fails (the initial motivation for this is
+            // related to invalid sizes, which should get fixed independently) during a run is
+            // useful.  We still display an error message to let the user investigate.
+            //
+            // TODO: We might want some sort of counters to stop retrying if *all* compilations
+            // fail.
+
+            // We need `AssertUnwindSafe` because the `kernel` and `context` have references to
+            // structures with raw pointers or interior mutability and we could end up in an
+            // inconsistent state of those structures in case of a panic.
+            //
+            // Those are references to the CUDA module (which gets destroyed with the kernel) and
+            // the CUDA context.  The CUDA context is used through FFI APIs and has no knowledge of
+            // Rust panics, and so won't get into an inconsistent state due to panics.
+            let kernel = std::panic::AssertUnwindSafe(kernel);
+            let context = std::panic::AssertUnwindSafe(self.context);
+            match std::panic::catch_unwind(move || kernel.0.gen_thunk(&*context)) {
+                Ok(thunk) => Some(thunk),
+                Err(err) => {
+                    use std::borrow::Cow;
+
+                    let message = err
+                        .downcast::<String>()
+                        .map(|s| Cow::Owned(*s))
+                        .or_else(|err| {
+                            err.downcast::<&'static str>().map(|s| Cow::Borrowed(*s))
+                        })
+                        .unwrap_or_else(|_| Cow::Borrowed("<unknown error>"));
+
+                    error!(
+                        "Async evaluator panicked: {} (while compiling kernel {})",
+                        message, candidate
+                    );
+
+                    None
+                }
+            }
         };
         let t0 = std::time::Instant::now();
         unwrap!(self.sender.send((candidate, thunk, callback)));
@@ -212,6 +257,7 @@ where
     }
 }
 
+// Helper to convert `Thunk` measurements (in cycles) into nanoseconds based on the GPU frequency
 struct RealtimeThunk<'a> {
     thunk: Thunk<'a>,
     smx_clock: f64,
@@ -226,5 +272,23 @@ impl<'a> fmt::Display for RealtimeThunk<'a> {
 impl<'a> KernelEvaluator for RealtimeThunk<'a> {
     fn evaluate(&mut self) -> Option<f64> {
         Some(self.thunk.execute().ok()? as f64 / self.smx_clock)
+    }
+}
+
+// Helper struct to represent a kernel whose compilation failed.  Evaluation of such a kernel
+// always fail.
+struct ErrorThunk {
+    _priv: (),
+}
+
+impl fmt::Display for ErrorThunk {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "<compilation error>")
+    }
+}
+
+impl KernelEvaluator for ErrorThunk {
+    fn evaluate(&mut self) -> Option<f64> {
+        None
     }
 }
