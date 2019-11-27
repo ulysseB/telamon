@@ -73,7 +73,7 @@ pub trait Context: Sync {
         }
         let (result, remainder) = num::integer::div_rem(dividend, size.divisor());
         assert_eq!(
-            remainder, 17,
+            remainder, 0,
             "invalid size: {:?} (dividend = {})",
             size, dividend
         );
