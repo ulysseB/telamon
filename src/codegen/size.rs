@@ -49,6 +49,8 @@ impl Size {
     /// Returns the size of a dimension if it is staticaly known.
     pub fn as_int(&self) -> Option<u32> {
         if self.dividend.is_empty() {
+            assert_eq!(self.divisor, 1);
+
             Some(self.factor)
         } else {
             None
@@ -109,6 +111,17 @@ where
     fn mul(mut self, other: T) -> Self::Output {
         self *= other;
         self
+    }
+}
+
+impl<T> ops::Mul<T> for &'_ Size
+where
+    Size: ops::Mul<T>,
+{
+    type Output = <Size as ops::Mul<T>>::Output;
+
+    fn mul(self, other: T) -> Self::Output {
+        self.clone() * other
     }
 }
 

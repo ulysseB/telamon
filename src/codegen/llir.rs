@@ -1047,6 +1047,44 @@ impl<'a> Instruction<'a> {
         Self::imad_ex(MulSpec::from_ir(a.t(), b.t(), c.t())?, d, a, b, c)
     }
 
+    pub fn iadd_auto<D, A, B>(d: D, a: A, b: B) -> Result<Self, InstructionError>
+    where
+        D: Into<RegVec<'a>>,
+        A: Into<OpVec<'a>>,
+        B: Into<OpVec<'a>>,
+    {
+        let (d, a, b) = (d.into(), a.into(), b.into());
+        match (d.t(), a.t(), b.t()) {
+            (ir::Type::I(dt), ir::Type::I(at), ir::Type::I(bt)) => {
+                if dt == at && dt == 2 * bt {
+                    Self::imad(d, Operand::IntLiteral(Cow::Owned(1i32.into()), bt), b, a)
+                } else if dt == bt && dt == 2 * at {
+                    Self::imad(d, Operand::IntLiteral(Cow::Owned(1i32.into()), at), a, b)
+                } else {
+                    Self::iadd(d, a, b)
+                }
+            }
+            _ => Self::iadd(d, a, b),
+        }
+    }
+
+    pub fn isub_auto<D, A, B>(d: D, a: A, b: B) -> Result<Self, InstructionError>
+    where
+        D: Into<RegVec<'a>>,
+        A: Into<OpVec<'a>>,
+        B: Into<OpVec<'a>>,
+    {
+        let (d, a, b) = (d.into(), a.into(), b.into());
+        match (d.t(), a.t(), b.t()) {
+            (ir::Type::I(dt), ir::Type::I(at), ir::Type::I(bt))
+                if dt == at && dt == 2 * bt =>
+            {
+                Self::imad(d, Operand::IntLiteral(Cow::Owned((-1i32).into()), bt), b, a)
+            }
+            _ => Self::isub(d, a, b),
+        }
+    }
+
     /// Create a new load instruction.
     pub fn load(
         spec: LoadSpec,

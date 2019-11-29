@@ -12,16 +12,9 @@ use crate::codegen::{
 };
 use crate::ir::{self, dim, DimMap, InstId, Type};
 
-use super::llir::{self, IntLiteral as _, Register};
+use super::llir::{self, IntLiteral as _, Operand, Register};
 
 // TODO(cleanup): refactor
-
-/// A value that can be named.
-#[derive(Copy, Clone)]
-pub enum Operand<'a> {
-    InductionLevel(ir::IndVarId, ir::DimId),
-    Operand(&'a ir::Operand),
-}
 
 /// Print the appropriate String for a given value on target
 /// Values could be constants or variables.
@@ -50,13 +43,13 @@ pub struct NameMap<'a> {
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
     current_indexes: FxHashMap<ir::DimId, usize>,
-    /// Tracks the name of induction variables partial names.
-    induction_vars: FxHashMap<ir::IndVarId, llir::Operand<'a>>,
-    induction_levels: FxHashMap<(ir::IndVarId, ir::DimId), Register<'a>>,
     /// Casted sizes.
     size_casts: FxHashMap<(&'a codegen::Size, ir::Type), Register<'a>>,
     /// Guard to use in front of instructions with side effects.
     side_effect_guard: Option<Register<'a>>,
+    expr_to_operand: super::expr::ExprToOperand<'a>,
+    /// Keeps track of induction variable names.
+    induction_vars: FxHashMap<ir::IndVarId, Operand<'a>>,
 }
 
 /// An interner, used to convert owned objects into a long-lived borrowed version.
@@ -111,19 +104,6 @@ impl<'a> NameMap<'a> {
                 indexes.insert(id, Register::new(name, Type::I(32)));
             }
         }
-        // Name induction levels.
-        let mut induction_levels = FxHashMap::default();
-        let mut induction_vars = FxHashMap::default();
-        for level in function.induction_levels() {
-            let name = interner.intern(namegen.name(level.t()));
-            if let Some((dim, _)) = level.increment {
-                induction_levels
-                    .insert((level.ind_var, dim), Register::new(name, level.t()));
-            } else {
-                induction_vars
-                    .insert(level.ind_var, Register::new(name, level.t()).into());
-            }
-        }
         // Name shared memory blocks. Global mem blocks are named by parameters.
         for mem_block in function.mem_blocks() {
             if mem_block.alloc_scheme() == AllocationScheme::Shared {
@@ -160,25 +140,33 @@ impl<'a> NameMap<'a> {
             indexes,
             params,
             mem_blocks,
-            induction_vars,
-            induction_levels,
             side_effect_guard: None,
+            expr_to_operand: Default::default(),
+            induction_vars: Default::default(),
         };
+
         // Setup induction variables.
-        for var in function.induction_vars() {
-            match var.value.components().collect_vec()[..] {
-                // In the first case, the value is computed elsewhere.
-                [] => (),
-                [value] => {
-                    let name = name_map.name(value);
-                    name_map.induction_vars.insert(var.id, name);
-                }
-                _ => panic!(
-                    "inductions variables with more than two components must be
-                            computed by the outermost induction level"
-                ),
-            };
+        {
+            let merged_dimensions: super::dimension::MergedDimensions<'_> =
+                function.dimensions().collect();
+
+            let mut builder = super::expr::ExprToOperandBuilder::new(
+                function.space(),
+                &merged_dimensions,
+                &mut name_map,
+            );
+
+            let mut induction_vars = FxHashMap::default();
+            for &(var_id, ref expr) in function.induction_vars() {
+                let operand = builder.to_operand(expr);
+                induction_vars.insert(var_id, operand);
+            }
+
+            let expr_to_operand = builder.finish();
+            name_map.expr_to_operand = expr_to_operand;
+            name_map.induction_vars = induction_vars;
         }
+
         // Setup the name of variables holding instruction results.
         for inst in function.cfg().instructions() {
             // If the instruction has a return variable, use its name instead.
@@ -207,13 +195,12 @@ impl<'a> NameMap<'a> {
         llir::Label::new(self.interner.intern(format!("{}_{}", prefix, id)))
     }
 
-    pub fn name(&self, operand: Operand<'a>) -> llir::Operand<'a> {
-        match operand {
-            Operand::Operand(op) => self.name_op(op),
-            Operand::InductionLevel(ind_var, level) => {
-                self.name_induction_var(ind_var, Some(level))
-            }
-        }
+    pub fn expr_to_operand(&self) -> &super::expr::ExprToOperand<'a> {
+        &self.expr_to_operand
+    }
+
+    pub fn name_induction_var(&self, ind_var_id: ir::IndVarId) -> llir::Operand<'a> {
+        self.induction_vars[&ind_var_id].clone()
     }
 
     /// Asigns a name to an operand.
@@ -249,7 +236,7 @@ impl<'a> NameMap<'a> {
                 self.name_param_val(ParamValKey::External(&*p)).into()
             }
             ir::Operand::Addr(id) => self.name_addr(*id).into(),
-            ir::Operand::InductionVar(id, _) => self.name_induction_var(*id, None),
+            ir::Operand::InductionVar(id, _) => self.name_induction_var(*id),
             ir::Operand::Variable(val_id, _t) => {
                 (*self.variables[val_id].get_name(&indexes)).into()
             }
@@ -284,9 +271,13 @@ impl<'a> NameMap<'a> {
         op: &'a ir::Operand,
         indexes: &[(ir::DimId, u32)],
     ) -> llir::Operand<'a> {
-        let mut indexes_map = self.current_indexes.clone();
-        indexes_map.extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
-        self.name_op_with_indexes(op, Cow::Owned(indexes_map))
+        let mut indexes_map = Cow::Borrowed(&self.current_indexes);
+        if !indexes.is_empty() {
+            indexes_map
+                .to_mut()
+                .extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
+        }
+        self.name_op_with_indexes(op, indexes_map)
     }
 
     /// Returns the name of the instruction.
@@ -376,22 +367,8 @@ impl<'a> NameMap<'a> {
         self.mem_blocks[&id]
     }
 
-    /// Assigns a name to an induction variable.
-    // TODO(cleanup): split into name induction var and name induction level
-    pub fn name_induction_var(
-        &self,
-        var: ir::IndVarId,
-        dim: Option<ir::DimId>,
-    ) -> llir::Operand<'a> {
-        if let Some(dim) = dim {
-            self.induction_levels[&(var, dim)].into()
-        } else {
-            self.induction_vars[&var].clone()
-        }
-    }
-
     /// Declares a size cast. Returns the name of the variable only if a new variable was
-    /// allcoated.
+    /// allocated.
     pub fn declare_size_cast(
         &mut self,
         size: &'a codegen::Size,

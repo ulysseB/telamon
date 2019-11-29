@@ -2,26 +2,23 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::codegen::{
-    self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar,
-};
-use crate::ir::{self, IrDisplay};
-use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
 use fxhash::FxHashSet;
-use utils::*;
-
 use itertools::Itertools;
 use log::{debug, trace};
+use utils::*;
+
+use crate::codegen::{self, cfg, dimension, Cfg, Dimension};
+use crate::ir::{self, IrDisplay};
+use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
     cfg: Cfg<'a>,
-    thread_dims: Vec<Dimension<'a>>,
-    block_dims: Vec<Dimension<'a>>,
+    thread_dims: Vec<Dimension>,
+    block_dims: Vec<Dimension>,
+    induction_vars: Vec<(ir::IndVarId, super::expr::ExprPtr)>,
     device_code_args: Vec<ParamVal>,
-    induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<MemoryRegion>,
-    init_induction_levels: Vec<InductionLevel<'a>>,
     variables: Vec<codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace,
@@ -30,10 +27,9 @@ pub struct Function<'a> {
 impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace) -> Function<'a> {
-        let mut dims = dimension::group_merged_dimensions(space);
-        let (induction_vars, init_induction_levels) =
-            dimension::register_induction_vars(&mut dims, space);
+        let dims = dimension::group_merged_dimensions(space);
         trace!("dims = {:?}", dims);
+
         let insts = space
             .ir_instance()
             .insts()
@@ -42,21 +38,35 @@ impl<'a> Function<'a> {
         let mut device_code_args = dims
             .iter()
             .flat_map(|d| d.host_values(space))
-            .chain(induction_vars.iter().flat_map(|v| v.host_values(space)))
             .chain(insts.iter().flat_map(|i| i.host_values(space)))
-            .chain(
-                init_induction_levels
-                    .iter()
-                    .flat_map(|l| l.host_values(space)),
-            )
             .collect::<FxHashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
+        let merged_dims: dimension::MergedDimensions<'_> = cfg
+            .dimensions()
+            .chain(&block_dims)
+            .chain(&thread_dims)
+            .collect();
+
+        let mut lowering =
+            super::expr::ExprLowering::new(space, &merged_dims, &mut device_code_args);
+        let induction_vars = space
+            .ir_instance()
+            .induction_vars()
+            .map(|(id, ind_var)| (id, lowering.induction_var(ind_var)))
+            .collect::<Vec<_>>();
+        device_code_args.extend(
+            induction_vars
+                .iter()
+                .flat_map(|(_, expr)| expr.host_values(space, &merged_dims)),
+        );
+
         let mem_blocks = register_mem_blocks(space, &block_dims);
         device_code_args.extend(
             mem_blocks
                 .iter()
                 .flat_map(|x| x.host_values(space, &block_dims)),
         );
+
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg,
@@ -67,17 +77,16 @@ impl<'a> Function<'a> {
             space,
             mem_blocks,
             variables: codegen::variable::wrap_variables(space),
-            init_induction_levels,
         }
     }
 
     /// Returns the ordered list of thread dimensions.
-    pub fn thread_dims(&self) -> &[Dimension<'a>] {
+    pub fn thread_dims(&self) -> &[Dimension] {
         &self.thread_dims
     }
 
     /// Returns the ordered list of block dimensions.
-    pub fn block_dims(&self) -> &[Dimension<'a>] {
+    pub fn block_dims(&self) -> &[Dimension] {
         &self.block_dims
     }
 
@@ -92,11 +101,6 @@ impl<'a> Function<'a> {
             .dimensions()
             .chain(&self.block_dims)
             .chain(&self.thread_dims)
-    }
-
-    /// Returns the list of induction variables.
-    pub fn induction_vars(&self) -> &[InductionVar<'a>] {
-        &self.induction_vars
     }
 
     /// Returns the total number of threads to allocate.
@@ -117,16 +121,6 @@ impl<'a> Function<'a> {
         &self.cfg
     }
 
-    /// Returns all the induction levels in the function.
-    pub fn induction_levels(&self) -> impl Iterator<Item = &InductionLevel> {
-        self.block_dims
-            .iter()
-            .chain(&self.thread_dims)
-            .flat_map(|d| d.induction_levels())
-            .chain(self.cfg.induction_levels())
-            .chain(self.init_induction_levels())
-    }
-
     /// Returns the memory blocks allocated by the function.
     pub fn mem_blocks(&self) -> impl Iterator<Item = &MemoryRegion> {
         self.mem_blocks.iter()
@@ -143,10 +137,8 @@ impl<'a> Function<'a> {
         self.space.ir_instance().name()
     }
 
-    /// Returns the induction levels computed at the beginning of the kernel. Levels must
-    /// be computed in the provided order.
-    pub fn init_induction_levels(&self) -> &[InductionLevel] {
-        &self.init_induction_levels
+    pub fn induction_vars(&self) -> &[(ir::IndVarId, super::expr::ExprPtr)] {
+        &self.induction_vars
     }
 }
 
@@ -264,7 +256,7 @@ impl codegen::IdentDisplay for ParamValKey<'_> {
 /// back them.
 fn register_mem_blocks<'a>(
     space: &'a SearchSpace,
-    block_dims: &[Dimension<'a>],
+    block_dims: &[Dimension],
 ) -> Vec<MemoryRegion> {
     let num_thread_blocks = block_dims.iter().fold(None, |pred, block| {
         if let Some(mut pred) = pred {
@@ -332,7 +324,7 @@ impl MemoryRegion {
     pub fn host_values(
         &self,
         space: &SearchSpace,
-        block_dims: &[Dimension<'_>],
+        block_dims: &[Dimension],
     ) -> Vec<ParamVal> {
         let mut out = if self.mem_space == MemSpace::GLOBAL {
             let t = ir::Type::PtrTo(self.id);

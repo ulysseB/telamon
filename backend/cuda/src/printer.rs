@@ -173,7 +173,7 @@ impl CudaPrinter {
     /// Returns the string representation of thread and block sizes on the host.
     fn host_3sizes<'a, IT>(dims: IT) -> [String; 3]
     where
-        IT: Iterator<Item = &'a Dimension<'a>> + 'a,
+        IT: Iterator<Item = &'a Dimension> + 'a,
     {
         let mut sizes = ["1".to_string(), "1".to_string(), "1".to_string()];
         for (i, d) in dims.enumerate() {
@@ -236,34 +236,6 @@ impl CudaPrinter {
                 }
                 AllocationScheme::Global => (),
             }
-        }
-        // Compute size casts
-        for dim in function.dimensions() {
-            if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) {
-                continue;
-            }
-            for level in dim.induction_levels() {
-                if let Some((_, ref incr)) = level.increment {
-                    let reg = name_map.declare_size_cast(incr, level.t());
-                    if let Some(reg) = reg {
-                        let old_name = name_map.name_size(incr, Type::I(32));
-                        self.print_inst(
-                            llir::Instruction::cast(level.t(), reg, old_name)
-                                .unwrap()
-                                .into(),
-                        );
-                    }
-                }
-            }
-        }
-        let ind_levels = function.init_induction_levels().iter().chain(
-            function
-                .block_dims()
-                .iter()
-                .flat_map(|d| d.induction_levels()),
-        );
-        for level in ind_levels {
-            Printer::new(self, name_map).parallel_induction_level(level);
         }
         Printer::new(self, name_map).cfg(function, function.cfg());
         let var_decls = self.var_decls(&namegen);

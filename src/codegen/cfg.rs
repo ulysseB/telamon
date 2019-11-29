@@ -1,4 +1,4 @@
-use crate::codegen::{Dimension, InductionLevel, Instruction};
+use crate::codegen::{Dimension, Instruction};
 use crate::ir;
 use crate::search_space::*;
 use itertools::Itertools;
@@ -11,22 +11,18 @@ pub enum Cfg<'a> {
     /// Represents the root node of the CFG.
     Root(Vec<Cfg<'a>>),
     /// Represents a loop in the CFG.
-    Loop(Dimension<'a>, Vec<Cfg<'a>>),
+    Loop(Dimension, Vec<Cfg<'a>>),
     /// An instruction in the CFG, potentially vectorized on 2 levels.
-    Instruction([Vec<Dimension<'a>>; 2], Instruction<'a>),
+    Instruction([Vec<Dimension>; 2], Instruction<'a>),
     /// Defines the set of active thread dimensions.
-    Threads(
-        Vec<Option<ir::DimId>>,
-        Vec<InductionLevel<'a>>,
-        Vec<Cfg<'a>>,
-    ),
+    Threads(Vec<Option<ir::DimId>>, Vec<Cfg<'a>>),
 }
 
 impl<'a> Cfg<'a> {
     /// Iterates over the dimensions of the `Cfg`.
-    pub fn dimensions(&self) -> impl Iterator<Item = &Dimension<'a>> {
+    pub fn dimensions(&self) -> impl Iterator<Item = &Dimension> {
         match self {
-            Cfg::Root(body) | Cfg::Threads(_, _, body) => {
+            Cfg::Root(body) | Cfg::Threads(_, body) => {
                 Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
                     as Box<dyn Iterator<Item = _>>
             }
@@ -41,7 +37,7 @@ impl<'a> Cfg<'a> {
     /// Iterates over the instructions of the `Cfg`.
     pub fn instructions(&self) -> impl Iterator<Item = &Instruction<'a>> {
         match self {
-            Cfg::Root(body) | Cfg::Loop(_, body) | Cfg::Threads(_, _, body) => {
+            Cfg::Root(body) | Cfg::Loop(_, body) | Cfg::Threads(_, body) => {
                 let iter = body.iter().flat_map(|cfg| cfg.instructions());
                 Box::new(iter) as Box<dyn Iterator<Item = _>>
             }
@@ -49,31 +45,9 @@ impl<'a> Cfg<'a> {
         }
     }
 
-    /// Iterates over the induction levels in the `Cfg`.
-    pub fn induction_levels(&self) -> impl Iterator<Item = &InductionLevel<'a>> {
-        match *self {
-            Cfg::Threads(_, ref ind_levels, ref body) => {
-                let levels = body
-                    .iter()
-                    .flat_map(|c| c.induction_levels())
-                    .chain(ind_levels);
-                Box::new(levels) as Box<dyn Iterator<Item = _>>
-            }
-            Cfg::Root(ref body) => {
-                Box::new(body.iter().flat_map(|c| c.induction_levels()))
-            }
-            Cfg::Loop(ref dim, ref body) => Box::new(
-                body.iter()
-                    .flat_map(|c| c.induction_levels())
-                    .chain(dim.induction_levels()),
-            ),
-            Cfg::Instruction(..) => Box::new(std::iter::empty()),
-        }
-    }
-
     /// Creates a vector instruction from a list of events.
     fn vector_inst_from_events<IT>(
-        dim: Dimension<'a>,
+        dim: Dimension,
         events: &mut std::iter::Peekable<IT>,
     ) -> Self
     where
@@ -132,22 +106,21 @@ impl<'a> Cfg<'a> {
                     }
                 }
                 Exit(_, ExitEvent::SeqDim) => break,
-                Enter(dim_id, EntryEvent::ThreadDim(pos, mut ind_levels)) => {
+                Enter(dim_id, EntryEvent::ThreadDim(pos)) => {
                     let mut dim_ids = vec![None; num_thread_dims];
                     dim_ids[pos] = Some(dim_id);
                     while let Some(Enter(_, EntryEvent::ThreadDim(..))) = events.peek() {
                         let next = unwrap!(events.next());
-                        if let Enter(dim_id, EntryEvent::ThreadDim(pos, levels)) = next {
+                        if let Enter(dim_id, EntryEvent::ThreadDim(pos)) = next {
                             assert_eq!(dim_ids[pos], None);
 
                             dim_ids[pos] = Some(dim_id);
-                            ind_levels.extend(levels);
                         } else {
                             unreachable!()
                         };
                     }
                     let inner = Cfg::body_from_events(events, 0);
-                    body.push(Cfg::Threads(dim_ids, ind_levels, inner));
+                    body.push(Cfg::Threads(dim_ids, inner));
                 }
                 Exit(_, ExitEvent::ThreadDim) => {
                     while let Some(Exit(_, ExitEvent::ThreadDim)) = events.peek() {
@@ -186,7 +159,7 @@ impl<'a> Cfg<'a> {
                 }))
             } else {
                 let thread_dims = vec![None; num_thread_dims];
-                new_body.push(Cfg::Threads(thread_dims, vec![], cfgs.collect()));
+                new_body.push(Cfg::Threads(thread_dims, cfgs.collect()));
             }
         }
         new_body
@@ -316,7 +289,7 @@ impl ir::IrDisplay for Cfg<'_> {
 
                 write!(fmt, "{}", inst.ir_instruction().display(fun))?;
             }
-            Cfg::Threads(dims, _, inners) => {
+            Cfg::Threads(dims, inners) => {
                 writeln!(
                     fmt,
                     "THREAD[{}] {{",
@@ -348,7 +321,7 @@ impl<'a> fmt::Debug for Cfg<'a> {
                 .field(inners)
                 .finish(),
             Cfg::Instruction(dims, inst) => write!(f, "{:?} {}", dims, inst),
-            Cfg::Threads(dims, _, inners) => {
+            Cfg::Threads(dims, inners) => {
                 f.debug_tuple("Threads").field(dims).field(inners).finish()
             }
         }
@@ -360,8 +333,8 @@ impl<'a> fmt::Debug for Cfg<'a> {
 pub fn build<'a>(
     space: &'a SearchSpace,
     insts: Vec<Instruction<'a>>,
-    dims: Vec<Dimension<'a>>,
-) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Cfg<'a>) {
+    dims: Vec<Dimension>,
+) -> (Vec<Dimension>, Vec<Dimension>, Cfg<'a>) {
     let (block_dims, thread_dims, mut events) = gen_events(space, insts, dims);
     events.sort_by(|lhs, rhs| lhs.cmp(rhs, space));
     debug!("events: {:?}", events);
@@ -372,16 +345,16 @@ pub fn build<'a>(
 /// Describes the program points encountered when walking a CFG.
 enum CfgEvent<'a> {
     Exec(Instruction<'a>),
-    Enter(ir::DimId, EntryEvent<'a>),
+    Enter(ir::DimId, EntryEvent),
     Exit(ir::DimId, ExitEvent),
 }
 
 /// An event to process when entering a dimension.
-enum EntryEvent<'a> {
+enum EntryEvent {
     /// Enter a sequential dimension.
-    SeqDim(Dimension<'a>),
+    SeqDim(Dimension),
     /// Enter a thread dimension.
-    ThreadDim(usize, Vec<InductionLevel<'a>>),
+    ThreadDim(usize),
 }
 
 /// An event to process when exiting a dimension.
@@ -452,8 +425,8 @@ impl<'a> fmt::Debug for CfgEvent<'a> {
 fn gen_events<'a>(
     space: &'a SearchSpace,
     insts: Vec<Instruction<'a>>,
-    dims: Vec<Dimension<'a>>,
-) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Vec<CfgEvent<'a>>) {
+    dims: Vec<Dimension>,
+) -> (Vec<Dimension>, Vec<Dimension>, Vec<CfgEvent<'a>>) {
     let mut block_dims = Vec::new();
     let mut thread_dims = Vec::new();
     let mut events = insts.into_iter().map(CfgEvent::Exec).collect_vec();
@@ -514,7 +487,7 @@ fn gen_events<'a>(
         .enumerate()
         .map(|(pos, mut dims)| {
             for dim in &mut dims {
-                let event = EntryEvent::ThreadDim(pos, dim.drain_induction_levels());
+                let event = EntryEvent::ThreadDim(pos);
                 events.push(CfgEvent::Enter(dim.id(), event));
             }
             unwrap!(dims.into_iter().fold1(|mut x, y| {

@@ -117,7 +117,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
 /// Generates an array to of dimension sizes.
 fn get_sizes<'a, IT>(dims: IT, args: &Context) -> [u32; 3]
 where
-    IT: IntoIterator<Item = &'a codegen::Dimension<'a>>,
+    IT: IntoIterator<Item = &'a codegen::Dimension>,
 {
     let mut sizes = [1, 1, 1];
     for (i, s) in dims
