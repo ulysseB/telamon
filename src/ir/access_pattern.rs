@@ -1,4 +1,8 @@
 /// Provides a way to represent the stride of a given variable.
+use std::fmt;
+
+use itertools::Itertools;
+
 use crate::device::Device;
 use crate::ir;
 use fxhash::{FxHashMap, FxHashSet};
@@ -22,6 +26,20 @@ pub enum AccessPattern {
         mem_id: Option<ir::MemId>,
         dims: FxHashMap<ir::DimId, ir::PartialSize>,
     },
+}
+
+impl fmt::Display for AccessPattern {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AccessPattern::Unknown(_) => write!(fmt, "unknown"),
+            AccessPattern::Tensor { dims, mem_id: _ } => write!(
+                fmt,
+                "tensor[{}]",
+                dims.iter()
+                    .format_with(", ", |(did, s), f| f(&format_args!("{}: {}", did, s)))
+            ),
+        }
+    }
 }
 
 impl AccessPattern {
