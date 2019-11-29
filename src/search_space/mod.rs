@@ -121,6 +121,21 @@ impl SearchSpace {
             id: id.into(),
         }
     }
+
+    pub fn innermost<T: Into<ir::StmtId> + Clone>(
+        &self,
+        lhs: Option<T>,
+        rhs: Option<T>,
+    ) -> Option<T> {
+        let nlhs = lhs.clone().map(|dim| AssertOrd(self.nesting_order(dim)));
+        let nrhs = rhs.clone().map(|dim| AssertOrd(self.nesting_order(dim)));
+
+        if nlhs <= nrhs {
+            rhs
+        } else {
+            lhs
+        }
+    }
 }
 
 /// Wrapper around a statement ID to compare it using nesting order.
@@ -164,6 +179,16 @@ impl cmp::PartialEq<ir::DimId> for NestingOrder<'_> {
 
     fn ne(&self, other: &ir::DimId) -> bool {
         *self != ir::StmtId::Dim(*other)
+    }
+}
+
+impl<'a, 'b> cmp::PartialEq<NestingOrder<'a>> for NestingOrder<'b> {
+    fn eq(&self, other: &NestingOrder<'a>) -> bool {
+        *self == other.id
+    }
+
+    fn ne(&self, other: &NestingOrder<'a>) -> bool {
+        *self != other.id
     }
 }
 
@@ -219,6 +244,39 @@ impl cmp::PartialOrd<ir::DimId> for NestingOrder<'_> {
 
     fn ge(&self, other: &ir::DimId) -> bool {
         *self >= ir::StmtId::Dim(*other)
+    }
+}
+
+impl<'a, 'b> cmp::PartialOrd<NestingOrder<'a>> for NestingOrder<'b> {
+    fn partial_cmp(&self, other: &NestingOrder<'a>) -> Option<cmp::Ordering> {
+        self.partial_cmp(&other.id)
+    }
+
+    fn lt(&self, other: &NestingOrder<'a>) -> bool {
+        *self < other.id
+    }
+
+    fn le(&self, other: &NestingOrder<'a>) -> bool {
+        *self <= other.id
+    }
+
+    fn gt(&self, other: &NestingOrder<'a>) -> bool {
+        *self > other.id
+    }
+
+    fn ge(&self, other: &NestingOrder<'a>) -> bool {
+        *self >= other.id
+    }
+}
+
+#[derive(PartialEq, PartialOrd)]
+pub struct AssertOrd<T>(pub T);
+
+impl<T: PartialEq> Eq for AssertOrd<T> {}
+
+impl<T: PartialOrd> cmp::Ord for AssertOrd<T> {
+    fn cmp(&self, other: &AssertOrd<T>) -> cmp::Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
