@@ -269,6 +269,30 @@ impl VirtualTensor {
         S: ScalarArgument,
     {
         assert!(!tensor.read_only);
+
+        let compatible = self.dims.len() == tensor.iter_dims.len()
+            && self.dims.iter().zip(tensor.iter_dims.iter()).all(
+                |(vt_dim, (size, _stride))| {
+                    builder.function().logical_dim(vt_dim.id()).total_size()
+                        == &size.to_ir_size(builder)
+                },
+            );
+
+        if !compatible {
+            panic!(
+                "store: incompatible shapes: {} and {}",
+                self.dims
+                    .iter()
+                    .map(|dim| builder.function().logical_dim(dim.id()).total_size())
+                    .format("x"),
+                tensor
+                    .iter_dims
+                    .iter()
+                    .map(|(size, _stride)| size.to_ir_size(builder))
+                    .format("x")
+            );
+        }
+
         let new_dims = self
             .dims
             .iter()
