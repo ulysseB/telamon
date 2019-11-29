@@ -112,7 +112,7 @@ impl<'a> TensorBuilder<'a> {
             .map(|s| s.eval(builder.context()) as usize)
             .product::<usize>();
         let array = builder.array::<S>(self.name, size);
-        let mut stride: DimSize = unwrap!(S::t().len_byte()).into();
+        let mut stride: DimSize = 1u32.into();
         let mut strides = self
             .storage_dims
             .iter()
@@ -144,6 +144,7 @@ impl<'a> TensorBuilder<'a> {
 pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
     array: std::sync::Arc<dyn ArrayArgument + 'a>,
+    // The size and stride of each dimension in the tensor, in number of elements.
     iter_dims: Vec<(DimSize<'a>, DimSize<'a>)>,
     read_only: bool,
     s: std::marker::PhantomData<S>,
@@ -160,7 +161,7 @@ where
         read_only: bool,
         array: std::sync::Arc<dyn ArrayArgument + 'a>,
     ) -> Self {
-        let mut incr: DimSize = unwrap!(S::t().len_byte()).into();
+        let mut incr: DimSize = 1u32.into();
         let mut iter_dims = dim_sizes
             .into_iter()
             .rev()
@@ -198,10 +199,12 @@ where
             .collect_vec();
         let (ptr, pattern);
         {
+            // Stride needs to be converted to bytes
+            let bytes = S::t().len_byte().unwrap();
             let increments = dims
                 .iter()
                 .zip_eq(&self.iter_dims)
-                .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder)))
+                .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder) * bytes))
                 .collect_vec();
             ptr = builder.induction_var(&self.name, increments.clone());
             pattern = builder.tensor_access_pattern(None, increments);
@@ -225,10 +228,7 @@ where
         let (sizes, strides): (Vec<_>, _) = self
             .iter_dims
             .iter()
-            .map(|(l, s)| {
-                let s_len = unwrap!(S::t().len_byte());
-                (l.eval(context) as usize, (s.eval(context) / s_len) as usize)
-            })
+            .map(|(l, s)| (l.eval(context) as usize, s.eval(context) as usize))
             .unzip();
         let len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l * s).max());
         raw.split_off(len);
