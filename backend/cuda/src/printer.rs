@@ -372,6 +372,7 @@ impl PTXDisplay for llir::UnOp {
                 };
                 write!(fmt, "cvt{}.{}.{}", rnd, dst_t.ptx(), src_t.ptx())
             }
+            UnOp::Not { t } => write!(fmt, "not.{}", t.ptx()),
             UnOp::Exp { .. } => panic!("{}: non-atomic PTX instruction", self),
         }
     }
@@ -413,6 +414,7 @@ impl PTXDisplay for llir::TernOp {
         match self {
             IMad { arg_t, spec } => write!(fmt, "mad.{}.{}", spec.ptx(), arg_t.ptx()),
             FFma { t, rounding } => write!(fmt, "fma.{}.{}", rounding.ptx(), t.ptx()),
+            SetAnd { op, arg_t } => write!(fmt, "setp.{}.and.{}", op.ptx(), arg_t.ptx()),
         }
     }
 }

@@ -10,117 +10,123 @@ use log::{trace, warn};
 
 use super::{AccessPattern, Function, IrDisplay, LogicalDimId, Parameter, Size, Type};
 
+/// A packed dimension.
+///
+/// A packed dimension represents multiple dimensions packed together into a single iteration
+/// dimension, with size the product of sizes of the original dimensions.
+///
+/// It allows recovering the original, unpacked, dimensions by use of integer division and modulo.
+#[derive(Debug, Clone)]
+pub struct DimPack {
+    expr: IndexExpr,
+    sizes: Vec<Size>,
+}
+
+impl<L> IrDisplay<L> for DimPack {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>, function: &Function<L>) -> fmt::Result {
+        write!(
+            fmt,
+            "({} :: ({}))",
+            self.expr.display(function),
+            self.sizes.iter().format(", ")
+        )
+    }
+}
+
+impl DimPack {
+    /// The expression computing the packed dimension.
+    pub fn expr(&self) -> &IndexExpr {
+        &self.expr
+    }
+
+    /// Sizes of the unpacked dimensions.  The last size is the fastest varying.
+    pub fn sizes(&self) -> &[Size] {
+        &self.sizes
+    }
+}
+
 /// An index expression
 #[derive(Debug, Clone)]
 pub enum IndexExpr {
     /// The current position when iterating over a logical dimension
     LogicalDim(LogicalDimId),
+    /// An unpacked dimension.  This will generate a predicate, unless the inner expr is
+    /// `Uncheked`.
+    Unpack(Arc<DimPack>, usize),
     /// A kernel parameter.  Mainly used in `Sum` expressions.
     Parameter(Arc<Parameter>),
     /// A sum of expressions and a constant.
     ///
     /// This is used for the `p + r` expression in convolutions.
     Sum(i32, Vec<IndexExpr>),
-    Size(Size),
-}
-
-#[derive(Debug, Clone)]
-pub enum IndexPredicate {
-    InRange(IndexExpr, ops::Range<IndexExpr>),
-    And(Vec<IndexPredicate>),
-}
-
-impl<L> IrDisplay<L> for IndexPredicate {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>, function: &Function<L>) -> fmt::Result {
-        match self {
-            IndexPredicate::InRange(expr, range) => write!(
-                fmt,
-                "{} in {}..{}",
-                expr.display(function),
-                range.start.display(function),
-                range.end.display(function)
-            ),
-            IndexPredicate::And(preds) => write!(
-                fmt,
-                "{}",
-                preds
-                    .iter()
-                    .format_with(" && ", |p, f| f(&p.display(function)))
-            ),
-        }
-    }
-}
-
-impl IndexPredicate {
-    fn collect_logical_dims<S: BuildHasher>(
-        &self,
-        logical_dims: &mut HashSet<LogicalDimId, S>,
-    ) {
-        match self {
-            IndexPredicate::InRange(expr, range) => {
-                expr.collect_logical_dims(logical_dims);
-                range.start.collect_logical_dims(logical_dims);
-                range.end.collect_logical_dims(logical_dims);
-            }
-            IndexPredicate::And(preds) => {
-                for pred in preds {
-                    pred.collect_logical_dims(logical_dims);
-                }
-            }
-        }
-    }
-}
-
-impl ops::BitAndAssign for IndexPredicate {
-    fn bitand_assign(&mut self, other: Self) {
-        match self {
-            IndexPredicate::And(preds) => preds.push(other),
-            _ => {
-                let this = std::mem::replace(
-                    self,
-                    IndexPredicate::And(match other {
-                        IndexPredicate::And(preds) => preds,
-                        _ => vec![other],
-                    }),
-                );
-
-                match self {
-                    IndexPredicate::And(preds) => {
-                        preds.push(this);
-                    }
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
-}
-
-impl ops::BitAnd for IndexPredicate {
-    type Output = Self;
-
-    fn bitand(mut self, other: Self) -> Self {
-        self &= other;
-        self
-    }
+    // Marker for an unchecked expr (must not generate predicate when used).
+    Unchecked(Box<IndexExpr>),
 }
 
 impl<L> IrDisplay<L> for IndexExpr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>, function: &Function<L>) -> fmt::Result {
         match self {
             IndexExpr::LogicalDim(lid) => write!(fmt, "{}", lid),
+            IndexExpr::Unpack(pack, ix) => {
+                write!(fmt, "{}.{}", pack.display(function), ix)
+            }
             IndexExpr::Parameter(p) => write!(fmt, "{}", p),
-            IndexExpr::Size(size) => write!(fmt, "{}", size),
             IndexExpr::Sum(cst, exprs) => write!(
                 fmt,
                 "{} + {}",
                 cst,
                 exprs.iter().map(|e| e.display(function)).format(" + ")
             ),
+            IndexExpr::Unchecked(e) => write!(fmt, "unsafe({})", e.display(function)),
         }
     }
 }
 
+pub trait Unpack<T> {
+    type Output;
+
+    fn unpack(self, sizes: T) -> Self::Output;
+}
+
+macro_rules! replace_expr {
+    ($t:tt, $u:tt) => {
+        $u
+    };
+}
+
+macro_rules! impl_unpack {
+    ($($slots:ident),+) => {
+        impl Unpack<($(replace_expr!($slots, Size)),+)> for IndexExpr {
+            type Output = ($(replace_expr!($slots, IndexExpr)),+);
+
+            #[allow(unused_parens, unused_variables)]
+            fn unpack(self, ($($slots),+): ($(replace_expr!($slots, Size)),+)) -> Self::Output {
+                let pack = Arc::new(DimPack { expr: self, sizes: vec![$($slots),+] });
+                let ix = 0;
+                $(
+                    let $slots = IndexExpr::Unpack(pack.clone(), ix);
+                    let ix = ix + 1;
+                )+
+                ($($slots),+)
+            }
+        }
+    };
+
+    (...) => {};
+
+    ($slot:ident $(, $slots:ident)*, ...) => {
+        impl_unpack!($($slots, )* ...);
+        impl_unpack!($slot $(, $slots)*);
+    };
+}
+
+impl_unpack!(a, b, c, d, e, f, g, h, i, j, k, l, ...);
+
 impl IndexExpr {
+    pub fn unchecked(self) -> IndexExpr {
+        IndexExpr::Unchecked(Box::new(self))
+    }
+
     fn collect_logical_dims<S: BuildHasher>(
         &self,
         logical_dims: &mut HashSet<LogicalDimId, S>,
@@ -129,12 +135,15 @@ impl IndexExpr {
             &IndexExpr::LogicalDim(id) => {
                 logical_dims.insert(id);
             }
+            IndexExpr::Unpack(pack, _) => pack.expr.collect_logical_dims(logical_dims),
             IndexExpr::Parameter(..) => (),
-            IndexExpr::Size(..) => (),
             IndexExpr::Sum(_, exprs) => {
                 for expr in exprs {
                     expr.collect_logical_dims(logical_dims)
                 }
+            }
+            IndexExpr::Unchecked(unchecked) => {
+                unchecked.collect_logical_dims(logical_dims)
             }
         }
     }
@@ -144,13 +153,6 @@ impl IndexExpr {
             IndexExpr::LogicalDim(id) => Some(*id),
             _ => None,
         }
-    }
-
-    pub fn in_range<T: IntoIndexExpr>(self, range: ops::Range<T>) -> IndexPredicate {
-        IndexPredicate::InRange(
-            self,
-            range.start.into_index_expr()..range.end.into_index_expr(),
-        )
     }
 }
 
@@ -179,12 +181,6 @@ impl IntoIndexExpr for i32 {
 impl IntoIndexExpr for Arc<Parameter> {
     fn into_index_expr(self) -> IndexExpr {
         IndexExpr::Parameter(self)
-    }
-}
-
-impl IntoIndexExpr for Size {
-    fn into_index_expr(self) -> IndexExpr {
-        IndexExpr::Size(self)
     }
 }
 
@@ -239,7 +235,7 @@ impl Access {
         self.id
     }
 
-    fn t(&self) -> Type {
+    pub fn t(&self) -> Type {
         self.base.t
     }
 
@@ -307,12 +303,6 @@ pub struct Accesses {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AccessId(usize);
-
-impl fmt::Display for AccessId {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "*{}", self.0)
-    }
-}
 
 impl Accesses {
     pub fn add(

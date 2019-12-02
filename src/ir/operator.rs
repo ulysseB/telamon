@@ -153,10 +153,12 @@ pub enum Operator<L = LoweringMap> {
     /// result to the third.
     Mad(Operand<L>, Operand<L>, Operand<L>, Rounding),
     /// Loads a value of the given type from the given address.
+    /// TODO: predicate + default_value
     Ld(Type, Operand<L>, AccessPattern),
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
+    /// TODO: predicate
     St(Operand<L>, Operand<L>, bool, AccessPattern),
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),

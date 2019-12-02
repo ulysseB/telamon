@@ -49,6 +49,7 @@ impl Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Type::I(1) => write!(f, "pred"),
             Type::I(s) => write!(f, "i{}", s),
             Type::F(s) => write!(f, "f{}", s),
             Type::PtrTo(mem) => write!(f, "ptr to {:?}", mem),

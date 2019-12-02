@@ -232,6 +232,75 @@ mod cuda_reference {
         }
     }
 
+    fn conv2d_reference(
+        handle: &CudaHandle,
+        params: &linalg::Conv2dP,
+        context: &cuda::Context,
+    ) -> cudnn::Result<f64> {
+        let input_desc = cudnn::TensorDescriptor::new_4d(
+            cudnn::TensorFormat::Nchw,
+            cudnn::DataType::Float,
+            params.batch,
+            params.in_channels,
+            params.in_height,
+            params.in_width,
+        )?;
+
+        let filter_desc = cudnn::FilterDescriptor::new_4d(
+            cudnn::DataType::Float,
+            cudnn::TensorFormat::Nchw,
+            params.out_channels,
+            params.in_channels,
+            params.filter_height,
+            params.filter_width,
+        )?;
+
+        let conv_desc = cudnn::ConvolutionDescriptor::new_2d(
+            params.pad_h(),
+            params.pad_w(),
+            1,
+            1,
+            1,
+            1,
+            cudnn::ConvolutionMode::CrossCorrelation,
+            cudnn::DataType::Float,
+        )?;
+
+        let output_desc = cudnn::TensorDescriptor::new_4d(
+            cudnn::TensorFormat::Nchw,
+            cudnn::DataType::Float,
+            params.batch,
+            params.out_channels,
+            params.out_height(),
+            params.out_width(),
+        )?;
+
+        let time = unsafe {
+            let input = get_array("input", context);
+            let filter = get_array("filter", context);
+            let output = get_array("output", context);
+
+            time_cuda(|| {
+                handle
+                    .cudnn
+                    .convolution_forward_implicit_gemm(
+                        &1f32 as *const f32 as *const _,
+                        &input_desc,
+                        input,
+                        &filter_desc,
+                        filter,
+                        &conv_desc,
+                        &0f32 as *const f32 as *const _,
+                        &output_desc,
+                        output,
+                    )
+                    .unwrap()
+            })
+        };
+
+        Ok(time)
+    }
+
     /// Reference implementation for the matrix-matrix multiplication.
     fn batchmm_reference(
         handle: &CudaHandle,
@@ -324,6 +393,18 @@ mod cuda_reference {
             context: &Self::Context,
         ) -> f64 {
             matmul_reference(self, params, context)
+        }
+    }
+
+    impl<'a> Reference<'a, linalg::Conv2d<'a, f32>> for CudaHandle {
+        type Context = cuda::Context<'a>;
+
+        fn eval_reference(
+            &self,
+            params: &linalg::Conv2dP,
+            context: &Self::Context,
+        ) -> f64 {
+            conv2d_reference(self, params, context).unwrap()
         }
     }
 
@@ -461,6 +542,15 @@ pub enum KernelParam {
         ta: bool,
         tb: bool,
     },
+    Conv2d {
+        n: i32,
+        c: i32,
+        h: i32,
+        w: i32,
+        k: i32,
+        r: i32,
+        s: i32,
+    },
     BatchMM {
         b: i32,
         m: i32,
@@ -484,6 +574,7 @@ impl KernelParam {
             + Reference<'a, linalg::FusedMM<'a, f32>, Context = C>
             + Reference<'a, linalg::BatchMM<'a, f32>, Context = C>
             + Reference<'a, linalg::Gesummv<'a, f32>, Context = C>
+            + Reference<'a, linalg::Conv2d<'a, f32>, Context = C>
             + 'b,
         'a: 'b,
     {
@@ -544,6 +635,26 @@ impl KernelParam {
                 }
                 builder.build::<'_, linalg::FusedMM<'_, f32>>(params)
             }
+            KernelParam::Conv2d {
+                n,
+                c,
+                h,
+                w,
+                k,
+                r,
+                s,
+            } => {
+                let params = linalg::Conv2dP {
+                    batch: n,
+                    in_channels: c,
+                    in_height: h,
+                    in_width: w,
+                    out_channels: k,
+                    filter_height: r,
+                    filter_width: s,
+                };
+                builder.build::<'_, linalg::Conv2d<'_, f32>>(params)
+            }
             KernelParam::BatchMM { b, m, n, k } => builder
                 .build::<'_, linalg::BatchMM<'_, f32>>(linalg::BatchMMP::new(b, m, n, k)),
         }
@@ -564,6 +675,19 @@ impl fmt::Display for KernelParam {
                 k,
                 if ta { "AT" } else { "A" },
                 if tb { "BT" } else { "B" }
+            ),
+            KernelParam::Conv2d {
+                n,
+                c,
+                h,
+                w,
+                k,
+                r,
+                s,
+            } => write!(
+                fmt,
+                "conv2d_{}_{}_{}_{}_{}_{}_{}_VALID",
+                n, c, h, w, k, r, s
             ),
             KernelParam::BatchMM { b, m, n, k } => {
                 write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
@@ -700,6 +824,33 @@ impl std::str::FromStr for KernelParam {
                 };
 
                 Gemm { m, n, k, ta, tb }
+            }
+            "conv2d" => {
+                let n = parse_i32(next_part(&mut parts)?)?;
+                let c = parse_i32(next_part(&mut parts)?)?;
+                let h = parse_i32(next_part(&mut parts)?)?;
+                let w = parse_i32(next_part(&mut parts)?)?;
+                let k = parse_i32(next_part(&mut parts)?)?;
+                let r = parse_i32(next_part(&mut parts)?)?;
+                let s = parse_i32(next_part(&mut parts)?)?;
+                let _ = match next_part(&mut parts) {
+                    Ok("VALID") => (),
+                    Err(_) => (),
+                    _ => {
+                        return Err(ParseKernelError {
+                            kind: KernelErrorKind::InvalidName,
+                        })
+                    }
+                };
+                Conv2d {
+                    n,
+                    c,
+                    h,
+                    w,
+                    k,
+                    r,
+                    s,
+                }
             }
             "batchmm" => {
                 let b = parse_i32(next_part(&mut parts)?)?;

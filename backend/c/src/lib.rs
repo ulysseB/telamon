@@ -122,6 +122,7 @@ impl C99Display for llir::UnOp {
             UnOp::Cast { dst_t, .. } => write!(fmt, "({})", dst_t.c99()),
             UnOp::Exp { t: ir::Type::F(32) } => write!(fmt, "expf"),
             UnOp::Exp { .. } => panic!("{}: non-atomic C99 instruction", self),
+            UnOp::Not { .. } => write!(fmt, "~"),
         }
     }
 }
@@ -195,6 +196,7 @@ impl C99Display for llir::TernOp {
                 write!(fmt, "__mad{}{}", arg_t.bitwidth().unwrap(), spec.c99())
             }
             FFma { .. } => write!(fmt, "__fma"),
+            SetAnd { .. } => panic!("non-atomic set.and op"),
         }
     }
 }
@@ -288,6 +290,15 @@ impl C99Display for llir::Instruction<'_> {
                 d = d.c99(),
                 a = a.c99(),
                 b = b.c99()
+            ),
+            Ternary(llir::TernOp::SetAnd { op, arg_t }, d, [a, b, c]) => write!(
+                fmt,
+                "{d} = ({a} {op} {b}) && {c}",
+                op = op.c99(),
+                d = d.c99(),
+                a = a.c99(),
+                b = b.c99(),
+                c = c.c99(),
             ),
             Ternary(op, d, [a, b, c]) => write!(
                 fmt,

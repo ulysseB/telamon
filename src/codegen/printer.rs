@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::ir::{self, op, Type};
 use crate::search_space::*;
 
-use super::llir::IntLiteral as _;
+use super::llir::{FloatLiteral as _, IntLiteral as _};
 use super::*;
 
 fn ndrange<K, Idx, II>(into_iter: II) -> impl Iterator<Item = Vec<(K, Idx)>>
@@ -404,20 +404,44 @@ impl<'a, 'b> Printer<'a, 'b> {
                 .unwrap()
                 .into()
             }
-            &op::Ld(ld_type, ref addr, ref pattern) => llir::Instruction::load(
-                llir::LoadSpec::from_ir(
+            &op::Ld(ld_type, ref addr, ref pattern) => {
+                let spec = llir::LoadSpec::from_ir(
                     vector_factors,
                     lower_type(ld_type, fun),
                     access_pattern_space(pattern, fun.space()),
                     inst.mem_flag().unwrap(),
                 )
-                .unwrap(),
-                self.namer.vector_inst(vector_levels, inst.id()),
-                self.namer.name_op(addr).try_into().unwrap(),
-            )
-            .unwrap()
-            .into(),
+                .unwrap();
+
+                let dst = self.namer.vector_inst(vector_levels, inst.id());
+
+                let (addr, predicate) = self.namer.name_op(addr);
+
+                if predicate.is_some() {
+                    let zero = 0f32.float_literal();
+                    match &dst {
+                        &llir::ScalarOrVector::Scalar(dst) => {
+                            self.helper
+                                .print_inst(llir::Instruction::mov(dst, zero).unwrap());
+                        }
+                        llir::ScalarOrVector::Vector(dst) => {
+                            for &dst in dst {
+                                self.helper.print_inst(
+                                    llir::Instruction::mov(dst, zero.clone()).unwrap(),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                llir::Instruction::load(spec, dst, addr.try_into().unwrap())
+                    .unwrap()
+                    .predicated(predicate)
+            }
             op::St(addr, val, _, pattern) => {
+                let (addr, predicate) = self.namer.name_op(addr);
+                assert!(predicate.is_none(), "predicated store");
+
                 let guard = if inst.has_side_effects() {
                     self.namer.side_effect_guard()
                 } else {
@@ -431,7 +455,7 @@ impl<'a, 'b> Printer<'a, 'b> {
                         inst.mem_flag().unwrap(),
                     )
                     .unwrap(),
-                    self.namer.name_op(addr).try_into().unwrap(),
+                    addr.try_into().unwrap(),
                     self.namer.vector_operand(vector_levels, val),
                 )
                 .unwrap()

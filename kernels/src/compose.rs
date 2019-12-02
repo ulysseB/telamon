@@ -92,6 +92,79 @@ pub fn matrix_matrix_multiply(
     VirtualTensor::new(acc_instr, vec![acc_dim_m, acc_dim_n])
 }
 
+pub fn conv2d(
+    builder: &mut Builder,
+    lhs: &VirtualTensor,
+    rhs: &VirtualTensor,
+) -> VirtualTensor {
+    // npqcrs / kcrs -> nkpq
+    assert!(lhs.num_dims() == 6 && rhs.num_dims() == 4);
+
+    let n_i = &lhs[0];
+    let p_i = &lhs[1];
+    let q_i = &lhs[2];
+    let c_i = &lhs[3];
+    let r_i = &lhs[4];
+    let s_i = &lhs[5];
+
+    let k_f = &rhs[0];
+    let c_f = &rhs[1];
+    let r_f = &rhs[2];
+    let s_f = &rhs[3];
+
+    assert!(c_i.size_eq(c_f, builder.function()));
+    assert!(r_i.size_eq(r_f, builder.function()));
+    assert!(s_i.size_eq(s_f, builder.function()));
+
+    // Initialize accumulator
+    let accu_init_n = builder.open_mapped_dim(&n_i);
+    let accu_init_p = builder.open_mapped_dim(&p_i);
+    let accu_init_q = builder.open_mapped_dim(&q_i);
+    let accu_init_k = builder.open_mapped_dim(&k_f);
+
+    let accu_init_instr = builder.mov(&0f32);
+
+    builder.close_dim(&accu_init_k);
+    builder.close_dim(&accu_init_q);
+    builder.close_dim(&accu_init_p);
+    builder.close_dim(&accu_init_n);
+
+    // Map operands and assign accumulator
+    let acc_dim_n = builder.open_mapped_dim(&accu_init_n);
+    let acc_dim_p = builder.open_mapped_dim(&accu_init_p);
+    let acc_dim_q = builder.open_mapped_dim(&accu_init_q);
+    let acc_dim_k = builder.open_mapped_dim(&accu_init_k);
+    let acc_dim_c = builder.open_mapped_dim(&c_i);
+    let acc_dim_r = builder.open_mapped_dim(&r_i);
+    let acc_dim_s = builder.open_mapped_dim(&s_i);
+
+    let a_operand = lhs.dim_map(
+        &[
+            &acc_dim_n, &acc_dim_p, &acc_dim_q, &acc_dim_c, &acc_dim_r, &acc_dim_s,
+        ],
+        ir::DimMapScope::Global(()),
+        builder,
+    );
+
+    let b_operand = rhs.dim_map(
+        &[&acc_dim_k, &acc_dim_c, &acc_dim_r, &acc_dim_s],
+        ir::DimMapScope::Global(()),
+        builder,
+    );
+
+    let acc_instr = builder.mad(&a_operand, &b_operand, &Reduce(accu_init_instr));
+
+    builder.close_dim(&acc_dim_s);
+    builder.close_dim(&acc_dim_r);
+    builder.close_dim(&acc_dim_c);
+    builder.close_dim(&acc_dim_k);
+    builder.close_dim(&acc_dim_q);
+    builder.close_dim(&acc_dim_p);
+    builder.close_dim(&acc_dim_n);
+
+    VirtualTensor::new(acc_instr, vec![acc_dim_n, acc_dim_k, acc_dim_p, acc_dim_q])
+}
+
 /// Adds two tensors `lhs` and `rhs` of the same shape
 pub fn tensor_add(
     builder: &mut Builder,

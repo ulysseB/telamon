@@ -191,7 +191,7 @@ where
         builder: &mut Builder,
     ) -> VirtualTensor
     where
-        F: FnOnce(Vec<ir::IndexExpr>) -> Vec<ir::IndexExpr>,
+        F: FnOnce(Vec<ir::IndexExpr>) -> (Vec<ir::IndexExpr>, Option<ir::IndexPredicate>),
         II: IntoIterator<Item = (DimSize<'b>, TilingPattern)>,
     {
         let tilings: Vec<_> = tilings
@@ -199,7 +199,7 @@ where
             .map(|(size, pattern)| (size.to_ir_size(builder), pattern))
             .collect();
         builder.with_tiled_dims(tilings, move |dims, builder| {
-            let unpacked = unpacking_fn(
+            let (unpacked, predicate) = unpacking_fn(
                 dims.iter()
                     .map(|dim| ir::IndexExpr::LogicalDim(dim.id()))
                     .collect(),
@@ -216,12 +216,13 @@ where
                     .iter()
                     .zip(unpacked)
                     .map(|(sizestride, expr)| {
-                        // Need this because of "by-move and by-ref" tricky rust error
-                        let (size, stride) = sizestride;
-                        // TODO: unpack check here let expr = expr.unpack(size.to_ir_size(builder));
+                        // Can't put this in the |..| pattern or Rust gets confused between by-move
+                        // and by-ref matching
+                        let (_size, stride) = sizestride;
                         (expr, stride.to_ir_size(builder))
                     })
                     .collect(),
+                predicate,
             );
             assert_eq!(
                 builder.function().accesses()[ptr].base().elem_t,
@@ -234,6 +235,7 @@ where
             } else {
                 InstFlag::COHERENT
             };
+
             let pattern =
                 builder.function().accesses()[ptr].access_pattern(builder.function());
 
@@ -251,12 +253,29 @@ where
         builder: &mut Builder,
     ) -> VirtualTensor {
         if std::env::var("TELAMON_LOAD_PACKED").is_ok() {
+            let sizes = self
+                .iter_dims
+                .iter()
+                .map(|(size, _stride)| size.to_ir_size(builder))
+                .collect::<Vec<_>>();
+
             self.load_packed(
                 self.iter_dims
                     .iter()
                     .map(|(size, _stride)| size.clone())
                     .zip_eq(tiling),
-                |indices| indices,
+                |indices| {
+                    (
+                        indices.clone(),
+                        Some(ir::IndexPredicate::And(
+                            indices
+                                .into_iter()
+                                .zip(sizes.iter().cloned())
+                                .map(|(index, size)| index.in_range(0u32.into()..size))
+                                .collect(),
+                        )),
+                    )
+                },
                 builder,
             )
         } else {

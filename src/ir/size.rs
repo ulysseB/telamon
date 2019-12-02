@@ -14,6 +14,16 @@ pub struct Size {
     max_val: u32,
 }
 
+impl From<u32> for Size {
+    fn from(factor: u32) -> Self {
+        Size {
+            factor,
+            max_val: factor,
+            ..Self::default()
+        }
+    }
+}
+
 impl Size {
     /// Create a new fully specified size.
     pub fn new(factor: u32, mut params: Vec<Arc<ir::Parameter>>, max_val: u32) -> Self {
@@ -26,11 +36,7 @@ impl Size {
 
     /// Creates a new constant size.
     pub fn new_const(factor: u32) -> Self {
-        Size {
-            factor,
-            max_val: factor,
-            ..Size::default()
-        }
+        factor.into()
     }
 
     /// Creates a new size equal to a parameter.

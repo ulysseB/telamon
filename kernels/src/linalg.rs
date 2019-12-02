@@ -4,11 +4,12 @@ use std::sync::Arc;
 
 pub use crate::compose::ActivationFunction;
 use crate::compose::{
-    matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul, tensor_mad,
+    conv2d, matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul,
+    tensor_mad,
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
-use ::ndarray::{Array1, Array2, Array3, ArrayD};
+use ::ndarray::{Array1, Array2, Array3, Array4, ArrayD};
 use rand;
 use serde::{Deserialize, Serialize};
 use telamon::explorer::Candidate;
@@ -385,6 +386,11 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
 
         let a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
         let b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
+        // let h = p + r - pad;
+        // let hok = h.in_range(0..H);
+        // let w = q + s - pad;
+        // let wok = w.in_range(0..W);
+        // ([n, c, h, w], hok && wok)
 
         let ab = matrix_matrix_multiply(&mut builder, &a, &b);
 
@@ -430,6 +436,257 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
         let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
         if let Err(invalid) = check_output(&c, expected) {
             Err(format!("Invalid fused_mm output: {}", invalid))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Conv2dP {
+    pub batch: i32,
+    pub in_channels: i32,
+    pub in_height: i32,
+    pub in_width: i32,
+    pub out_channels: i32,
+    pub filter_width: i32,
+    pub filter_height: i32,
+}
+
+impl Conv2dP {
+    pub fn pad_h(&self) -> i32 {
+        0
+        //self.filter_height / 2
+    }
+
+    pub fn pad_w(&self) -> i32 {
+        0
+        //self.filter_width / 2
+    }
+
+    pub fn out_height(&self) -> i32 {
+        self.in_height - self.filter_height + 1 + 2 * self.pad_h()
+    }
+
+    pub fn out_width(&self) -> i32 {
+        self.in_width - self.filter_width + 1 + 2 * self.pad_w()
+    }
+
+    fn output_shape(&self) -> (usize, usize, usize, usize) {
+        (
+            self.batch as usize,
+            self.out_channels as usize,
+            self.out_height() as usize,
+            self.out_width() as usize,
+        )
+    }
+}
+
+pub struct Conv2d<'a, S: Scalar> {
+    pub params: Conv2dP,
+    input: Tensor<'a, S>,
+    filter: Tensor<'a, S>,
+    output: Tensor<'a, S>,
+    n: DimSize<'a>,
+    c: DimSize<'a>,
+    h: DimSize<'a>,
+    w: DimSize<'a>,
+    k: DimSize<'a>,
+    r: DimSize<'a>,
+    s: DimSize<'a>,
+    p: DimSize<'a>,
+    q: DimSize<'a>,
+}
+
+impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
+    type Parameters = Conv2dP;
+    type ExpectedOutput = Array4<S>;
+
+    fn name() -> &'static str {
+        "conv2d"
+    }
+
+    fn build_signature<AM>(
+        params: Self::Parameters,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
+    where
+        AM: device::ArgMap<'a> + device::Context,
+    {
+        let n = create_size(params.batch, "n", true, builder);
+        let c = create_size(params.in_channels, "c", true, builder);
+        let h = create_size(params.in_height, "h", true, builder);
+        let w = create_size(params.in_width, "w", true, builder);
+        let k = create_size(params.out_channels, "k", true, builder);
+        let r = create_size(params.filter_height, "r", false, builder);
+        let s = create_size(params.filter_width, "s", false, builder);
+        let p = create_size(params.out_height(), "p", true, builder);
+        let q = create_size(params.out_width(), "q", true, builder);
+
+        let input_dims = vec![n.clone(), c.clone(), h.clone(), w.clone()];
+        let input = TensorBuilder::new("input", input_dims).finish(builder);
+        let filter_dims = vec![k.clone(), c.clone(), r.clone(), s.clone()];
+        let filter = TensorBuilder::new("filter", filter_dims).finish(builder);
+        let output_dims = vec![n.clone(), k.clone(), p.clone(), q.clone()];
+        let output = builder.tensor::<S>("output", output_dims, false);
+
+        Conv2d {
+            params,
+            input,
+            filter,
+            output,
+            n,
+            c,
+            h,
+            w,
+            k,
+            r,
+            s,
+            p,
+            q,
+        }
+    }
+
+    fn build_body<'b>(
+        &self,
+        signature: Arc<ir::Signature>,
+        ctx: &'b dyn device::Context,
+    ) -> Vec<Candidate> {
+        let n_tiling = infer_tiling(self.params.batch, &None, &[32, 4]);
+        let p_tiling = infer_tiling(self.params.out_height(), &None, &[32, 4]);
+        let q_tiling = infer_tiling(self.params.out_width(), &None, &[32, 4]);
+        let k_tiling = infer_tiling(self.params.out_channels, &None, &[32, 4]);
+        let c_tiling = infer_tiling(self.params.in_channels, &None, &[32, 4]);
+        let r_tiling = helper::TilingPattern::new_fixed(&[]);
+        let s_tiling = helper::TilingPattern::new_fixed(&[]);
+
+        let mut builder = helper::Builder::new(signature, ctx.device());
+
+        let h_size = self.h.to_ir_size(&mut builder);
+        let w_size = self.w.to_ir_size(&mut builder);
+        let a = self.input.load_packed(
+            vec![
+                (self.n.clone(), n_tiling.clone()),
+                (self.p.clone(), p_tiling.clone()),
+                (self.q.clone(), q_tiling.clone()),
+                (self.c.clone(), c_tiling.clone()),
+                (self.r.clone(), r_tiling.clone()),
+                (self.s.clone(), s_tiling.clone()),
+            ],
+            |args| {
+                if let [n, p, q, c, r, s] = &args[..] {
+                    let h = p.clone() + r.clone() + (-self.params.pad_h());
+                    let w = q.clone() + s.clone() + (-self.params.pad_w());
+                    let predicate = h.clone().in_range(0u32.into()..h_size);
+                    let predicate = predicate & w.clone().in_range(0u32.into()..w_size);
+                    (vec![n.clone(), c.clone(), h, w], Some(predicate))
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
+        let b = self
+            .filter
+            .load(vec![k_tiling, c_tiling, r_tiling, s_tiling], &mut builder);
+
+        let ab = conv2d(&mut builder, &a, &b);
+
+        // ab.store_packed(
+        //  &self.output,
+        //  vec![vec![n, p, q], vec![k]],
+        //  |[n, p, q, k]| vec![n, k, p, q],
+        //  &mut builder)
+        // ab.store_packed(|[n, p, q, k]| [n, k, p, q])
+        ab.store(&self.output, &mut builder);
+
+        vec![build_candidate(builder.get(), ctx)]
+    }
+
+    fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
+        let input_shape = (
+            self.params.batch as usize,
+            self.params.in_channels as usize,
+            self.params.in_height as usize,
+            self.params.in_width as usize,
+        );
+        let filter_shape = (
+            self.params.out_channels as usize,
+            self.params.in_channels as usize,
+            self.params.filter_height as usize,
+            self.params.filter_width as usize,
+        );
+        let output_shape = self.params.output_shape();
+
+        let input = self.input.read_to_host(context);
+        assert_eq!(
+            input.shape(),
+            &[input_shape.0, input_shape.1, input_shape.2, input_shape.3]
+        );
+        let input = input.into_shape(input_shape).unwrap();
+        let filter = self.filter.read_to_host(context);
+        assert_eq!(
+            filter.shape(),
+            &[
+                filter_shape.0,
+                filter_shape.1,
+                filter_shape.2,
+                filter_shape.3,
+            ]
+        );
+        let filter = filter.into_shape(filter_shape).unwrap();
+
+        let mut res = Array4::<S>::zeros(output_shape);
+        for n in 0..self.params.batch as usize {
+            for k in 0..self.params.out_channels as usize {
+                for p in 0..self.params.out_height() as usize {
+                    for q in 0..self.params.out_width() as usize {
+                        let mut x = S::zero();
+                        for r in 0..self.params.filter_height as usize {
+                            for s in 0..self.params.filter_width as usize {
+                                for c in 0..self.params.in_channels as usize {
+                                    let h = (p + r) as i32 - self.params.pad_h();
+                                    let w = (q + s) as i32 - self.params.pad_w();
+                                    if h >= 0
+                                        && w >= 0
+                                        && h < self.params.in_height
+                                        && w < self.params.in_width
+                                    {
+                                        x += input[[n, c, h as usize, w as usize]]
+                                            * filter[[k, c, r, s]];
+                                    }
+                                }
+                            }
+                        }
+                        res[[n, k, p, q]] = x;
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String> {
+        let output_shape = self.params.output_shape();
+        let output = self.output.read_to_host(context);
+        assert_eq!(
+            output.shape(),
+            &[
+                output_shape.0,
+                output_shape.1,
+                output_shape.2,
+                output_shape.3
+            ]
+        );
+
+        let output = output.into_shape(output_shape).unwrap();
+        if let Err(invalid) = check_output(&output, expected) {
+            Err(format!("Invalid conv2d output: {}", invalid))
         } else {
             Ok(())
         }

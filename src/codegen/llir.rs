@@ -326,6 +326,7 @@ pub enum UnOp {
     Cast { src_t: ir::Type, dst_t: ir::Type },
     // Natural exponential
     Exp { t: ir::Type },
+    Not { t: ir::Type },
 }
 
 impl fmt::Display for UnOp {
@@ -334,6 +335,7 @@ impl fmt::Display for UnOp {
             UnOp::Move { t } => write!(fmt, "move.{}", t),
             UnOp::Cast { src_t, dst_t } => write!(fmt, "cast.{}.{}", dst_t, src_t),
             UnOp::Exp { t } => write!(fmt, "exp.{}", t),
+            UnOp::Not { t } => write!(fmt, "not.{}", t),
         }
     }
 }
@@ -360,14 +362,20 @@ impl UnOp {
     /// The expected argument type for this operator.
     pub fn arg_t(self) -> [ir::Type; 1] {
         match self {
-            UnOp::Move { t } | UnOp::Cast { src_t: t, .. } | UnOp::Exp { t } => [t],
+            UnOp::Move { t }
+            | UnOp::Cast { src_t: t, .. }
+            | UnOp::Exp { t }
+            | UnOp::Not { t } => [t],
         }
     }
 
     /// The resulting type when this operator is applied.
     pub fn ret_t(self) -> ir::Type {
         match self {
-            UnOp::Move { t } | UnOp::Cast { dst_t: t, .. } | UnOp::Exp { t } => t,
+            UnOp::Move { t }
+            | UnOp::Cast { dst_t: t, .. }
+            | UnOp::Exp { t }
+            | UnOp::Not { t } => t,
         }
     }
 
@@ -410,6 +418,18 @@ impl UnOp {
         a: [ir::Type; 1],
     ) -> Result<Self, InstructionError> {
         Ok(Self::unify_type(d, a).map(|t| UnOp::Exp { t })?)
+    }
+
+    pub fn infer_not(
+        d: Option<ir::Type>,
+        a: [ir::Type; 1],
+    ) -> Result<Self, InstructionError> {
+        Ok(unify_type(
+            d.into_iter()
+                .chain(a.iter().copied())
+                .chain(std::iter::once(ir::Type::I(1))),
+        )
+        .map(|t| UnOp::Not { t })?)
     }
 }
 
@@ -719,6 +739,7 @@ impl BinOp {
 pub enum TernOp {
     IMad { arg_t: ir::Type, spec: MulSpec },
     FFma { t: ir::Type, rounding: FpRounding },
+    SetAnd { op: CmpOp, arg_t: ir::Type },
 }
 
 impl fmt::Display for TernOp {
@@ -726,6 +747,7 @@ impl fmt::Display for TernOp {
         match self {
             TernOp::IMad { arg_t, spec } => write!(fmt, "mad.{}.{}", spec, arg_t),
             TernOp::FFma { t, rounding } => write!(fmt, "fma.{}.{}", rounding, t),
+            TernOp::SetAnd { op, arg_t } => write!(fmt, "set.{}.and.{}", op, arg_t),
         }
     }
 }
@@ -805,11 +827,26 @@ impl TernOp {
         Ok(Self::unify_ftype(d, abc).map(|t| TernOp::FFma { t, rounding })?)
     }
 
+    pub fn infer_set_and(
+        op: CmpOp,
+        d: Option<ir::Type>,
+        [a, b, c]: [ir::Type; 3],
+    ) -> Result<Self, InstructionError> {
+        let arg_t = BinOp::unify_type(None, [a, b])?;
+        unify_itype(
+            d.into_iter()
+                .chain(iter::once(c))
+                .chain(iter::once(ir::Type::I(1))),
+        )?;
+        Ok(TernOp::SetAnd { op, arg_t })
+    }
+
     /// The expected argument types for this operator.
     pub fn arg_t(self) -> [ir::Type; 3] {
         match self {
             TernOp::IMad { arg_t, spec } => [arg_t, arg_t, spec.ret_t(arg_t)],
             TernOp::FFma { t, .. } => [t, t, t],
+            TernOp::SetAnd { arg_t, .. } => [arg_t, arg_t, ir::Type::I(1)],
         }
     }
 
@@ -818,6 +855,7 @@ impl TernOp {
         match self {
             TernOp::IMad { arg_t, spec } => spec.ret_t(arg_t),
             TernOp::FFma { t, .. } => t,
+            TernOp::SetAnd { .. } => ir::Type::I(1),
         }
     }
 }
@@ -942,6 +980,7 @@ impl<'a> Instruction<'a> {
         mov(d, a), UnOp::infer_move, unary;
         cast[dst_t: ir::Type](d, a), UnOp::infer_cast, unary;
         exp(d, a), UnOp::infer_exp, unary;
+        not(d, a), UnOp::infer_not, unary;
     }
 
     /// Create a new binary instruction.
@@ -990,6 +1029,14 @@ impl<'a> Instruction<'a> {
         set_le(d, a, b) = set[CmpOp::Le];
         set_gt(d, a, b) = set[CmpOp::Gt];
         set_ge(d, a, b) = set[CmpOp::Ge];
+
+        set_and[op: CmpOp](d, a, b, c), TernOp::infer_set_and, ternary;
+        set_eq_and(d, a, b, c) = set_and[CmpOp::Eq];
+        set_ne_and(d, a, b, c) = set_and[CmpOp::Ne];
+        set_lt_and(d, a, b, c) = set_and[CmpOp::Lt];
+        set_le_and(d, a, b, c) = set_and[CmpOp::Le];
+        set_gt_and(d, a, b, c) = set_and[CmpOp::Gt];
+        set_ge_and(d, a, b, c) = set_and[CmpOp::Ge];
 
         and(d, a, b), BinOp::infer_and, binary;
         xor(d, a, b), BinOp::infer_xor, binary;

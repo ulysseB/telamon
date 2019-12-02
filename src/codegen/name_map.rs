@@ -51,7 +51,9 @@ pub struct NameMap<'a> {
     /// Keeps track of induction variable names.
     induction_vars: FxHashMap<ir::IndVarId, Operand<'a>>,
     /// Keeps track of accesses variable names.
-    accesses: FxHashMap<ir::AccessId, Operand<'a>>,
+    ///
+    /// Also includes predicate when applicable.
+    accesses: FxHashMap<ir::AccessId, (Operand<'a>, Option<Register<'a>>)>,
 }
 
 /// An interner, used to convert owned objects into a long-lived borrowed version.
@@ -166,9 +168,12 @@ impl<'a> NameMap<'a> {
             }
 
             let mut accesses = FxHashMap::default();
-            for &(aid, ref expr) in function.accesses() {
+            for &(aid, ref expr, ref predicate) in function.accesses() {
                 let operand = builder.to_operand(expr);
-                accesses.insert(aid, operand);
+                let predicate = predicate.as_ref().map(|predicate| {
+                    builder.to_operand(predicate).to_register().unwrap()
+                });
+                accesses.insert(aid, (operand, predicate));
             }
 
             let expr_to_operand = builder.finish();
@@ -213,12 +218,18 @@ impl<'a> NameMap<'a> {
         self.induction_vars[&ind_var_id].clone()
     }
 
-    pub fn name_access(&self, aid: ir::AccessId) -> llir::Operand<'a> {
+    pub fn name_access(
+        &self,
+        aid: ir::AccessId,
+    ) -> (llir::Operand<'a>, Option<llir::Register<'a>>) {
         self.accesses[&aid].clone()
     }
 
     /// Asigns a name to an operand.
-    pub fn name_op(&self, operand: &'a ir::Operand) -> llir::Operand<'a> {
+    pub fn name_op(
+        &self,
+        operand: &'a ir::Operand,
+    ) -> (llir::Operand<'a>, Option<llir::Register<'a>>) {
         self.name_op_with_indexes(operand, Cow::Borrowed(&self.current_indexes))
     }
 
@@ -227,32 +238,32 @@ impl<'a> NameMap<'a> {
         &self,
         operand: &'a ir::Operand,
         indexes: Cow<FxHashMap<ir::DimId, usize>>,
-    ) -> llir::Operand<'a> {
+    ) -> (llir::Operand<'a>, Option<llir::Register<'a>>) {
         match operand {
             ir::Operand::Int(val, len) => {
-                llir::Operand::IntLiteral(Cow::Borrowed(val), *len)
+                (llir::Operand::IntLiteral(Cow::Borrowed(val), *len), None)
             }
             ir::Operand::Float(val, len) => {
-                llir::Operand::FloatLiteral(Cow::Borrowed(val), *len)
+                (llir::Operand::FloatLiteral(Cow::Borrowed(val), *len), None)
             }
             ir::Operand::Inst(id, _, dim_map, _)
             | ir::Operand::Reduce(id, _, dim_map, _) => {
-                self.name_mapped_inst(*id, indexes, dim_map).into()
+                (self.name_mapped_inst(*id, indexes, dim_map).into(), None)
             }
             ir::Operand::Index(id) => {
                 if let Some(&idx) = indexes.get(id) {
-                    i32::try_from(idx).unwrap().int_literal()
+                    (i32::try_from(idx).unwrap().int_literal(), None)
                 } else {
-                    self.indexes[id].into()
+                    (self.indexes[id].into(), None)
                 }
             }
             ir::Operand::Param(p) => {
-                self.name_param_val(ParamValKey::External(&*p)).into()
+                (self.name_param_val(ParamValKey::External(&*p)).into(), None)
             }
-            ir::Operand::Addr(id) => self.name_addr(*id).into(),
-            ir::Operand::InductionVar(id, _) => self.name_induction_var(*id),
+            ir::Operand::Addr(id) => (self.name_addr(*id).into(), None),
+            ir::Operand::InductionVar(id, _) => (self.name_induction_var(*id), None),
             ir::Operand::Variable(val_id, _t) => {
-                (*self.variables[val_id].get_name(&indexes)).into()
+                ((*self.variables[val_id].get_name(&indexes)).into(), None)
             }
             ir::Operand::ComputedAddress(aid, _t) => self.name_access(*aid),
         }
@@ -292,7 +303,10 @@ impl<'a> NameMap<'a> {
                 .to_mut()
                 .extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
         }
-        self.name_op_with_indexes(op, indexes_map)
+        let (operand, predicate) = self.name_op_with_indexes(op, indexes_map);
+        // Can't do vectorized predicates
+        assert!(predicate.is_none());
+        operand
     }
 
     /// Returns the name of the instruction.

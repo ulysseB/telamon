@@ -17,7 +17,11 @@ pub struct Function<'a> {
     thread_dims: Vec<Dimension>,
     block_dims: Vec<Dimension>,
     induction_vars: Vec<(ir::IndVarId, super::expr::ExprPtr)>,
-    accesses: Vec<(ir::AccessId, super::expr::ExprPtr)>,
+    accesses: Vec<(
+        ir::AccessId,
+        super::expr::ExprPtr,
+        Option<super::expr::ExprPtr>,
+    )>,
     device_code_args: Vec<ParamVal>,
     mem_blocks: Vec<MemoryRegion>,
     variables: Vec<codegen::Variable<'a>>,
@@ -60,7 +64,10 @@ impl<'a> Function<'a> {
             .ir_instance()
             .accesses()
             .iter()
-            .map(|(aid, access)| (aid, lowering.access(access)))
+            .map(|(aid, access)| {
+                let (address, predicate) = lowering.access(access);
+                (aid, address, predicate)
+            })
             .collect::<Vec<_>>();
 
         device_code_args.extend(
@@ -70,8 +77,14 @@ impl<'a> Function<'a> {
                 .chain(
                     accesses
                         .iter()
-                        .flat_map(|(_, expr)| expr.host_values(space, &merged_dims)),
-                ),
+                        .flat_map(|(_, expr, _)| expr.host_values(space, &merged_dims)),
+                )
+                .chain(accesses.iter().flat_map(|(_, _, predicate)| {
+                    predicate
+                        .as_ref()
+                        .into_iter()
+                        .flat_map(|predicate| predicate.host_values(space, &merged_dims))
+                })),
         );
 
         let mem_blocks = register_mem_blocks(space, &block_dims);
@@ -156,7 +169,13 @@ impl<'a> Function<'a> {
         &self.induction_vars
     }
 
-    pub fn accesses(&self) -> &[(ir::AccessId, super::expr::ExprPtr)] {
+    pub fn accesses(
+        &self,
+    ) -> &[(
+        ir::AccessId,
+        super::expr::ExprPtr,
+        Option<super::expr::ExprPtr>,
+    )] {
         &self.accesses
     }
 }

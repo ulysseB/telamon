@@ -505,9 +505,10 @@ impl Builder {
         &mut self,
         name: &str,
         strides: Vec<(ir::IndexExpr, ir::Size)>,
+        predicate: Option<ir::IndexPredicate>,
     ) -> ir::AccessId {
         let param = self.find_param(name).clone();
-        self.function.accesses_mut().add(param, strides)
+        self.function.accesses_mut().add(param, strides, predicate)
     }
 
     /// Returns a reference to the function being built.

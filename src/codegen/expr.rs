@@ -41,6 +41,12 @@ pub enum Expr {
         base: ExprPtr,
         elems: Vec<(ir::DimId, Size)>,
     },
+    And(Vec<ExprPtr>),
+    InRange {
+        base: ExprPtr,
+        start: ExprPtr,
+        end: ExprPtr,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -58,7 +64,9 @@ impl Expr {
             | Expr::StridedSum { .. }
             | Expr::RollingSum { .. }
             | Expr::MemBlock(_)
-            | Expr::Dimension(_) => None,
+            | Expr::Dimension(_)
+            | Expr::And(_)
+            | Expr::InRange { .. } => None,
             Expr::Size(size) => size.as_int(),
         }
     }
@@ -88,6 +96,12 @@ impl Expr {
                 base.is_runtime_constant()
                     && elems.iter().all(|(expr, _)| expr.is_runtime_constant())
             }
+            Expr::And(elems) => elems.iter().all(|expr| expr.is_runtime_constant()),
+            Expr::InRange { base, start, end } => {
+                base.is_runtime_constant()
+                    && start.is_runtime_constant()
+                    && end.is_runtime_constant()
+            }
         }
     }
 
@@ -99,6 +113,9 @@ impl Expr {
             Expr::MemBlock(_) => 32,
             Expr::StridedSum { base, .. } => base.bitwidth(),
             Expr::RollingSum { base, .. } => base.bitwidth(),
+            // Predicates
+            Expr::InRange { .. } => 1,
+            Expr::And(_) => 1,
         }
     }
 
@@ -147,6 +164,18 @@ impl Expr {
                             host_values.extend(ParamVal::from_size(&(dim_size * stride)))
                         }
                     }
+                }
+            }
+
+            Expr::InRange { base, start, end } => {
+                base.collect_host_values(space, merged_dimensions, host_values);
+                start.collect_host_values(space, merged_dimensions, host_values);
+                end.collect_host_values(space, merged_dimensions, host_values);
+            }
+
+            Expr::And(elems) => {
+                for elem in elems {
+                    elem.collect_host_values(space, merged_dimensions, host_values);
                 }
             }
         }
@@ -293,6 +322,53 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
                     }
 
                     &Expr::Dimension(id) => self.namer.name_index(id).into_operand(),
+
+                    Expr::InRange { base, start, end } => {
+                        let dst = self.namer.gen_name(ir::Type::I(1));
+                        let base = self.to_operand(base);
+                        let start = self.to_operand(start);
+                        let end = self.to_operand(end);
+
+                        self.dispatch.add_compute(
+                            expr.defined_at,
+                            llir::Instruction::set_ge(dst, base.clone(), start).unwrap(),
+                        );
+                        self.dispatch.add_compute(
+                            expr.defined_at,
+                            llir::Instruction::set_lt_and(
+                                dst,
+                                base,
+                                end,
+                                dst.into_operand(),
+                            )
+                            .unwrap(),
+                        );
+
+                        dst.into_operand()
+                    }
+
+                    Expr::And(preds) => {
+                        let dst = self.namer.gen_name(ir::Type::I(1));
+                        assert!(preds.len() >= 2);
+
+                        let first = self.to_operand(&preds[0]);
+                        let second = self.to_operand(&preds[1]);
+                        self.dispatch.add_compute(
+                            expr.defined_at,
+                            llir::Instruction::and(dst, first, second).unwrap(),
+                        );
+
+                        for pred in &preds[2..] {
+                            let pred = self.to_operand(pred);
+                            self.dispatch.add_compute(
+                                expr.defined_at,
+                                llir::Instruction::and(dst, dst.into_operand(), pred)
+                                    .unwrap(),
+                            );
+                        }
+
+                        dst.into_operand()
+                    }
 
                     Expr::StridedSum { base, elems } => {
                         assert!(!elems.is_empty());
@@ -498,6 +574,22 @@ impl<'a> ExprBuilder<'a> {
 
                         defined_at
                     }
+
+                    Expr::And(elems) => {
+                        let mut defined_at = None;
+
+                        for elem in elems {
+                            defined_at =
+                                self.space.innermost(defined_at, elem.defined_at);
+                        }
+
+                        defined_at
+                    }
+
+                    Expr::InRange { base, start, end } => self.space.innermost(
+                        base.defined_at,
+                        self.space.innermost(start.defined_at, end.defined_at),
+                    ),
                 };
 
                 let key = vacant.key().clone();
@@ -521,6 +613,12 @@ impl<'a> ExprBuilder<'a> {
                         .all(|(expr, _)| self.is_thread_constant(&**expr))
             }
             Expr::RollingSum { base, .. } => self.is_thread_constant(&**base),
+            Expr::And(elems) => elems.iter().all(|expr| self.is_thread_constant(&**expr)),
+            Expr::InRange { base, start, end } => {
+                self.is_thread_constant(&**base)
+                    && self.is_thread_constant(&**start)
+                    && self.is_thread_constant(&**end)
+            }
         }
     }
 
@@ -547,6 +645,10 @@ impl<'a> ExprBuilder<'a> {
         } else {
             self.create(Expr::Dimension(dim))
         }
+    }
+
+    pub fn in_range(&mut self, base: ExprPtr, start: ExprPtr, end: ExprPtr) -> ExprPtr {
+        self.create(Expr::InRange { base, start, end })
     }
 
     pub fn rolling_sum<II>(&mut self, base: ExprPtr, elems: II) -> ExprPtr
@@ -775,6 +877,46 @@ impl<'a> ExprBuilder<'a> {
 
         base
     }
+
+    pub fn and<II>(&mut self, elems: II) -> ExprPtr
+    where
+        II: IntoIterator<Item = ExprPtr>,
+    {
+        let mut elems = elems.into_iter().collect::<Vec<_>>();
+        elems.sort_by_key(|expr| {
+            expr.defined_at
+                .map(|dim| AssertOrd(self.space.nesting_order(dim)))
+        });
+
+        let mut current_dim = None;
+        let mut parts: Vec<Vec<_>> = Vec::new();
+        for expr in elems {
+            if current_dim == expr.defined_at {
+                if let Some(part) = parts.last_mut() {
+                    part.push(expr);
+                    continue;
+                }
+            }
+
+            current_dim = expr.defined_at;
+            parts.push(vec![expr]);
+        }
+
+        let mut base = None;
+        for mut part in parts {
+            if let Some(base) = base.take() {
+                part.push(base);
+            }
+
+            if part.len() <= 1 {
+                base = part.into_iter().next();
+            } else {
+                base = Some(self.create(Expr::And(part)));
+            }
+        }
+
+        base.unwrap()
+    }
 }
 
 pub struct ExprLowering<'a> {
@@ -865,6 +1007,7 @@ impl<'a> ExprLowering<'a> {
         match *expr {
             ir::IndexExpr::LogicalDim(lid) => self.logical_dim(lid),
             ir::IndexExpr::Parameter(ref p) => self.parameter(p),
+            ir::IndexExpr::Size(ref size) => self.builder.size(size.into()),
             ir::IndexExpr::Sum(cst, ref args) => {
                 let args = args
                     .iter()
@@ -877,7 +1020,25 @@ impl<'a> ExprLowering<'a> {
         }
     }
 
-    pub fn access(&mut self, access: &'a ir::Access) -> ExprPtr {
+    pub fn predicate(&mut self, predicate: &'a ir::IndexPredicate) -> ExprPtr {
+        match predicate {
+            ir::IndexPredicate::InRange(expr, range) => {
+                let expr = self.expr(expr);
+                let start = self.expr(&range.start);
+                let end = self.expr(&range.end);
+                self.builder.in_range(expr, start, end)
+            }
+            ir::IndexPredicate::And(preds) => {
+                let preds = preds
+                    .iter()
+                    .map(|pred| self.predicate(pred))
+                    .collect::<Vec<_>>();
+                self.builder.and(preds)
+            }
+        }
+    }
+
+    pub fn access(&mut self, access: &'a ir::Access) -> (ExprPtr, Option<ExprPtr>) {
         let len_bytes = access.base().elem_t.unwrap().len_byte().unwrap();
         let base = self.builder.parameter(Arc::clone(access.base()));
         let elems = access
@@ -890,6 +1051,7 @@ impl<'a> ExprLowering<'a> {
                 )
             })
             .collect::<Vec<_>>();
-        self.builder.strided_sum(base, elems)
+        let predicate = access.predicate().map(|p| self.predicate(p));
+        (self.builder.strided_sum(base, elems), predicate)
     }
 }
