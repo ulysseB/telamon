@@ -102,17 +102,6 @@ impl<'a> InstPrinterHelper<'a> {
         self.inst_printer.print_inst(inst.into())
     }
 
-    /// Prints a scalar addition on integers.
-    fn print_add_int(
-        &mut self,
-        result: llir::Register<'_>,
-        lhs: llir::Operand<'_>,
-        rhs: llir::Operand<'_>,
-    ) {
-        self.inst_printer
-            .print_inst(llir::Instruction::iadd(result, lhs, rhs).unwrap().into())
-    }
-
     /// Prints a scalar less-than on integers.
     fn print_lt_int(
         &mut self,
