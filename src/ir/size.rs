@@ -16,7 +16,7 @@ pub struct Size {
 
 impl Size {
     /// Create a new fully specified size.
-    pub fn new(factor: u32, params: Vec<Arc<ir::Parameter>>, max_val: u32) -> Self {
+    pub fn new(factor: u32, mut params: Vec<Arc<ir::Parameter>>, max_val: u32) -> Self {
         Size {
             factor,
             params,
@@ -119,6 +119,18 @@ impl std::ops::Mul<u32> for Size {
     }
 }
 
+impl std::ops::Mul<u32> for &'_ Size {
+    type Output = Size;
+
+    fn mul(self, other: u32) -> Size {
+        Size {
+            factor: self.factor * other,
+            params: self.params.clone(),
+            max_val: self.max_val.saturating_mul(other),
+        }
+    }
+}
+
 /// A size whose exact value is not yet decided. The value of `size` is
 /// `product(size.factors())/product(size.divisors())`.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -195,6 +207,15 @@ impl Default for PartialSize {
     }
 }
 
+impl From<u32> for PartialSize {
+    fn from(static_factor: u32) -> Self {
+        PartialSize {
+            static_factor,
+            ..Default::default()
+        }
+    }
+}
+
 impl fmt::Display for PartialSize {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use itertools::Itertools;
@@ -241,10 +262,21 @@ impl<'a> std::ops::MulAssign<&'a PartialSize> for PartialSize {
     }
 }
 
-impl<'a> std::ops::Mul<&'a PartialSize> for PartialSize {
+impl std::ops::MulAssign<&'_ Size> for PartialSize {
+    fn mul_assign(&mut self, other: &'_ Size) {
+        self.static_factor *= other.factor;
+        self.param_factors.extend(other.params.iter().cloned());
+        self.simplify();
+    }
+}
+
+impl<Rhs> std::ops::Mul<Rhs> for PartialSize
+where
+    Self: std::ops::MulAssign<Rhs>,
+{
     type Output = Self;
 
-    fn mul(mut self, rhs: &PartialSize) -> Self {
+    fn mul(mut self, rhs: Rhs) -> Self {
         self *= rhs;
         self
     }
@@ -281,5 +313,11 @@ impl<'a> std::iter::Product<&'a PartialSize> for PartialSize {
 impl From<Size> for PartialSize {
     fn from(size: Size) -> PartialSize {
         PartialSize::new(size.factor, size.params)
+    }
+}
+
+impl From<&'_ Size> for PartialSize {
+    fn from(size: &'_ Size) -> PartialSize {
+        PartialSize::new(size.factor, size.params.clone())
     }
 }

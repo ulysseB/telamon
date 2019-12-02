@@ -3,6 +3,7 @@ mod access_pattern;
 mod dim_map;
 mod dimension;
 mod error;
+mod expr;
 mod function;
 mod induction_var;
 mod instruction;
@@ -24,6 +25,7 @@ pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
 };
 pub use self::error::{Error, TypeError};
+pub use self::expr::{Access, AccessId, Accesses, IndexExpr, IntoIndexExpr};
 pub use self::function::{Body, Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::instruction::{InstId, Instruction};

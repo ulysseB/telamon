@@ -79,6 +79,7 @@ pub struct Body<L = ir::LoweringMap> {
     logical_dims: Vec<ir::LogicalDim>,
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
     variables: SparseVec<ir::VarId, ir::Variable>,
+    accesses: ir::Accesses,
 }
 
 impl<L> Body<L> {
@@ -95,6 +96,7 @@ impl<L> Body<L> {
             logical_dims: Vec::new(),
             dim_mappings: SparseVec::new(),
             variables: SparseVec::new(),
+            accesses: Default::default(),
         }
     }
 }
@@ -469,9 +471,17 @@ impl<L> Function<L> {
         }
         mapping
     }
+
+    pub fn accesses(&self) -> &ir::Accesses {
+        &self.body.accesses
+    }
 }
 
 impl Function<()> {
+    pub fn accesses_mut(&mut self) -> &mut ir::Accesses {
+        &mut self.body.accesses
+    }
+
     /// Adds an instruction to the function.
     pub fn add_inst(
         &mut self,
@@ -583,6 +593,7 @@ impl Function<()> {
                     logical_dims,
                     mut dim_mappings,
                     variables,
+                    accesses,
                 },
         } = self;
 
@@ -628,6 +639,7 @@ impl Function<()> {
                 logical_dims,
                 dim_mappings,
                 variables,
+                accesses,
             },
         }
     }

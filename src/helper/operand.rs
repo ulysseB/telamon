@@ -127,3 +127,9 @@ impl AutoOperand for ir::IndVarId {
         Operand::InductionVar(*self, t)
     }
 }
+
+impl AutoOperand for ir::AccessId {
+    fn get(&self, builder: &mut Builder) -> Operand<()> {
+        Operand::ComputedAddress(*self, builder.function().device().global_pointer_type())
+    }
+}

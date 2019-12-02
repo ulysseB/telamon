@@ -642,8 +642,13 @@ impl<'a> ExprBuilder<'a> {
         //
         // Rolling part are dimensions and inner rolling sums that include at least one dimension
         // inside the dimension where the base is defined at.
+        let mut outer = Vec::new();
         let mut strided = Vec::new();
-        let mut rolling = Vec::new();
+
+        enum Elem {
+            Rolling(ir::DimId, Size),
+            Strided(ExprPtr, Size),
+        }
 
         let base_compute_at = base.defined_at.map(|dim| self.space.nesting_order(dim));
         for (expr, stride) in elems {
@@ -653,56 +658,119 @@ impl<'a> ExprBuilder<'a> {
 
             if expr.defined_at.map(|dim| self.space.nesting_order(dim)) <= base_compute_at
             {
-                strided.push((expr, stride));
+                outer.push((expr, stride));
             } else {
-                strided.push((expr, stride));
-                /*
                 match &*expr {
-                    Expr::Dimension(dim)
-                        if !self
-                            .space
-                            .domain()
-                            .get_dim_kind(*dim)
-                            .intersects(DimKind::PARALLEL) =>
-                    {
-                        rolling.push((*dim, stride))
-                    }
-                    Expr::RollingSum {
-                        base: rolling_base,
-                        elems: rolling_elems,
-                    } => {
-                        rolling.extend(
-                            rolling_elems
-                                .iter()
-                                .map(|(dim, dim_stride)| (*dim, dim_stride * &stride)),
-                        );
+                    Expr::RollingSum { base, elems } => {
+                        if elems.iter().any(|(dim, _)| {
+                            Some(self.space.nesting_order(*dim)) > base_compute_at
+                        }) {
+                            for (dim, dim_stride) in elems {
+                                assert_ne!(
+                                    self.space.domain().get_dim_kind(*dim),
+                                    DimKind::UNROLL
+                                );
 
-                        if !rolling_base.is_zero() {
-                            strided.push((ExprPtr::clone(rolling_base), stride));
+                                strided.push(Elem::Rolling(*dim, dim_stride * &stride));
+                            }
+
+                            if !base.is_zero() {
+                                strided.push(Elem::Strided(base.clone(), stride));
+                            }
+                        } else {
+                            strided.push(Elem::Strided(expr, stride))
                         }
                     }
-                    _ => strided.push((expr, stride)),
+                    Expr::Dimension(dim) => strided.push(Elem::Rolling(*dim, stride)),
+                    _ => strided.push(Elem::Strided(expr, stride)),
                 }
-                */
             }
         }
 
         let mut base = base;
 
-        if !strided.is_empty() {
-            strided.sort_by_key(|(expr, _)| {
+        if !outer.is_empty() {
+            outer.sort_by_key(|(expr, _)| {
                 expr.defined_at
                     .map(|dim| AssertOrd(self.space.nesting_order(dim)))
             });
 
-            base = self.create(Expr::StridedSum {
-                base,
-                elems: strided,
-            });
+            base = self.create(Expr::StridedSum { base, elems: outer });
         }
 
-        if !rolling.is_empty() {
-            base = self.rolling_sum(base, rolling);
+        if !strided.is_empty() {
+            // Sort by outermost first
+            strided.sort_by_key(|elem| match elem {
+                Elem::Rolling(dim, _) => Some(AssertOrd(self.space.nesting_order(*dim))),
+                Elem::Strided(expr, _) => expr
+                    .defined_at
+                    .map(|dim| AssertOrd(self.space.nesting_order(dim))),
+            });
+
+            enum Part {
+                Strided(Vec<(ExprPtr, Size)>, bool),
+                Rolling(Vec<(ir::DimId, Size)>),
+            }
+
+            let mut current_dim = base.defined_at;
+            let mut parts = Vec::new();
+            for elem in strided {
+                match elem {
+                    Elem::Strided(expr, stride) => match parts.last_mut() {
+                        Some(Part::Strided(strided, false))
+                            if current_dim == expr.defined_at =>
+                        {
+                            strided.push((expr, stride));
+                        }
+                        _ => {
+                            current_dim = expr.defined_at;
+                            parts.push(Part::Strided(vec![(expr, stride)], false));
+                        }
+                    },
+                    Elem::Rolling(dim, stride) => {
+                        if self.space.domain().get_dim_kind(dim) == DimKind::UNROLL {
+                            match parts.last_mut() {
+                                Some(Part::Strided(strided, true)) => {
+                                    strided.push((self.dimension(dim), stride))
+                                }
+                                _ => {
+                                    current_dim = Some(dim);
+                                    parts.push(Part::Strided(
+                                        vec![(self.dimension(dim), stride)],
+                                        true,
+                                    ));
+                                }
+                            }
+                        } else {
+                            match parts.last_mut() {
+                                Some(Part::Rolling(rolling)) => {
+                                    rolling.push((dim, stride))
+                                }
+                                _ => parts.push(Part::Rolling(vec![(dim, stride)])),
+                            }
+                        }
+                    }
+                }
+            }
+
+            for part in parts {
+                match part {
+                    Part::Strided(strided, _unroll) => {
+                        base = self.create(Expr::StridedSum {
+                            base,
+                            elems: strided,
+                        });
+                    }
+                    Part::Rolling(mut rolling) => {
+                        // This gets added by innermost first so we need to reverse it again here.
+                        rolling.reverse();
+                        base = self.create(Expr::RollingSum {
+                            base,
+                            elems: rolling,
+                        });
+                    }
+                }
+            }
         }
 
         base
@@ -802,11 +870,26 @@ impl<'a> ExprLowering<'a> {
                     .iter()
                     .map(|expr| (self.expr(expr), 1u32.into()))
                     .collect::<Vec<_>>();
-                let base = self.builder.size(i32::try_from(cst).unwrap().into());
+                // TODO: `cst` can actually be negative.
+                let base = self.builder.size(u32::try_from(cst).unwrap().into());
                 self.builder.strided_sum(base, args)
             }
-            ir::IndexExpr::Unchecked(_) => unimplemented!(),
-            ir::IndexExpr::Unpack(..) => unimplemented!(),
         }
+    }
+
+    pub fn access(&mut self, access: &'a ir::Access) -> ExprPtr {
+        let len_bytes = access.base().elem_t.unwrap().len_byte().unwrap();
+        let base = self.builder.parameter(Arc::clone(access.base()));
+        let elems = access
+            .strides()
+            .iter()
+            .map(|(expr, stride)| {
+                (
+                    self.expr(expr),
+                    Size::from_ir(&ir::PartialSize::from(stride), self.space) * len_bytes,
+                )
+            })
+            .collect::<Vec<_>>();
+        self.builder.strided_sum(base, elems)
     }
 }

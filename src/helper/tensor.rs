@@ -9,6 +9,8 @@ use std;
 use std::sync::Arc;
 use utils::*;
 
+use log::trace;
+
 /// A dimension size, before tiling.
 #[derive(Clone)]
 pub struct DimSize<'a> {
@@ -182,43 +184,114 @@ where
         }
     }
 
+    pub fn load_packed<'b, F, II>(
+        &self,
+        tilings: II,
+        unpacking_fn: F,
+        builder: &mut Builder,
+    ) -> VirtualTensor
+    where
+        F: FnOnce(Vec<ir::IndexExpr>) -> Vec<ir::IndexExpr>,
+        II: IntoIterator<Item = (DimSize<'b>, TilingPattern)>,
+    {
+        let tilings: Vec<_> = tilings
+            .into_iter()
+            .map(|(size, pattern)| (size.to_ir_size(builder), pattern))
+            .collect();
+        builder.with_tiled_dims(tilings, move |dims, builder| {
+            let unpacked = unpacking_fn(
+                dims.iter()
+                    .map(|dim| ir::IndexExpr::LogicalDim(dim.id()))
+                    .collect(),
+            );
+            assert_eq!(
+                unpacked.len(),
+                self.iter_dims.len(),
+                "Wrong number of indices after unpacking"
+            );
+
+            let ptr = builder.new_access(
+                self.name,
+                self.iter_dims
+                    .iter()
+                    .zip(unpacked)
+                    .map(|(sizestride, expr)| {
+                        // Need this because of "by-move and by-ref" tricky rust error
+                        let (size, stride) = sizestride;
+                        // TODO: unpack check here let expr = expr.unpack(size.to_ir_size(builder));
+                        (expr, stride.to_ir_size(builder))
+                    })
+                    .collect(),
+            );
+            assert_eq!(
+                builder.function().accesses()[ptr].base().elem_t,
+                Some(S::t()),
+                "Tensor access does not match declared type",
+            );
+
+            let flag = if self.read_only {
+                InstFlag::ALL
+            } else {
+                InstFlag::COHERENT
+            };
+            let pattern =
+                builder.function().accesses()[ptr].access_pattern(builder.function());
+
+            VirtualTensor {
+                inst: builder.ld_ex(S::t(), &ptr, pattern, flag),
+                dims: dims.to_vec(),
+            }
+        })
+    }
+
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
     pub fn load(
         &self,
         tiling: Vec<TilingPattern>,
         builder: &mut Builder,
     ) -> VirtualTensor {
-        let dims = self
-            .iter_dims
-            .iter()
-            .zip_eq(tiling)
-            .map(|(dim, tiling)| {
-                let size = dim.0.to_ir_size(builder);
-                builder.open_tiled_dim(size, tiling)
-            })
-            .collect_vec();
-        let (ptr, pattern);
-        {
-            // Stride needs to be converted to bytes
-            let bytes = S::t().len_byte().unwrap();
-            let increments = dims
-                .iter()
-                .zip_eq(&self.iter_dims)
-                .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder) * bytes))
-                .collect_vec();
-            ptr = builder.induction_var(&self.name, increments.clone());
-            pattern = builder.tensor_access_pattern(None, increments);
-        };
-        let flag = if self.read_only {
-            InstFlag::ALL
+        if std::env::var("TELAMON_LOAD_PACKED").is_ok() {
+            self.load_packed(
+                self.iter_dims
+                    .iter()
+                    .map(|(size, _stride)| size.clone())
+                    .zip_eq(tiling),
+                |indices| indices,
+                builder,
+            )
         } else {
-            InstFlag::COHERENT
-        };
-        let inst = builder.ld_ex(S::t(), &ptr, pattern, flag);
-        for dim in &dims {
-            builder.close_dim(dim);
+            let dims = self
+                .iter_dims
+                .iter()
+                .zip_eq(tiling)
+                .map(|(dim, tiling)| {
+                    let size = dim.0.to_ir_size(builder);
+                    builder.open_tiled_dim(size, tiling)
+                })
+                .collect_vec();
+            let (ptr, pattern);
+            {
+                // Stride needs to be converted to bytes
+                let bytes = S::t().len_byte().unwrap();
+                let increments = dims
+                    .iter()
+                    .zip_eq(&self.iter_dims)
+                    .map(|(dim, (_, stride))| (dim, stride.to_ir_size(builder) * bytes))
+                    .collect_vec();
+                ptr = builder.induction_var(&self.name, increments.clone());
+                pattern = builder.tensor_access_pattern(None, increments);
+            };
+            let flag = if self.read_only {
+                InstFlag::ALL
+            } else {
+                InstFlag::COHERENT
+            };
+            let inst = builder.ld_ex(S::t(), &ptr, pattern, flag);
+            for dim in &dims {
+                builder.close_dim(dim);
+            }
+            VirtualTensor { inst, dims }
         }
-        VirtualTensor { inst, dims }
     }
 
     /// Reads the tensor value in the context and copies it on the host.
@@ -277,6 +350,19 @@ impl VirtualTensor {
                         == &size.to_ir_size(builder)
                 },
             );
+
+        trace!(
+            "store: {} and {}",
+            self.dims
+                .iter()
+                .map(|dim| builder.function().logical_dim(dim.id()).total_size())
+                .format("x"),
+            tensor
+                .iter_dims
+                .iter()
+                .map(|(size, _stride)| size.to_ir_size(builder))
+                .format("x")
+        );
 
         if !compatible {
             panic!(

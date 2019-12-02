@@ -43,7 +43,7 @@ impl Size {
             .iter()
             .map(|&d| dim_size(d, space))
             .product();
-        Size::new(factor, param_factors.to_vec(), divisor)
+        Self::new(factor, param_factors.to_vec(), divisor)
     }
 
     /// Returns the size of a dimension if it is staticaly known.
@@ -77,6 +77,7 @@ impl Size {
         let gcd = num::integer::gcd(self.factor, self.divisor);
         self.factor /= gcd;
         self.divisor /= gcd;
+        self.dividend.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
     }
 }
 
@@ -99,6 +100,7 @@ impl ops::MulAssign<&'_ ir::Size> for Size {
     fn mul_assign(&mut self, other: &'_ ir::Size) {
         self.factor *= other.factor();
         self.dividend.extend(other.params().iter().cloned());
+        self.simplify();
     }
 }
 

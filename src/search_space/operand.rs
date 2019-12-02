@@ -105,6 +105,20 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec
             }
             actions
         }
+        ComputedAddress(access_id, _) => {
+            let access = &fun.accesses()[access_id];
+
+            let mut actions =
+                invariants(fun, &ir::Operand::Param(access.base().clone()), user);
+
+            for ldid in access.logical_dims() {
+                for dim in fun.logical_dim(ldid).dimensions() {
+                    actions.push(Action::Order(dim.into(), user, Order::OUTER));
+                }
+            }
+
+            actions
+        }
     }
 }
 

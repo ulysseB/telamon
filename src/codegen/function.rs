@@ -17,6 +17,7 @@ pub struct Function<'a> {
     thread_dims: Vec<Dimension>,
     block_dims: Vec<Dimension>,
     induction_vars: Vec<(ir::IndVarId, super::expr::ExprPtr)>,
+    accesses: Vec<(ir::AccessId, super::expr::ExprPtr)>,
     device_code_args: Vec<ParamVal>,
     mem_blocks: Vec<MemoryRegion>,
     variables: Vec<codegen::Variable<'a>>,
@@ -54,10 +55,23 @@ impl<'a> Function<'a> {
             .induction_vars()
             .map(|(id, ind_var)| (id, lowering.induction_var(ind_var)))
             .collect::<Vec<_>>();
+
+        let accesses = space
+            .ir_instance()
+            .accesses()
+            .iter()
+            .map(|(aid, access)| (aid, lowering.access(access)))
+            .collect::<Vec<_>>();
+
         device_code_args.extend(
             induction_vars
                 .iter()
-                .flat_map(|(_, expr)| expr.host_values(space, &merged_dims)),
+                .flat_map(|(_, expr)| expr.host_values(space, &merged_dims))
+                .chain(
+                    accesses
+                        .iter()
+                        .flat_map(|(_, expr)| expr.host_values(space, &merged_dims)),
+                ),
         );
 
         let mem_blocks = register_mem_blocks(space, &block_dims);
@@ -73,6 +87,7 @@ impl<'a> Function<'a> {
             thread_dims,
             block_dims,
             induction_vars,
+            accesses,
             device_code_args: device_code_args.into_iter().collect(),
             space,
             mem_blocks,
@@ -139,6 +154,10 @@ impl<'a> Function<'a> {
 
     pub fn induction_vars(&self) -> &[(ir::IndVarId, super::expr::ExprPtr)] {
         &self.induction_vars
+    }
+
+    pub fn accesses(&self) -> &[(ir::AccessId, super::expr::ExprPtr)] {
+        &self.accesses
     }
 }
 

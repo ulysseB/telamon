@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use self::Operand::*;
-use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
+use crate::ir::{self, AccessId, DimMap, InstId, Instruction, Parameter, Type};
 use fxhash::FxHashMap;
 use itertools::Itertools;
 use num::bigint::BigInt;
@@ -201,6 +201,9 @@ pub enum Operand<L = LoweringMap> {
     InductionVar(ir::IndVarId, Type),
     /// A variable, stored in register.
     Variable(ir::VarId, Type),
+    /// Computed access to a memory location.  This type is the type of the address, not of the
+    /// value.
+    ComputedAddress(AccessId, Type),
 }
 
 impl<L> Operand<L> {
@@ -212,8 +215,11 @@ impl<L> Operand<L> {
             Addr(mem) => ir::Type::PtrTo(*mem),
             Index(..) => Type::I(32),
             Param(p) => p.t,
-            Variable(_, t) => *t,
-            Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => *t,
+            Variable(_, t)
+            | Inst(_, t, ..)
+            | Reduce(_, t, ..)
+            | InductionVar(_, t)
+            | ComputedAddress(_, t) => *t,
         }
     }
 
@@ -289,7 +295,8 @@ impl<L> Operand<L> {
     pub fn is_constant(&self) -> bool {
         match self {
             Int(..) | Float(..) | Addr(..) | Param(..) => true,
-            Index(..) | Inst(..) | Reduce(..) | InductionVar(..) | Variable(..) => false,
+            Index(..) | Inst(..) | Reduce(..) | InductionVar(..) | Variable(..)
+            | ComputedAddress(..) => false,
         }
     }
 
@@ -323,6 +330,7 @@ impl Operand<()> {
             Addr(id) => Addr(id),
             Reduce(id, t, dim_map, dims) => Reduce(id, t, dim_map, dims),
             InductionVar(id, t) => InductionVar(id, t),
+            ComputedAddress(address, t) => ComputedAddress(address, t),
         }
     }
 }
@@ -341,6 +349,7 @@ impl<L> fmt::Display for Operand<L> {
             }
             InductionVar(_id, _t) => write!(fmt, "ind"),
             Variable(var, t) => write!(fmt, "({}){}", t, var),
+            ComputedAddress(aid, _t) => write!(fmt, "{}", aid),
         }
     }
 }
@@ -395,6 +404,9 @@ impl<L> ir::IrDisplay<L> for Operand<L> {
                 write!(fmt, "{}", fun.induction_var(*id).display(fun))
             }
             Variable(var, t) => write!(fmt, "({}){}", t, var),
+            ComputedAddress(aid, _t) => {
+                write!(fmt, "{}", fun.accesses()[*aid].display(fun))
+            }
         }
     }
 }

@@ -50,6 +50,8 @@ pub struct NameMap<'a> {
     expr_to_operand: super::expr::ExprToOperand<'a>,
     /// Keeps track of induction variable names.
     induction_vars: FxHashMap<ir::IndVarId, Operand<'a>>,
+    /// Keeps track of accesses variable names.
+    accesses: FxHashMap<ir::AccessId, Operand<'a>>,
 }
 
 /// An interner, used to convert owned objects into a long-lived borrowed version.
@@ -143,6 +145,7 @@ impl<'a> NameMap<'a> {
             side_effect_guard: None,
             expr_to_operand: Default::default(),
             induction_vars: Default::default(),
+            accesses: Default::default(),
         };
 
         // Setup induction variables.
@@ -162,9 +165,16 @@ impl<'a> NameMap<'a> {
                 induction_vars.insert(var_id, operand);
             }
 
+            let mut accesses = FxHashMap::default();
+            for &(aid, ref expr) in function.accesses() {
+                let operand = builder.to_operand(expr);
+                accesses.insert(aid, operand);
+            }
+
             let expr_to_operand = builder.finish();
             name_map.expr_to_operand = expr_to_operand;
             name_map.induction_vars = induction_vars;
+            name_map.accesses = accesses;
         }
 
         // Setup the name of variables holding instruction results.
@@ -201,6 +211,10 @@ impl<'a> NameMap<'a> {
 
     pub fn name_induction_var(&self, ind_var_id: ir::IndVarId) -> llir::Operand<'a> {
         self.induction_vars[&ind_var_id].clone()
+    }
+
+    pub fn name_access(&self, aid: ir::AccessId) -> llir::Operand<'a> {
+        self.accesses[&aid].clone()
     }
 
     /// Asigns a name to an operand.
@@ -240,6 +254,7 @@ impl<'a> NameMap<'a> {
             ir::Operand::Variable(val_id, _t) => {
                 (*self.variables[val_id].get_name(&indexes)).into()
             }
+            ir::Operand::ComputedAddress(aid, _t) => self.name_access(*aid),
         }
     }
 

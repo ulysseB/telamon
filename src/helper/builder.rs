@@ -343,6 +343,25 @@ impl Builder {
         }
     }
 
+    pub fn with_tiled_dims<I, F, T>(&mut self, tilings: I, body_fn: F) -> T
+    where
+        I: IntoIterator<Item = (ir::Size, TilingPattern)>,
+        F: FnOnce(&[LogicalDim], &mut Self) -> T,
+    {
+        let dims: Vec<_> = tilings
+            .into_iter()
+            .map(|(size, tiling)| self.open_tiled_dim(size, tiling))
+            .collect();
+
+        let result = body_fn(&dims, self);
+
+        for dim in &dims {
+            self.close_dim(dim);
+        }
+
+        result
+    }
+
     /// Returns a constant size.
     pub fn cst_size(&self, size: u32) -> ir::Size {
         ir::Size::new_const(size)
@@ -480,6 +499,15 @@ impl Builder {
             .params
             .iter()
             .find(|p| p.name == param))
+    }
+
+    pub fn new_access(
+        &mut self,
+        name: &str,
+        strides: Vec<(ir::IndexExpr, ir::Size)>,
+    ) -> ir::AccessId {
+        let param = self.find_param(name).clone();
+        self.function.accesses_mut().add(param, strides)
     }
 
     /// Returns a reference to the function being built.
