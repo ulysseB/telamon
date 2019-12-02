@@ -3,7 +3,6 @@ use itertools::Itertools;
 use std::fmt::Write as WriteFmt;
 use telamon::codegen::*;
 use telamon::ir::Type;
-use telamon::search_space::{DimKind, Domain};
 use telamon_c::C99Display as _;
 use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.

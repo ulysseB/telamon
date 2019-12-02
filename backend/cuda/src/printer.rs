@@ -7,7 +7,6 @@ use utils::*;
 use itertools::Itertools;
 use telamon::codegen::*;
 use telamon::ir::{self, Type};
-use telamon::search_space::{DimKind, Domain};
 
 use crate::{Gpu, NameGenerator};
 
