@@ -3,7 +3,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use telamon::helper::tensor::*;
 use telamon::helper::{AutoOperand, Builder, Reduce};
-use telamon::ir;
+use telamon::ir::{self, IrDisplay as _};
 
 /// Multiplies a matrix `lhs` with a vector `rhs`
 pub fn matrix_vector_multiply(
@@ -49,8 +49,19 @@ pub fn matrix_matrix_multiply(
     lhs: &VirtualTensor,
     rhs: &VirtualTensor,
 ) -> VirtualTensor {
-    assert!(lhs.num_dims() == 2 && rhs.num_dims() == 2);
-    assert!(lhs[lhs.num_dims() - 1].size_eq(&rhs[0], builder.function()));
+    assert!(
+        lhs.num_dims() == 2 && rhs.num_dims() == 2,
+        "expected 2d tensors; got {} and {}",
+        lhs.shape().display(builder.function()),
+        rhs.shape().display(builder.function()),
+    );
+
+    assert!(
+        lhs[lhs.num_dims() - 1].size_eq(&rhs[0], builder.function()),
+        "common dimension must match: {} and {}",
+        lhs.shape().display(builder.function()),
+        rhs.shape().display(builder.function()),
+    );
 
     // Assume (m x k) . (k x n) multiplication -> Result: (m x n)
     let m = &lhs[0];

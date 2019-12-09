@@ -207,6 +207,10 @@ pub enum ParamVal {
     External(Arc<ir::Parameter>, ir::Type),
     /// A tiled dimension size computed on the host.
     Size(codegen::Size),
+    /// Magic constant for efficient division, computed on the host
+    DivMagic(codegen::Size, ir::Type),
+    /// Shift constant for efficient division, computed on the host
+    DivShift(codegen::Size, ir::Type),
     /// A pointer to a global memory block, allocated by the wrapper.
     GlobalMem(ir::MemId, codegen::Size, ir::Type),
 }
@@ -234,10 +238,23 @@ impl ParamVal {
         }
     }
 
+    pub fn from_div_size(size: &codegen::Size) -> Vec<Self> {
+        match size.dividend() {
+            [] => Vec::new(),
+            _ => vec![
+                ParamVal::DivMagic(size.clone(), ir::Type::I(32)),
+                ParamVal::DivShift(size.clone(), ir::Type::I(32)),
+            ],
+        }
+    }
+
     /// Returns the type of the parameter.
     pub fn t(&self) -> ir::Type {
         match *self {
-            ParamVal::External(_, t) | ParamVal::GlobalMem(.., t) => t,
+            ParamVal::External(_, t)
+            | ParamVal::GlobalMem(.., t)
+            | ParamVal::DivMagic(_, t)
+            | ParamVal::DivShift(_, t) => t,
             ParamVal::Size(_) => ir::Type::I(32),
         }
     }
@@ -246,7 +263,7 @@ impl ParamVal {
         match *self {
             ParamVal::External(ref p, _) => p.elem_t,
             ParamVal::GlobalMem(_, _, elem_t) => Some(elem_t),
-            ParamVal::Size(_) => None,
+            ParamVal::Size(_) | ParamVal::DivMagic(..) | ParamVal::DivShift(..) => None,
         }
     }
 
@@ -255,6 +272,8 @@ impl ParamVal {
         match *self {
             ParamVal::External(ref p, _) => ParamValKey::External(&**p),
             ParamVal::Size(ref s) => ParamValKey::Size(s),
+            ParamVal::DivMagic(ref s, t) => ParamValKey::DivMagic(s, t),
+            ParamVal::DivShift(ref s, t) => ParamValKey::DivShift(s, t),
             ParamVal::GlobalMem(mem, ..) => ParamValKey::GlobalMem(mem),
         }
     }
@@ -267,6 +286,8 @@ hash_from_key!(ParamVal, ParamVal::key);
 pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
     Size(&'a codegen::Size),
+    DivMagic(&'a codegen::Size, ir::Type),
+    DivShift(&'a codegen::Size, ir::Type),
     GlobalMem(ir::MemId),
 }
 
@@ -275,6 +296,8 @@ impl fmt::Display for ParamValKey<'_> {
         match self {
             ParamValKey::External(p) => fmt.write_str(&p.name),
             ParamValKey::Size(size) => fmt::Display::fmt(size, fmt),
+            ParamValKey::DivMagic(size, t) => write!(fmt, "div_magic::<{}>({})", t, size),
+            ParamValKey::DivShift(size, t) => write!(fmt, "div_shift::<{}>({})", t, size),
             ParamValKey::GlobalMem(memid) => write!(fmt, "pointer to {}", memid),
         }
     }
@@ -285,6 +308,12 @@ impl codegen::IdentDisplay for ParamValKey<'_> {
         match *self {
             ParamValKey::External(p) => fmt.write_str(&p.name),
             ParamValKey::Size(size) => codegen::IdentDisplay::fmt(size, fmt),
+            ParamValKey::DivMagic(size, t) => {
+                write!(fmt, "_{}_magic_{}", t.ident(), size.ident())
+            }
+            ParamValKey::DivShift(size, t) => {
+                write!(fmt, "_{}_shift_{}", t.ident(), size.ident())
+            }
             ParamValKey::GlobalMem(mem) => write!(fmt, "_gbl_mem_{}", mem.0),
         }
     }

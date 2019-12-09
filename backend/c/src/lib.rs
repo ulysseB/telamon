@@ -123,6 +123,7 @@ impl C99Display for llir::UnOp {
             UnOp::Exp { t: ir::Type::F(32) } => write!(fmt, "expf"),
             UnOp::Exp { .. } => panic!("{}: non-atomic C99 instruction", self),
             UnOp::Not { .. } => write!(fmt, "~"),
+            UnOp::Neg { .. } => write!(fmt, "-"),
         }
     }
 }
@@ -291,7 +292,7 @@ impl C99Display for llir::Instruction<'_> {
                 a = a.c99(),
                 b = b.c99()
             ),
-            Ternary(llir::TernOp::SetAnd { op, arg_t }, d, [a, b, c]) => write!(
+            Ternary(llir::TernOp::SetAnd { op, arg_t: _ }, d, [a, b, c]) => write!(
                 fmt,
                 "{d} = ({a} {op} {b}) && {c}",
                 op = op.c99(),

@@ -1,12 +1,13 @@
 //! Utilities to allocate and operate on tensors.
 use crate::device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
 use crate::helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
-use crate::ir;
+use crate::ir::{self, IntoIndexExpr as _};
 use crate::search_space::InstFlag;
 use ::ndarray::{self, ArrayD};
 use itertools::Itertools;
 use std;
 use std::sync::Arc;
+use std::{fmt, ops};
 use utils::*;
 
 use log::trace;
@@ -56,6 +57,50 @@ impl<'a> From<u32> for DimSize<'a> {
             params: vec![],
             max_size: size,
         }
+    }
+}
+
+impl<'a, 'b, 'c: 'a> ops::MulAssign<&'b DimSize<'c>> for DimSize<'a> {
+    fn mul_assign(&mut self, other: &DimSize<'c>) {
+        self.factor *= other.factor;
+        self.params.extend(other.params.iter().copied());
+        self.max_size *= other.max_size;
+    }
+}
+
+impl<'a, 'b: 'a> ops::MulAssign<DimSize<'b>> for DimSize<'a> {
+    fn mul_assign(&mut self, other: DimSize<'b>) {
+        *self *= &other;
+    }
+}
+
+impl<'a> ops::MulAssign<u32> for DimSize<'a> {
+    fn mul_assign(&mut self, other: u32) {
+        self.factor *= other;
+        self.max_size *= other;
+    }
+}
+
+impl<'a, 'b, T> ops::Mul<T> for &'b DimSize<'a>
+where
+    DimSize<'a>: ops::MulAssign<T>,
+{
+    type Output = DimSize<'a>;
+
+    fn mul(self, other: T) -> Self::Output {
+        self.clone() * other
+    }
+}
+
+impl<'a, T> ops::Mul<T> for DimSize<'a>
+where
+    DimSize<'a>: ops::MulAssign<T>,
+{
+    type Output = DimSize<'a>;
+
+    fn mul(mut self, other: T) -> Self::Output {
+        self *= other;
+        self
     }
 }
 
@@ -343,6 +388,43 @@ impl VirtualTensor {
         VirtualTensor { inst, dims }
     }
 
+    /// Permutes the dimensions of a VirtualTensor.
+    ///
+    /// The `axes` argument follows NumPy's `nd.transpose` API, which is the inverse of the
+    /// mathematical notation for permutations.  If the old tensor has shape `shape`, the resulting
+    /// tensor has the following shape:
+    ///
+    ///     [shape[axes[0]], shape[axes[1]], ..., shape[axes[n]]]
+    pub fn transpose(&self, axes: &[usize]) -> Self {
+        assert_eq!(self.dims.len(), axes.len(), "axes don't match tensor");
+
+        let dims = axes
+            .iter()
+            .map({
+                let mut seen = (0..self.dims.len()).map(|_| false).collect::<Vec<_>>();
+                move |&ix| {
+                    assert!(
+                        ix < self.dims.len(),
+                        "axis {} is out of bounds for tensor of rank {}",
+                        ix,
+                        self.dims.len()
+                    );
+                    assert!(
+                        !std::mem::replace(&mut seen[ix], true),
+                        "repeated axis in transpose"
+                    );
+
+                    self.dims[ix].clone()
+                }
+            })
+            .collect();
+
+        VirtualTensor {
+            inst: self.inst,
+            dims,
+        }
+    }
+
     /// Creates an operand that yeilds the values of the tensor in the given loop nest.
     pub fn dim_map(
         &self,
@@ -352,6 +434,69 @@ impl VirtualTensor {
     ) -> ir::Operand<()> {
         let mapping = self.dims.iter().zip_eq(dims.iter().cloned()).collect_vec();
         builder.dim_map(self.inst, &mapping, scope)
+    }
+
+    pub fn store_packed<S, F>(
+        &self,
+        tensor: &Tensor<S>,
+        packed: Vec<Vec<ir::Size>>,
+        packing_fn: F,
+        builder: &mut Builder,
+    ) -> VirtualTensor
+    where
+        S: ScalarArgument,
+        F: FnOnce(Vec<ir::IndexExpr>) -> Vec<ir::IndexExpr>,
+    {
+        assert!(!tensor.read_only, "Can't write to a read-only tensor");
+        assert_eq!(self.dims.len(), packed.len());
+
+        let new_dims = self
+            .dims
+            .iter()
+            .map(|dim| builder.open_mapped_dim(dim))
+            .collect::<Vec<_>>();
+
+        let unpacked = new_dims
+            .iter()
+            .zip(packed)
+            .flat_map(|(dim, packed)| dim.id().into_index_expr().delinearize(packed))
+            .collect::<Vec<_>>();
+        let repacked = packing_fn(unpacked);
+
+        assert_eq!(repacked.len(), tensor.iter_dims.len());
+
+        let ptr = builder.new_access(
+            tensor.name,
+            tensor
+                .iter_dims
+                .iter()
+                .zip(repacked)
+                .map(|(sizestride, expr)| {
+                    let (_size, stride) = sizestride;
+                    (expr, stride.to_ir_size(builder))
+                })
+                .collect(),
+            None,
+        );
+        assert_eq!(
+            builder.function().accesses()[ptr].base().elem_t,
+            Some(S::t()),
+            "Tensor store does not match declared type"
+        );
+
+        let pattern =
+            builder.function().accesses()[ptr].access_pattern(builder.function());
+
+        let inst = builder.st(&ptr, &self.inst, pattern);
+
+        for dim in &new_dims {
+            builder.close_dim(dim);
+        }
+
+        VirtualTensor {
+            inst,
+            dims: new_dims,
+        }
     }
 
     /// Stores the `VirtualTensor` in memory. Stores contiguously without taking the
@@ -404,13 +549,14 @@ impl VirtualTensor {
             .map(|dim| builder.open_mapped_dim(dim))
             .collect_vec();
         let (ptr, pat) = {
-            let new_dims = new_dims.iter().collect_vec();
+            let new_dims = new_dims.iter().collect::<Vec<_>>();
             builder.tensor_access(&tensor.name, None, S::t(), &new_dims)
         };
         let inst = builder.st(&ptr, &self.inst, pat);
         for dim in &new_dims {
             builder.close_dim(dim);
         }
+
         VirtualTensor {
             inst,
             dims: new_dims,
@@ -441,6 +587,10 @@ impl VirtualTensor {
     pub fn iter(&self) -> std::slice::Iter<'_, LogicalDim> {
         self.into_iter()
     }
+
+    pub fn shape(&'_ self) -> VirtualTensorShape<'_> {
+        VirtualTensorShape { shape: &self.dims }
+    }
 }
 
 impl std::ops::Index<usize> for VirtualTensor {
@@ -457,5 +607,47 @@ impl<'a> IntoIterator for &'a VirtualTensor {
 
     fn into_iter(self) -> Self::IntoIter {
         self.dims.iter()
+    }
+}
+
+pub struct VirtualTensorShape<'a> {
+    shape: &'a [LogicalDim],
+}
+
+impl<'a> VirtualTensorShape<'a> {
+    pub fn iter(&self) -> std::slice::Iter<'_, LogicalDim> {
+        self.shape.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.shape.len()
+    }
+}
+
+impl ops::Index<usize> for VirtualTensorShape<'_> {
+    type Output = LogicalDim;
+
+    fn index(&self, idx: usize) -> &Self::Output {
+        &self.shape[idx]
+    }
+}
+
+impl<'a, 'b> IntoIterator for &'a VirtualTensorShape<'b> {
+    type Item = &'a LogicalDim;
+
+    type IntoIter = std::slice::Iter<'a, LogicalDim>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, L> ir::IrDisplay<L> for VirtualTensorShape<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter, function: &ir::Function<L>) -> fmt::Result {
+        write!(
+            fmt,
+            "({})",
+            self.shape.iter().map(|dim| dim.size(function)).format(", ")
+        )
     }
 }

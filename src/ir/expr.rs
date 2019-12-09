@@ -21,7 +21,19 @@ pub enum IndexExpr {
     ///
     /// This is used for the `p + r` expression in convolutions.
     Sum(i32, Vec<IndexExpr>),
+    /// A computed size.
+    //
+    // TODO(bclement): Technically this supersedes Parameter...
     Size(Size),
+
+    /// Tuple projection.
+    Proj(Arc<TupleExpr>, usize),
+}
+
+#[derive(Debug, Clone)]
+pub enum TupleExpr {
+    /// Delinearization
+    Delinearize(IndexExpr, Vec<Size>),
 }
 
 #[derive(Debug, Clone)]
@@ -116,6 +128,33 @@ impl<L> IrDisplay<L> for IndexExpr {
                 cst,
                 exprs.iter().map(|e| e.display(function)).format(" + ")
             ),
+            IndexExpr::Proj(tuple, idx) => {
+                write!(fmt, "{}.{}", tuple.display(function), idx)
+            }
+        }
+    }
+}
+
+impl<L> IrDisplay<L> for TupleExpr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>, function: &Function<L>) -> fmt::Result {
+        match self {
+            TupleExpr::Delinearize(expr, sizes) => write!(
+                fmt,
+                "({} :: ({}))",
+                expr.display(function),
+                sizes.iter().format(", ")
+            ),
+        }
+    }
+}
+
+impl TupleExpr {
+    fn collect_logical_dims<S: BuildHasher>(
+        &self,
+        logical_dims: &mut HashSet<LogicalDimId, S>,
+    ) {
+        match self {
+            TupleExpr::Delinearize(expr, _) => expr.collect_logical_dims(logical_dims),
         }
     }
 }
@@ -136,7 +175,14 @@ impl IndexExpr {
                     expr.collect_logical_dims(logical_dims)
                 }
             }
+            IndexExpr::Proj(tuple, _) => tuple.collect_logical_dims(logical_dims),
         }
+    }
+
+    pub fn logical_dims(&self) -> impl Iterator<Item = LogicalDimId> + '_ {
+        let mut logical_dims = FxHashSet::default();
+        self.collect_logical_dims(&mut logical_dims);
+        logical_dims.into_iter()
     }
 
     pub fn as_logical_dim(&self) -> Option<LogicalDimId> {
@@ -144,6 +190,20 @@ impl IndexExpr {
             IndexExpr::LogicalDim(id) => Some(*id),
             _ => None,
         }
+    }
+
+    pub fn delinearize(self, sizes: Vec<Size>) -> Vec<Self> {
+        assert!(!sizes.is_empty());
+
+        if sizes.len() == 1 {
+            return vec![self];
+        }
+
+        let len = sizes.len();
+        let delinearize = Arc::new(TupleExpr::Delinearize(self, sizes));
+        (0..len)
+            .map(|idx| IndexExpr::Proj(delinearize.clone(), idx))
+            .collect()
     }
 
     pub fn in_range<T: IntoIndexExpr>(self, range: ops::Range<T>) -> IndexPredicate {
@@ -161,6 +221,12 @@ pub trait IntoIndexExpr {
 impl IntoIndexExpr for IndexExpr {
     fn into_index_expr(self) -> IndexExpr {
         self
+    }
+}
+
+impl IntoIndexExpr for &'_ IndexExpr {
+    fn into_index_expr(self) -> IndexExpr {
+        self.clone()
     }
 }
 
@@ -206,6 +272,17 @@ impl<Rhs: IntoIndexExpr> ops::Add<Rhs> for IndexExpr {
             }
             (lhs, rhs) => IndexExpr::Sum(0, vec![lhs, rhs]),
         }
+    }
+}
+
+impl<Rhs> ops::Add<Rhs> for &'_ IndexExpr
+where
+    IndexExpr: ops::Add<Rhs>,
+{
+    type Output = <IndexExpr as ops::Add<Rhs>>::Output;
+
+    fn add(self, other: Rhs) -> Self::Output {
+        self.clone() + other
     }
 }
 
@@ -268,35 +345,54 @@ impl Access {
         let elem_size = self.base.elem_t.unwrap().len_byte().unwrap();
         let mem_id = None;
         let mut dims = FxHashMap::default();
+        let mut unknown_dims = FxHashSet::default();
         for (expr, stride) in &self.strides {
             if let Some(id) = expr.as_logical_dim() {
                 let logical_dim = function.logical_dim(id);
-                // TODO: dimensions could be in incorrect order. Maybe.
                 let mut stride = super::PartialSize::from(stride * elem_size);
                 for did in logical_dim.dimensions() {
                     let dim = function.dim(did);
 
-                    if dims.insert(did, stride.clone()).is_some() {
+                    if unknown_dims.contains(&did)
+                        || dims.insert(did, stride.clone()).is_some()
+                    {
                         warn!(
-                            "Unknown access pattern: multiple strides for dimension {}",
-                            did
+                            "Unknown access pattern for {}: multiple strides for dimension {}",
+                            self.display(function), did
                         );
-                        return AccessPattern::Unknown(mem_id);
+
+                        unknown_dims.insert(did);
+                        dims.remove(&did);
+                        // return AccessPattern::Unknown(mem_id);
                     }
 
                     stride *= dim.size();
                 }
             } else {
                 warn!(
-                    "Unknown access pattern: complex index expression `{}` with stride `{}`",
-                    expr.display(function), stride
+                    "Unknown access pattern for {}: complex index expression `{}` with stride `{}`",
+                    self.display(function), expr.display(function), stride
                 );
-                return AccessPattern::Unknown(mem_id);
+
+                for lid in expr.logical_dims() {
+                    for did in function.logical_dim(lid).dimensions() {
+                        dims.remove(&did);
+                        unknown_dims.insert(did);
+                    }
+                }
+
+                // return AccessPattern::Unknown(mem_id);
             }
         }
-        let ap = AccessPattern::Tensor { mem_id, dims };
-        trace!("Tensor access `{}` for `{}`", ap, self.display(function));
-        ap
+
+        if dims.is_empty() {
+            trace!("Unknown access for `{}`", self.display(function));
+            AccessPattern::Unknown(mem_id)
+        } else {
+            let ap = AccessPattern::Tensor { mem_id, dims };
+            trace!("Tensor access `{}` for `{}`", ap, self.display(function));
+            ap
+        }
     }
 }
 

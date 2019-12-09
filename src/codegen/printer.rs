@@ -217,6 +217,10 @@ impl<'a, 'b> Printer<'a, 'b> {
         let idx = self.namer.name_index(dim.id());
         self.helper.print_move(idx, 0i32.int_literal());
 
+        for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
+            self.helper.print_inst(instruction.clone());
+        }
+
         let loop_label = self.namer.gen_label("LOOP");
         self.helper.inst_printer.print_label(loop_label);
 
@@ -249,6 +253,13 @@ impl<'a, 'b> Printer<'a, 'b> {
     /// Prints an unroll loop - loop without jumps
     fn unroll_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &'b [Cfg<'b>]) {
         let reg = self.namer.name_index(dim.id());
+
+        self.helper
+            .print_inst(llir::Instruction::mov(reg, 0i32.int_literal()).unwrap());
+
+        for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
+            self.helper.print_inst(instruction.clone());
+        }
 
         for i in 0..dim.size().as_int().unwrap() {
             self.namer.set_current_index(dim, i);

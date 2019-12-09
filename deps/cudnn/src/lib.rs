@@ -231,7 +231,7 @@ impl Drop for CudnnHandle {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TensorFormat {
     Nchw,
     Nhwc,
@@ -250,7 +250,7 @@ impl TensorFormat {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DataType {
     Float,
     Double,

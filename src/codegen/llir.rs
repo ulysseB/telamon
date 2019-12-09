@@ -327,6 +327,7 @@ pub enum UnOp {
     // Natural exponential
     Exp { t: ir::Type },
     Not { t: ir::Type },
+    Neg { t: ir::Type },
 }
 
 impl fmt::Display for UnOp {
@@ -336,6 +337,7 @@ impl fmt::Display for UnOp {
             UnOp::Cast { src_t, dst_t } => write!(fmt, "cast.{}.{}", dst_t, src_t),
             UnOp::Exp { t } => write!(fmt, "exp.{}", t),
             UnOp::Not { t } => write!(fmt, "not.{}", t),
+            UnOp::Neg { t } => write!(fmt, "neg.{}", t),
         }
     }
 }
@@ -365,7 +367,8 @@ impl UnOp {
             UnOp::Move { t }
             | UnOp::Cast { src_t: t, .. }
             | UnOp::Exp { t }
-            | UnOp::Not { t } => [t],
+            | UnOp::Not { t }
+            | UnOp::Neg { t } => [t],
         }
     }
 
@@ -375,7 +378,8 @@ impl UnOp {
             UnOp::Move { t }
             | UnOp::Cast { dst_t: t, .. }
             | UnOp::Exp { t }
-            | UnOp::Not { t } => t,
+            | UnOp::Not { t }
+            | UnOp::Neg { t } => t,
         }
     }
 
@@ -430,6 +434,13 @@ impl UnOp {
                 .chain(std::iter::once(ir::Type::I(1))),
         )
         .map(|t| UnOp::Not { t })?)
+    }
+
+    pub fn infer_neg(
+        d: Option<ir::Type>,
+        a: [ir::Type; 1],
+    ) -> Result<Self, InstructionError> {
+        Ok(Self::unify_type(d, a).map(|t| UnOp::Neg { t })?)
     }
 }
 
@@ -981,6 +992,7 @@ impl<'a> Instruction<'a> {
         cast[dst_t: ir::Type](d, a), UnOp::infer_cast, unary;
         exp(d, a), UnOp::infer_exp, unary;
         not(d, a), UnOp::infer_not, unary;
+        neg(d, a), UnOp::infer_neg, unary;
     }
 
     /// Create a new binary instruction.
@@ -1187,6 +1199,7 @@ impl<'a> Instruction<'a> {
 /// A predicated instruction, wrapping both an instruction and optional predicate.
 ///
 /// The predicate must be a register to ensure that it can be efficiently printed in all backends.
+#[derive(Debug, Clone)]
 pub struct PredicatedInstruction<'a> {
     pub predicate: Option<Register<'a>>,
     pub instruction: Instruction<'a>,

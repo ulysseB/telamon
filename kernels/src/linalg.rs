@@ -1,11 +1,11 @@
 //! Linera algebra kernels.
 #![allow(clippy::many_single_char_names)]
+use std::convert::TryFrom;
 use std::sync::Arc;
 
 pub use crate::compose::ActivationFunction;
 use crate::compose::{
-    conv2d, matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul,
-    tensor_mad,
+    matrix_matrix_multiply, matrix_vector_multiply, tensor_elementwise_mul, tensor_mad,
 };
 use crate::kernel::Kernel;
 use crate::{build_candidate, check_output, create_size, infer_tiling, Scalar};
@@ -442,6 +442,152 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum DataFormat {
+    Nchw,
+    Nhwc,
+}
+
+impl DataFormat {
+    pub fn convert_from_nchw<T>(self, n: T, c: T, h: T, w: T) -> [T; 4] {
+        match self {
+            DataFormat::Nchw => [n, c, h, w],
+            DataFormat::Nhwc => [n, h, w, c],
+        }
+    }
+}
+
+impl std::fmt::Display for DataFormat {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataFormat::Nchw => fmt.write_str("NCHW"),
+            DataFormat::Nhwc => fmt.write_str("NHWC"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseDataFormatError {
+    source: String,
+}
+
+impl std::fmt::Display for ParseDataFormatError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "invalid data format: {:?}", self.source)
+    }
+}
+
+impl std::error::Error for ParseDataFormatError {}
+
+impl std::str::FromStr for DataFormat {
+    type Err = ParseDataFormatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match &s.trim().to_uppercase()[..] {
+            "NCHW" => DataFormat::Nchw,
+            "NHWC" => DataFormat::Nhwc,
+            _ => {
+                return Err(ParseDataFormatError {
+                    source: s.to_string(),
+                })
+            }
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
+pub enum FilterFormat {
+    Kcrs,
+    Krsc,
+}
+
+impl FilterFormat {
+    pub fn default_for_data_format(format: DataFormat) -> Self {
+        match format {
+            DataFormat::Nchw => FilterFormat::Kcrs,
+            DataFormat::Nhwc => FilterFormat::Krsc,
+        }
+    }
+
+    pub fn convert_to_crs<T>(self, crs: [T; 3]) -> [T; 3] {
+        match (self, crs) {
+            (FilterFormat::Kcrs, [c, r, s]) => [c, r, s],
+            (FilterFormat::Krsc, [r, s, c]) => [c, r, s],
+        }
+    }
+
+    pub fn convert_from_crs<T>(self, c: T, r: T, s: T) -> [T; 3] {
+        match self {
+            FilterFormat::Kcrs => [c, r, s],
+            FilterFormat::Krsc => [r, s, c],
+        }
+    }
+
+    pub fn convert_from_kcrs<T>(self, k: T, c: T, r: T, s: T) -> [T; 4] {
+        match self {
+            FilterFormat::Kcrs => [k, c, r, s],
+            FilterFormat::Krsc => [k, r, s, c],
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub enum PadMode {
+    Valid,
+    Same,
+    Full,
+}
+
+impl PadMode {
+    pub fn value(self, f: i32) -> i32 {
+        match self {
+            PadMode::Valid => 0,
+            PadMode::Same => f / 2,
+            PadMode::Full => f - 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsePadModeError {
+    source: String,
+}
+
+impl std::fmt::Display for ParsePadModeError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "invalid padding mode: {:?}", self.source,)
+    }
+}
+
+impl std::error::Error for ParsePadModeError {}
+
+impl std::str::FromStr for PadMode {
+    type Err = ParsePadModeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match &s.trim().to_uppercase()[..] {
+            "VALID" => PadMode::Valid,
+            "SAME" => PadMode::Same,
+            "FULL" => PadMode::Full,
+            _ => {
+                return Err(ParsePadModeError {
+                    source: s.to_string(),
+                })
+            }
+        })
+    }
+}
+
+impl std::fmt::Display for PadMode {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PadMode::Valid => fmt.write_str("VALID"),
+            PadMode::Same => fmt.write_str("SAME"),
+            PadMode::Full => fmt.write_str("FULL"),
+        }
+    }
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Conv2dP {
     pub batch: i32,
@@ -451,17 +597,17 @@ pub struct Conv2dP {
     pub out_channels: i32,
     pub filter_width: i32,
     pub filter_height: i32,
+    pub pad_mode: PadMode,
+    pub data_format: DataFormat,
 }
 
 impl Conv2dP {
     pub fn pad_h(&self) -> i32 {
-        0
-        //self.filter_height / 2
+        self.pad_mode.value(self.filter_height)
     }
 
     pub fn pad_w(&self) -> i32 {
-        0
-        //self.filter_width / 2
+        self.pad_mode.value(self.filter_width)
     }
 
     pub fn out_height(&self) -> i32 {
@@ -472,8 +618,34 @@ impl Conv2dP {
         self.in_width - self.filter_width + 1 + 2 * self.pad_w()
     }
 
-    fn output_shape(&self) -> (usize, usize, usize, usize) {
-        (
+    pub fn data_format(&self) -> DataFormat {
+        self.data_format
+    }
+
+    pub fn filter_format(&self) -> FilterFormat {
+        FilterFormat::default_for_data_format(self.data_format())
+    }
+
+    fn filter_shape(&self) -> [usize; 4] {
+        self.filter_format().convert_from_kcrs(
+            self.out_channels as usize,
+            self.in_channels as usize,
+            self.filter_height as usize,
+            self.filter_width as usize,
+        )
+    }
+
+    fn input_shape(&self) -> [usize; 4] {
+        self.data_format().convert_from_nchw(
+            self.batch as usize,
+            self.in_channels as usize,
+            self.in_height as usize,
+            self.in_width as usize,
+        )
+    }
+
+    fn output_shape(&self) -> [usize; 4] {
+        self.data_format().convert_from_nchw(
             self.batch as usize,
             self.out_channels as usize,
             self.out_height() as usize,
@@ -523,12 +695,22 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
         let p = create_size(params.out_height(), "p", true, builder);
         let q = create_size(params.out_width(), "q", true, builder);
 
-        let input_dims = vec![n.clone(), c.clone(), h.clone(), w.clone()];
-        let input = TensorBuilder::new("input", input_dims).finish(builder);
-        let filter_dims = vec![k.clone(), c.clone(), r.clone(), s.clone()];
-        let filter = TensorBuilder::new("filter", filter_dims).finish(builder);
-        let output_dims = vec![n.clone(), k.clone(), p.clone(), q.clone()];
-        let output = builder.tensor::<S>("output", output_dims, false);
+        let input_dims = params.data_format().convert_from_nchw(
+            n.clone(),
+            c.clone(),
+            h.clone(),
+            w.clone(),
+        );
+        let input = TensorBuilder::new("input", input_dims.to_vec()).finish(builder);
+        let filter_dims = [k.clone(), &c * &r * &s];
+        let filter = TensorBuilder::new("filter", filter_dims.to_vec()).finish(builder);
+        let output_dims = params.data_format().convert_from_nchw(
+            n.clone(),
+            k.clone(),
+            p.clone(),
+            q.clone(),
+        );
+        let output = builder.tensor::<S>("output", output_dims.to_vec(), false);
 
         Conv2d {
             params,
@@ -552,86 +734,139 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
         signature: Arc<ir::Signature>,
         ctx: &'b dyn device::Context,
     ) -> Vec<Candidate> {
-        let n_tiling = infer_tiling(self.params.batch, &None, &[32, 4]);
-        let p_tiling = infer_tiling(self.params.out_height(), &None, &[32, 4]);
-        let q_tiling = infer_tiling(self.params.out_width(), &None, &[32, 4]);
+        let npq = self.params.batch * self.params.out_height() * self.params.out_width();
+        let crs = self.params.in_channels
+            * self.params.filter_height
+            * self.params.filter_width;
+
+        let npq_tiling = infer_tiling(npq, &None, &[32, 4]);
+        let crs_tiling = infer_tiling(crs, &None, &[32]);
         let k_tiling = infer_tiling(self.params.out_channels, &None, &[32, 4]);
-        let c_tiling = infer_tiling(self.params.in_channels, &None, &[32, 4]);
-        let r_tiling = helper::TilingPattern::new_fixed(&[]);
-        let s_tiling = helper::TilingPattern::new_fixed(&[]);
 
         let mut builder = helper::Builder::new(signature, ctx.device());
 
+        let n_size = self.n.to_ir_size(&mut builder);
+        let p_size = self.p.to_ir_size(&mut builder);
+        let q_size = self.q.to_ir_size(&mut builder);
+        let c_size = self.c.to_ir_size(&mut builder);
+        let k_size = self.k.to_ir_size(&mut builder);
+        let r_size = self.r.to_ir_size(&mut builder);
+        let s_size = self.s.to_ir_size(&mut builder);
         let h_size = self.h.to_ir_size(&mut builder);
         let w_size = self.w.to_ir_size(&mut builder);
         let a = self.input.load_packed(
-            vec![
-                (self.n.clone(), n_tiling.clone()),
-                (self.p.clone(), p_tiling.clone()),
-                (self.q.clone(), q_tiling.clone()),
-                (self.c.clone(), c_tiling.clone()),
-                (self.r.clone(), r_tiling.clone()),
-                (self.s.clone(), s_tiling.clone()),
-            ],
+            [
+                (&self.n * &self.p * &self.q, npq_tiling.clone()),
+                (&self.c * &self.r * &self.s, crs_tiling.clone()),
+            ]
+            .to_vec(),
             |args| {
-                if let [n, p, q, c, r, s] = &args[..] {
-                    let h = p.clone() + r.clone() + (-self.params.pad_h());
-                    let w = q.clone() + s.clone() + (-self.params.pad_w());
-                    let predicate = h.clone().in_range(0u32.into()..h_size);
-                    let predicate = predicate & w.clone().in_range(0u32.into()..w_size);
-                    (vec![n.clone(), c.clone(), h, w], Some(predicate))
+                if let [npq, crs] = &args[..] {
+                    let npq = npq.clone().delinearize(vec![
+                        n_size.clone(),
+                        p_size.clone(),
+                        q_size.clone(),
+                    ]);
+                    if let [n, p, q] = &npq[..] {
+                        let crs = self.params.filter_format().convert_to_crs(
+                            <&'_ [_; 3]>::try_from(
+                                &crs.clone().delinearize(
+                                    self.params
+                                        .filter_format()
+                                        .convert_from_crs(
+                                            c_size.clone(),
+                                            r_size.clone(),
+                                            s_size.clone(),
+                                        )
+                                        .to_vec(),
+                                )[..],
+                            )
+                            .unwrap()
+                            .clone(),
+                        );
+                        if let [c, r, s] = &crs[..] {
+                            let h = p + r + (-self.params.pad_h());
+                            let w = q + s + (-self.params.pad_w());
+
+                            let predicate = h.clone().in_range(0u32.into()..h_size);
+                            let predicate =
+                                predicate & w.clone().in_range(0u32.into()..w_size);
+
+                            (
+                                self.params
+                                    .data_format()
+                                    .convert_from_nchw(n.clone(), c.clone(), h, w)
+                                    .to_vec(),
+                                Some(predicate),
+                            )
+                        } else {
+                            unreachable!()
+                        }
+                    } else {
+                        unreachable!()
+                    }
                 } else {
                     unreachable!()
                 }
             },
             &mut builder,
         );
-        let b = self
-            .filter
-            .load(vec![k_tiling, c_tiling, r_tiling, s_tiling], &mut builder);
+        let b = self.filter.load_packed(
+            [
+                (&self.c * &self.r * &self.s, crs_tiling.clone()),
+                (self.k.clone(), k_tiling.clone()),
+            ]
+            .to_vec(),
+            |args| {
+                if let [crs, k] = &args[..] {
+                    ([k.clone(), crs.clone()].to_vec(), None)
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
+        //.load(vec![k_tiling, crs_tiling], &mut builder)
+        //.transpose(&[1, 0]);
 
-        let ab = conv2d(&mut builder, &a, &b);
+        let ab = matrix_matrix_multiply(&mut builder, &a, &b);
 
-        // ab.store_packed(
-        //  &self.output,
-        //  vec![vec![n, p, q], vec![k]],
-        //  |[n, p, q, k]| vec![n, k, p, q],
-        //  &mut builder)
-        // ab.store_packed(|[n, p, q, k]| [n, k, p, q])
-        ab.store(&self.output, &mut builder);
+        // ab.store(&self.output, &mut builder);
+        ab.store_packed(
+            &self.output,
+            vec![vec![n_size, p_size, q_size], vec![k_size]],
+            |args| {
+                if let [n, p, q, k] = &args[..] {
+                    self.params
+                        .data_format()
+                        .convert_from_nchw(n.clone(), k.clone(), p.clone(), q.clone())
+                        .to_vec()
+                } else {
+                    unreachable!()
+                }
+            },
+            &mut builder,
+        );
 
         vec![build_candidate(builder.get(), ctx)]
     }
 
     fn get_expected_output(&self, context: &dyn device::Context) -> Self::ExpectedOutput {
-        let input_shape = (
-            self.params.batch as usize,
-            self.params.in_channels as usize,
-            self.params.in_height as usize,
-            self.params.in_width as usize,
-        );
-        let filter_shape = (
-            self.params.out_channels as usize,
-            self.params.in_channels as usize,
-            self.params.filter_height as usize,
-            self.params.filter_width as usize,
-        );
+        let input_shape = self.params.input_shape();
+        let filter_shape = self.params.filter_shape();
         let output_shape = self.params.output_shape();
 
         let input = self.input.read_to_host(context);
-        assert_eq!(
-            input.shape(),
-            &[input_shape.0, input_shape.1, input_shape.2, input_shape.3]
-        );
+        assert_eq!(input.shape(), &input_shape);
         let input = input.into_shape(input_shape).unwrap();
         let filter = self.filter.read_to_host(context);
         assert_eq!(
             filter.shape(),
             &[
-                filter_shape.0,
-                filter_shape.1,
-                filter_shape.2,
-                filter_shape.3,
+                self.params.out_channels as usize,
+                (self.params.in_channels
+                    * self.params.filter_width
+                    * self.params.filter_height) as usize
             ]
         );
         let filter = filter.into_shape(filter_shape).unwrap();
@@ -652,13 +887,21 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
                                         && h < self.params.in_height
                                         && w < self.params.in_width
                                     {
-                                        x += input[[n, c, h as usize, w as usize]]
-                                            * filter[[k, c, r, s]];
+                                        x += input[self
+                                            .params
+                                            .data_format()
+                                            .convert_from_nchw(
+                                                n, c, h as usize, w as usize,
+                                            )]
+                                            * filter[self
+                                                .params
+                                                .filter_format()
+                                                .convert_from_kcrs(k, c, r, s)];
                                     }
                                 }
                             }
                         }
-                        res[[n, k, p, q]] = x;
+                        res[self.params.data_format().convert_from_nchw(n, k, p, q)] = x;
                     }
                 }
             }
@@ -674,15 +917,7 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
     ) -> Result<(), String> {
         let output_shape = self.params.output_shape();
         let output = self.output.read_to_host(context);
-        assert_eq!(
-            output.shape(),
-            &[
-                output_shape.0,
-                output_shape.1,
-                output_shape.2,
-                output_shape.3
-            ]
-        );
+        assert_eq!(output.shape(), &output_shape);
 
         let output = output.into_shape(output_shape).unwrap();
         if let Err(invalid) = check_output(&output, expected) {

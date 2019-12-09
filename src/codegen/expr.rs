@@ -1,5 +1,7 @@
+use std::cmp;
 use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
+use std::hash;
 use std::sync::Arc;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -20,6 +22,8 @@ pub enum Expr {
     MemBlock(ir::MemId),
     // A dimension size.  This is a runtime constant.
     Size(Size),
+    // A signed constant value.
+    Constant(i32),
     // A dimension index.
     Dimension(ir::DimId),
     // A strided sum.  This is `base + sum(exprptr * size)`
@@ -47,6 +51,90 @@ pub enum Expr {
         start: ExprPtr,
         end: ExprPtr,
     },
+    Proj(TuplePtr, usize),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Tuple {
+    Delinearize { base: ExprPtr, sizes: Vec<Size> },
+}
+
+impl Tuple {
+    fn len(&self) -> usize {
+        match self {
+            Tuple::Delinearize { sizes, .. } => sizes.len(),
+        }
+    }
+
+    fn collect_host_values(
+        &self,
+        space: &SearchSpace,
+        merged_dimensions: &MergedDimensions<'_>,
+        host_values: &mut Vec<ParamVal>,
+    ) {
+        match self {
+            Tuple::Delinearize { base, sizes } => {
+                base.collect_host_values(space, merged_dimensions, host_values);
+
+                let mut div_by = Size::from(1);
+                for size in sizes.iter().skip(1).rev() {
+                    div_by *= size;
+                    host_values.extend(ParamVal::from_size(size));
+                    host_values.extend(ParamVal::from_div_size(&div_by));
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TuplePtr {
+    inner: Arc<Tuple>,
+    defined_at: Option<ir::DimId>,
+}
+
+impl TuplePtr {
+    fn id(&self) -> usize {
+        &*self.inner as *const Tuple as usize
+    }
+
+    pub fn new(inner: Arc<Tuple>, defined_at: Option<ir::DimId>) -> Self {
+        TuplePtr { inner, defined_at }
+    }
+}
+
+impl cmp::PartialEq for TuplePtr {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl cmp::Eq for TuplePtr {}
+
+impl hash::Hash for TuplePtr {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.id().hash(state);
+    }
+}
+
+impl cmp::Ord for TuplePtr {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.id().cmp(&other.id())
+    }
+}
+
+impl cmp::PartialOrd for TuplePtr {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::ops::Deref for TuplePtr {
+    type Target = Tuple;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -58,7 +146,7 @@ impl Expr {
     /// # Failure
     ///
     /// Fails when the expression is not constant.
-    pub fn try_to_u32(&self) -> Option<u32> {
+    pub fn try_to_i32(&self) -> Option<i32> {
         match self {
             Expr::Parameter(_)
             | Expr::StridedSum { .. }
@@ -66,19 +154,21 @@ impl Expr {
             | Expr::MemBlock(_)
             | Expr::Dimension(_)
             | Expr::And(_)
-            | Expr::InRange { .. } => None,
-            Expr::Size(size) => size.as_int(),
+            | Expr::InRange { .. }
+            | Expr::Proj(..) => None,
+            &Expr::Constant(c) => Some(c),
+            Expr::Size(size) => size.as_int().and_then(|u| i32::try_from(u).ok()),
         }
     }
 
     /// Returns whether this expression is constant and equal to `0`
     pub fn is_zero(&self) -> bool {
-        self.try_to_u32() == Some(0)
+        self.try_to_i32() == Some(0)
     }
 
     /// Returns  whether this expression is constant and equal to `1`
     pub fn is_one(&self) -> bool {
-        self.try_to_u32() == Some(1)
+        self.try_to_i32() == Some(1)
     }
 
     /// Returns whether this expression is a constant known at runtime.
@@ -90,8 +180,11 @@ impl Expr {
     /// and need not be at the same position across blocks (?).
     pub fn is_runtime_constant(&self) -> bool {
         match self {
-            Expr::Parameter(_) | Expr::Size(_) => true,
-            Expr::Dimension(_) | Expr::RollingSum { .. } | Expr::MemBlock(_) => false,
+            Expr::Parameter(_) | Expr::Size(_) | Expr::Constant(_) => true,
+            Expr::Dimension(_)
+            | Expr::RollingSum { .. }
+            | Expr::MemBlock(_)
+            | Expr::Proj(..) => false,
             Expr::StridedSum { base, elems, .. } => {
                 base.is_runtime_constant()
                     && elems.iter().all(|(expr, _)| expr.is_runtime_constant())
@@ -109,6 +202,7 @@ impl Expr {
         match self {
             Expr::Parameter(param) => param.t.bitwidth().unwrap() as u16,
             Expr::Size(_) => 32,
+            Expr::Constant(_) => 32,
             Expr::Dimension(_) => 32,
             Expr::MemBlock(_) => 32,
             Expr::StridedSum { base, .. } => base.bitwidth(),
@@ -116,6 +210,10 @@ impl Expr {
             // Predicates
             Expr::InRange { .. } => 1,
             Expr::And(_) => 1,
+            // Projection
+            Expr::Proj(tuple, _) => match &**tuple {
+                Tuple::Delinearize { base, .. } => base.bitwidth(),
+            },
         }
     }
 
@@ -134,6 +232,8 @@ impl Expr {
             Expr::MemBlock(_) => (),
 
             Expr::Size(size) => host_values.extend(ParamVal::from_size(size)),
+
+            Expr::Constant(_) => (),
 
             Expr::Dimension(_) => (),
 
@@ -178,6 +278,10 @@ impl Expr {
                     elem.collect_host_values(space, merged_dimensions, host_values);
                 }
             }
+
+            Expr::Proj(tuple, _index) => {
+                tuple.collect_host_values(space, merged_dimensions, host_values)
+            }
         }
     }
 
@@ -194,14 +298,25 @@ impl Expr {
 
 #[derive(Debug, Default, Clone)]
 pub struct ExprToOperand<'a> {
-    compute_exprs: FxHashMap<Option<ir::DimId>, Vec<llir::Instruction<'a>>>,
+    init_exprs: FxHashMap<ir::DimId, Vec<llir::Instruction<'a>>>,
+    compute_exprs: FxHashMap<Option<ir::DimId>, Vec<llir::PredicatedInstruction<'a>>>,
     update_exprs: FxHashMap<ir::DimId, Vec<llir::Instruction<'a>>>,
     reset_exprs: FxHashMap<ir::DimId, Vec<llir::Instruction<'a>>>,
     cache: FxHashMap<ExprPtr, llir::Operand<'a>>,
 }
 
 impl<'a> ExprToOperand<'a> {
-    pub fn compute_exprs(&self, dim: Option<ir::DimId>) -> &[llir::Instruction<'a>] {
+    pub fn init_exprs(&self, dim: ir::DimId) -> &[llir::Instruction<'a>] {
+        self.init_exprs
+            .get(&dim)
+            .map(|x| &x[..])
+            .unwrap_or_else(|| &[])
+    }
+
+    pub fn compute_exprs(
+        &self,
+        dim: Option<ir::DimId>,
+    ) -> &[llir::PredicatedInstruction<'a>] {
         self.compute_exprs
             .get(&dim)
             .map(|x| &x[..])
@@ -229,13 +344,29 @@ impl<'a> ExprToOperand<'a> {
 
 #[derive(Debug, Default)]
 pub struct ExprDispatch<'a> {
-    compute_exprs: FxHashMap<Option<ir::DimId>, Vec<llir::Instruction<'a>>>,
+    init_exprs: FxHashMap<ir::DimId, Vec<llir::Instruction<'a>>>,
+    compute_exprs: FxHashMap<Option<ir::DimId>, Vec<llir::PredicatedInstruction<'a>>>,
     update_exprs: FxHashMap<ir::DimId, Vec<llir::Instruction<'a>>>,
     reset_exprs: FxHashMap<ir::DimId, Vec<llir::Instruction<'a>>>,
 }
 
 impl<'a> ExprDispatch<'a> {
-    fn add_compute(&mut self, dim: Option<ir::DimId>, inst: llir::Instruction<'a>) {
+    fn add_init(&mut self, dim: ir::DimId, inst: llir::Instruction<'a>) {
+        trace!("init({}): {}", dim, inst);
+
+        self.init_exprs
+            .entry(dim)
+            .or_insert_with(Vec::new)
+            .push(inst);
+    }
+
+    fn add_compute(
+        &mut self,
+        dim: Option<ir::DimId>,
+        inst: impl Into<llir::PredicatedInstruction<'a>>,
+    ) {
+        let inst = inst.into();
+
         trace!(
             "compute({}): {} ",
             if let Some(dim) = dim {
@@ -277,6 +408,7 @@ pub struct ExprToOperandBuilder<'a, 'b> {
 
     dispatch: ExprDispatch<'b>,
     cache: FxHashMap<ExprPtr, llir::Operand<'b>>,
+    tuple_cache: FxHashMap<TuplePtr, Vec<llir::Operand<'b>>>,
 }
 
 impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
@@ -291,15 +423,154 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
 
             dispatch: Default::default(),
             cache: Default::default(),
+            tuple_cache: Default::default(),
         }
     }
 
     pub fn finish(self) -> ExprToOperand<'b> {
         ExprToOperand {
+            init_exprs: self.dispatch.init_exprs,
             compute_exprs: self.dispatch.compute_exprs,
             update_exprs: self.dispatch.update_exprs,
             reset_exprs: self.dispatch.reset_exprs,
             cache: self.cache,
+        }
+    }
+
+    fn tuple_to_operand(&mut self, tuple: &TuplePtr, index: usize) -> llir::Operand<'b> {
+        match self.tuple_cache.get(tuple) {
+            Some(operands) => operands[index].clone(),
+            None => {
+                let operands = match &**tuple {
+                    Tuple::Delinearize { base, sizes } => {
+                        let compute_at = base.defined_at;
+                        let base = self.to_operand(base);
+
+                        let mut registers = Vec::with_capacity(sizes.len());
+
+                        let mut div_by = Size::from(1);
+                        let mut prev = None;
+                        // Skip the first (outermost) size: we never need to actually use it in
+                        // division/modulos.  We get it back via `prev` at the end.
+                        for size in sizes.iter().skip(1).rev() {
+                            let mod_by = self.namer.name_size(&size, base.t());
+                            let neg_mod_by = self.namer.gen_name(base.t());
+                            self.dispatch.add_compute(
+                                None,
+                                llir::Instruction::neg(neg_mod_by, mod_by).unwrap(),
+                            );
+                            let neg_mod_by = neg_mod_by.into_operand();
+
+                            div_by *= size;
+
+                            let div_magic = self.namer.name_div_magic(&div_by, base.t());
+                            let div_shift = self.namer.name_div_shift(&div_by, base.t());
+
+                            let dst =
+                                prev.unwrap_or_else(|| self.namer.gen_name(base.t()));
+                            let next = self.namer.gen_name(base.t());
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::imad_high(
+                                    next,
+                                    base.clone(),
+                                    div_magic,
+                                    base.clone(),
+                                )
+                                .unwrap(),
+                            );
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::shr(
+                                    next,
+                                    next.into_operand(),
+                                    div_shift,
+                                )
+                                .unwrap(),
+                            );
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::imad_low(
+                                    dst,
+                                    next.into_operand(),
+                                    neg_mod_by,
+                                    prev.map(|prev| prev.into_operand())
+                                        .unwrap_or_else(|| base.clone()),
+                                )
+                                .unwrap(),
+                            );
+
+                            registers.push(dst);
+                            prev = Some(next)
+                        }
+
+                        registers.push(prev.unwrap_or_else(|| {
+                            let single = self.namer.gen_name(base.t());
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::mov(single, base.clone()).unwrap(),
+                            );
+                            single
+                        }));
+
+                        // We computed the last projection first so we need to flip it
+                        registers.reverse();
+                        assert_eq!(registers.len(), sizes.len());
+
+                        /*
+                        let p = self.namer.gen_name(ir::Type::I(1));
+                        let mut predicate = None;
+                        for (size, &cur) in sizes.iter().zip(&registers).skip(1).rev() {
+                            let size = self.namer.name_size(&size, base.t());
+
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::iadd(
+                                    cur,
+                                    cur.into_operand(),
+                                    1i32.int_literal(),
+                                )
+                                .unwrap()
+                                .predicated(predicate),
+                            );
+
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::set_ge(p, cur.into_operand(), size)
+                                    .unwrap(),
+                            );
+                            self.dispatch.add_compute(
+                                compute_at,
+                                llir::Instruction::mov(cur, 0i32.int_literal())
+                                    .unwrap()
+                                    .predicated(p),
+                            );
+
+                            predicate = Some(p);
+                        }
+
+                        self.dispatch.add_compute(
+                            compute_at,
+                            llir::Instruction::iadd(
+                                registers[0],
+                                registers[0].into_operand(),
+                                1i32.int_literal(),
+                            )
+                            .unwrap()
+                            .predicated(predicate),
+                        ); */
+
+                        registers
+                            .into_iter()
+                            .map(llir::Register::into_operand)
+                            .collect::<Vec<_>>()
+                    }
+                };
+
+                let operand = operands[index].clone();
+                self.tuple_cache.insert(tuple.clone(), operands);
+                operand
+            }
         }
     }
 
@@ -321,7 +592,11 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
                         self.namer.name_size(&size, ir::Type::I(expr.bitwidth()))
                     }
 
+                    &Expr::Constant(c) => c.int_literal(),
+
                     &Expr::Dimension(id) => self.namer.name_index(id).into_operand(),
+
+                    Expr::Proj(tuple, index) => self.tuple_to_operand(&*tuple, *index),
 
                     Expr::InRange { base, start, end } => {
                         let dst = self.namer.gen_name(ir::Type::I(1));
@@ -467,9 +742,6 @@ pub struct ExprPtr {
     defined_at: Option<ir::DimId>,
 }
 
-use std::cmp;
-use std::hash;
-
 impl cmp::PartialEq for ExprPtr {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
@@ -517,6 +789,7 @@ impl ExprPtr {
 pub struct ExprBuilder<'a> {
     space: &'a SearchSpace,
     cache: FxHashMap<Arc<Expr>, ExprPtr>,
+    tuple_cache: FxHashMap<Arc<Tuple>, TuplePtr>,
 }
 
 impl<'a> ExprBuilder<'a> {
@@ -524,7 +797,27 @@ impl<'a> ExprBuilder<'a> {
         ExprBuilder {
             space,
             cache: Default::default(),
+            tuple_cache: Default::default(),
         }
+    }
+
+    fn create_tuple(&mut self, tuple: Tuple) -> TuplePtr {
+        match self.tuple_cache.entry(Arc::new(tuple)) {
+            Entry::Occupied(occupied) => TuplePtr::clone(occupied.get()),
+            Entry::Vacant(vacant) => {
+                trace!("Creating tuple {:?}", vacant.key());
+
+                let defined_at = match &**vacant.key() {
+                    Tuple::Delinearize { base, .. } => base.defined_at,
+                };
+                let key = vacant.key().clone();
+                TuplePtr::clone(vacant.insert(TuplePtr::new(key, defined_at)))
+            }
+        }
+    }
+
+    pub fn proj(&mut self, tuple: TuplePtr, index: usize) -> ExprPtr {
+        self.create(Expr::Proj(tuple, index))
     }
 
     fn create(&mut self, expr: Expr) -> ExprPtr {
@@ -535,7 +828,10 @@ impl<'a> ExprBuilder<'a> {
                 trace!("Creating {:?}", vacant.key());
 
                 let defined_at = match &**vacant.key() {
-                    Expr::Parameter(_) | Expr::MemBlock(_) | Expr::Size(_) => None,
+                    Expr::Parameter(_)
+                    | Expr::MemBlock(_)
+                    | Expr::Size(_)
+                    | Expr::Constant(_) => None,
                     &Expr::Dimension(id) => {
                         if space
                             .domain()
@@ -590,6 +886,8 @@ impl<'a> ExprBuilder<'a> {
                         base.defined_at,
                         self.space.innermost(start.defined_at, end.defined_at),
                     ),
+
+                    Expr::Proj(tuple, _) => tuple.defined_at,
                 };
 
                 let key = vacant.key().clone();
@@ -600,7 +898,10 @@ impl<'a> ExprBuilder<'a> {
 
     fn is_thread_constant(&self, expr: &Expr) -> bool {
         match expr {
-            Expr::Parameter(_) | Expr::Size(_) | Expr::MemBlock(_) => true,
+            Expr::Parameter(_)
+            | Expr::Size(_)
+            | Expr::MemBlock(_)
+            | Expr::Constant(_) => true,
             &Expr::Dimension(dim) => !self
                 .space
                 .domain()
@@ -619,6 +920,13 @@ impl<'a> ExprBuilder<'a> {
                     && self.is_thread_constant(&**start)
                     && self.is_thread_constant(&**end)
             }
+            Expr::Proj(tuple, index) => self.is_tuple_thread_constant(&**tuple, *index),
+        }
+    }
+
+    fn is_tuple_thread_constant(&self, tuple: &Tuple, _index: usize) -> bool {
+        match tuple {
+            Tuple::Delinearize { base, .. } => self.is_thread_constant(&**base),
         }
     }
 
@@ -632,6 +940,10 @@ impl<'a> ExprBuilder<'a> {
 
     pub fn size(&mut self, size: Size) -> ExprPtr {
         self.create(Expr::Size(size))
+    }
+
+    pub fn constant(&mut self, constant: i32) -> ExprPtr {
+        self.create(Expr::Constant(constant))
     }
 
     pub fn dimension(&mut self, dim: ir::DimId) -> ExprPtr {
@@ -649,6 +961,10 @@ impl<'a> ExprBuilder<'a> {
 
     pub fn in_range(&mut self, base: ExprPtr, start: ExprPtr, end: ExprPtr) -> ExprPtr {
         self.create(Expr::InRange { base, start, end })
+    }
+
+    pub fn delinearize(&mut self, base: ExprPtr, sizes: Vec<Size>) -> TuplePtr {
+        self.create_tuple(Tuple::Delinearize { base, sizes })
     }
 
     pub fn rolling_sum<II>(&mut self, base: ExprPtr, elems: II) -> ExprPtr
@@ -1013,9 +1329,22 @@ impl<'a> ExprLowering<'a> {
                     .iter()
                     .map(|expr| (self.expr(expr), 1u32.into()))
                     .collect::<Vec<_>>();
-                // TODO: `cst` can actually be negative.
-                let base = self.builder.size(u32::try_from(cst).unwrap().into());
+                let base = self.builder.constant(cst);
                 self.builder.strided_sum(base, args)
+            }
+            ir::IndexExpr::Proj(ref tuple, idx) => {
+                let tuple = self.tuple(tuple);
+                self.builder.proj(tuple, idx)
+            }
+        }
+    }
+
+    pub fn tuple(&mut self, tuple: &'a ir::TupleExpr) -> TuplePtr {
+        match tuple {
+            ir::TupleExpr::Delinearize(expr, sizes) => {
+                let expr = self.expr(expr);
+                let sizes = sizes.iter().map(Size::from).collect::<Vec<_>>();
+                self.builder.delinearize(expr, sizes)
             }
         }
     }

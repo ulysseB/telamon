@@ -17,6 +17,7 @@ use fxhash::FxHashMap;
 use itertools::Itertools;
 use libc;
 use log::debug;
+use std::convert::TryFrom;
 use std::f64;
 use std::io::Write;
 use std::sync::{mpsc, Arc, MutexGuard};
@@ -60,6 +61,22 @@ impl Context {
                 }
                 ParamVal::Size(size) => {
                     ThunkArg::Size((self as &dyn device::Context).eval_size(size) as i32)
+                }
+                ParamVal::DivMagic(s, t) => {
+                    assert_eq!(*t, ir::Type::I(32));
+
+                    let u32_size = (self as &dyn device::Context).eval_size(s);
+                    let div_magic =
+                        codegen::i32_div_magic(i32::try_from(u32_size).unwrap());
+                    ThunkArg::Size(div_magic)
+                }
+                ParamVal::DivShift(s, t) => {
+                    assert_eq!(*t, ir::Type::I(32));
+
+                    let u32_size = (self as &dyn device::Context).eval_size(s);
+                    let div_shift =
+                        codegen::i32_div_shift(i32::try_from(u32_size).unwrap());
+                    ThunkArg::Size(div_shift)
                 }
             })
             .collect_vec()

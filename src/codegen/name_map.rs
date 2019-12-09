@@ -92,8 +92,8 @@ impl<'a> NameMap<'a> {
         let params = function
             .device_code_args()
             .map(|val| {
-                let var_name =
-                    Register::new(interner.intern(namegen.name(val.t())), val.t());
+                let var_t = val.t();
+                let var_name = Register::new(interner.intern(namegen.name(var_t)), var_t);
                 if let ParamValKey::GlobalMem(id) = val.key() {
                     mem_blocks.insert(id, var_name);
                 }
@@ -434,6 +434,42 @@ impl<'a> NameMap<'a> {
             }
             (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)).into(),
             _ => (*self.size_casts.get(&(size, expected_t)).unwrap()).into(),
+        }
+    }
+
+    pub fn name_div_magic<'c>(
+        &'c self,
+        size: &'c codegen::Size,
+        expected_t: ir::Type,
+    ) -> llir::Operand<'a> {
+        match (size.dividend(), expected_t) {
+            (&[], ir::Type::I(32)) => {
+                assert_eq!(size.divisor(), 1);
+                let i32_size = i32::try_from(size.factor()).unwrap();
+                codegen::i32_div_magic(i32_size).int_literal()
+            }
+            (&[], _) => unimplemented!("constant div magic"),
+            _ => self
+                .name_param_val(ParamValKey::DivMagic(size, expected_t))
+                .into(),
+        }
+    }
+
+    pub fn name_div_shift<'c>(
+        &'c self,
+        size: &'c codegen::Size,
+        expected_t: ir::Type,
+    ) -> llir::Operand<'a> {
+        match (size.dividend(), expected_t) {
+            (&[], ir::Type::I(32)) => {
+                assert_eq!(size.divisor(), 1);
+                let i32_size = i32::try_from(size.factor()).unwrap();
+                codegen::i32_div_shift(i32_size).int_literal()
+            }
+            (&[], _) => unimplemented!("constant div shift"),
+            _ => self
+                .name_param_val(ParamValKey::DivShift(size, expected_t))
+                .into(),
         }
     }
 

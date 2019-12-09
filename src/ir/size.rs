@@ -121,6 +121,7 @@ impl std::ops::Mul<u32> for Size {
 
     fn mul(mut self, other: u32) -> Size {
         self.factor *= other;
+        self.max_val = self.max_val.saturating_mul(other);
         self
     }
 }

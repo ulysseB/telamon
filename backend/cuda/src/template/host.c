@@ -7,6 +7,23 @@
 static const char* ptx = "{ptx_code}";
 static size_t ptx_len = {ptx_len};
 
+int32_t int32_t_ceil_log2(int32_t val) {{
+  val -= 1;
+  int32_t log = 1;
+  while (val >>= 1)
+    ++log;
+  return log;
+}}
+
+void int32_t_magic(int32_t divisor, int32_t *magic, int32_t *shift) {{
+  int32_t l = int32_t_ceil_log2(divisor);
+  l = l > 1 ? l : 1;
+
+  uint64_t m = 1 + ((uint64_t)1 << (32 + l - 1)) / (uint64_t)divisor;
+  *magic = (int32_t)(m - ((uint64_t)1 << 32));
+  *shift = l - 1;
+}}
+
 // Checks the result of a CUDA dirver API call and exits in case of error.
 static void check_cuda(CUresult err, const char* file, const int line) {{
   if (err != CUDA_SUCCESS) {{

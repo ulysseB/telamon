@@ -1,11 +1,15 @@
 //! IR instances compiled into CUDA kernels.
+use std::convert::TryFrom;
+
+use itertools::Itertools;
+use log::warn;
+
+use telamon::codegen::{self, ParamVal};
+use telamon::device::{self, Context as ContextTrait};
+
 #[cfg(feature = "real_gpu")]
 use crate::PerfCounterSet;
 use crate::{api, Context, Gpu, JITDaemon};
-use itertools::Itertools;
-use log::warn;
-use telamon::codegen::{self, ParamVal};
-use telamon::device::{self, Context as ContextTrait};
 
 /// An IR instance compiled into a CUDA kernel.
 pub struct Kernel<'a, 'b> {
@@ -97,6 +101,20 @@ impl<'a, 'b> Kernel<'a, 'b> {
                 ParamVal::External(ref p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
                 ParamVal::Size(ref s) => {
                     ThunkArg::Size(Box::new(args.eval_size(s) as i32))
+                }
+                ParamVal::DivMagic(ref s, t) => {
+                    assert_eq!(t, telamon::ir::Type::I(32));
+
+                    let div_magic =
+                        codegen::i32_div_magic(i32::try_from(args.eval_size(s)).unwrap());
+                    ThunkArg::Size(Box::new(div_magic))
+                }
+                ParamVal::DivShift(ref s, t) => {
+                    assert_eq!(t, telamon::ir::Type::I(32));
+
+                    let div_shift =
+                        codegen::i32_div_shift(i32::try_from(args.eval_size(s)).unwrap());
+                    ThunkArg::Size(Box::new(div_shift))
                 }
                 ParamVal::GlobalMem(_, ref size, _) => {
                     tmp_arrays.push(args.eval_size(size) as usize);

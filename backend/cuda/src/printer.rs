@@ -4,7 +4,9 @@ use std::io::Write;
 
 use utils::*;
 
+use fxhash::FxHashSet;
 use itertools::Itertools;
+
 use telamon::codegen::*;
 use telamon::ir::{self, Type};
 
@@ -268,6 +270,7 @@ impl CudaPrinter {
             .join(", ");
         let mut extra_def = vec![];
         let mut extra_cleanup = vec![];
+        let mut extra_magics = FxHashSet::default();
         let params = fun
             .device_code_args()
             .map(|p| match *p {
@@ -278,6 +281,14 @@ impl CudaPrinter {
                         p.key().ident(),
                         Self::host_size(size)
                     ));
+                    format!("&{}", p.key().ident())
+                }
+                ParamVal::DivMagic(ref size, t) => {
+                    extra_magics.insert((size, t));
+                    format!("&{}", p.key().ident())
+                }
+                ParamVal::DivShift(ref size, t) => {
+                    extra_magics.insert((size, t));
                     format!("&{}", p.key().ident())
                 }
                 ParamVal::GlobalMem(_, ref size, _) => {
@@ -295,6 +306,21 @@ impl CudaPrinter {
             })
             .collect_vec()
             .join(", ");
+
+        for (size, t) in extra_magics {
+            let magic = ParamValKey::DivMagic(size, t).ident().to_string();
+            let shift = ParamValKey::DivShift(size, t).ident().to_string();
+
+            extra_def.push(format!("{} {}, {};", Self::host_type(t), magic, shift));
+            extra_def.push(format!(
+                "{}_magic({}, &{}, &{});",
+                Self::host_type(t),
+                Self::host_size(size),
+                magic,
+                shift
+            ));
+        }
+
         let extern_params = fun
             .space()
             .ir_instance()
@@ -373,6 +399,7 @@ impl PTXDisplay for llir::UnOp {
                 write!(fmt, "cvt{}.{}.{}", rnd, dst_t.ptx(), src_t.ptx())
             }
             UnOp::Not { t } => write!(fmt, "not.{}", t.ptx()),
+            UnOp::Neg { t } => write!(fmt, "neg.{}", t.ptx()),
             UnOp::Exp { .. } => panic!("{}: non-atomic PTX instruction", self),
         }
     }

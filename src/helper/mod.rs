@@ -41,6 +41,10 @@ impl LogicalDim {
 
         self_size == other_size
     }
+
+    pub fn size<'a, L>(&'a self, function: &'a ir::Function<L>) -> &'a ir::Size {
+        function.logical_dim(self.logical_id).total_size()
+    }
 }
 
 impl std::ops::Index<usize> for LogicalDim {
@@ -151,3 +155,38 @@ impl Default for TilingPattern {
         }
     }
 }
+
+pub trait ArrayMap<I, O> {
+    type Output;
+
+    fn array_map<F: FnMut(I) -> O>(self, f: F) -> Self::Output;
+}
+
+macro_rules! impl_array_map {
+    () => {
+        impl<I, O> ArrayMap<I, O> for [I; 0] {
+            type Output = [O; 0];
+
+            fn array_map<F: FnMut(I) -> O>(self, _: F) -> Self::Output {
+                []
+            }
+        }
+    };
+
+    ($x:ident $n:literal $(, $xs:ident $ns:literal)*) => {
+        impl<I, O> ArrayMap<I, O> for [I; $n] {
+            type Output = [O; $n];
+
+            fn array_map<F: FnMut(I) -> O>(self, mut f: F) -> Self::Output {
+                let [$x, $($xs),*] = self;
+                [f($x), $(f($xs)),*]
+            }
+        }
+
+        impl_array_map!($($xs $ns),*);
+    };
+}
+
+impl_array_map!(
+    i16 16, i15 15, i14 14, i13 13, i12 12, i11 11, i10 10, i9 9, i8 8, i7 7, i6 6, i5 5, i4 4, i3 3, i2 2, i1 1
+);

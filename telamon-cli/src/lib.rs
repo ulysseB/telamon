@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fmt, fs, io};
 
+use itertools::Itertools;
+use log::debug;
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
@@ -122,10 +124,10 @@ mod cuda_reference {
         /// Initialize a new handle.
         pub fn new() -> Self {
             unsafe {
-                let mut cublas_raw = std::mem::uninitialized();
-                check_cublas(cublasCreate_v2(&mut cublas_raw));
+                let mut cublas_raw = std::mem::MaybeUninit::uninit();
+                check_cublas(cublasCreate_v2(cublas_raw.as_mut_ptr()));
                 CudaHandle {
-                    cublas_raw,
+                    cublas_raw: cublas_raw.assume_init(),
                     cudnn: cudnn::CudnnHandle::new().unwrap(),
                 }
             }
@@ -142,10 +144,12 @@ mod cuda_reference {
 
     /// Evaluates the runtime of a cuda function with events.
     unsafe fn time_cuda<F: FnOnce()>(f: F) -> f64 {
-        let mut start = std::mem::uninitialized();
-        let mut stop = std::mem::uninitialized();
-        check_cuda(cuEventCreate(&mut start, CU_EVENT_DEFAULT));
-        check_cuda(cuEventCreate(&mut stop, CU_EVENT_DEFAULT));
+        let mut start = std::mem::MaybeUninit::uninit();
+        let mut stop = std::mem::MaybeUninit::uninit();
+        check_cuda(cuEventCreate(start.as_mut_ptr(), CU_EVENT_DEFAULT));
+        let start = start.assume_init();
+        check_cuda(cuEventCreate(stop.as_mut_ptr(), CU_EVENT_DEFAULT));
+        let stop = stop.assume_init();
         check_cuda(cuCtxSynchronize());
         check_cuda(cuEventRecord(start, std::ptr::null_mut()));
         f();
@@ -237,8 +241,20 @@ mod cuda_reference {
         params: &linalg::Conv2dP,
         context: &cuda::Context,
     ) -> cudnn::Result<f64> {
+        let tensor_format = match params.data_format() {
+            linalg::DataFormat::Nchw => cudnn::TensorFormat::Nchw,
+            linalg::DataFormat::Nhwc => cudnn::TensorFormat::Nhwc,
+        };
+
+        let filter_format = match params.filter_format() {
+            linalg::FilterFormat::Kcrs => cudnn::TensorFormat::Nchw,
+            linalg::FilterFormat::Krsc => cudnn::TensorFormat::Nhwc,
+        };
+
+        assert_eq!(tensor_format, filter_format);
+
         let input_desc = cudnn::TensorDescriptor::new_4d(
-            cudnn::TensorFormat::Nchw,
+            tensor_format,
             cudnn::DataType::Float,
             params.batch,
             params.in_channels,
@@ -248,7 +264,7 @@ mod cuda_reference {
 
         let filter_desc = cudnn::FilterDescriptor::new_4d(
             cudnn::DataType::Float,
-            cudnn::TensorFormat::Nchw,
+            filter_format,
             params.out_channels,
             params.in_channels,
             params.filter_height,
@@ -267,7 +283,7 @@ mod cuda_reference {
         )?;
 
         let output_desc = cudnn::TensorDescriptor::new_4d(
-            cudnn::TensorFormat::Nchw,
+            tensor_format,
             cudnn::DataType::Float,
             params.batch,
             params.out_channels,
@@ -550,6 +566,8 @@ pub enum KernelParam {
         k: i32,
         r: i32,
         s: i32,
+        pad_mode: linalg::PadMode,
+        data_format: linalg::DataFormat,
     },
     BatchMM {
         b: i32,
@@ -583,7 +601,7 @@ impl KernelParam {
             reference: R,
         }
 
-        impl<'b, C, R> Builder<'b, C, R> where {
+        impl<'b, C, R> Builder<'b, C, R> {
             fn build<'a, K>(self, params: K::Parameters) -> (KernelBundle<'b>, &'b C)
             where
                 K: Kernel<'a> + 'b,
@@ -594,8 +612,17 @@ impl KernelParam {
                 let (signature, kernel, context) =
                     KernelBuilder::default().build::<K, C>(params.clone(), self.context);
                 let signature = Arc::new(signature);
-                let expected = kernel.get_expected_output(context);
                 let candidates = kernel.build_body(signature, context);
+
+                debug!(
+                    "candidates:\n\n{}",
+                    candidates
+                        .iter()
+                        .map(|candidate| candidate.space.ir_instance())
+                        .format("\n\n")
+                );
+
+                let expected = kernel.get_expected_output(context);
                 let check_fn =
                     move |context: &dyn Context| kernel.check_result(&expected, context);
                 let reference = self.reference;
@@ -643,6 +670,8 @@ impl KernelParam {
                 k,
                 r,
                 s,
+                pad_mode,
+                data_format,
             } => {
                 let params = linalg::Conv2dP {
                     batch: n,
@@ -652,6 +681,8 @@ impl KernelParam {
                     out_channels: k,
                     filter_height: r,
                     filter_width: s,
+                    pad_mode,
+                    data_format,
                 };
                 builder.build::<'_, linalg::Conv2d<'_, f32>>(params)
             }
@@ -684,10 +715,20 @@ impl fmt::Display for KernelParam {
                 k,
                 r,
                 s,
+                pad_mode,
+                data_format,
             } => write!(
                 fmt,
-                "conv2d_{}_{}_{}_{}_{}_{}_{}_VALID",
-                n, c, h, w, k, r, s
+                "conv2d_{n}_{c}_{h}_{w}_{k}_{r}_{s}_{df}_{pad}",
+                n = n,
+                c = c,
+                h = h,
+                w = w,
+                k = k,
+                r = r,
+                s = s,
+                pad = pad_mode,
+                df = data_format,
             ),
             KernelParam::BatchMM { b, m, n, k } => {
                 write!(fmt, "batchmm_{}_{}_{}_{}", b, m, n, k)
@@ -720,6 +761,12 @@ pub enum KernelErrorKind {
 
     /// A non-integer value was found where an integer value was expected.
     IntError(std::num::ParseIntError),
+
+    /// An invalid pad mode was found.
+    PadModeError(linalg::ParsePadModeError),
+
+    /// An invalid data format was found.
+    DataFormatError(linalg::ParseDataFormatError),
 }
 
 impl ParseKernelError {
@@ -743,6 +790,8 @@ impl fmt::Display for ParseKernelError {
                 fmt.write_str("extraneous unexpected kernel parameter")
             }
             KernelErrorKind::IntError(error) => fmt::Display::fmt(error, fmt),
+            KernelErrorKind::PadModeError(error) => fmt::Display::fmt(error, fmt),
+            KernelErrorKind::DataFormatError(error) => fmt::Display::fmt(error, fmt),
         }
     }
 }
@@ -760,6 +809,22 @@ impl From<std::num::ParseIntError> for ParseKernelError {
     fn from(error: std::num::ParseIntError) -> ParseKernelError {
         ParseKernelError {
             kind: KernelErrorKind::IntError(error),
+        }
+    }
+}
+
+impl From<linalg::ParsePadModeError> for ParseKernelError {
+    fn from(error: linalg::ParsePadModeError) -> ParseKernelError {
+        ParseKernelError {
+            kind: KernelErrorKind::PadModeError(error),
+        }
+    }
+}
+
+impl From<linalg::ParseDataFormatError> for ParseKernelError {
+    fn from(error: linalg::ParseDataFormatError) -> ParseKernelError {
+        ParseKernelError {
+            kind: KernelErrorKind::DataFormatError(error),
         }
     }
 }
@@ -833,14 +898,10 @@ impl std::str::FromStr for KernelParam {
                 let k = parse_i32(next_part(&mut parts)?)?;
                 let r = parse_i32(next_part(&mut parts)?)?;
                 let s = parse_i32(next_part(&mut parts)?)?;
-                let _ = match next_part(&mut parts) {
-                    Ok("VALID") => (),
-                    Err(_) => (),
-                    _ => {
-                        return Err(ParseKernelError {
-                            kind: KernelErrorKind::InvalidName,
-                        })
-                    }
+                let data_format = next_part(&mut parts)?.parse::<linalg::DataFormat>()?;
+                let pad_mode = match next_part(&mut parts) {
+                    Ok(part) => part.parse::<linalg::PadMode>()?,
+                    Err(_) => linalg::PadMode::Valid,
                 };
                 Conv2d {
                     n,
@@ -850,6 +911,8 @@ impl std::str::FromStr for KernelParam {
                     k,
                     r,
                     s,
+                    pad_mode,
+                    data_format,
                 }
             }
             "batchmm" => {

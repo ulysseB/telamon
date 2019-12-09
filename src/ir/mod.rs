@@ -26,7 +26,7 @@ pub use self::dimension::{
 };
 pub use self::error::{Error, TypeError};
 pub use self::expr::{
-    Access, AccessId, Accesses, IndexExpr, IndexPredicate, IntoIndexExpr,
+    Access, AccessId, Accesses, IndexExpr, IndexPredicate, IntoIndexExpr, TupleExpr,
 };
 pub use self::function::{Body, Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};

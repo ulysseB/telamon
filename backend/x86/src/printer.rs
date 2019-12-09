@@ -22,6 +22,7 @@ fn param_t(param: &ParamVal) -> String {
             }
         }
         ParamVal::Size(_) => "uint32_t".to_string(),
+        ParamVal::DivMagic(_, t) | ParamVal::DivShift(_, t) => t.c99().to_string(),
         ParamVal::GlobalMem(_, _, par_type) => format!("{}*", par_type.c99()),
     }
 }
@@ -150,6 +151,12 @@ impl X86printer {
                 ParamVal::Size(_) => format!(
                     "  uint32_t {p} = *(uint32_t*)args[{i}];",
                     p = v.key().ident(),
+                    i = i
+                ),
+                ParamVal::DivMagic(_, t) | ParamVal::DivShift(_, t) => format!(
+                    "  {t} {p} = *({t}*)args[{i}];",
+                    p = v.key().ident(),
+                    t = t.c99(),
                     i = i
                 ),
                 // Are we sure we know the size at compile time ? I think we do
