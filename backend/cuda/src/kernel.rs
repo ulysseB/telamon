@@ -301,7 +301,13 @@ enum ThunkArg<'a> {
 impl<'a> std::fmt::Debug for ThunkArg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            ThunkArg::ArgRef(_) => write!(f, "context argument"),
+            ThunkArg::ArgRef(arg) => {
+                if let Some(size) = arg.as_size() {
+                    write!(f, "context argument = {}", size)
+                } else {
+                    write!(f, "context argument = ?")
+                }
+            }
             ThunkArg::Size(size) => write!(f, "size = {}", size),
             ThunkArg::TmpArray(size) => write!(f, "temporary array of size {}", size),
         }
