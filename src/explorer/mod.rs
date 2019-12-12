@@ -278,8 +278,9 @@ fn explore_space<T>(
                     Some(eval) => eval,
                     None => {
                         error!(
-                            "evaluation failed for actions {:?}, with kernel {}",
-                            leaf.actions, compiled
+                            "evaluation failed for actions {}, with kernel {}",
+                            serde_json::to_string(&leaf.actions).unwrap(),
+                            compiled
                         );
 
                         std::f64::INFINITY
