@@ -20,23 +20,23 @@ const EVAL_BUFFER_SIZE: usize = 100;
 const JIT_OPT_LEVEL: usize = 2;
 
 /// A CUDA evaluation context.
-pub struct Context<'a> {
+pub struct Context {
     gpu_model: Arc<Gpu>,
-    executor: &'a Executor,
-    parameters: FxHashMap<String, Arc<dyn Argument + 'a>>,
+    executor: Executor,
+    parameters: FxHashMap<String, Arc<dyn Argument>>,
 }
 
-impl<'a> Context<'a> {
+impl Context {
     /// Create a new evaluation context. The GPU model if infered.
-    pub fn new(executor: &'a Executor) -> Context {
+    pub fn new(executor: &Executor) -> Context {
         Self::from_gpu(Gpu::from_executor(executor), executor)
     }
 
     /// Creates a context from the given GPU.
-    pub fn from_gpu(gpu: Gpu, executor: &'a Executor) -> Self {
+    pub fn from_gpu(gpu: Gpu, executor: &Executor) -> Self {
         Context {
             gpu_model: Arc::new(gpu),
-            executor,
+            executor: executor.clone(),
             parameters: FxHashMap::default(),
         }
     }
@@ -47,8 +47,8 @@ impl<'a> Context<'a> {
     }
 
     /// Returns the execution queue.
-    pub fn executor(&self) -> &'a Executor {
-        self.executor
+    pub fn executor(&self) -> &Executor {
+        &self.executor
     }
 
     /// Returns a parameter given its name.
@@ -57,7 +57,7 @@ impl<'a> Context<'a> {
     }
 
     /// Binds a parameter to the gien name.
-    pub fn bind_param(&mut self, name: String, arg: Arc<dyn Argument + 'a>) {
+    pub fn bind_param(&mut self, name: String, arg: Arc<dyn Argument>) {
         self.parameters.insert(name, arg);
     }
 
@@ -70,7 +70,7 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> device::ArgMap<'a> for Context<'a> {
+impl device::ArgMap for Context {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -85,7 +85,7 @@ impl<'a> device::ArgMap<'a> for Context<'a> {
         param: &ir::Parameter,
         t: ir::Type,
         len: usize,
-    ) -> Arc<dyn device::ArrayArgument + 'a> {
+    ) -> Arc<dyn device::ArrayArgument> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.executor.allocate_array::<i8>(size));
         self.bind_param(param.name.clone(), array.clone());
@@ -93,7 +93,7 @@ impl<'a> device::ArgMap<'a> for Context<'a> {
     }
 }
 
-impl<'a> device::Context for Context<'a> {
+impl device::Context for Context {
     fn device(&self) -> Arc<dyn Device> {
         Arc::<Gpu>::clone(&self.gpu_model)
     }
@@ -108,7 +108,8 @@ impl<'a> device::Context for Context<'a> {
 
     fn evaluate(&self, function: &codegen::Function, mode: EvalMode) -> Result<f64, ()> {
         let gpu = &self.gpu_model;
-        let kernel = Kernel::compile(function, gpu, self.executor, Self::opt_level(mode));
+        let kernel =
+            Kernel::compile(function, gpu, &self.executor, Self::opt_level(mode));
         kernel
             .evaluate(self)
             .map(|t| t as f64 / self.gpu_model.smx_clock)
@@ -116,7 +117,7 @@ impl<'a> device::Context for Context<'a> {
 
     fn benchmark(&self, function: &codegen::Function, num_samples: usize) -> Vec<f64> {
         let gpu = &self.gpu_model;
-        let kernel = Kernel::compile(function, gpu, self.executor, 4);
+        let kernel = Kernel::compile(function, gpu, &self.executor, 4);
         kernel.evaluate_real(self, num_samples)
     }
 
@@ -175,7 +176,7 @@ impl<'a> device::Context for Context<'a> {
 type AsyncPayload<'b> = (explorer::Candidate, Option<Thunk<'b>>, AsyncCallback<'b>);
 
 pub struct AsyncEvaluator<'b> {
-    context: &'b Context<'b>,
+    context: &'b Context,
     sender: mpsc::SyncSender<AsyncPayload<'b>>,
     ptx_daemon: JITDaemon,
     blocked_time: &'b atomic::AtomicUsize,

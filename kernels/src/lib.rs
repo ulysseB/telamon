@@ -36,7 +36,7 @@ fn create_size<'a, AM>(
     builder: &mut SignatureBuilder<AM>,
 ) -> DimSize<'a>
 where
-    AM: ArgMap<'a> + Context,
+    AM: ArgMap + Context,
 {
     if is_generic {
         builder.max_size(name, value as u32)

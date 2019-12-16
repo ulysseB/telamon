@@ -4,6 +4,7 @@ use crate::api::*;
 use lazy_static::lazy_static;
 use libc;
 use std::ffi::CStr;
+use std::sync::Arc;
 use std::sync::Mutex;
 use utils::*;
 
@@ -11,12 +12,40 @@ lazy_static! {
     static ref JIT_SPAWNER: Mutex<DaemonSpawner> = Mutex::new(DaemonSpawner::new());
 }
 
-/// Interface with a CUDA device.
-pub struct Executor {
+struct RawExecutor {
     context: *mut CudaContext,
 }
 
+impl RawExecutor {
+    fn try_new() -> Result<RawExecutor, InitError> {
+        // The daemon must be spawned before init_cuda is called.
+        let _ = unwrap!(JIT_SPAWNER.lock());
+        Ok(RawExecutor {
+            context: unsafe { init_cuda(0) },
+        })
+    }
+}
+
+impl Drop for RawExecutor {
+    fn drop(&mut self) {
+        unsafe { free_cuda(self.context) }
+    }
+}
+
+unsafe impl Sync for RawExecutor {}
+unsafe impl Send for RawExecutor {}
+
+/// Interface with a CUDA device.
+#[derive(Clone)]
+pub struct Executor {
+    inner: Arc<RawExecutor>,
+}
+
 impl Executor {
+    pub(super) fn raw(&self) -> &CudaContext {
+        unsafe { &*self.inner.context }
+    }
+
     /// Tries to initialize the `Executor` and panics if it fails.
     pub fn init() -> Executor {
         unwrap!(Self::try_init())
@@ -24,10 +53,9 @@ impl Executor {
 
     /// Initializes the `Executor`.
     pub fn try_init() -> Result<Executor, InitError> {
-        // The daemon must be spawned before init_cuda is called.
-        let _ = unwrap!(JIT_SPAWNER.lock());
+        let raw_executor = RawExecutor::try_new()?;
         Ok(Executor {
-            context: unsafe { init_cuda(0) },
+            inner: Arc::new(raw_executor),
         })
     }
 
@@ -38,24 +66,23 @@ impl Executor {
 
     /// Compiles a PTX module.
     pub fn compile_ptx<'a>(&'a self, code: &str, opt_level: usize) -> Module<'a> {
-        Module::new(unsafe { &*self.context as &'a _ }, code, opt_level)
+        Module::new(self.raw(), code, opt_level)
     }
 
     /// Compiles a PTX module using a separate process.
     pub fn compile_remote<'a>(&'a self, jit: &mut JITDaemon, code: &str) -> Module<'a> {
-        jit.compile(unsafe { &*self.context as &'a _ }, code)
+        jit.compile(self.raw(), code)
     }
 
     /// Allocates an array on the CUDA device.
     pub fn allocate_array<T>(&self, len: usize) -> Array<T> {
-        let context = unsafe { &*self.context as &_ };
-        Array::new(context, len)
+        Array::new(self.clone(), len)
     }
 
     /// Returns the name of the device.
     pub fn device_name(&self) -> String {
         unsafe {
-            let c_ptr = device_name(self.context);
+            let c_ptr = device_name(self.raw());
             let string = unwrap!(CStr::from_ptr(c_ptr).to_str()).to_string();
             libc::free(c_ptr as *mut libc::c_void);
             string
@@ -67,25 +94,14 @@ impl Executor {
         &'a self,
         counters: &[PerfCounter],
     ) -> PerfCounterSet<'a> {
-        PerfCounterSet::new(unsafe { &*self.context as &'a _ }, counters)
+        PerfCounterSet::new(self.raw(), counters)
     }
 
     /// Returns the value of a CUDA device attribute.
     pub fn device_attribute(&self, attribute: DeviceAttribute) -> i32 {
-        unsafe { device_attribute(self.context, attribute as u32) }
+        unsafe { device_attribute(self.raw(), attribute as u32) }
     }
 }
-
-impl Drop for Executor {
-    fn drop(&mut self) {
-        unsafe {
-            free_cuda(self.context);
-        }
-    }
-}
-
-unsafe impl Sync for Executor {}
-unsafe impl Send for Executor {}
 
 /// Cuda device attributes. Not all alltributes are defined here, see the CUDA driver API
 /// documentation at `CUdevice_attribute` for more.

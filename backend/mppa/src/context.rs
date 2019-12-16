@@ -282,7 +282,7 @@ impl device::Context for Context {
     }
 }
 
-impl<'a> device::ArgMap<'a> for Context {
+impl device::ArgMap for Context {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -297,7 +297,7 @@ impl<'a> device::ArgMap<'a> for Context {
         param: &ir::Parameter,
         t: ir::Type,
         len: usize,
-    ) -> Arc<dyn ArrayArgument + 'a> {
+    ) -> Arc<dyn ArrayArgument> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let buffer_arc = Arc::new(MppaArray::new(self.executor, size));
         self.bind_param(

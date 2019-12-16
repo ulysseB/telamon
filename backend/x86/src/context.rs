@@ -94,7 +94,7 @@ impl Default for Context {
     }
 }
 
-impl<'a> device::ArgMap<'a> for Context {
+impl device::ArgMap for Context {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -110,7 +110,7 @@ impl<'a> device::ArgMap<'a> for Context {
         param: &ir::Parameter,
         t: ir::Type,
         len: usize,
-    ) -> Arc<dyn device::ArrayArgument + 'a> {
+    ) -> Arc<dyn device::ArrayArgument> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.allocate_array(size));
         self.bind_param(param.name.clone(), Arc::clone(&array) as Arc<dyn Argument>);

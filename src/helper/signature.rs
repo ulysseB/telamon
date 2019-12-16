@@ -58,9 +58,9 @@ where
     }
 
     /// Creates a new parameter and binds it to the given value.
-    pub fn scalar<'b, T: ScalarArgument>(&mut self, name: &str, arg: T)
+    pub fn scalar<T: ScalarArgument>(&mut self, name: &str, arg: T)
     where
-        AM: device::ArgMap<'b>,
+        AM: device::ArgMap,
     {
         self.signature.add_scalar(name.to_string(), T::t());
         let param = unwrap!(self.signature.params.last());
@@ -71,7 +71,7 @@ where
     /// maximal size to the current size.
     pub fn max_size<'b>(&mut self, name: &'b str, size: u32) -> DimSize<'b>
     where
-        AM: device::ArgMap<'b>,
+        AM: device::ArgMap,
     {
         self.scalar(name, size as i32);
         DimSize {
@@ -82,13 +82,13 @@ where
     }
 
     /// Creates a new parameter and binds it to a freshly allocated an array.
-    pub fn array<'b, S: ScalarArgument>(
+    pub fn array<S: ScalarArgument>(
         &mut self,
         name: &str,
         size: usize,
-    ) -> Arc<dyn device::ArrayArgument + 'b>
+    ) -> Arc<dyn device::ArrayArgument>
     where
-        AM: device::ArgMap<'b>,
+        AM: device::ArgMap,
     {
         self.signature
             .add_array(&*self.context.device(), name.to_string(), S::t());
@@ -113,7 +113,7 @@ where
         read_only: bool,
     ) -> Tensor<'b, S>
     where
-        AM: device::ArgMap<'b>,
+        AM: device::ArgMap,
     {
         let len = dim_sizes
             .iter()

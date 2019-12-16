@@ -417,6 +417,21 @@ pub enum ConvolutionForwardAlgo {
     WinogradNonfused,
 }
 
+impl fmt::Display for ConvolutionForwardAlgo {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(match self {
+            ConvolutionForwardAlgo::ImplicitGemm => "_IMPLICIT_GEMM",
+            ConvolutionForwardAlgo::ImplicitPrecompGemm => "_IMPLICIT_PRECOMP_GEMM",
+            ConvolutionForwardAlgo::Gemm => "_GEMM",
+            ConvolutionForwardAlgo::Direct => "_DIRECT",
+            ConvolutionForwardAlgo::Fft => "_FFT",
+            ConvolutionForwardAlgo::FftTiling => "_FFT_TILING",
+            ConvolutionForwardAlgo::Winograd => "_WINOGRAD",
+            ConvolutionForwardAlgo::WinogradNonfused => "_WINOGRAD_NONFUSED",
+        })
+    }
+}
+
 impl ConvolutionForwardAlgo {
     pub fn as_raw(self) -> cudnnConvolutionFwdAlgo_t {
         use ConvolutionForwardAlgo::*;

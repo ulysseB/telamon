@@ -31,7 +31,7 @@ where
     z: Tensor<'a, S>,
 }
 
-impl<'a, S> Kernel<'a> for Axpy<'a, S>
+impl<'a, S> Kernel for Axpy<'a, S>
 where
     S: Scalar,
 {
@@ -47,7 +47,7 @@ where
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let n_size = create_size(n, "n", generic, builder);
         builder.scalar("alpha", S::one());
@@ -104,7 +104,7 @@ where
     y: Tensor<'a, S>,
 }
 
-impl<'a, S> Kernel<'a> for MatVec<'a, S>
+impl<'a, S> Kernel for MatVec<'a, S>
 where
     S: Scalar,
 {
@@ -120,7 +120,7 @@ where
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
@@ -192,7 +192,7 @@ pub struct Gesummv<'a, S: Scalar> {
     y: Tensor<'a, S>,
 }
 
-impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
+impl<'a, S: Scalar> Kernel for Gesummv<'a, S> {
     type Parameters = (i32, i32, bool);
     type ExpectedOutput = Array1<S>;
 
@@ -205,7 +205,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
@@ -346,7 +346,7 @@ pub struct FusedMM<'a, S: Scalar> {
     c: Tensor<'a, S>,
 }
 
-impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
+impl<'a, S: Scalar> Kernel for FusedMM<'a, S> {
     type Parameters = FusedMMP;
     type ExpectedOutput = Array2<S>;
 
@@ -356,7 +356,7 @@ impl<'a, S: Scalar> Kernel<'a> for FusedMM<'a, S> {
 
     fn build_signature<AM>(params: FusedMMP, builder: &mut SignatureBuilder<AM>) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);
@@ -670,7 +670,7 @@ pub struct Conv2d<'a, S: Scalar> {
     q: DimSize<'a>,
 }
 
-impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
+impl<'a, S: Scalar> Kernel for Conv2d<'a, S> {
     type Parameters = Conv2dP;
     type ExpectedOutput = Array4<S>;
 
@@ -683,7 +683,7 @@ impl<'a, S: Scalar> Kernel<'a> for Conv2d<'a, S> {
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let n = create_size(params.batch, "n", true, builder);
         let c = create_size(params.in_channels, "c", true, builder);
@@ -989,7 +989,7 @@ impl BatchMMP {
     }
 }
 
-impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
+impl<'a, S: Scalar> Kernel for BatchMM<'a, S> {
     type Parameters = BatchMMP;
     type ExpectedOutput = Array3<S>;
 
@@ -999,7 +999,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
 
     fn build_signature<AM>(params: BatchMMP, builder: &mut SignatureBuilder<AM>) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);
@@ -1198,7 +1198,7 @@ pub struct Fused2MM<'a, S: Scalar> {
     e: Tensor<'a, S>,
 }
 
-impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
+impl<'a, S: Scalar> Kernel for Fused2MM<'a, S> {
     type Parameters = Fused2MMP;
     type ExpectedOutput = Array2<S>;
 
@@ -1208,7 +1208,7 @@ impl<'a, S: Scalar> Kernel<'a> for Fused2MM<'a, S> {
 
     fn build_signature<AM>(params: Fused2MMP, builder: &mut SignatureBuilder<AM>) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);

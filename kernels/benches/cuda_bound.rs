@@ -23,7 +23,7 @@ fn main() {
 
 fn benchmark<'a, K>(params: K::Parameters, num_runs: usize, executor: &'a cuda::Executor)
 where
-    K: Kernel<'a>,
+    K: Kernel,
 {
     let mut context = cuda::Context::new(executor);
     let bounds = K::test_bound(params, num_runs, MemInit::RandomFill, &mut context);

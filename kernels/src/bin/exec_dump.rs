@@ -3,7 +3,7 @@ use std::io::Read;
 use telamon::device::{ArgMap, Context};
 use telamon_kernels::{linalg, Kernel};
 
-fn dispatch_exec<'a, C: Context + ArgMap<'a>, R: Read>(
+fn dispatch_exec<C: Context + ArgMap, R: Read>(
     file: &mut R,
     kernel_name: &str,
     context: &mut C,

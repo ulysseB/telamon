@@ -151,7 +151,7 @@ impl<'a> TensorBuilder<'a> {
     pub fn finish<S, AM>(&self, builder: &mut SignatureBuilder<AM>) -> Tensor<'a, S>
     where
         S: ScalarArgument,
-        AM: ArgMap<'a> + Context + 'a,
+        AM: ArgMap + Context,
     {
         let size = self
             .storage_dims
@@ -190,7 +190,7 @@ impl<'a> TensorBuilder<'a> {
 /// A tensor allocated in main memory.
 pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
-    array: std::sync::Arc<dyn ArrayArgument + 'a>,
+    array: std::sync::Arc<dyn ArrayArgument>,
     // The size and stride of each dimension in the tensor, in number of elements.
     iter_dims: Vec<(DimSize<'a>, DimSize<'a>)>,
     read_only: bool,
@@ -206,7 +206,7 @@ where
         name: &'a str,
         dim_sizes: Vec<DimSize<'a>>,
         read_only: bool,
-        array: std::sync::Arc<dyn ArrayArgument + 'a>,
+        array: std::sync::Arc<dyn ArrayArgument>,
     ) -> Self {
         let mut incr: DimSize = 1u32.into();
         let mut iter_dims = dim_sizes

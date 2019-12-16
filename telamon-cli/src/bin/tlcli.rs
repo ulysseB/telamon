@@ -77,24 +77,33 @@ impl Search {
                 let best_fn = telamon::codegen::Function::build(&best.space);
                 let runtime = context.benchmark(&best_fn, self.num_code_runs);
 
-                let ref_runtime = Bench::default()
-                    .runs(self.num_code_runs)
-                    .benchmark_fn(&bundle.reference_fn);
+                let ref_mean =
+                    if let Some(reference_fn) = bundle.reference_fns.iter().next() {
+                        let ref_runtime = Bench::default()
+                            .runs(self.num_code_runs)
+                            .benchmark_fn(&**reference_fn);
+                        Some(estimate_mean(ref_runtime, 0.95, "ns"))
+                    } else {
+                        None
+                    };
 
                 let mut f =
                     std::fs::File::create(config.output_path("benchmark.txt").unwrap())
                         .unwrap();
                 writeln!(f, "runtimes: {:?}", runtime).unwrap();
                 let mean = estimate_mean(runtime, 0.95, "ns");
-                let ref_mean = estimate_mean(ref_runtime, 0.95, "ns");
-                writeln!(
-                    f,
-                    "{}: {}, reference: {}, speedup: {:.2}",
-                    kernel,
-                    mean,
-                    ref_mean,
-                    ref_mean.value / mean.value
-                )
+                if let Some(ref_mean) = ref_mean {
+                    writeln!(
+                        f,
+                        "{}: {}, reference: {}, speedup: {:.2}",
+                        kernel,
+                        mean,
+                        ref_mean,
+                        ref_mean.value / mean.value
+                    )
+                } else {
+                    writeln!(f, "{}: {}, reference: ???, speedup: ???", kernel, mean)
+                }
                 .unwrap();
             }
         }
@@ -336,10 +345,6 @@ struct Benchmark {
     #[structopt(long = "batch")]
     batch_mode: bool,
 
-    /// Name to use for the reference in batch mode.  Ignored if batch mode is not enabled.
-    #[structopt(long = "reference", default_value = "cublas")]
-    reference_name: String,
-
     /// Number of times to run each benchmark.
     #[structopt(long = "bench-runs", default_value = "40")]
     num_bench_runs: usize,
@@ -406,17 +411,28 @@ impl Benchmark {
         let (bundle, context) = context.kernel_bundle(&self.kernel);
         assert!(bundle.candidates.len() == 1);
 
-        let reference = Bench::default()
-            .runs(self.num_bench_runs)
-            .benchmark_fn(&bundle.reference_fn);
-        (bundle.check_fn)(context)
-            .or_else(|err| Err(io::Error::new(io::ErrorKind::Other, err)))?;
+        let reference_estimate = {
+            let mut reference_estimate = None;
+            for (ix, reference_fn) in bundle.reference_fns.iter().enumerate() {
+                let reference = Bench::default()
+                    .runs(self.num_bench_runs)
+                    .benchmark_fn(&**reference_fn);
 
-        if self.batch_mode {
-            println!("{},{}", self.reference_name, reference.iter().format(","));
+                if let Err(err) = (bundle.check_fn)(context) {
+                    eprintln!("Error while running reference {}: {}", reference_fn, err);
+                    continue;
+                }
+
+                if self.batch_mode {
+                    println!("{},{}", reference_fn, reference.iter().format(","));
+                };
+
+                if ix == 0 {
+                    reference_estimate = Some(estimate_mean(reference, 0.95, "ns"));
+                }
+            }
+            reference_estimate
         };
-
-        let reference_estimate = estimate_mean(reference, 0.95, "ns");
 
         let mut failed = false;
         for replay in self.iter_replays() {
@@ -457,11 +473,19 @@ impl Benchmark {
                 println!("bound: {}", bound);
 
                 let self_estimate = estimate_mean(runtimes, 0.95, "ns");
-                let speedup = reference_estimate.value / self_estimate.value;
-                println!(
-                    "runtime: {}, reference: {} (speedup: {:.2})",
-                    self_estimate, reference_estimate, speedup,
-                );
+                match &reference_estimate {
+                    Some(reference_estimate) => {
+                        let speedup = reference_estimate.value / self_estimate.value;
+                        println!(
+                            "runtime: {}, reference: {} (speedup: {:.2})",
+                            self_estimate, reference_estimate, speedup,
+                        );
+                    }
+                    None => println!(
+                        "runtime: {}, reference: ??? (speedup: ???)",
+                        self_estimate
+                    ),
+                }
             }
         }
 

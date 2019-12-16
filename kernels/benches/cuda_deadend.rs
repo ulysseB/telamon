@@ -12,7 +12,7 @@ fn main() {
     benchmark::<linalg::FusedMM<f32>>(params, 500, executor);
 }
 
-fn benchmark<'a, K: Kernel<'a>>(
+fn benchmark<'a, K: Kernel>(
     params: K::Parameters,
     num_sample: usize,
     executor: &'a cuda::Executor,

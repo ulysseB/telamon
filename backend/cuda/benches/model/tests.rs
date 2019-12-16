@@ -23,7 +23,7 @@ impl PerfModelTest for Test0 {
         "test_0"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("m", Self::M / (Self::TILE_1 * Self::TILE_2));
         builder.scalar("n", Self::N / (Self::TILE_1 * Self::TILE_2));
         builder.scalar("k", Self::K / Self::TILE_1);
@@ -115,7 +115,7 @@ impl PerfModelTest for Test1 {
         "test_1"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("k", Self::K);
         builder.array::<f32>("out", 4 * 32 * 32 * 4 as usize);
     }
@@ -187,7 +187,7 @@ impl PerfModelTest for Test2 {
         "test_2"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("m", Self::M / (Self::TILE_1 * Self::TILE_2));
         builder.scalar("n", Self::N / (Self::TILE_1 * Self::TILE_2));
         builder.scalar("k", Self::K);

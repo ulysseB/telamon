@@ -92,8 +92,8 @@ impl<'a> KernelBuilder<'a> {
         context: &'b mut AM,
     ) -> (ir::Signature, K, &'b AM)
     where
-        AM: device::ArgMap<'a> + device::Context,
-        K: Kernel<'a> + 'b,
+        AM: device::ArgMap + device::Context,
+        K: Kernel + 'b,
     {
         let name = self
             .name
@@ -113,7 +113,7 @@ impl<'a> KernelBuilder<'a> {
 }
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
-pub trait Kernel<'a>: Sized + Sync {
+pub trait Kernel: Sized + Sync {
     /// The input parameters of the kernel.
     type Parameters: Clone + DeserializeOwned + Serialize;
     /// The values to expect as output.
@@ -129,7 +129,7 @@ pub trait Kernel<'a>: Sized + Sync {
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap<'a> + device::Context;
+        AM: device::ArgMap + device::Context;
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
@@ -156,7 +156,7 @@ pub trait Kernel<'a>: Sized + Sync {
         ctx: &'b mut AM,
         sink: &mut F,
     ) where
-        AM: device::Context + device::ArgMap<'a>,
+        AM: device::Context + device::ArgMap,
     {
         let (signature, kernel, ctx) =
             KernelBuilder::new().build::<Self, AM>(params.clone(), ctx);
@@ -182,7 +182,7 @@ pub trait Kernel<'a>: Sized + Sync {
     /// corresponds to the kernel and context being executed
     fn execute_dump<AM, F: Read>(ctx: &mut AM, dump: &mut F)
     where
-        AM: device::Context + device::ArgMap<'a>,
+        AM: device::Context + device::ArgMap,
     {
         // Retrieve decisions from dump
         let mut json = String::new();
@@ -226,7 +226,7 @@ pub trait Kernel<'a>: Sized + Sync {
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let (signature, kernel, context) =
             KernelBuilder::new().build::<Self, AM>(params, context);
@@ -279,7 +279,7 @@ pub trait Kernel<'a>: Sized + Sync {
         context: &mut AM,
     ) -> Vec<BoundSample>
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(mem_init)
@@ -345,7 +345,7 @@ pub trait Kernel<'a>: Sized + Sync {
         context: &mut AM,
     ) -> Vec<f64>
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(mem_init)
@@ -375,7 +375,7 @@ pub trait Kernel<'a>: Sized + Sync {
         context: &mut AM,
     ) -> f64
     where
-        AM: device::ArgMap<'a> + device::Context,
+        AM: device::ArgMap + device::Context,
     {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(MemInit::Uninit)

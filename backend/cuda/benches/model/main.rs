@@ -25,9 +25,7 @@ trait PerfModelTest {
     fn name() -> &'static str;
 
     /// Generates the base of the function to evaluate.
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(
-        builder: &mut helper::SignatureBuilder<AM>,
-    );
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut helper::SignatureBuilder<AM>);
 
     /// Generates the function to evaluate.
     fn gen_function(builder: &mut helper::Builder) -> Self;

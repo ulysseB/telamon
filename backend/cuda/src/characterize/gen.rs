@@ -38,7 +38,7 @@ pub fn bind_scalar<T: ScalarArgument>(name: &str, val: T, context: &mut Context)
 }
 
 /// Binds a parameter to a value in the given context.
-pub fn bind_array<'a, T: 'a>(name: &str, len: usize, context: &mut Context<'a>) {
+pub fn bind_array<T: 'static>(name: &str, len: usize, context: &mut Context) {
     let array = std::sync::Arc::new(context.executor().allocate_array::<T>(len));
     context.bind_param(name.to_string(), array.clone());
 }
@@ -504,7 +504,8 @@ pub fn run(
         panic!("The benchmark is not completely scheduled: {:?}", choice);
     }
     let dev_fun = codegen::Function::build(space);
-    let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor(), 1);
+    let executor = context.executor().clone();
+    let kernel = Kernel::compile(&dev_fun, context.gpu(), &executor, 1);
     for &(arg, range) in args_range {
         bind_scalar(arg, range[0], context);
     }

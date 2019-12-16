@@ -4,6 +4,7 @@
 use std::error::Error;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::{fmt, fs, io};
 
@@ -44,13 +45,52 @@ impl CommonOpt {
     }
 }
 
-pub trait Reference<'a, K>
-where
-    K: Kernel<'a>,
-{
-    type Context: Context + 'a;
+pub trait Reference: fmt::Display {
+    type Handle: ?Sized;
 
-    fn eval_reference(&self, params: &K::Parameters, context: &Self::Context) -> f64;
+    type Context: ?Sized + Context;
+
+    fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64;
+}
+
+pub trait ReferenceBuilder<K>
+where
+    K: Kernel,
+{
+    type Context: ?Sized + Context;
+
+    type Reference: Reference<Handle = Self, Context = Self::Context>;
+
+    fn get_references(&self, params: K::Parameters) -> Vec<Self::Reference>;
+}
+
+pub trait ReferenceFn: fmt::Display {
+    fn call_reference(&self) -> f64;
+}
+
+pub struct ReferenceFnAdapter<'a, R, H: ?Sized, C: ?Sized> {
+    reference: R,
+    handle: Rc<H>,
+    context: &'a C,
+}
+
+impl<'a, R, H: ?Sized, C: ?Sized> fmt::Display for ReferenceFnAdapter<'a, R, H, C>
+where
+    R: fmt::Display,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.reference, fmt)
+    }
+}
+
+impl<'a, R, H: ?Sized, C: ?Sized> ReferenceFn for ReferenceFnAdapter<'a, R, H, C>
+where
+    R: Reference<Handle = H, Context = C>,
+    C: Context,
+{
+    fn call_reference(&self) -> f64 {
+        self.reference.eval_reference(&*self.handle, self.context)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -79,15 +119,15 @@ impl Bench {
         self
     }
 
-    pub fn benchmark_fn<F>(&self, f: F) -> Vec<f64>
+    pub fn benchmark_fn<F>(&self, f: &F) -> Vec<f64>
     where
-        F: Fn() -> f64,
+        F: ReferenceFn + ?Sized,
     {
         for _ in 0..self.warmup {
-            f();
+            f.call_reference();
         }
 
-        (0..self.runs).map(|_| f()).collect()
+        (0..self.runs).map(|_| f.call_reference()).collect()
     }
 }
 
@@ -98,7 +138,7 @@ mod cuda_reference {
     use telamon_cuda as cuda;
     use telamon_kernels::linalg;
 
-    use super::Reference;
+    use super::{Reference, ReferenceBuilder};
 
     /// Checks the cublas status and panics if an error occured.
     fn check_cublas(status: cublasStatus_t) {
@@ -240,6 +280,7 @@ mod cuda_reference {
         handle: &CudaHandle,
         params: &linalg::Conv2dP,
         context: &cuda::Context,
+        convolution_forward_algo: cudnn::ConvolutionForwardAlgo,
     ) -> cudnn::Result<f64> {
         let tensor_format = match params.data_format() {
             linalg::DataFormat::Nchw => cudnn::TensorFormat::Nchw,
@@ -296,22 +337,41 @@ mod cuda_reference {
             let filter = get_array("filter", context);
             let output = get_array("output", context);
 
-            time_cuda(|| {
-                handle
-                    .cudnn
-                    .convolution_forward_implicit_gemm(
-                        &1f32 as *const f32 as *const _,
-                        &input_desc,
-                        input,
-                        &filter_desc,
-                        filter,
-                        &conv_desc,
-                        &0f32 as *const f32 as *const _,
-                        &output_desc,
-                        output,
-                    )
-                    .unwrap()
-            })
+            match convolution_forward_algo {
+                cudnn::ConvolutionForwardAlgo::ImplicitGemm => time_cuda(|| {
+                    handle
+                        .cudnn
+                        .convolution_forward_implicit_gemm(
+                            &1f32 as *const f32 as *const _,
+                            &input_desc,
+                            input,
+                            &filter_desc,
+                            filter,
+                            &conv_desc,
+                            &0f32 as *const f32 as *const _,
+                            &output_desc,
+                            output,
+                        )
+                        .unwrap()
+                }),
+                cudnn::ConvolutionForwardAlgo::ImplicitPrecompGemm => time_cuda(|| {
+                    handle
+                        .cudnn
+                        .convolution_forward_implicit_precomp_gemm(
+                            &1f32 as *const f32 as *const _,
+                            &input_desc,
+                            input,
+                            &filter_desc,
+                            filter,
+                            &conv_desc,
+                            &0f32 as *const f32 as *const _,
+                            &output_desc,
+                            output,
+                        )
+                        .unwrap()
+                }),
+                _ => unreachable!(),
+            }
         };
 
         Ok(time)
@@ -380,71 +440,207 @@ mod cuda_reference {
         }
     }
 
-    impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for CudaHandle {
-        type Context = cuda::Context<'a>;
+    pub struct CublasSaxpy((i32, bool));
 
-        fn eval_reference(&self, params: &(i32, bool), context: &Self::Context) -> f64 {
-            saxpy_reference(self, *params, context)
+    impl From<(i32, bool)> for CublasSaxpy {
+        fn from(params: (i32, bool)) -> Self {
+            CublasSaxpy(params)
         }
     }
 
-    impl<'a> Reference<'a, linalg::MatVec<'a, f32>> for CudaHandle {
-        type Context = cuda::Context<'a>;
-
-        fn eval_reference(
-            &self,
-            params: &(i32, i32, bool),
-            context: &Self::Context,
-        ) -> f64 {
-            matvec_reference(self, params, context)
+    impl std::fmt::Display for CublasSaxpy {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fmt.write_str("cublas")
         }
     }
 
-    impl<'a> Reference<'a, linalg::FusedMM<'a, f32>> for CudaHandle {
-        type Context = cuda::Context<'a>;
+    impl Reference for CublasSaxpy {
+        type Handle = CudaHandle;
 
-        fn eval_reference(
-            &self,
-            params: &linalg::FusedMMP,
-            context: &Self::Context,
-        ) -> f64 {
-            matmul_reference(self, params, context)
+        type Context = cuda::Context;
+
+        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+            saxpy_reference(handle, self.0, context)
         }
     }
 
-    impl<'a> Reference<'a, linalg::Conv2d<'a, f32>> for CudaHandle {
-        type Context = cuda::Context<'a>;
+    impl<'a> ReferenceBuilder<linalg::Axpy<'a, f32>> for CudaHandle {
+        type Context = cuda::Context;
 
-        fn eval_reference(
-            &self,
-            params: &linalg::Conv2dP,
-            context: &Self::Context,
-        ) -> f64 {
-            conv2d_reference(self, params, context).unwrap()
+        type Reference = CublasSaxpy;
+
+        fn get_references(&self, params: (i32, bool)) -> Vec<Self::Reference> {
+            vec![CublasSaxpy::from(params)]
         }
     }
 
-    impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for CudaHandle {
-        type Context = cuda::Context<'a>;
+    pub struct CublasSgemv((i32, i32, bool));
 
-        fn eval_reference(
-            &self,
-            params: &linalg::BatchMMP,
-            context: &Self::Context,
-        ) -> f64 {
-            batchmm_reference(self, params, context)
+    impl From<(i32, i32, bool)> for CublasSgemv {
+        fn from(params: (i32, i32, bool)) -> Self {
+            CublasSgemv(params)
         }
     }
 
-    impl<'a> Reference<'a, linalg::Gesummv<'a, f32>> for CudaHandle {
-        type Context = cuda::Context<'a>;
+    impl std::fmt::Display for CublasSgemv {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fmt.write_str("cublas")
+        }
+    }
 
-        fn eval_reference(
-            &self,
-            params: &(i32, i32, bool),
-            context: &Self::Context,
-        ) -> f64 {
-            gesummv_reference(self, params, context)
+    impl Reference for CublasSgemv {
+        type Handle = CudaHandle;
+
+        type Context = cuda::Context;
+
+        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+            matvec_reference(handle, &self.0, context)
+        }
+    }
+
+    impl<'a> ReferenceBuilder<linalg::MatVec<'a, f32>> for CudaHandle {
+        type Context = cuda::Context;
+
+        type Reference = CublasSgemv;
+
+        fn get_references(&self, params: (i32, i32, bool)) -> Vec<Self::Reference> {
+            vec![CublasSgemv::from(params)]
+        }
+    }
+
+    pub struct CublasSgemm(linalg::FusedMMP);
+
+    impl From<linalg::FusedMMP> for CublasSgemm {
+        fn from(params: linalg::FusedMMP) -> Self {
+            CublasSgemm(params)
+        }
+    }
+
+    impl std::fmt::Display for CublasSgemm {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fmt.write_str("cublas")
+        }
+    }
+
+    impl Reference for CublasSgemm {
+        type Handle = CudaHandle;
+
+        type Context = cuda::Context;
+
+        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+            matmul_reference(handle, &self.0, context)
+        }
+    }
+
+    impl<'a> ReferenceBuilder<linalg::FusedMM<'a, f32>> for CudaHandle {
+        type Context = cuda::Context;
+
+        type Reference = CublasSgemm;
+
+        fn get_references(&self, params: linalg::FusedMMP) -> Vec<Self::Reference> {
+            vec![CublasSgemm::from(params)]
+        }
+    }
+
+    pub struct CudnnConv2d {
+        convolution_forward_algo: cudnn::ConvolutionForwardAlgo,
+        params: linalg::Conv2dP,
+    }
+
+    impl std::fmt::Display for CudnnConv2d {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(fmt, "cudnn{}", self.convolution_forward_algo)
+        }
+    }
+
+    impl Reference for CudnnConv2d {
+        type Handle = CudaHandle;
+
+        type Context = cuda::Context;
+
+        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+            conv2d_reference(handle, &self.params, context, self.convolution_forward_algo)
+                .unwrap()
+        }
+    }
+
+    impl<'a> ReferenceBuilder<linalg::Conv2d<'a, f32>> for CudaHandle {
+        type Context = cuda::Context;
+
+        type Reference = CudnnConv2d;
+
+        fn get_references(&self, params: linalg::Conv2dP) -> Vec<Self::Reference> {
+            vec![
+                CudnnConv2d {
+                    convolution_forward_algo: cudnn::ConvolutionForwardAlgo::ImplicitGemm,
+                    params: params.clone(),
+                },
+                CudnnConv2d {
+                    convolution_forward_algo:
+                        cudnn::ConvolutionForwardAlgo::ImplicitPrecompGemm,
+                    params,
+                },
+            ]
+        }
+    }
+
+    pub struct CublasBatchedSgemm {
+        params: linalg::BatchMMP,
+    }
+
+    impl std::fmt::Display for CublasBatchedSgemm {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fmt.write_str("cublas")
+        }
+    }
+
+    impl Reference for CublasBatchedSgemm {
+        type Handle = CudaHandle;
+
+        type Context = cuda::Context;
+
+        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+            batchmm_reference(handle, &self.params, context)
+        }
+    }
+
+    impl<'a> ReferenceBuilder<linalg::BatchMM<'a, f32>> for CudaHandle {
+        type Context = cuda::Context;
+
+        type Reference = CublasBatchedSgemm;
+
+        fn get_references(&self, params: linalg::BatchMMP) -> Vec<Self::Reference> {
+            vec![CublasBatchedSgemm { params }]
+        }
+    }
+
+    pub struct CublasSgesummv {
+        params: (i32, i32, bool),
+    }
+
+    impl std::fmt::Display for CublasSgesummv {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fmt.write_str("cublas")
+        }
+    }
+
+    impl Reference for CublasSgesummv {
+        type Handle = CudaHandle;
+
+        type Context = cuda::Context;
+
+        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+            gesummv_reference(handle, &self.params, context)
+        }
+    }
+
+    impl<'a> ReferenceBuilder<linalg::Gesummv<'a, f32>> for CudaHandle {
+        type Context = cuda::Context;
+
+        type Reference = CublasSgesummv;
+
+        fn get_references(&self, params: (i32, i32, bool)) -> Vec<Self::Reference> {
+            vec![CublasSgesummv { params }]
         }
     }
 }
@@ -455,30 +651,43 @@ pub use cuda_reference::CudaHandle;
 #[cfg(feature = "x86")]
 mod x86_reference {
     use log::warn;
-    use telamon_kernels::linalg;
 
-    use super::Reference;
+    use super::{Reference, ReferenceBuilder};
 
     #[derive(Default)]
-    pub struct X86Reference {
+    pub struct X86Handle {
         _priv: (),
     }
 
-    impl<'a> Reference<'a, linalg::Axpy<'a, f32>> for X86Reference {
-        type Context = telamon_x86::Context;
+    pub struct X86Reference<K> {
+        _marker: std::marker::PhantomData<K>,
+    }
 
-        fn eval_reference(&self, _params: &(i32, bool), _context: &Self::Context) -> f64 {
-            warn!("x86 reference is not implemented");
-            1.
+    impl<K> Default for X86Reference<K> {
+        fn default() -> Self {
+            X86Reference {
+                _marker: std::marker::PhantomData,
+            }
         }
     }
 
-    impl<'a> Reference<'a, linalg::MatVec<'a, f32>> for X86Reference {
+    impl<K> std::fmt::Display for X86Reference<K> {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fmt.write_str("x86_dummy")
+        }
+    }
+
+    impl<K> Reference for X86Reference<K>
+    where
+        K: telamon_kernels::Kernel,
+    {
+        type Handle = X86Handle;
+
         type Context = telamon_x86::Context;
 
         fn eval_reference(
             &self,
-            _params: &(i32, i32, bool),
+            _handle: &Self::Handle,
             _context: &Self::Context,
         ) -> f64 {
             warn!("x86 reference is not implemented");
@@ -486,55 +695,29 @@ mod x86_reference {
         }
     }
 
-    impl<'a> Reference<'a, linalg::Gesummv<'a, f32>> for X86Reference {
+    impl<K> ReferenceBuilder<K> for X86Handle
+    where
+        K: telamon_kernels::Kernel,
+    {
         type Context = telamon_x86::Context;
 
-        fn eval_reference(
-            &self,
-            _params: &(i32, i32, bool),
-            _context: &Self::Context,
-        ) -> f64 {
-            warn!("x86 reference is not implemented");
-            1.
-        }
-    }
+        type Reference = X86Reference<K>;
 
-    impl<'a> Reference<'a, linalg::FusedMM<'a, f32>> for X86Reference {
-        type Context = telamon_x86::Context;
-
-        fn eval_reference(
-            &self,
-            _params: &linalg::FusedMMP,
-            _context: &Self::Context,
-        ) -> f64 {
-            warn!("x86 reference is not implemented");
-            1.
-        }
-    }
-
-    impl<'a> Reference<'a, linalg::BatchMM<'a, f32>> for X86Reference {
-        type Context = telamon_x86::Context;
-
-        fn eval_reference(
-            &self,
-            _params: &linalg::BatchMMP,
-            _context: &Self::Context,
-        ) -> f64 {
-            warn!("x86 reference is not implemented");
-            1.
+        fn get_references(&self, _params: K::Parameters) -> Vec<Self::Reference> {
+            vec![Default::default()]
         }
     }
 }
 
 #[cfg(feature = "x86")]
-pub use x86_reference::X86Reference;
+pub use x86_reference::X86Handle;
 
 /// A wrapper type containing a (list of) candidates; a checking function to ensure that an
 /// implementation's output is valid, and a reference function to compare to.
 pub struct KernelBundle<'a> {
     pub candidates: Vec<Candidate>,
     pub check_fn: Box<dyn Fn(&dyn Context) -> Result<(), String> + Sync + 'a>,
-    pub reference_fn: Box<dyn Fn() -> f64 + 'a>,
+    pub reference_fns: Vec<Box<dyn ReferenceFn + 'a>>,
 }
 
 /// Helper enum to create the supported kernel parameters.
@@ -586,30 +769,29 @@ impl KernelParam {
         reference: R,
     ) -> (KernelBundle<'b>, &'b C)
     where
-        C: Context + ArgMap<'a>,
-        R: Reference<'a, linalg::Axpy<'a, f32>, Context = C>
-            + Reference<'a, linalg::MatVec<'a, f32>, Context = C>
-            + Reference<'a, linalg::FusedMM<'a, f32>, Context = C>
-            + Reference<'a, linalg::BatchMM<'a, f32>, Context = C>
-            + Reference<'a, linalg::Gesummv<'a, f32>, Context = C>
-            + Reference<'a, linalg::Conv2d<'a, f32>, Context = C>
+        C: Context + ArgMap,
+        R: ReferenceBuilder<linalg::Axpy<'a, f32>, Context = C>
+            + ReferenceBuilder<linalg::MatVec<'a, f32>, Context = C>
+            + ReferenceBuilder<linalg::FusedMM<'a, f32>, Context = C>
+            + ReferenceBuilder<linalg::BatchMM<'a, f32>, Context = C>
+            + ReferenceBuilder<linalg::Gesummv<'a, f32>, Context = C>
+            + ReferenceBuilder<linalg::Conv2d<'a, f32>, Context = C>
             + 'b,
         'a: 'b,
     {
         struct Builder<'b, C, R> {
             context: &'b mut C,
-            reference: R,
+            reference: Rc<R>,
         }
 
         impl<'b, C, R> Builder<'b, C, R> {
-            fn build<'a, K>(self, params: K::Parameters) -> (KernelBundle<'b>, &'b C)
+            fn build<K>(self, params: K::Parameters) -> (KernelBundle<'b>, &'b C)
             where
-                K: Kernel<'a> + 'b,
-                K::Parameters: 'b,
-                C: Context + ArgMap<'a>,
-                R: Reference<'a, K, Context = C> + 'b,
+                K: Kernel + 'b,
+                C: Context + ArgMap,
+                R: ReferenceBuilder<K, Context = C> + 'b,
             {
-                let (signature, kernel, context) =
+                let (signature, kernel, context): (_, _, &'b _) =
                     KernelBuilder::default().build::<K, C>(params.clone(), self.context);
                 let signature = Arc::new(signature);
                 let candidates = kernel.build_body(signature, context);
@@ -625,32 +807,41 @@ impl KernelParam {
                 let expected = kernel.get_expected_output(context);
                 let check_fn =
                     move |context: &dyn Context| kernel.check_result(&expected, context);
-                let reference = self.reference;
-                let reference_fn = move || {
-                    Reference::<'_, K>::eval_reference(&reference, &params, context)
-                };
+                let references = self.reference.get_references(params.clone());
+                let handle = &self.reference;
+                let reference_fns = references
+                    .into_iter()
+                    .map(move |reference| {
+                        Box::new(ReferenceFnAdapter {
+                            reference,
+                            handle: Rc::clone(handle),
+                            context,
+                        }) as Box<dyn ReferenceFn + 'b>
+                    })
+                    .collect::<Vec<_>>();
 
                 (
                     KernelBundle {
                         candidates,
                         check_fn: Box::new(check_fn),
-                        reference_fn: Box::new(reference_fn),
+                        reference_fns,
                     },
                     context,
                 )
             }
         }
 
-        let builder = Builder { context, reference };
+        let builder = Builder {
+            context,
+            reference: Rc::new(reference),
+        };
         match *self {
-            KernelParam::Axpy { n } => {
-                builder.build::<'_, linalg::Axpy<'_, f32>>((n, true))
-            }
+            KernelParam::Axpy { n } => builder.build::<linalg::Axpy<'_, f32>>((n, true)),
             KernelParam::MatVec { m, n } => {
-                builder.build::<'_, linalg::MatVec<'_, f32>>((m, n, true))
+                builder.build::<linalg::MatVec<'_, f32>>((m, n, true))
             }
             KernelParam::Gesummv { m, n } => {
-                builder.build::<'_, linalg::Gesummv<'_, f32>>((m, n, true))
+                builder.build::<linalg::Gesummv<'_, f32>>((m, n, true))
             }
             KernelParam::Gemm { m, n, k, ta, tb } => {
                 let mut params = linalg::FusedMMP::new(m, n, k);
@@ -660,7 +851,7 @@ impl KernelParam {
                 if tb {
                     params = params.transpose_b();
                 }
-                builder.build::<'_, linalg::FusedMM<'_, f32>>(params)
+                builder.build::<linalg::FusedMM<'_, f32>>(params)
             }
             KernelParam::Conv2d {
                 n,
@@ -684,10 +875,10 @@ impl KernelParam {
                     pad_mode,
                     data_format,
                 };
-                builder.build::<'_, linalg::Conv2d<'_, f32>>(params)
+                builder.build::<linalg::Conv2d<'_, f32>>(params)
             }
             KernelParam::BatchMM { b, m, n, k } => builder
-                .build::<'_, linalg::BatchMM<'_, f32>>(linalg::BatchMMP::new(b, m, n, k)),
+                .build::<linalg::BatchMM<'_, f32>>(linalg::BatchMMP::new(b, m, n, k)),
         }
     }
 }
@@ -987,13 +1178,12 @@ impl PlatformContextBuilder {
     /// Create a new context for this platform.
     ///
     /// There can be multiple concurrent contexts on the same platform.
-    pub fn build_context(&self) -> PlatformContext<'_> {
+    pub fn build_context(&self) -> PlatformContext {
         match self {
             #[cfg(feature = "x86")]
-            PlatformContextBuilder::X86 => PlatformContext::X86(
-                telamon_x86::Context::default(),
-                std::marker::PhantomData,
-            ),
+            PlatformContextBuilder::X86 => {
+                PlatformContext::X86(telamon_x86::Context::default())
+            }
             #[cfg(feature = "cuda")]
             PlatformContextBuilder::Cuda(executor) => {
                 PlatformContext::Cuda(telamon_cuda::Context::new(executor))
@@ -1003,14 +1193,14 @@ impl PlatformContextBuilder {
 }
 
 /// An abstraction over multiple platform's contexts.
-pub enum PlatformContext<'a> {
+pub enum PlatformContext {
     #[cfg(feature = "x86")]
-    X86(telamon_x86::Context, std::marker::PhantomData<&'a ()>),
+    X86(telamon_x86::Context),
     #[cfg(feature = "cuda")]
-    Cuda(telamon_cuda::Context<'a>),
+    Cuda(telamon_cuda::Context),
 }
 
-impl<'a> PlatformContext<'a> {
+impl PlatformContext {
     /// Create a kernel bundle, complete with checking and reference function, for the given kernel
     /// parameters.  Note that all platforms may not support all kernels.
     pub fn kernel_bundle(
@@ -1019,9 +1209,8 @@ impl<'a> PlatformContext<'a> {
     ) -> (KernelBundle<'_>, &dyn Context) {
         match self {
             #[cfg(feature = "x86")]
-            PlatformContext::X86(context, _) => {
-                let (bundle, context) =
-                    kernel.to_bundle(context, X86Reference::default());
+            PlatformContext::X86(context) => {
+                let (bundle, context) = kernel.to_bundle(context, X86Handle::default());
                 (bundle, context as &dyn Context)
             }
             #[cfg(feature = "cuda")]

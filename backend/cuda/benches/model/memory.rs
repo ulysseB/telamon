@@ -17,7 +17,7 @@ impl PerfModelTest for L1LinesPressure {
         "l1_lines_pressure"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", Self::N as i32);
         builder.array::<f32>("array", 128 * 32 * 32 * 32);
         builder.array::<f32>("out", 1);
@@ -78,7 +78,7 @@ impl PerfModelTest for L2LinesPressure {
         "l2_lines_pressure"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", Self::N as i32);
         builder.array::<f32>("array", 128 * 32 * 32 * 8);
         builder.array::<f32>("out", 1);
@@ -143,7 +143,7 @@ impl PerfModelTest for SharedLoad {
         "shared_load"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
@@ -205,7 +205,7 @@ impl PerfModelTest for VectorSharedLoad {
         "vector_shared_load"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
@@ -261,7 +261,7 @@ impl PerfModelTest for SharedReplay {
         "shared_replay"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
@@ -313,7 +313,7 @@ impl PerfModelTest for VectorSharedReplay {
         "vector_shared_replay"
     }
 
-    fn gen_signature<'a, AM: ArgMap<'a> + Context>(builder: &mut SignatureBuilder<AM>) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);

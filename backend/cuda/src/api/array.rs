@@ -1,27 +1,31 @@
 //! Allows the execution of kernels on the GPU.
 use crate::api::wrapper::*;
-use crate::api::Argument;
+use crate::api::{Argument, Executor};
 use libc;
 use num::integer::div_rem;
 use telamon::device;
 
 /// An array allocated on a CUDA device.
-pub struct Array<'a, T> {
+pub struct Array<T> {
     len: usize,
     array: *mut CudaArray,
-    context: &'a CudaContext,
+    executor: Executor,
     t: std::marker::PhantomData<T>,
 }
 
-impl<'a, T> Array<'a, T> {
+impl<T> Array<T> {
+    fn context(&self) -> &CudaContext {
+        self.executor.raw()
+    }
+
     /// Allocates a new array on the device.
-    pub fn new(context: &'a CudaContext, len: usize) -> Self {
+    pub fn new(executor: Executor, len: usize) -> Self {
         let n_bytes = (len * std::mem::size_of::<T>()) as u64;
         Array {
             len,
-            context,
-            array: unsafe { allocate_array(context, n_bytes) },
+            array: unsafe { allocate_array(executor.raw(), n_bytes) },
             t: std::marker::PhantomData,
+            executor,
         }
     }
 
@@ -31,7 +35,7 @@ impl<'a, T> Array<'a, T> {
         unsafe {
             vec.set_len(self.len);
             let host_ptr = vec.as_mut_ptr() as *mut libc::c_void;
-            copy_DtoH(self.context, self.array, host_ptr, self.byte_len() as u64);
+            copy_DtoH(self.context(), self.array, host_ptr, self.byte_len() as u64);
         }
         vec
     }
@@ -41,7 +45,7 @@ impl<'a, T> Array<'a, T> {
         assert_eq!(self.len, vec.len());
         unsafe {
             let host_ptr = vec.as_ptr() as *const libc::c_void;
-            copy_HtoD(self.context, host_ptr, self.array, self.byte_len() as u64);
+            copy_HtoD(self.context(), host_ptr, self.array, self.byte_len() as u64);
         }
     }
 
@@ -53,14 +57,19 @@ impl<'a, T> Array<'a, T> {
     fn clone_from(&mut self, src: &Self) {
         assert_eq!(self.len, src.len);
         unsafe {
-            copy_DtoD(self.context, src.array, self.array, self.byte_len() as u64);
+            copy_DtoD(
+                self.context(),
+                src.array,
+                self.array,
+                self.byte_len() as u64,
+            );
         }
     }
 }
 
-impl<'a, T> Clone for Array<'a, T> {
+impl<T> Clone for Array<T> {
     fn clone(&self) -> Self {
-        let mut new_array = Self::new(self.context, self.len);
+        let mut new_array = Self::new(self.executor.clone(), self.len);
         new_array.clone_from(self);
         new_array
     }
@@ -68,26 +77,31 @@ impl<'a, T> Clone for Array<'a, T> {
     fn clone_from(&mut self, src: &Self) {
         assert_eq!(self.len, src.len);
         unsafe {
-            copy_DtoD(self.context, src.array, self.array, self.byte_len() as u64);
+            copy_DtoD(
+                self.context(),
+                src.array,
+                self.array,
+                self.byte_len() as u64,
+            );
         }
     }
 }
 
-impl<'a, T> Drop for Array<'a, T> {
+impl<T> Drop for Array<T> {
     fn drop(&mut self) {
         unsafe {
-            free_array(self.context, self.array);
+            free_array(self.context(), self.array);
         }
     }
 }
 
-unsafe impl<'a, T> Sync for Array<'a, T> {}
-unsafe impl<'a, T> Send for Array<'a, T> {}
+unsafe impl<T> Sync for Array<T> {}
+unsafe impl<T> Send for Array<T> {}
 
 /// Randomize an array of `f32`.
 pub fn randomize_f32(array: &mut Array<f32>) {
     unsafe {
-        randomize_float_array(array.context, array.array, array.len as u64, 0.0, 1.0);
+        randomize_float_array(array.context(), array.array, array.len as u64, 0.0, 1.0);
     }
 }
 
@@ -103,13 +117,13 @@ pub fn compare_f32(lhs: &Array<f32>, rhs: &Array<f32>) -> f32 {
         .fold(0.0, f32::max)
 }
 
-impl<'a, T> Argument for Array<'a, T> {
+impl<T> Argument for Array<T> {
     fn raw_ptr(&self) -> *const libc::c_void {
         self.array as *const libc::c_void
     }
 }
 
-impl<'a, T> device::ArrayArgument for Array<'a, T>
+impl<T> device::ArrayArgument for Array<T>
 where
     T: device::ScalarArgument,
 {

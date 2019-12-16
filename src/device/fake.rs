@@ -233,7 +233,7 @@ impl<D: super::Device> super::Context for Context<D> {
     }
 }
 
-impl<'a, D: super::Device + 'a> ArgMap<'a> for Context<D> {
+impl<D: super::Device> ArgMap for Context<D> {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -249,7 +249,7 @@ impl<'a, D: super::Device + 'a> ArgMap<'a> for Context<D> {
         _: &ir::Parameter,
         _: ir::Type,
         _: usize,
-    ) -> Arc<dyn ArrayArgument + 'a> {
+    ) -> Arc<dyn ArrayArgument> {
         Arc::new(FakeArray)
     }
 }
