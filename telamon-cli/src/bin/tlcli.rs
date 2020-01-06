@@ -82,7 +82,10 @@ impl Search {
                         let ref_runtime = Bench::default()
                             .runs(self.num_code_runs)
                             .benchmark_fn(&**reference_fn);
-                        Some(estimate_mean(ref_runtime, 0.95, "ns"))
+                        Some((
+                            reference_fn.to_string(),
+                            estimate_mean(ref_runtime, 0.95, "ns"),
+                        ))
                     } else {
                         None
                     };
@@ -92,17 +95,18 @@ impl Search {
                         .unwrap();
                 writeln!(f, "runtimes: {:?}", runtime).unwrap();
                 let mean = estimate_mean(runtime, 0.95, "ns");
-                if let Some(ref_mean) = ref_mean {
+                if let Some((ref_name, ref_mean)) = ref_mean {
                     writeln!(
                         f,
-                        "{}: {}, reference: {}, speedup: {:.2}",
+                        "{}: {}, reference ({}): {}, speedup: {:.2}",
                         kernel,
                         mean,
+                        ref_name,
                         ref_mean,
                         ref_mean.value / mean.value
                     )
                 } else {
-                    writeln!(f, "{}: {}, reference: ???, speedup: ???", kernel, mean)
+                    writeln!(f, "{}: {}, reference: N/A, speedup: N/A", kernel, mean)
                 }
                 .unwrap();
             }
@@ -428,7 +432,10 @@ impl Benchmark {
                 };
 
                 if ix == 0 {
-                    reference_estimate = Some(estimate_mean(reference, 0.95, "ns"));
+                    reference_estimate = Some((
+                        reference_fn.to_string(),
+                        estimate_mean(reference, 0.95, "ns"),
+                    ));
                 }
             }
             reference_estimate
@@ -474,16 +481,20 @@ impl Benchmark {
 
                 let self_estimate = estimate_mean(runtimes, 0.95, "ns");
                 match &reference_estimate {
-                    Some(reference_estimate) => {
+                    Some((reference_name, reference_estimate)) => {
                         let speedup = reference_estimate.value / self_estimate.value;
                         println!(
-                            "runtime: {}, reference: {} (speedup: {:.2})",
-                            self_estimate, reference_estimate, speedup,
+                            "{}: {}, reference ({}): {}, speedup: {:.2}",
+                            self.kernel,
+                            self_estimate,
+                            reference_name,
+                            reference_estimate,
+                            speedup,
                         );
                     }
                     None => println!(
-                        "runtime: {}, reference: ??? (speedup: ???)",
-                        self_estimate
+                        "{}: {}, reference: N/A, speedup: N/A",
+                        self.kernel, self_estimate
                     ),
                 }
             }

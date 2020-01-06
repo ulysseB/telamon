@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::{fmt, fs, io};
 
 use itertools::Itertools;
-use log::debug;
+use log::{debug, warn};
 use structopt::StructOpt;
 
 use telamon::device::{ArgMap, Context};
@@ -50,7 +50,11 @@ pub trait Reference: fmt::Display {
 
     type Context: ?Sized + Context;
 
-    fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64;
+    fn eval_reference(
+        &self,
+        handle: &Self::Handle,
+        context: &Self::Context,
+    ) -> Option<f64>;
 }
 
 pub trait ReferenceBuilder<K>
@@ -89,7 +93,9 @@ where
     C: Context,
 {
     fn call_reference(&self) -> f64 {
-        self.reference.eval_reference(&*self.handle, self.context)
+        self.reference
+            .eval_reference(&*self.handle, self.context)
+            .unwrap()
     }
 }
 
@@ -337,41 +343,26 @@ mod cuda_reference {
             let filter = get_array("filter", context);
             let output = get_array("output", context);
 
-            match convolution_forward_algo {
-                cudnn::ConvolutionForwardAlgo::ImplicitGemm => time_cuda(|| {
-                    handle
-                        .cudnn
-                        .convolution_forward_implicit_gemm(
+            time_cuda({
+                let mut convolution_params = handle.cudnn.convolution_forward(
+                    &input_desc,
+                    &filter_desc,
+                    &conv_desc,
+                    &output_desc,
+                    convolution_forward_algo,
+                )?;
+                move || {
+                    convolution_params
+                        .call(
                             &1f32 as *const f32 as *const _,
-                            &input_desc,
                             input,
-                            &filter_desc,
                             filter,
-                            &conv_desc,
                             &0f32 as *const f32 as *const _,
-                            &output_desc,
                             output,
                         )
                         .unwrap()
-                }),
-                cudnn::ConvolutionForwardAlgo::ImplicitPrecompGemm => time_cuda(|| {
-                    handle
-                        .cudnn
-                        .convolution_forward_implicit_precomp_gemm(
-                            &1f32 as *const f32 as *const _,
-                            &input_desc,
-                            input,
-                            &filter_desc,
-                            filter,
-                            &conv_desc,
-                            &0f32 as *const f32 as *const _,
-                            &output_desc,
-                            output,
-                        )
-                        .unwrap()
-                }),
-                _ => unreachable!(),
-            }
+                }
+            })
         };
 
         Ok(time)
@@ -459,8 +450,12 @@ mod cuda_reference {
 
         type Context = cuda::Context;
 
-        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
-            saxpy_reference(handle, self.0, context)
+        fn eval_reference(
+            &self,
+            handle: &Self::Handle,
+            context: &Self::Context,
+        ) -> Option<f64> {
+            Some(saxpy_reference(handle, self.0, context))
         }
     }
 
@@ -493,8 +488,12 @@ mod cuda_reference {
 
         type Context = cuda::Context;
 
-        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
-            matvec_reference(handle, &self.0, context)
+        fn eval_reference(
+            &self,
+            handle: &Self::Handle,
+            context: &Self::Context,
+        ) -> Option<f64> {
+            Some(matvec_reference(handle, &self.0, context))
         }
     }
 
@@ -527,8 +526,12 @@ mod cuda_reference {
 
         type Context = cuda::Context;
 
-        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
-            matmul_reference(handle, &self.0, context)
+        fn eval_reference(
+            &self,
+            handle: &Self::Handle,
+            context: &Self::Context,
+        ) -> Option<f64> {
+            Some(matmul_reference(handle, &self.0, context))
         }
     }
 
@@ -558,9 +561,13 @@ mod cuda_reference {
 
         type Context = cuda::Context;
 
-        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
+        fn eval_reference(
+            &self,
+            handle: &Self::Handle,
+            context: &Self::Context,
+        ) -> Option<f64> {
             conv2d_reference(handle, &self.params, context, self.convolution_forward_algo)
-                .unwrap()
+                .ok()
         }
     }
 
@@ -578,6 +585,19 @@ mod cuda_reference {
                 CudnnConv2d {
                     convolution_forward_algo:
                         cudnn::ConvolutionForwardAlgo::ImplicitPrecompGemm,
+                    params: params.clone(),
+                },
+                CudnnConv2d {
+                    convolution_forward_algo: cudnn::ConvolutionForwardAlgo::Gemm,
+                    params: params.clone(),
+                },
+                CudnnConv2d {
+                    convolution_forward_algo: cudnn::ConvolutionForwardAlgo::Winograd,
+                    params: params.clone(),
+                },
+                CudnnConv2d {
+                    convolution_forward_algo:
+                        cudnn::ConvolutionForwardAlgo::WinogradNonfused,
                     params,
                 },
             ]
@@ -599,8 +619,12 @@ mod cuda_reference {
 
         type Context = cuda::Context;
 
-        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
-            batchmm_reference(handle, &self.params, context)
+        fn eval_reference(
+            &self,
+            handle: &Self::Handle,
+            context: &Self::Context,
+        ) -> Option<f64> {
+            Some(batchmm_reference(handle, &self.params, context))
         }
     }
 
@@ -629,8 +653,12 @@ mod cuda_reference {
 
         type Context = cuda::Context;
 
-        fn eval_reference(&self, handle: &Self::Handle, context: &Self::Context) -> f64 {
-            gesummv_reference(handle, &self.params, context)
+        fn eval_reference(
+            &self,
+            handle: &Self::Handle,
+            context: &Self::Context,
+        ) -> Option<f64> {
+            Some(gesummv_reference(handle, &self.params, context))
         }
     }
 
@@ -689,9 +717,9 @@ mod x86_reference {
             &self,
             _handle: &Self::Handle,
             _context: &Self::Context,
-        ) -> f64 {
+        ) -> Option<f64> {
             warn!("x86 reference is not implemented");
-            1.
+            None
         }
     }
 
@@ -811,12 +839,22 @@ impl KernelParam {
                 let handle = &self.reference;
                 let reference_fns = references
                     .into_iter()
-                    .map(move |reference| {
-                        Box::new(ReferenceFnAdapter {
-                            reference,
-                            handle: Rc::clone(handle),
-                            context,
-                        }) as Box<dyn ReferenceFn + 'b>
+                    .flat_map(move |reference| {
+                        if reference.eval_reference(handle, context).is_none() {
+                            warn!(
+                                "Reference {} is incompatible with provided parameters",
+                                reference
+                            );
+
+                            None
+                        } else {
+                            Some(Box::new(ReferenceFnAdapter {
+                                reference,
+                                handle: Rc::clone(handle),
+                                context,
+                            })
+                                as Box<dyn ReferenceFn + 'b>)
+                        }
                     })
                     .collect::<Vec<_>>();
 
