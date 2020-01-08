@@ -674,6 +674,7 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
 
                     Expr::RollingSum { base, elems } => {
                         let reg = self.namer.gen_name(ir::Type::I(expr.bitwidth()));
+                        let tmp = self.namer.gen_name(ir::Type::I(32));
                         let base_op = self.to_operand(base);
                         self.dispatch.add_compute(
                             base.defined_at,
@@ -692,37 +693,51 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
                             );
 
                             let dim_size = self.merged_dimensions[dim].size();
-                            let reset_inst = match (dim_size.as_int(), stride.as_int()) {
+                            let reset_insts = match (dim_size.as_int(), stride.as_int()) {
                                 (Some(dim_size), Some(stride)) => {
-                                    llir::Instruction::isub(
+                                    vec![llir::Instruction::isub(
                                         reg,
                                         reg.into_operand(),
                                         ((dim_size * stride) as i32)
                                             .typed_int_literal(reg.t())
                                             .unwrap(),
-                                    )
+                                    )]
                                 }
-                                (Some(dim_size), None) => llir::Instruction::imad(
-                                    reg,
-                                    (-(dim_size as i32)).int_literal(),
-                                    self.namer.name_size(stride, ir::Type::I(32)),
-                                    reg.into_operand(),
-                                ),
-                                (None, Some(stride)) => llir::Instruction::imad(
-                                    reg,
-                                    (-(stride as i32)).int_literal(),
-                                    self.namer.name_size(dim_size, ir::Type::I(32)),
-                                    reg.into_operand(),
-                                ),
-                                (None, None) => llir::Instruction::isub_auto(
+                                (Some(dim_size), None) => vec![
+                                    llir::Instruction::neg(
+                                        tmp,
+                                        self.namer.name_size(stride, ir::Type::I(32)),
+                                    ),
+                                    llir::Instruction::imad(
+                                        reg,
+                                        (dim_size as i32).int_literal(),
+                                        tmp.into_operand(),
+                                        reg.into_operand(),
+                                    ),
+                                ],
+                                (None, Some(stride)) => vec![
+                                    llir::Instruction::neg(
+                                        tmp,
+                                        self.namer.name_size(dim_size, ir::Type::I(32)),
+                                    ),
+                                    llir::Instruction::imad(
+                                        reg,
+                                        (stride as i32).int_literal(),
+                                        tmp.into_operand(),
+                                        reg.into_operand(),
+                                    ),
+                                ],
+                                (None, None) => vec![llir::Instruction::isub_auto(
                                     reg,
                                     reg.into_operand(),
                                     self.namer
                                         .name_size(&(dim_size * stride), ir::Type::I(32)),
-                                ),
+                                )],
                             };
 
-                            self.dispatch.add_reset(dim, reset_inst.unwrap());
+                            for reset_inst in reset_insts {
+                                self.dispatch.add_reset(dim, reset_inst.unwrap());
+                            }
                         }
 
                         reg.into_operand()
