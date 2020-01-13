@@ -380,7 +380,7 @@ impl<'a, S: Scalar> Kernel for FusedMM<'a, S> {
     ) -> Vec<Candidate> {
         let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
         let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
-        let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32]);
+        let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32, 4]);
 
         let mut builder = helper::Builder::new(signature, ctx.device());
 
