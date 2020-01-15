@@ -7,7 +7,7 @@ use utils::*;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 
-use telamon::codegen::*;
+use telamon::codegen::{self, *};
 use telamon::ir::{self, Type};
 
 use crate::{Gpu, NameGenerator};
@@ -134,11 +134,20 @@ impl CudaPrinter {
             decls.push(format!("mov.u32 {}, %ctaid.{};", index.ptx(), dir));
         }
         // Compute thread indexes.
-        for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
+        let tid_x = name_map.gen_name(ir::Type::I(32));
+        decls.push(format!("mov.s32 {}, %tid.x;", tid_x.ptx()));
+        for dim in function.thread_dims().iter() {
+            let size = dim.size().as_int().unwrap();
             decls.push(format!(
-                "mov.s32 {}, %tid.{};",
-                name_map.name_index(dim.id()).ptx(),
-                dir
+                "rem.s32 {dst}, {src}, {size};",
+                dst = name_map.name_index(dim.id()).ptx(),
+                src = tid_x.ptx(),
+                size = size,
+            ));
+            decls.push(format!(
+                "div.s32 {tid}, {tid}, {size};",
+                tid = tid_x.ptx(),
+                size = size,
             ));
         }
         decls.join("\n  ")
@@ -258,7 +267,6 @@ impl CudaPrinter {
 
     pub fn host_function(&mut self, fun: &Function, gpu: &Gpu, out: &mut dyn Write) {
         let block_sizes = Self::host_3sizes(fun.block_dims().iter());
-        let thread_sizes = Self::host_3sizes(fun.thread_dims().iter().rev());
         let extern_param_names = fun
             .space()
             .ir_instance()
@@ -342,9 +350,14 @@ impl CudaPrinter {
             param_vec = format!("{{ {} }}", params),
             extra_def = extra_def.join("  \n"),
             extra_cleanup = extra_cleanup.join("  \n"),
-            t_dim_x = &thread_sizes[0],
-            t_dim_y = &thread_sizes[1],
-            t_dim_z = &thread_sizes[2],
+            t_dim_x = &Self::host_size(
+                &fun.thread_dims()
+                    .iter()
+                    .map(|dim| dim.size())
+                    .product::<codegen::Size>()
+            ),
+            t_dim_y = &"1",
+            t_dim_z = &"1",
             b_dim_x = &block_sizes[0],
             b_dim_y = &block_sizes[1],
             b_dim_z = &block_sizes[2],

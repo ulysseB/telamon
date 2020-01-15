@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::{fmt, ops};
+use std::{fmt, iter, ops};
 
 use num;
 use utils::unwrap;
@@ -124,6 +124,26 @@ where
 
     fn mul(self, other: T) -> Self::Output {
         self.clone() * other
+    }
+}
+
+impl<'a> iter::Product<&'a Size> for Size {
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = &'a Size>,
+    {
+        let mut result = Size::new(1, Vec::new(), 1);
+
+        for size in iter {
+            let gcd1 = num::integer::gcd(result.factor, size.divisor);
+            let gcd2 = num::integer::gcd(result.divisor, size.factor);
+            result.factor = (result.factor / gcd1) * (size.factor / gcd2);
+            result.divisor = (result.divisor / gcd2) * (size.divisor / gcd1);
+            result.dividend.extend(size.dividend.iter().cloned());
+        }
+
+        result.simplify();
+        result
     }
 }
 

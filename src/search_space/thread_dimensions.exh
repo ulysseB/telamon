@@ -27,19 +27,6 @@ end
 
 require num_threads() <= "$fun.device().max_threads()"
 
-/// Limits the number of thread dimensions.
-///
-/// The counter iterates on `StaticDims` instead of just `ThreadDims` because we want the
-/// constraint `num_thread_dims() <= 3` to propagate to dimensions that still have the
-/// possibility of not being thread dimensions. Otherwise the constraint would only apply
-/// to dimensions for wich we already took the decision they were threads.
-define half counter num_thread_dims():
-  forall $dim in StaticDims:
-    sum "1" when: is_thread_dim($dim) is TRUE
-end
-
-require num_thread_dims() <= "3"
-
 /// Indicates how are thread dimensions mapped on the GPU.
 define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
   antisymmetric:

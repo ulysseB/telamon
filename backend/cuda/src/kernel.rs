@@ -92,7 +92,14 @@ impl<'a, 'b> Kernel<'a, 'b> {
 
     fn gen_args(&self, args: &'a Context) -> ThunkArgs<'a> {
         let block_sizes = get_sizes(self.function.block_dims(), args);
-        let thread_sizes = get_sizes(self.function.thread_dims().iter().rev(), args);
+        let thread_size = args.eval_size(
+            &self
+                .function
+                .thread_dims()
+                .iter()
+                .map(|dim| dim.size())
+                .product::<codegen::Size>(),
+        );
         let mut tmp_arrays = vec![];
         let params = self
             .function
@@ -124,7 +131,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
             .collect_vec();
         ThunkArgs {
             blocks: block_sizes,
-            threads: thread_sizes,
+            threads: [thread_size, 1, 1],
             tmp_arrays,
             args: params,
             expected_blocks_per_smx: self.expected_blocks_per_smx,
