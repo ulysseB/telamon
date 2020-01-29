@@ -506,7 +506,7 @@ impl Function<()> {
 
     /// Allocates a new memory block.
     pub fn add_mem_block(&mut self, size: u32) -> ir::MemId {
-        self.body.mem_blocks.alloc_block(size, None)
+        self.body.mem_blocks.alloc_block(size)
     }
 
     /// Create a new logical dimension composed of multiple dimensions to implement

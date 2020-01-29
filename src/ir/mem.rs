@@ -96,13 +96,9 @@ impl BlockMap {
 
     /// Allocates a new `Block` with the given type and sizes. Must call not merged on
     /// the dimensions that cannot be merged upon creation.
-    pub fn alloc_block(
-        &mut self,
-        base_size: u32,
-        maybe_mapped: Option<ir::DimMap>,
-    ) -> MemId {
+    pub fn alloc_block(&mut self, base_size: u32) -> MemId {
         let id = MemId(self.blocks.len() as u32);
-        let block = self.create_block(id, base_size, maybe_mapped);
+        let block = self.create_block(id, base_size, None);
         self.blocks.push(block);
         id
     }
@@ -156,7 +152,7 @@ impl BlockMap {
         self.blocks.iter()
     }
 
-    /// Rename a basic block. Returns the lyaouts to lower.
+    /// Rename a basic block. Returns the layouts to lower.
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) -> Vec<MemId> {
         let mut to_lower = Vec::new();
         for block in self.blocks.iter_mut() {
