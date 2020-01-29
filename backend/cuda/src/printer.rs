@@ -136,7 +136,7 @@ impl CudaPrinter {
         // Compute thread indexes.
         let tid_x = name_map.gen_name(ir::Type::I(32));
         decls.push(format!("mov.s32 {}, %tid.x;", tid_x.ptx()));
-        for dim in function.thread_dims().iter() {
+        for dim in function.thread_dims().iter().rev() {
             let size = dim.size().as_int().unwrap();
             decls.push(format!(
                 "rem.s32 {dst}, {src}, {size};",

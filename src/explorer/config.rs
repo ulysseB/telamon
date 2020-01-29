@@ -358,6 +358,7 @@ pub enum ChoiceGroup {
     Order,
     MemSpace,
     InstFlag,
+    Advance, // Pipelining
     Threads,
     ThreadSize,
 
@@ -382,6 +383,7 @@ impl fmt::Display for ChoiceGroup {
             DimKind => "dim_kind",
             DimMap => "dim_map",
             Order => "order",
+            Advance => "advance",
             MemSpace => "mem_space",
             InstFlag => "inst_flag",
             Threads => "threads",
@@ -416,6 +418,7 @@ impl FromStr for ChoiceGroup {
             "dim_kind" => DimKind,
             "dim_map" => DimMap,
             "order" => Order,
+            "advance" => Advance,
             "mem_space" => MemSpace,
             "inst_flag" => InstFlag,
             "threads" => Threads,
@@ -440,13 +443,14 @@ impl<'a> IntoIterator for &'a ChoiceOrdering {
     }
 }
 
-pub(super) const DEFAULT_ORDERING: [ChoiceGroup; 7] = [
+pub(super) const DEFAULT_ORDERING: [ChoiceGroup; 8] = [
     ChoiceGroup::LowerLayout,
     ChoiceGroup::Size,
     ChoiceGroup::DimKind,
     ChoiceGroup::DimMap,
     ChoiceGroup::MemSpace,
     ChoiceGroup::Order,
+    ChoiceGroup::Advance,
     ChoiceGroup::InstFlag,
 ];
 

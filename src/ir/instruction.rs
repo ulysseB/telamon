@@ -41,6 +41,8 @@ pub struct Instruction<L = LoweringMap> {
     variable: Option<ir::VarId>,
     defined_vars: VecSet<ir::VarId>,
     used_vars: VecSet<ir::VarId>,
+    dependencies: VecSet<ir::StmtId>,
+    users: VecSet<ir::StmtId>,
 }
 
 impl<L> Instruction<L> {
@@ -72,6 +74,20 @@ impl<L> Instruction<L> {
                 }
             })
             .collect();
+
+        // Collect dependencies
+        let dependencies = operator
+            .operands()
+            .iter()
+            .flat_map(|op| {
+                if let ir::Operand::Inst(src, _, _, _) = op {
+                    Some((*src).into())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         Ok(Instruction {
             operator,
             id,
@@ -79,6 +95,8 @@ impl<L> Instruction<L> {
             variable: None,
             defined_vars: VecSet::default(),
             used_vars,
+            dependencies,
+            users: VecSet::default(),
         })
     }
 
@@ -206,6 +224,10 @@ impl<L> Instruction<L> {
         // An instruction variable cannot be set twice.
         assert_eq!(std::mem::replace(&mut self.variable, Some(variable)), None);
     }
+
+    pub(super) fn register_user(&mut self, user: ir::StmtId) {
+        self.users.insert(user);
+    }
 }
 
 impl Instruction<()> {
@@ -217,6 +239,8 @@ impl Instruction<()> {
             variable: self.variable,
             used_vars: self.used_vars,
             defined_vars: self.defined_vars,
+            dependencies: self.dependencies,
+            users: self.users,
         }
     }
 }
@@ -260,6 +284,14 @@ impl<L> Statement<L> for Instruction<L> {
 
     fn register_defined_var(&mut self, var: ir::VarId) {
         self.defined_vars.insert(var);
+    }
+
+    fn users(&self) -> &VecSet<ir::StmtId> {
+        &self.users
+    }
+
+    fn dependencies(&self) -> &VecSet<ir::StmtId> {
+        &self.dependencies
     }
 }
 

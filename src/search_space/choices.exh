@@ -254,6 +254,58 @@ require forall $dim in Dimensions:
       "!$reduce.is_reduction_common_dim($init.id(), $dim.id())"
         || is_iteration_dim($reduce, $dim) is FALSE || order($dim, $init) is OUTER
 
+// Specifies whether the statement should be advanced in the dimension.  If
+// advanced, the first iteration of the statement is put in the prologue and
+// each iteration of the dimension executes the statement with an offset.
+define enum advance($stmt in Statements, $dim in Dimensions):
+	value YES:
+		requires order($stmt, $dim) is INNER
+		requires dim_kind($dim) is SEQUENTIAL
+
+	value NO:
+end
+
+// If a statement is advanced in a dimension, it is also advanced in all inner
+// dimensions.
+require forall $stmt in Statements:
+	forall $outer in Dimensions:
+		forall $inner in Dimensions:
+			order($inner, $stmt) is not OUTER || order($outer, $inner) is not OUTER
+				|| advance($stmt, $outer) is not YES || advance($stmt, $inner) is YES
+				|| dim_kind($inner) is not SEQUENTIAL
+
+// Ensure MERGED dimensions are compatible wrt advance
+require forall $stmt in Statements:
+	forall $lhs in Dimensions:
+		forall $rhs in Dimensions:
+			order($lhs, $rhs) is not MERGED || advance($stmt, $lhs) == advance($stmt, $rhs)
+
+// Count the number of dimensions which are advanced
+define counter num_dim_advances($stmt in Statements):
+	forall $dim in Dimensions:
+		sum "1" when:
+			advance($stmt, $dim) is YES
+end
+
+// Represents the dependencies of a statement
+set Dependencies($stmt in Statements) subsetof Statements:
+	item_type = "dyn ir::Statement"
+	id_type = "ir::StmtId"
+	item_getter = "$fun.statement($id)"
+	id_getter = "$item.stmt_id()"
+	iterator = "$stmt.dependencies().iter().map(|&id| $fun.statement(id))"
+	from_superset = "if $stmt.dependencies().contains(&$item.stmt_id()) { Some($item) } else { None }"
+	reverse forall $dep in Statements = "$dep.users().iter().map(|&id| $fun.statement(id))"
+	var_prefix = "dep"
+	new_objs = "$objs.dependencies"
+end
+
+// Enforce order between dependent statements depending on the advance level
+require forall $user in Statements:
+	forall $dep in Dependencies($user):
+		order($user, $dep) is AFTER | MERGED
+		num_dim_advances($user) <= num_dim_advances($dep)
+
 // dim_map lowering.
 trigger forall $lhs in Dimensions:
   forall $rhs in Dimensions:

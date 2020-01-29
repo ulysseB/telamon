@@ -126,6 +126,28 @@ pub fn list<'a>(
                     }))
                 }
 
+                ChoiceGroup::Advance => {
+                    Box::new(fun.statements().flat_map(move |stmt| {
+                        let stmt = stmt.stmt_id();
+                        fun.dims()
+                            .filter(move |dim| dim.stmt_id() != stmt)
+                            .filter(move |dim| {
+                                let dim_kind = space.domain().get_dim_kind(dim.id());
+                                let orders =
+                                    space.domain().get_order(stmt, dim.stmt_id());
+                                dim_kind.intersects(DimKind::SEQUENTIAL)
+                                    && orders.intersects(Order::INNER)
+                            })
+                            .flat_map(move |dim| {
+                                let dim = dim.id();
+                                let advances = space.domain().get_advance(stmt, dim);
+                                gen_choice(advances.list(), &|a| {
+                                    Action::Advance(stmt, dim, a)
+                                })
+                            })
+                    }))
+                }
+
                 ChoiceGroup::DimNesting => {
                     Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
                         let lhs = lhs.stmt_id();

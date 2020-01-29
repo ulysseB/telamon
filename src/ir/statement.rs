@@ -68,6 +68,18 @@ pub trait Statement<L = ir::LoweringMap> {
     /// Lists the variables defined used at this statement.
     fn used_vars(&self) -> &VecSet<ir::VarId>;
 
+    /// Lists the statements that are used by this statement.
+    ///
+    /// TODO: This is a hack and should be replaced by proper use of variables.
+    fn dependencies(&self) -> &VecSet<ir::StmtId>;
+
+    /// Users of this statement.
+    ///
+    /// These are the statements that use the value computed by this statement.
+    ///
+    /// TODO: This is a hack and should be replaced by proper use of variables.
+    fn users(&self) -> &VecSet<ir::StmtId>;
+
     /// Registers a variable use in this statement.
     fn register_defined_var(&mut self, var: ir::VarId);
 }

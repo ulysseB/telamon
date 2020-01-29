@@ -169,6 +169,14 @@ impl<L> Function<L> {
     ) -> Result<ir::Instruction<L>, ir::Error> {
         // Create and check the instruction.
         let inst = ir::Instruction::new(op, id, iter_dims, self)?;
+        // Register the instruction in its dependencies
+        for &stmt_id in inst.dependencies() {
+            if let ir::StmtId::Inst(dep_id) = stmt_id {
+                self.inst_mut(dep_id).register_user(id.into());
+            } else {
+                unreachable!()
+            }
+        }
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() {
             self.dim_mut(dim).add_iterated(id);
