@@ -88,6 +88,7 @@ impl PTXDisplay for llir::Operand<'_> {
                         .to_bits()
                 )
             }
+            IndexCell(cell) => fmt::Display::fmt(&*cell.borrow(), fmt),
         }
     }
 }

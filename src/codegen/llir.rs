@@ -1,7 +1,9 @@
 ///! This module defines a Low-Level IR
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::convert::{TryFrom, TryInto};
 use std::num::NonZeroU32;
+use std::rc::Rc;
 use std::{error, fmt, iter};
 
 use itertools::Itertools;
@@ -111,12 +113,15 @@ pub enum Operand<'a> {
     Register(Register<'a>),
     IntLiteral(Cow<'a, BigInt>, u16),
     FloatLiteral(Cow<'a, Ratio<BigInt>>, u16),
+    // Changes during code generation; used for unrolled indices
+    IndexCell(Rc<RefCell<i32>>),
 }
 
 impl fmt::Display for Operand<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Operand::Register(register) => fmt::Display::fmt(register, fmt),
+            Operand::IndexCell(cell) => fmt::Display::fmt(&*cell.borrow(), fmt),
             &Operand::IntLiteral(ref value, bits) => write!(fmt, "{}i{}", value, bits),
             &Operand::FloatLiteral(ref value, bits) => {
                 write!(fmt, "({}) as f{}", value, bits)
@@ -132,6 +137,10 @@ impl<'a> From<Register<'a>> for Operand<'a> {
 }
 
 impl<'a> Operand<'a> {
+    pub fn new_index_cell(cell: Rc<RefCell<i32>>) -> Self {
+        Operand::IndexCell(cell)
+    }
+
     /// The register represented by this operand, if there is one.
     pub fn to_register(&self) -> Option<Register<'a>> {
         match *self {
@@ -146,6 +155,7 @@ impl<'a> Operand<'a> {
             Operand::Register(register) => register.t(),
             Operand::IntLiteral(_, bits) => ir::Type::I(bits),
             Operand::FloatLiteral(_, bits) => ir::Type::F(bits),
+            Operand::IndexCell(_) => ir::Type::I(32),
         }
     }
 }

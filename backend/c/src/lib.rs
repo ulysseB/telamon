@@ -70,6 +70,7 @@ impl C99Display for llir::Operand<'_> {
 
         match self {
             Register(register) => C99Display::fmt(register, fmt),
+            IndexCell(cell) => fmt::Display::fmt(&*cell.borrow(), fmt),
             &IntLiteral(ref val, bits) => {
                 assert!(bits <= 64);
                 fmt::Display::fmt(val, fmt)

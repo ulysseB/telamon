@@ -1,6 +1,8 @@
 use std::borrow::{Borrow, Cow, ToOwned};
+use std::cell::RefCell;
 use std::collections::hash_map;
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 use fxhash::FxHashMap;
 use itertools::Itertools;
@@ -43,6 +45,8 @@ pub struct NameMap<'a> {
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
     current_indexes: FxHashMap<ir::DimId, usize>,
+    /// Index variable for each unrolled dimension
+    unrolled_indices: FxHashMap<ir::DimId, Rc<RefCell<i32>>>,
     /// Casted sizes.
     size_casts: FxHashMap<(&'a codegen::Size, ir::Type), Register<'a>>,
     /// Guard to use in front of instructions with side effects.
@@ -102,10 +106,18 @@ impl<'a> NameMap<'a> {
             .collect();
         // Name dimensions indexes.
         let mut indexes = FxHashMap::default();
+        let mut unrolled_indices = FxHashMap::default();
         for dim in function.dimensions() {
             let name = interner.intern(namegen.name(Type::I(32)));
-            for id in dim.dim_ids() {
-                indexes.insert(id, Register::new(name, Type::I(32)));
+            if dim.kind() == crate::search_space::DimKind::UNROLL {
+                let cell = Rc::new(RefCell::new(-43i32));
+                for id in dim.dim_ids() {
+                    unrolled_indices.insert(id, cell.clone());
+                }
+            } else {
+                for id in dim.dim_ids() {
+                    indexes.insert(id, Register::new(name, Type::I(32)));
+                }
             }
         }
         // Name shared memory blocks. Global mem blocks are named by parameters.
@@ -140,6 +152,7 @@ impl<'a> NameMap<'a> {
             variables,
             num_loop: 0,
             current_indexes: FxHashMap::default(),
+            unrolled_indices,
             size_casts: FxHashMap::default(),
             indexes,
             params,
@@ -369,10 +382,22 @@ impl<'a> NameMap<'a> {
         self.indexes[&dim_id]
     }
 
+    /// Returns the value of an index for use as an operand.
+    ///
+    /// The operand will be a register, except for unrolled dimensions where it will be the current
+    /// value associated with the index.
+    pub fn name_index_as_operand(&self, dim_id: ir::DimId) -> Operand<'a> {
+        match self.unrolled_indices.get(&dim_id) {
+            Some(cell) => Operand::new_index_cell(cell.clone()),
+            None => self.name_index(dim_id).into_operand(),
+        }
+    }
+
     /// Set the current index of an unrolled dimension.
     pub fn set_current_index(&mut self, dim: &Dimension, idx: u32) {
         for id in dim.dim_ids() {
             self.current_indexes.insert(id, idx as usize);
+            *self.unrolled_indices[&id].borrow_mut() = i32::try_from(idx).unwrap();
         }
     }
 
@@ -380,6 +405,7 @@ impl<'a> NameMap<'a> {
     pub fn unset_current_index(&mut self, dim: &Dimension) {
         for id in dim.dim_ids() {
             assert!(self.current_indexes.remove(&id).is_some());
+            *self.unrolled_indices[&id].borrow_mut() = -42i32;
         }
     }
 

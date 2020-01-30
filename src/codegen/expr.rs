@@ -257,7 +257,7 @@ impl Expr {
                     let dim_size = merged_dimensions[dim].size();
                     match (dim_size.as_int(), stride.as_int()) {
                         (Some(_), _) => (),
-                        (None, Some(stride)) => {
+                        (None, Some(_stride)) => {
                             host_values.extend(ParamVal::from_size(dim_size))
                         }
                         (None, None) => {
@@ -594,7 +594,7 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
 
                     &Expr::Constant(c) => c.int_literal(),
 
-                    &Expr::Dimension(id) => self.namer.name_index(id).into_operand(),
+                    &Expr::Dimension(id) => self.namer.name_index_as_operand(id),
 
                     Expr::Proj(tuple, index) => self.tuple_to_operand(&*tuple, *index),
 

@@ -171,9 +171,9 @@ impl<'a, 'b> Printer<'a, 'b> {
         let mut guard: Option<llir::Register<'_>> = None;
         for dim in threads {
             let new_guard = self.namer.gen_name(ir::Type::I(1));
-            let index = self.namer.name_index(dim.id());
+            let index = self.namer.name_index_as_operand(dim.id());
             self.helper
-                .print_equals(new_guard, index.into(), 0i32.int_literal());
+                .print_equals(new_guard, index, 0i32.int_literal());
             if let Some(guard) = guard {
                 self.helper.print_and(guard, guard.into(), new_guard.into());
             } else {
@@ -189,14 +189,11 @@ impl<'a, 'b> Printer<'a, 'b> {
         }
         let addr = self.namer.name_addr(block.id());
         let size = self.namer.name_size(block.local_size(), Type::I(32));
-        let d0 = self
-            .namer
-            .name_index(fun.block_dims()[0].id())
-            .into_operand();
+        let d0 = self.namer.name_index_as_operand(fun.block_dims()[0].id());
         let var = fun.block_dims()[1..].iter().fold(d0, |old_var, dim| {
             let var = self.namer.gen_name(Type::I(32));
             let size = self.namer.name_size(dim.size(), Type::I(32));
-            let idx = self.namer.name_index(dim.id()).into_operand();
+            let idx = self.namer.name_index_as_operand(dim.id());
             self.helper.inst_printer.print_inst(
                 llir::Instruction::imad_low(var, old_var, size, idx)
                     .unwrap()
@@ -252,22 +249,12 @@ impl<'a, 'b> Printer<'a, 'b> {
 
     /// Prints an unroll loop - loop without jumps
     fn unroll_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &'b [Cfg<'b>]) {
-        let reg = self.namer.name_index(dim.id());
-
-        self.helper
-            .print_inst(llir::Instruction::mov(reg, 0i32.int_literal()).unwrap());
-
         for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
             self.helper.print_inst(instruction.clone());
         }
 
         for i in 0..dim.size().as_int().unwrap() {
             self.namer.set_current_index(dim, i);
-
-            self.helper.print_inst(
-                llir::Instruction::mov(reg, i32::try_from(i).unwrap().int_literal())
-                    .unwrap(),
-            );
 
             for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
             {
