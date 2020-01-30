@@ -2,7 +2,7 @@
 use itertools::Itertools;
 use log::debug;
 
-use telamon::device::{ArrayArgumentExt, Context, EvalMode};
+use telamon::context::{ArrayArgumentExt, Context, EvalMode};
 use telamon::search_space::*;
 use telamon::{codegen, explorer};
 use telamon::{helper, ir};

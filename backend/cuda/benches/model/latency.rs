@@ -1,6 +1,6 @@
 //! Tests the latency model.
 use crate::PerfModelTest;
-use telamon::device::{ArgMap, Context};
+use telamon::context::{ArgMap, Context};
 use telamon::helper::{Builder, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};

@@ -1,5 +1,5 @@
 //! Size evaluation and manipulation primitives.
-use crate::device::Context;
+use crate::device::ParamsHolder;
 use crate::ir;
 use crate::search_space::{NumSet, SearchSpace};
 use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
@@ -29,12 +29,16 @@ impl Range {
 }
 
 /// Bounds the values a size can take, in the given context.
-pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &dyn Context) -> Range {
+pub fn bounds(
+    size: &ir::PartialSize,
+    space: &SearchSpace,
+    params: &dyn ParamsHolder,
+) -> Range {
     let (factor, param_factors, dim_size_factors) = size.factors();
     let divisors = size.divisors();
     let factor = param_factors
         .iter()
-        .map(|p| u64::from(ctx.param_as_size(&p.name).unwrap()))
+        .map(|p| u64::from(params.param_as_size(&p.name).unwrap()))
         .product::<u64>()
         * u64::from(factor);
     let mut total_min = factor.to_biguint().unwrap();
@@ -88,7 +92,7 @@ impl FactorRange {
 pub fn factors(
     size: &ir::PartialSize,
     space: &SearchSpace,
-    ctx: &dyn Context,
+    ctx: &dyn ParamsHolder,
 ) -> FactorRange {
     let (factor, param_factors, dim_size_factors) = size.factors();
     let divisors = size.divisors();

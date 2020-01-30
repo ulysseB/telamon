@@ -6,9 +6,8 @@ use crate::printer::X86printer;
 use telamon::codegen::ParamVal;
 
 use telamon::codegen;
-use telamon::device::{
-    self, AsyncCallback, Device, EvalMode, KernelEvaluator, ScalarArgument,
-};
+use telamon::context::{self, AsyncCallback, EvalMode, KernelEvaluator, ScalarArgument};
+use telamon::device::{self, Device};
 use telamon::explorer;
 use telamon::ir;
 
@@ -57,15 +56,15 @@ impl Context {
                     ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name]))
                 }
                 ParamVal::GlobalMem(_, size, _) => {
-                    ThunkArg::TmpArray((self as &dyn device::Context).eval_size(size))
+                    ThunkArg::TmpArray((self as &dyn context::Context).eval_size(size))
                 }
                 ParamVal::Size(size) => {
-                    ThunkArg::Size((self as &dyn device::Context).eval_size(size) as i32)
+                    ThunkArg::Size((self as &dyn context::Context).eval_size(size) as i32)
                 }
                 ParamVal::DivMagic(s, t) => {
                     assert_eq!(*t, ir::Type::I(32));
 
-                    let u32_size = (self as &dyn device::Context).eval_size(s);
+                    let u32_size = (self as &dyn context::Context).eval_size(s);
                     let div_magic =
                         codegen::i32_div_magic(i32::try_from(u32_size).unwrap());
                     ThunkArg::Size(div_magic)
@@ -73,7 +72,7 @@ impl Context {
                 ParamVal::DivShift(s, t) => {
                     assert_eq!(*t, ir::Type::I(32));
 
-                    let u32_size = (self as &dyn device::Context).eval_size(s);
+                    let u32_size = (self as &dyn context::Context).eval_size(s);
                     let div_shift =
                         codegen::i32_div_shift(i32::try_from(u32_size).unwrap());
                     ThunkArg::Size(div_shift)
@@ -94,7 +93,7 @@ impl Default for Context {
     }
 }
 
-impl device::ArgMap for Context {
+impl context::ArgMap for Context {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -110,7 +109,7 @@ impl device::ArgMap for Context {
         param: &ir::Parameter,
         t: ir::Type,
         len: usize,
-    ) -> Arc<dyn device::ArrayArgument> {
+    ) -> Arc<dyn context::ArrayArgument> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.allocate_array(size));
         self.bind_param(param.name.clone(), Arc::clone(&array) as Arc<dyn Argument>);
@@ -118,13 +117,23 @@ impl device::ArgMap for Context {
     }
 }
 
-impl device::Context for Context {
+impl device::ParamsHolder for Context {
+    fn param_as_size(&self, name: &str) -> Option<u32> {
+        self.get_param(name).size()
+    }
+}
+
+impl context::Context for Context {
     fn device(&self) -> Arc<dyn Device> {
         Arc::<Cpu>::clone(&self.cpu_model)
     }
 
-    fn param_as_size(&self, name: &str) -> Option<u32> {
-        self.get_param(name).size()
+    fn params(&self) -> &dyn device::ParamsHolder {
+        self
+    }
+
+    fn printer(&self) -> &dyn codegen::DevicePrinter {
+        &*self.cpu_model
     }
 
     /// Evaluation in sequential mode
@@ -150,7 +159,7 @@ impl device::Context for Context {
         &self,
         num_workers: usize,
         _mode: EvalMode,
-        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn context::AsyncEvaluator<'c>) + Sync),
     ) {
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         crossbeam::scope(move |scope| {
@@ -302,14 +311,14 @@ pub struct AsyncEvaluator<'b> {
     sender: mpsc::SyncSender<AsyncPayload<'b>>,
 }
 
-impl<'b, 'c> device::AsyncEvaluator<'c> for AsyncEvaluator<'b>
+impl<'b, 'c> context::AsyncEvaluator<'c> for AsyncEvaluator<'b>
 where
     'c: 'b,
 {
     fn add_dyn_kernel(
         &mut self,
         candidate: explorer::Candidate,
-        callback: device::AsyncCallback<'c>,
+        callback: context::AsyncCallback<'c>,
     ) {
         let (fun_str, code_args);
         {

@@ -3,7 +3,7 @@ use crate::api::wrapper::*;
 use crate::api::{Argument, Executor};
 use libc;
 use num::integer::div_rem;
-use telamon::device;
+use telamon::context;
 
 /// An array allocated on a CUDA device.
 pub struct Array<T> {
@@ -123,9 +123,9 @@ impl<T> Argument for Array<T> {
     }
 }
 
-impl<T> device::ArrayArgument for Array<T>
+impl<T> context::ArrayArgument for Array<T>
 where
-    T: device::ScalarArgument,
+    T: context::ScalarArgument,
 {
     fn read_i8(&self) -> Vec<i8> {
         let mut array = Array::copy_to_host(self);

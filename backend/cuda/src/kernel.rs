@@ -5,7 +5,7 @@ use itertools::Itertools;
 use log::warn;
 
 use telamon::codegen::{self, ParamVal};
-use telamon::device::{self, Context as ContextTrait};
+use telamon::context::{self, Context as ContextTrait};
 
 #[cfg(feature = "real_gpu")]
 use crate::PerfCounterSet;
@@ -301,7 +301,7 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 /// An argument of a kernel ready to evaluate.
 enum ThunkArg<'a> {
     ArgRef(&'a dyn api::Argument),
-    Size(Box<dyn device::ScalarArgument>),
+    Size(Box<dyn context::ScalarArgument>),
     TmpArray(usize),
 }
 

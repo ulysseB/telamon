@@ -5,9 +5,9 @@ use itertools::Itertools;
 use log::*;
 use std::sync::Mutex;
 use std::time::Duration;
-use telamon::device::Context;
+use telamon::context::Context;
 use telamon::explorer::local_selection;
-use telamon::{device, explorer};
+use telamon::{context::EvalMode, explorer};
 use telamon_cuda as cuda;
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 use utils::*;
@@ -118,7 +118,7 @@ fn run_evaluations(
 ) -> Vec<Vec<f64>> {
     let runtimes = candidates.iter().map(|_| Mutex::new(vec![])).collect_vec();
     let stabilizer = &context.stabilizer();
-    context.async_eval(1, device::EvalMode::TestEval, &|evaluator| {
+    context.async_eval(1, EvalMode::TestEval, &|evaluator| {
         for (candidate, results) in candidates.iter().zip_eq(&runtimes) {
             for _ in 0..num_samples {
                 if let Some(duration) = sleep {

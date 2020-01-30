@@ -1,7 +1,7 @@
 //! Exploration of the search space.
 pub use crate::explorer::candidate::Candidate;
 
-use crate::device::Context;
+use crate::context::Context;
 use crate::explorer::choice;
 use crate::explorer::store::Store;
 use interval_heap::IntervalHeap;

@@ -1,7 +1,7 @@
 //! Provides helpers to create instruction operands.
 use std::sync::Arc;
 
-use crate::device::ScalarArgument;
+use crate::context::ScalarArgument;
 use crate::helper::{Builder, LogicalDim};
 use crate::ir::Operand::*;
 use crate::ir::{self, dim, InstId, Operand};

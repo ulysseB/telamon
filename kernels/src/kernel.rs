@@ -22,7 +22,7 @@ use telamon::explorer::{
 };
 use telamon::helper::{MemInit, SignatureBuilder};
 use telamon::model::Bound;
-use telamon::{codegen, device, ir};
+use telamon::{codegen, context, ir};
 use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
@@ -43,7 +43,7 @@ const MAX_DEADEND_RATIO: f32 = 0.95;
 /// # Examples
 ///
 /// ```ignore
-/// // `context` is an existing `device::Context`
+/// // `context` is an existing `context::Context`
 /// let (signature, kernel, context) = KernelBuilder::new()
 ///     .name("My kernel")
 ///     .build::<linalg::FusedMM<f32>, _>(
@@ -92,7 +92,7 @@ impl<'a> KernelBuilder<'a> {
         context: &'b mut AM,
     ) -> (ir::Signature, K, &'b AM)
     where
-        AM: device::ArgMap + device::Context,
+        AM: context::ArgMap + context::Context,
         K: Kernel + 'b,
     {
         let name = self
@@ -129,23 +129,23 @@ pub trait Kernel: Sized + Sync {
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context;
+        AM: context::ArgMap + context::Context;
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
     fn build_body<'b>(
         &self,
         signature: Arc<ir::Signature>,
-        ctx: &'b dyn device::Context,
+        ctx: &'b dyn context::Context,
     ) -> Vec<Candidate>;
     /// Computes the expected output.
-    fn get_expected_output(&self, _: &dyn device::Context) -> Self::ExpectedOutput;
+    fn get_expected_output(&self, _: &dyn context::Context) -> Self::ExpectedOutput;
 
     /// Ensures the generated code performs the correct operation.
     fn check_result(
         &self,
         expected: &Self::ExpectedOutput,
-        context: &dyn device::Context,
+        context: &dyn context::Context,
     ) -> Result<(), String>;
 
     /// Generate a dump of a specific implementation of Self in a file, so we can rerun tests on
@@ -156,7 +156,7 @@ pub trait Kernel: Sized + Sync {
         ctx: &'b mut AM,
         sink: &mut F,
     ) where
-        AM: device::Context + device::ArgMap,
+        AM: context::Context + context::ArgMap,
     {
         let (signature, kernel, ctx) =
             KernelBuilder::new().build::<Self, AM>(params.clone(), ctx);
@@ -168,7 +168,7 @@ pub trait Kernel: Sized + Sync {
             let leaf = local_selection::descend(&ordering, order, ctx, cand_clone, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
-                ctx.evaluate(&device_fn, device::EvalMode::FindBest)
+                ctx.evaluate(&device_fn, context::EvalMode::FindBest)
                     .unwrap();
                 candidate = leaf;
                 break;
@@ -182,7 +182,7 @@ pub trait Kernel: Sized + Sync {
     /// corresponds to the kernel and context being executed
     fn execute_dump<AM, F: Read>(ctx: &mut AM, dump: &mut F)
     where
-        AM: device::Context + device::ArgMap,
+        AM: context::Context + context::ArgMap,
     {
         // Retrieve decisions from dump
         let mut json = String::new();
@@ -206,12 +206,12 @@ pub trait Kernel: Sized + Sync {
         }
 
         let device_fn = codegen::Function::build(&implem.space);
-        ctx.device().print(
+        ctx.printer().print(
             &device_fn,
             &mut std::fs::File::create("/tmp/code.c").unwrap(),
         );
 
-        ctx.evaluate(&device_fn, device::EvalMode::FindBest)
+        ctx.evaluate(&device_fn, context::EvalMode::FindBest)
             .unwrap();
         if let Err(err) = kernel.check_result(&expected_output, ctx) {
             panic!(
@@ -226,7 +226,7 @@ pub trait Kernel: Sized + Sync {
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
     where
-        AM: device::ArgMap + device::Context,
+        AM: context::ArgMap + context::Context,
     {
         let (signature, kernel, context) =
             KernelBuilder::new().build::<Self, AM>(params, context);
@@ -244,7 +244,7 @@ pub trait Kernel: Sized + Sync {
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
                 unwrap!(
-                    context.evaluate(&device_fn, device::EvalMode::FindBest),
+                    context.evaluate(&device_fn, context::EvalMode::FindBest),
                     "evaluation failed for kernel {}, with actions {:?}",
                     Self::name(),
                     leaf.actions
@@ -279,7 +279,7 @@ pub trait Kernel: Sized + Sync {
         context: &mut AM,
     ) -> Vec<BoundSample>
     where
-        AM: device::ArgMap + device::Context,
+        AM: context::ArgMap + context::Context,
     {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(mem_init)
@@ -290,7 +290,7 @@ pub trait Kernel: Sized + Sync {
         let stabilizer = &context.stabilizer();
         context.async_eval(
             num_cpus::get(),
-            device::EvalMode::TestBound,
+            context::EvalMode::TestBound,
             &|evaluator| loop {
                 if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= num_tests {
                     if num_tested.fetch_sub(1, atomic::Ordering::SeqCst) > num_tests {
@@ -345,7 +345,7 @@ pub trait Kernel: Sized + Sync {
         context: &mut AM,
     ) -> Vec<f64>
     where
-        AM: device::ArgMap + device::Context,
+        AM: context::ArgMap + context::Context,
     {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(mem_init)
@@ -375,7 +375,7 @@ pub trait Kernel: Sized + Sync {
         context: &mut AM,
     ) -> f64
     where
-        AM: device::ArgMap + device::Context,
+        AM: context::ArgMap + context::Context,
     {
         let (signature, kernel, context) = KernelBuilder::new()
             .mem_init(MemInit::Uninit)
@@ -400,7 +400,7 @@ pub trait Kernel: Sized + Sync {
 /// Descends along a path in the search tree and stores the bounds encountered on the way.
 fn descend_check_bounds(
     candidates: &[Candidate],
-    context: &dyn device::Context,
+    context: &dyn context::Context,
 ) -> Option<(Candidate, Vec<Bound>)> {
     let order = explorer::config::NewNodeOrder::WeightedRandom;
     let mut candidates = std::borrow::Cow::Borrowed(candidates);

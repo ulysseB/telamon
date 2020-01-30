@@ -5,7 +5,7 @@ mod memory;
 mod tests;
 
 use regex::Regex;
-use telamon::device::{self, ArgMap, Context};
+use telamon::context::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
@@ -54,15 +54,17 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
 
     let mut early_model_perf = None;
     if !actions.is_empty() {
-        early_model_perf = Some(bound(&builder.get_clone(), &context).value());
+        early_model_perf = Some(
+            bound(&builder.get_clone(), context.params(), &*context.device()).value(),
+        );
         for action in actions {
             builder.action(action);
         }
     }
     let fun = builder.get();
-    let model_perf = bound(&fun, &context);
+    let model_perf = bound(&fun, context.params(), &*context.device());
     let dev_fun = telamon::codegen::Function::build(&fun);
-    let run_perf = unwrap!(context.evaluate(&dev_fun, device::EvalMode::TestBound));
+    let run_perf = unwrap!(context.evaluate(&dev_fun, context::EvalMode::TestBound));
 
     if let Some(early_model_perf) = early_model_perf {
         info!("bound: {}", model_perf);

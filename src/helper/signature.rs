@@ -1,5 +1,5 @@
 //! Helper functions to create a function signature and bind parameters.
-use crate::device::{self, ArgMapExt, ArrayArgumentExt, ScalarArgument};
+use crate::context::{self, ArgMapExt, ArrayArgumentExt, ScalarArgument};
 use crate::helper::tensor::{DimSize, Tensor};
 use crate::ir::Signature;
 use itertools::Itertools;
@@ -25,7 +25,7 @@ impl Default for MemInit {
 /// Helper struct to build a `Signature`.
 pub struct Builder<'a, AM>
 where
-    AM: device::Context + 'a,
+    AM: context::Context + 'a,
 {
     mem_init: MemInit,
     rng: rand::XorShiftRng,
@@ -35,7 +35,7 @@ where
 
 impl<'a, AM> Builder<'a, AM>
 where
-    AM: device::Context + 'a,
+    AM: context::Context + 'a,
 {
     /// Creates a new builder for a function with the given name.
     pub fn new(name: &str, context: &'a mut AM) -> Self {
@@ -60,7 +60,7 @@ where
     /// Creates a new parameter and binds it to the given value.
     pub fn scalar<T: ScalarArgument>(&mut self, name: &str, arg: T)
     where
-        AM: device::ArgMap,
+        AM: context::ArgMap,
     {
         self.signature.add_scalar(name.to_string(), T::t());
         let param = unwrap!(self.signature.params.last());
@@ -71,7 +71,7 @@ where
     /// maximal size to the current size.
     pub fn max_size<'b>(&mut self, name: &'b str, size: u32) -> DimSize<'b>
     where
-        AM: device::ArgMap,
+        AM: context::ArgMap,
     {
         self.scalar(name, size as i32);
         DimSize {
@@ -86,9 +86,9 @@ where
         &mut self,
         name: &str,
         size: usize,
-    ) -> Arc<dyn device::ArrayArgument>
+    ) -> Arc<dyn context::ArrayArgument>
     where
-        AM: device::ArgMap,
+        AM: context::ArgMap,
     {
         self.signature
             .add_array(&*self.context.device(), name.to_string(), S::t());
@@ -113,7 +113,7 @@ where
         read_only: bool,
     ) -> Tensor<'b, S>
     where
-        AM: device::ArgMap,
+        AM: context::ArgMap,
     {
         let len = dim_sizes
             .iter()

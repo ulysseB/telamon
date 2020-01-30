@@ -1,6 +1,12 @@
 //! Describes the context for which a function must be optimized.
-use crate::codegen::{self, Function};
-use crate::device::{ArrayArgument, Device, ScalarArgument};
+//!
+mod argument;
+pub mod fake;
+
+pub use self::argument::{ArrayArgument, ArrayArgumentExt, ScalarArgument};
+
+use crate::codegen::{self, DevicePrinter, Function};
+use crate::device::{Device, ParamsHolder};
 use crate::explorer::Candidate;
 use crate::ir;
 use itertools::{process_results, Itertools};
@@ -44,6 +50,9 @@ pub type AsyncCallback<'b> = Box<dyn AsyncCallbackFn + Send + 'b>;
 pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
     fn device(&self) -> Arc<dyn Device>;
+    fn params(&self) -> &dyn ParamsHolder;
+    fn printer(&self) -> &dyn DevicePrinter;
+
     /// Returns the execution time of a fully specified implementation in nanoseconds.
     ///
     /// This function should be called multiple times to obtain accurate execution time.
@@ -62,14 +71,12 @@ pub trait Context: Sync {
         inner: &(dyn Fn(&mut dyn AsyncEvaluator<'b>) + Sync),
     );
 
-    /// Returns a parameter interpreted as a size, if possible.
-    fn param_as_size(&self, name: &str) -> Option<u32>;
-
     /// Evaluate a size.
     fn eval_size(&self, size: &codegen::Size) -> u32 {
+        let params = self.params();
         let mut dividend: u32 = size.factor();
         for p in size.dividend() {
-            dividend *= unwrap!(self.param_as_size(&p.name));
+            dividend *= unwrap!(params.param_as_size(&p.name));
         }
         let (result, remainder) = num::integer::div_rem(dividend, size.divisor());
         assert_eq!(

@@ -1,5 +1,5 @@
 //! Utilities to allocate and operate on tensors.
-use crate::device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
+use crate::context::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
 use crate::helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
 use crate::ir::{self, IntoIndexExpr as _};
 use crate::search_space::InstFlag;
@@ -35,7 +35,7 @@ impl<'a> DimSize<'a> {
     pub fn eval(&self, context: &dyn Context) -> u32 {
         self.params
             .iter()
-            .map(|p| unwrap!(context.param_as_size(p)))
+            .map(|p| unwrap!(context.params().param_as_size(p)))
             .product::<u32>()
             * self.factor
     }

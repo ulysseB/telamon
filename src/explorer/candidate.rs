@@ -1,5 +1,5 @@
 //! Exploration of the search space.
-use crate::device::Context;
+use crate::context::Context;
 use crate::explorer::choice::{ActionError, ActionEx};
 use crate::model::{bound, Bound};
 use crate::search_space::SearchSpace;
@@ -103,7 +103,7 @@ impl Candidate {
     ) -> Result<Self, ActionError> {
         debug!("applying action {:?}", action);
         let space = action.apply_to(self.space.clone())?;
-        let bound = bound(&space, context);
+        let bound = bound(&space, context.params(), &*context.device());
         let delta = 1.0e-2 * self.bound.value();
         if bound.value() + delta < self.bound.value() {
             debug!(
@@ -126,7 +126,7 @@ impl Candidate {
         context: &dyn Context,
         path: P,
     ) -> io::Result<()> {
-        let code = codegen::Function::build(&self.space);
+        let code = crate::codegen::Function::build(&self.space);
 
         // Dump the "control flow graph"
         write!(
@@ -136,7 +136,7 @@ impl Candidate {
         )?;
 
         // Dump the source code
-        context.device().print(
+        context.printer().print(
             &code,
             &mut std::fs::File::create(path.as_ref().with_extension("c"))?,
         );

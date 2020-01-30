@@ -5,7 +5,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use log::trace;
 use num::Integer;
-use telamon::device::{Context, Device};
+use telamon::device::{Device, ParamsHolder};
 use telamon::ir;
 use telamon::model::size;
 use telamon::search_space::*;
@@ -41,7 +41,7 @@ pub fn analyse(
     gpu: &Gpu,
     inst: &ir::Instruction,
     sizes: &FxHashMap<ir::DimId, size::Range>,
-    ctx: &dyn Context,
+    params: &dyn ParamsHolder,
 ) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
@@ -54,7 +54,7 @@ pub fn analyse(
                 }
                 ir::AccessPattern::Unknown { .. } => unknown_info(inst, is_shared, gpu),
                 ir::AccessPattern::Tensor { ref dims, .. } => {
-                    info(space, inst, dims, is_shared, gpu, sizes, ctx)
+                    info(space, inst, dims, is_shared, gpu, sizes, params)
                 }
             }
         }
@@ -117,10 +117,10 @@ fn info(
     is_shared_access: Trivalent,
     gpu: &Gpu,
     sizes: &FxHashMap<ir::DimId, size::Range>,
-    ctx: &dyn Context,
+    params: &dyn ParamsHolder,
 ) -> MemInfo {
     let mut info = MemInfo::default();
-    let thread_dims = tensor_thread_dims(space, inst, dims, sizes, ctx);
+    let thread_dims = tensor_thread_dims(space, inst, dims, sizes, params);
     trace!("thread dims: {:?}", thread_dims);
     info.memory_transactions = std::f64::INFINITY;
     if is_shared_access.maybe_true() {
@@ -203,7 +203,7 @@ fn tensor_thread_dims(
     inst: &ir::Instruction,
     tensor_dims: &FxHashMap<ir::DimId, ir::PartialSize>,
     sizes: &FxHashMap<ir::DimId, size::Range>,
-    ctx: &dyn Context,
+    params: &dyn ParamsHolder,
 ) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
     let dims = inst
@@ -222,10 +222,10 @@ fn tensor_thread_dims(
         let size = sizes[&id];
         let stride_size = tensor_dims.get(&id);
         let stride = stride_size
-            .map(|s| size::bounds(s, space, ctx))
+            .map(|s| size::bounds(s, space, params))
             .unwrap_or(size::Range::ZERO);
         let stride_factors = stride_size
-            .map(|s| size::factors(s, space, ctx))
+            .map(|s| size::factors(s, space, params))
             .unwrap_or(size::FactorRange::ZERO);
         let info = ThreadDimInfo {
             is_partial_dim: false,

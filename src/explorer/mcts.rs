@@ -26,7 +26,7 @@ use rpds::List;
 use serde::{Deserialize, Serialize};
 use utils::cmp_f64;
 
-use crate::device::Context;
+use crate::context::Context;
 use crate::explorer::{
     candidate::Candidate,
     choice::{self, ActionEx as Action},
@@ -415,7 +415,7 @@ impl<'a> Env<'a> {
 
     /// Compute the performance model bound for a candidate.
     pub fn bound(&self, candidate: &SearchSpace) -> Bound {
-        bound(candidate, self.context)
+        bound(candidate, self.context.params(), &*self.context.device())
     }
 }
 

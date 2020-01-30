@@ -13,10 +13,11 @@ use std::sync::{
 use std::time::Instant;
 use std::{self, fmt};
 use telamon::codegen::{Function, NameMap, ParamVal};
-use telamon::device::{
+use telamon::context::{
     self, ArrayArgument, AsyncCallback, Context as ContextTrait, EvalMode,
     KernelEvaluator, ScalarArgument,
 };
+use telamon::device::Device;
 use telamon::explorer;
 use telamon::ir;
 use utils::unwrap;
@@ -42,11 +43,11 @@ pub trait Argument: Sync + Send {
 
 impl<'a> Argument for Box<dyn ScalarArgument + 'a> {
     fn raw_ptr(&self) -> *const libc::c_void {
-        device::ScalarArgument::raw_ptr(&**self as &dyn ScalarArgument)
+        context::ScalarArgument::raw_ptr(&**self as &dyn ScalarArgument)
     }
 
     fn as_size(&self) -> Option<u32> {
-        device::ScalarArgument::as_size(&**self as &dyn ScalarArgument)
+        context::ScalarArgument::as_size(&**self as &dyn ScalarArgument)
     }
 }
 
@@ -60,7 +61,7 @@ impl MppaArray {
     }
 }
 
-impl device::ArrayArgument for MppaArray {
+impl context::ArrayArgument for MppaArray {
     fn read_i8(&self) -> Vec<i8> {
         self.0.read().unwrap()
     }
@@ -205,8 +206,8 @@ fn get_type_size(t: ir::Type) -> usize {
         .unwrap_or_else(telajax::Mem::get_mem_size)
 }
 
-impl device::Context for Context {
-    fn device(&self) -> Arc<dyn device::Device> {
+impl context::Context for Context {
+    fn device(&self) -> Arc<dyn Device> {
         Arc::<mppa::Mppa>::clone(&self.device)
     }
 
@@ -244,7 +245,7 @@ impl device::Context for Context {
         &self,
         num_workers: usize,
         _mode: EvalMode,
-        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'d>) + Sync),
+        inner: &(dyn Fn(&mut dyn context::AsyncEvaluator<'d>) + Sync),
     ) {
         // FIXME: execute in parallel
         let (send, recv) = mpsc::sync_channel(EXECUTION_QUEUE_SIZE);
@@ -282,7 +283,7 @@ impl device::Context for Context {
     }
 }
 
-impl device::ArgMap for Context {
+impl context::ArgMap for Context {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -316,14 +317,14 @@ struct AsyncEvaluator<'b> {
     sender: mpsc::SyncSender<AsyncPayload<'b>>,
 }
 
-impl<'b, 'c> device::AsyncEvaluator<'c> for AsyncEvaluator<'b>
+impl<'b, 'c> context::AsyncEvaluator<'c> for AsyncEvaluator<'b>
 where
     'c: 'b,
 {
     fn add_dyn_kernel(
         &mut self,
         candidate: explorer::Candidate,
-        callback: device::AsyncCallback<'c>,
+        callback: context::AsyncCallback<'c>,
     ) {
         let (kernel, _) = {
             let dev_fun = Function::build(&candidate.space);

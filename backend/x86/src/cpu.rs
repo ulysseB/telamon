@@ -1,5 +1,5 @@
 //! Describes CUDA-enabled GPUs.
-use telamon::codegen::Function;
+use telamon::codegen::{DevicePrinter, Function};
 use telamon::device;
 use telamon::ir::{self, Type};
 use telamon::model::{self, HwPressure};
@@ -25,11 +25,13 @@ impl Cpu {
     }
 }
 
-impl device::Device for Cpu {
+impl DevicePrinter for Cpu {
     fn print(&self, fun: &Function, out: &mut dyn Write) {
         write!(out, "{}", X86printer::default().wrapper_function(fun)).unwrap();
     }
+}
 
+impl device::Device for Cpu {
     fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
         match t {
             Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
@@ -110,7 +112,7 @@ impl device::Device for Cpu {
         _: &FxHashMap<ir::DimId, model::size::Range>,
         _: &FxHashMap<ir::StmtId, model::Nesting>,
         _: &dyn ir::Statement,
-        _: &dyn device::Context,
+        _: &dyn device::ParamsHolder,
     ) -> model::HwPressure {
         // TODO(model): implement model
         model::HwPressure::zero(self)

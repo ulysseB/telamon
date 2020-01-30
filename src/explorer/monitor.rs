@@ -1,7 +1,7 @@
 //! This file exposes a single function, monitor, that is launched in a special
 //! thread and pulls the evaluations results, store them and then updates the
 //! Store accordingly.
-use crate::device::Context;
+use crate::context::Context;
 use crate::explorer::candidate::Candidate;
 use crate::explorer::config::Config;
 use crate::explorer::logger::LogMessage;

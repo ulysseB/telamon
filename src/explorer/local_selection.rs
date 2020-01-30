@@ -1,5 +1,5 @@
 //! Provides different methods to select a candidate in a list.
-use crate::device::Context;
+use crate::context::Context;
 use crate::explorer::candidate::Candidate;
 use crate::explorer::choice;
 use crate::explorer::config::{ChoiceOrdering, NewNodeOrder};

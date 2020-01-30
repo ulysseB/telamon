@@ -1,5 +1,5 @@
 //! Compute and represent local information on the different objects representing of the IR.
-use crate::device::{Context, Device};
+use crate::device::{Device, ParamsHolder};
 use crate::ir::{self, Statement};
 use crate::model::{size, HwPressure};
 use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
@@ -27,11 +27,15 @@ pub struct LocalInfo {
 
 impl LocalInfo {
     /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace, context: &dyn Context) -> Self {
+    pub fn compute(
+        space: &SearchSpace,
+        params: &dyn ParamsHolder,
+        device: &dyn Device,
+    ) -> Self {
         let dim_sizes = space
             .ir_instance()
             .dims()
-            .map(|d| (d.id(), size::bounds(d.size(), space, context)))
+            .map(|d| (d.id(), size::bounds(d.size(), space, params)))
             .collect();
         let nesting: FxHashMap<_, _> = space
             .ir_instance()
@@ -51,11 +55,9 @@ impl LocalInfo {
                 // will be taken multiple times into account.
                 let pressure =
                     if is_thread && nesting[&stmt.stmt_id()].has_inner_thread_dims {
-                        HwPressure::zero(&*context.device())
+                        HwPressure::zero(device)
                     } else {
-                        context
-                            .device()
-                            .hw_pressure(space, &dim_sizes, &nesting, stmt, context)
+                        device.hw_pressure(space, &dim_sizes, &nesting, stmt, params)
                     };
                 (stmt.stmt_id(), pressure)
             })
@@ -69,19 +71,19 @@ impl LocalInfo {
                 {
                     // Only keep the overhead on innermost thread dimensions. Otherwise it
                     // will be taken multiple times into account.
-                    let zero = HwPressure::zero(&*context.device());
+                    let zero = HwPressure::zero(device);
                     (d.id(), (zero.clone(), zero))
                 } else {
-                    (d.id(), context.device().loop_iter_pressure(kind))
+                    (d.id(), device.loop_iter_pressure(kind))
                 }
             })
             .collect();
-        let parallelism = parallelism(&nesting, space, context);
+        let parallelism = parallelism(&nesting, space, params);
         // Add the pressure induced by induction variables.
-        let mut thread_overhead = HwPressure::zero(&*context.device());
+        let mut thread_overhead = HwPressure::zero(&*device);
         for (_, var) in space.ir_instance().induction_vars() {
             add_indvar_pressure(
-                &*context.device(),
+                &*device,
                 space,
                 &dim_sizes,
                 var,
@@ -314,14 +316,14 @@ impl Default for Parallelism {
 fn parallelism(
     nesting: &FxHashMap<ir::StmtId, Nesting>,
     space: &SearchSpace,
-    ctx: &dyn Context,
+    params: &dyn ParamsHolder,
 ) -> Parallelism {
     let size_thread_dims = space
         .ir_instance()
         .thread_dims()
         .map(|d| d.size())
         .product::<ir::PartialSize>();
-    let min_threads_per_blocks = size::bounds(&size_thread_dims, space, ctx).min;
+    let min_threads_per_blocks = size::bounds(&size_thread_dims, space, params).min;
     space
         .ir_instance()
         .insts()
@@ -338,13 +340,14 @@ fn parallelism(
                     }
                 }
             }
-            let min_num_blocks = size::bounds(&min_size_blocks, space, ctx).min;
-            let lcm_num_blocks = size::factors(&max_size_blocks, space, ctx).lcm;
+            let min_num_blocks = size::bounds(&min_size_blocks, space, params).min;
+            let lcm_num_blocks = size::factors(&max_size_blocks, space, params).lcm;
             let size_threads_and_blocks = min_size_blocks * &size_thread_dims;
             Parallelism {
                 min_num_blocks,
                 min_num_threads_per_blocks: min_threads_per_blocks,
-                min_num_threads: size::bounds(&size_threads_and_blocks, space, ctx).min,
+                min_num_threads: size::bounds(&size_threads_and_blocks, space, params)
+                    .min,
                 lcm_num_blocks,
             }
         })

@@ -10,7 +10,7 @@ use itertools::*;
 use serde_json;
 use structopt::StructOpt;
 
-use telamon::device;
+use telamon::context;
 use telamon::explorer::{
     self,
     choice::{default_list, ActionEx as Action, Choice},
@@ -151,7 +151,7 @@ impl ComputeBound {
         }
 
         let start = std::time::Instant::now();
-        let bound = bound(&candidate, context);
+        let bound = bound(&candidate, context.params(), &*context.device());
         let duration = start.elapsed();
         println!("Bound is {:?} (computed in {:?})", bound, duration);
 
@@ -191,7 +191,7 @@ impl Bounds {
     fn random_descent(
         &self,
         candidates: &[Candidate],
-        context: &dyn device::Context,
+        context: &dyn context::Context,
     ) -> Option<(Candidate, Vec<Bound>)> {
         let order = explorer::config::NewNodeOrder::Random;
         let mut candidates = Cow::Borrowed(candidates);
@@ -226,7 +226,7 @@ impl Bounds {
     fn test_bound<F>(
         &self,
         candidates: Vec<Candidate>,
-        context: &dyn device::Context,
+        context: &dyn context::Context,
         body_fn: F,
     ) where
         F: Fn((f64, Vec<f64>)) + Sync,
@@ -235,7 +235,7 @@ impl Bounds {
         let stabilizer = &context.stabilizer();
         context.async_eval(
             num_cpus::get(),
-            device::EvalMode::TestBound,
+            context::EvalMode::TestBound,
             &|evaluator| loop {
                 // We want to keep the collapsible if to make the order in which `fetch_add` and
                 // `fetch_sub` explicit.
@@ -327,7 +327,7 @@ impl Codegen {
         }
 
         let code = telamon::codegen::Function::build(&candidate);
-        context.device().print(&code, &mut std::io::stdout());
+        context.printer().print(&code, &mut std::io::stdout());
 
         Ok(())
     }
@@ -476,7 +476,7 @@ impl Benchmark {
             if self.batch_mode {
                 println!("{},{}", replay.display(), runtimes.into_iter().format(","));
             } else {
-                let bound = bound(&candidate, context);
+                let bound = bound(&candidate, context.params(), &*context.device());
                 println!("bound: {}", bound);
 
                 let self_estimate = estimate_mean(runtimes, 0.95, "ns");

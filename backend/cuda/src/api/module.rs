@@ -6,7 +6,7 @@ use itertools::Itertools;
 use libc;
 use log::*;
 use std::ffi::CString;
-use telamon::device;
+use telamon::context;
 use utils::*;
 
 /// A CUDA module.
@@ -156,12 +156,12 @@ pub trait Argument: Sync + Send {
     }
 }
 
-impl Argument for Box<dyn device::ScalarArgument> {
+impl Argument for Box<dyn context::ScalarArgument> {
     fn raw_ptr(&self) -> *const libc::c_void {
-        device::ScalarArgument::raw_ptr(self.as_ref())
+        context::ScalarArgument::raw_ptr(self.as_ref())
     }
 
     fn as_size(&self) -> Option<u32> {
-        device::ScalarArgument::as_size(self.as_ref())
+        context::ScalarArgument::as_size(self.as_ref())
     }
 }

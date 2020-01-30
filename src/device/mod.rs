@@ -1,27 +1,20 @@
 //! Code generation and candidate evaluation for specific targets.
 pub mod fake;
 
-mod argument;
-mod context;
-
-pub use self::argument::{ArrayArgument, ArrayArgumentExt, ScalarArgument};
-pub use self::context::{
-    ArgMap, ArgMapExt, AsyncCallback, AsyncEvaluator, Context, EvalMode, KernelEvaluator,
-    Stabilizer,
-};
-
-use crate::codegen::Function;
 use crate::ir;
 use crate::model::{self, HwPressure, Nesting};
 use crate::search_space::*;
 use fxhash::FxHashMap;
 use std::io::Write;
 
+pub trait ParamsHolder {
+    /// Returns a parameter interpreted as a size, if possible.
+    fn param_as_size(&self, name: &str) -> Option<u32>;
+}
+
 /// Holds the specifications of a target.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 pub trait Device: Send + Sync + 'static {
-    /// Prints the code corresponding to a device `Function`.
-    fn print(&self, function: &Function, out: &mut dyn Write);
     /// Indicates if a `Type` can be implemented on the device.
     fn check_type(&self, t: ir::Type) -> Result<(), ir::TypeError>;
     /// Returns the maximal number of block dimensions.
@@ -56,7 +49,7 @@ pub trait Device: Send + Sync + 'static {
         dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
         nesting: &FxHashMap<ir::StmtId, Nesting>,
         bb: &dyn ir::Statement,
-        ctx: &dyn Context,
+        ctx: &dyn ParamsHolder,
     ) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency
     /// overhead of iterations.
@@ -89,10 +82,4 @@ pub trait Device: Send + Sync + 'static {
     /// Lowers a type using the memory space information. Returns `None` if some
     /// information is not yet specified.
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type>;
-
-    /// Builds and outputs a constrained IR instance.
-    fn gen_code(&self, implementation: &SearchSpace, out: &mut dyn Write) {
-        let code = Function::build(implementation);
-        self.print(&code, out);
-    }
 }

@@ -11,7 +11,7 @@ use std::fmt;
 
 pub use crate::kernel::{analyze_bounds, Kernel, KernelBuilder};
 
-use telamon::device::{self, ArgMap, Context};
+use telamon::context::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;
 use telamon::helper::{self, SignatureBuilder};
 use telamon::{explorer, model, search_space};
@@ -21,9 +21,9 @@ use ::ndarray::{ArrayBase, Data, Dimension, FoldWhile, Zip};
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate(
     space: search_space::SearchSpace,
-    ctx: &dyn device::Context,
+    ctx: &dyn Context,
 ) -> explorer::Candidate {
-    let bound = model::bound(&space, ctx);
+    let bound = model::bound(&space, ctx.params(), &*ctx.device());
     explorer::Candidate::new(space, bound)
 }
 
@@ -212,7 +212,7 @@ where
 }
 
 /// A scalar that can be used as the data type for tests.
-pub trait Scalar: device::ScalarArgument + ndarray::NdFloat {
+pub trait Scalar: context::ScalarArgument + ndarray::NdFloat {
     /// Absolute tolerance for errors.
     fn atol() -> Self;
 

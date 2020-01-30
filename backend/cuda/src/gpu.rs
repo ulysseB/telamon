@@ -5,7 +5,7 @@ use fxhash::FxHashMap;
 use log::warn;
 use serde::{Deserialize, Serialize};
 
-use telamon::codegen::Function;
+use telamon::codegen::{DevicePrinter, Function};
 use telamon::device::{self, Device};
 use telamon::ir::{self, Operator, Type};
 use telamon::model::{self, HwPressure};
@@ -316,7 +316,7 @@ impl Gpu {
         space: &SearchSpace,
         dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
         inst: &ir::Instruction,
-        ctx: &dyn device::Context,
+        params: &dyn device::ParamsHolder,
     ) -> HwPressure {
         use telamon::ir::Operator::*;
         let t = inst.t().map(|t| self.lower_type(t, space).unwrap_or(t));
@@ -365,12 +365,12 @@ impl Gpu {
             (&BinOp(ir::BinOp::Max, ..), Some(Type::I(64))) => self.max_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
-                let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
+                let mem_info = mem_model::analyse(space, self, inst, dim_sizes, params);
                 self.load_desc(&mem_info, flag).into()
             }
             (&St(..), _) | (&TmpSt(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
-                let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
+                let mem_info = mem_model::analyse(space, self, inst, dim_sizes, params);
                 self.store_desc(&mem_info, flag).into()
             }
             (&UnaryOp(ir::UnaryOp::Exp(..), ..), Some(Type::F(32))) => {
@@ -425,12 +425,14 @@ impl Gpu {
     }
 }
 
-impl device::Device for Gpu {
+impl DevicePrinter for Gpu {
     fn print(&self, fun: &Function, out: &mut dyn Write) {
         let mut printer = CudaPrinter::default();
         printer.host_function(fun, self, out)
     }
+}
 
+impl Device for Gpu {
     fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
         match t {
             Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
@@ -538,10 +540,10 @@ impl device::Device for Gpu {
         dim_sizes: &FxHashMap<ir::DimId, model::size::Range>,
         _nesting: &FxHashMap<ir::StmtId, model::Nesting>,
         stmt: &dyn ir::Statement,
-        ctx: &dyn device::Context,
+        params: &dyn device::ParamsHolder,
     ) -> model::HwPressure {
         if let Some(inst) = stmt.as_inst() {
-            self.inst_pressure(space, dim_sizes, inst, ctx)
+            self.inst_pressure(space, dim_sizes, inst, params)
         } else if let Some(dim) = stmt.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
             self.dim_pressure(kind, dim_sizes[&dim.id()])

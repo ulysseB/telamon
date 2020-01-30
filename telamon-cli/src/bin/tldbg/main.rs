@@ -9,13 +9,13 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::buffer::Buffer;
-use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
+use tui::layout::{Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::widgets::{Block, Borders, List, Paragraph, SelectableList, Text, Widget};
 use tui::Terminal;
 
 use telamon::codegen;
-use telamon::device::{Context, EvalMode, KernelEvaluator};
+use telamon::context::{Context, EvalMode, KernelEvaluator};
 use telamon::explorer::{
     self,
     choice::{self, ActionEx as Action},
@@ -114,6 +114,7 @@ impl<'a, E> InputDispatcher<'a, E> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_capacity(capacity: usize) -> Self {
         InputDispatcher {
             handlers: Vec::with_capacity(capacity),
@@ -131,6 +132,7 @@ impl<'a, E> InputDispatcher<'a, E> {
         return false;
     }
 
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.handlers.clear();
     }
@@ -266,7 +268,7 @@ impl<'a> Cursor<'a> {
             .children
             .iter()
             .enumerate()
-            .find(|(i, e)| e.action == *action)
+            .find(|(_i, e)| e.action == *action)
             .map(|(i, _)| i)
             .unwrap_or_else(|| {
                 panic!(
@@ -627,10 +629,11 @@ where
     }
 
     fn bound(&self, candidate: &SearchSpace) -> Bound {
-        bound(candidate, self.context)
+        bound(candidate, self.context.params(), &*self.context.device())
     }
 }
 
+#[allow(dead_code)]
 fn keys_stream() -> futures::sync::mpsc::UnboundedReceiver<io::Result<Key>> {
     let (sender, receiver) = futures::sync::mpsc::unbounded();
 
@@ -682,7 +685,12 @@ struct Evaluator<'a, T = f64> {
 }
 
 impl<'a, T: Send> Evaluator<'a, T> {
-    fn scoped<F, R>(context: &'a Context, num_workers: usize, mode: EvalMode, f: F) -> R
+    fn scoped<F, R>(
+        context: &'a dyn Context,
+        num_workers: usize,
+        mode: EvalMode,
+        f: F,
+    ) -> R
     where
         F: FnOnce(&Self) -> R,
     {
@@ -984,7 +992,7 @@ fn main() -> io::Result<()> {
                                     }
 
                                     let code = codegen::Function::build(&node.candidate);
-                                    context.device().print(
+                                    context.printer().print(
                                         &code,
                                         &mut std::fs::File::create(Path::new(
                                             "/tmp/code.c",

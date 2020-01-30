@@ -20,7 +20,7 @@ use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
 use self::store::Store;
 
-use crate::device::{Context, EvalMode};
+use crate::context::{Context, EvalMode};
 use crate::model::bound;
 use crate::search_space::SearchSpace;
 
@@ -60,7 +60,7 @@ pub fn find_best(
         search_space
             .into_iter()
             .map(|s| {
-                let bound = bound(&s, context);
+                let bound = bound(&s, context.params(), &*context.device());
                 Candidate::new(s, bound)
             })
             .collect(),
@@ -356,7 +356,7 @@ pub fn gen_space<F, G>(
     F: FnMut(&Candidate),
     G: FnMut(&Candidate),
 {
-    let perf_bound = bound(&space, context);
+    let perf_bound = bound(&space, context.params(), &*context.device());
     let mut stack = vec![Candidate::new(space, perf_bound)];
     let mut total = 0;
 

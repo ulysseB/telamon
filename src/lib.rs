@@ -18,6 +18,7 @@
 pub mod codegen;
 #[macro_use]
 pub mod helper;
+pub mod context;
 pub mod device;
 pub mod explorer;
 pub mod ir;

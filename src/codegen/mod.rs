@@ -9,6 +9,8 @@ mod printer;
 mod size;
 mod variable;
 
+use std::io::Write;
+
 pub use self::cfg::Cfg;
 pub use self::dimension::Dimension;
 pub use self::function::*;
@@ -31,6 +33,21 @@ pub fn i32_div_magic(val: i32) -> i32 {
 pub fn i32_div_shift(val: i32) -> i32 {
     let (_magic, shift) = i32_div_magic_and_shift(val);
     shift
+}
+
+pub trait DevicePrinter {
+    /// Prints the code corresponding to a device `Function`.
+    fn print(&self, function: &Function, out: &mut dyn Write);
+
+    /// Builds and outputs a constrained IR instance.
+    fn gen_code(
+        &self,
+        implementation: &crate::search_space::SearchSpace,
+        out: &mut dyn Write,
+    ) {
+        let code = Function::build(implementation);
+        self.print(&code, out);
+    }
 }
 
 // TODO(cleanup): refactor function

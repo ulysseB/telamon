@@ -1,6 +1,6 @@
 use libc;
 use std::sync::{Mutex, MutexGuard};
-use telamon::device::{self, ScalarArgument};
+use telamon::context::{self, ScalarArgument};
 use utils::unwrap;
 
 pub enum ArgLock<'a> {
@@ -38,7 +38,7 @@ impl Argument for CpuArray {
     }
 }
 
-impl device::ArrayArgument for CpuArray {
+impl context::ArrayArgument for CpuArray {
     fn read_i8(&self) -> Vec<i8> {
         let CpuArray(ref vec_mutex) = self;
         let array = unwrap!(vec_mutex.lock());

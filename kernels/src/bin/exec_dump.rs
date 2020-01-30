@@ -1,6 +1,6 @@
 use std::env;
 use std::io::Read;
-use telamon::device::{ArgMap, Context};
+use telamon::context::{ArgMap, Context};
 use telamon_kernels::{linalg, Kernel};
 
 fn dispatch_exec<C: Context + ArgMap, R: Read>(

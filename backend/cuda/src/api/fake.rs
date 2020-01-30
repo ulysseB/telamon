@@ -4,7 +4,7 @@
 
 use crate::api;
 use std::marker::PhantomData;
-use telamon::device;
+use telamon::context;
 
 /// An argument that can be passed to the executor.
 pub trait Argument: Send + Sync {
@@ -14,7 +14,7 @@ pub trait Argument: Send + Sync {
     }
 }
 
-impl Argument for Box<dyn device::ScalarArgument> {
+impl Argument for Box<dyn context::ScalarArgument> {
     fn as_size(&self) -> Option<u32> {
         (**self).as_size()
     }
@@ -27,9 +27,9 @@ pub struct Array<'a, T> {
     t: PhantomData<T>,
 }
 
-impl<'a, T> device::ArrayArgument for Array<'a, T>
+impl<'a, T> context::ArrayArgument for Array<'a, T>
 where
-    T: device::ScalarArgument,
+    T: context::ScalarArgument,
 {
     fn read_i8(&self) -> Vec<i8> {
         panic!("no instance of Array should exist")
@@ -40,7 +40,7 @@ where
     }
 }
 
-impl<'a, T> Argument for Array<'a, T> where T: device::ScalarArgument {}
+impl<'a, T> Argument for Array<'a, T> where T: context::ScalarArgument {}
 
 /// Interface with a CUDA device.
 pub enum Executor {}

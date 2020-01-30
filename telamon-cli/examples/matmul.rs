@@ -6,7 +6,7 @@
 //! ```
 //! To display the candidates evaluated, use `RUST_LOG=telamon::explorer::warn`.
 
-use telamon::device::Context;
+use telamon::context::Context;
 use telamon::{codegen, explorer, helper, ir, search_space};
 use telamon_cuda as cuda;
 
@@ -106,5 +106,5 @@ fn main() {
 
     // Step 5. Print the generated code.
     let code = codegen::Function::build(&best);
-    context.device().print(&code, &mut std::io::stdout());
+    context.printer().print(&code, &mut std::io::stdout());
 }

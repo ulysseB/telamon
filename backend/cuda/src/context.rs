@@ -8,9 +8,8 @@ use log::{debug, error, info};
 use std::f64;
 use std::fmt;
 use std::sync::{atomic, mpsc, Arc};
-use telamon::device::{
-    self, AsyncCallback, Device, EvalMode, KernelEvaluator, ScalarArgument,
-};
+use telamon::context::{self, AsyncCallback, EvalMode, KernelEvaluator, ScalarArgument};
+use telamon::device::{self, Device};
 use telamon::{codegen, explorer, ir};
 use utils::*;
 
@@ -70,7 +69,7 @@ impl Context {
     }
 }
 
-impl device::ArgMap for Context {
+impl context::ArgMap for Context {
     fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
@@ -85,7 +84,7 @@ impl device::ArgMap for Context {
         param: &ir::Parameter,
         t: ir::Type,
         len: usize,
-    ) -> Arc<dyn device::ArrayArgument> {
+    ) -> Arc<dyn context::ArrayArgument> {
         let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.executor.allocate_array::<i8>(size));
         self.bind_param(param.name.clone(), array.clone());
@@ -93,17 +92,27 @@ impl device::ArgMap for Context {
     }
 }
 
-impl device::Context for Context {
+impl device::ParamsHolder for Context {
+    fn param_as_size(&self, name: &str) -> Option<u32> {
+        self.get_param(name).as_size()
+    }
+}
+
+impl context::Context for Context {
     fn device(&self) -> Arc<dyn Device> {
         Arc::<Gpu>::clone(&self.gpu_model)
     }
 
-    fn param_as_size(&self, name: &str) -> Option<u32> {
-        self.get_param(name).as_size()
+    fn params(&self) -> &dyn device::ParamsHolder {
+        self
     }
 
-    fn stabilizer(&self) -> device::Stabilizer {
-        device::Stabilizer::default().num_evals(20).num_outliers(4)
+    fn printer(&self) -> &dyn codegen::DevicePrinter {
+        &*self.gpu_model
+    }
+
+    fn stabilizer(&self) -> context::Stabilizer {
+        context::Stabilizer::default().num_evals(20).num_outliers(4)
     }
 
     fn evaluate(&self, function: &codegen::Function, mode: EvalMode) -> Result<f64, ()> {
@@ -125,7 +134,7 @@ impl device::Context for Context {
         &self,
         num_workers: usize,
         mode: EvalMode,
-        inner: &(dyn Fn(&mut dyn device::AsyncEvaluator<'c>) + Sync),
+        inner: &(dyn Fn(&mut dyn context::AsyncEvaluator<'c>) + Sync),
     ) {
         // Setup the evaluator.
         let blocked_time = &atomic::AtomicUsize::new(0);
@@ -182,14 +191,14 @@ pub struct AsyncEvaluator<'b> {
     blocked_time: &'b atomic::AtomicUsize,
 }
 
-impl<'b, 'c> device::AsyncEvaluator<'c> for AsyncEvaluator<'b>
+impl<'b, 'c> context::AsyncEvaluator<'c> for AsyncEvaluator<'b>
 where
     'c: 'b,
 {
     fn add_dyn_kernel(
         &mut self,
         candidate: explorer::Candidate,
-        callback: device::AsyncCallback<'c>,
+        callback: context::AsyncCallback<'c>,
     ) {
         let thunk = {
             let dev_fun = codegen::Function::build(&candidate.space);

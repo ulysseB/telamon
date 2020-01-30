@@ -12,7 +12,7 @@ use itertools::Itertools;
 use log::{debug, warn};
 use structopt::StructOpt;
 
-use telamon::device::{ArgMap, Context};
+use telamon::context::{ArgMap, Context};
 use telamon::explorer::{choice::ActionEx as Action, config::Config, Candidate};
 use telamon_kernels::{linalg, Kernel, KernelBuilder};
 

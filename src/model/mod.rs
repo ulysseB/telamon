@@ -32,7 +32,7 @@ use log::{debug, trace};
 //  is issued. For this, either double the nodes or subtract the size of buffers to the next
 //  issue.
 
-use crate::device::{Context, Device};
+use crate::device::{Device, ParamsHolder};
 use crate::ir;
 use crate::model::code_point::{CodePoint, CodePointDag};
 use crate::model::dependency_map::DependencyMap;
@@ -45,12 +45,16 @@ use std::cmp;
 use utils::*;
 
 /// Returns a lower bound on the execution time of all the implementation candidates in
-/// `space`, when executed in `context`.
-pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
+/// `space`, when executed in the `device` with sizes in `params`.
+pub fn bound(
+    space: &SearchSpace,
+    params: &dyn ParamsHolder,
+    device: &dyn Device,
+) -> Bound {
     // Build the dependency maps dag.
-    let local_info = LocalInfo::compute(space, context);
+    let local_info = LocalInfo::compute(space, params, device);
     trace!("local_info {:?}", local_info);
-    let (mut levels, dim_maps) = level::generate(space, context, &local_info);
+    let (mut levels, dim_maps) = level::generate(space, params, device, &local_info);
     let code_points = CodePointDag::build(space, &levels);
     let mut levels_dag = LevelDag::build(
         space,
@@ -58,13 +62,13 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         &levels,
         dim_maps,
         code_points.len(),
-        context,
+        params,
     );
     trace!("levels {:?}", levels);
     trace!("code_points {:?}", code_points);
     populate(
         space,
-        &*context.device(),
+        device,
         &local_info,
         &code_points,
         &mut levels,
@@ -83,7 +87,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
                 &mut levels_dag,
             ),
             level::DagAction::ApplyDimMap(dim_map) => apply_dim_map(
-                &*context.device(),
+                device,
                 space,
                 &local_info,
                 &levels,
@@ -101,24 +105,22 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
     let block_latency = unwrap!(levels_dag.root().latency(root_entry, root_exit));
     debug!("block latency: {}", block_latency.value());
     // Scale the latency to the block level.
-    let block_parallelism = u64::from(context.device().block_parallelism(space));
+    let block_parallelism = u64::from(device.block_parallelism(space));
     let min_num_blocks = local_info.parallelism.min_num_blocks;
     let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(
-        context,
+        params,
+        device,
         space,
         &local_info,
         BottleneckLevel::Global,
         &[],
         &ir::PartialSize::default(),
     );
-    trace!(
-        "global pressure {}",
-        global_pressure.display(&*context.device())
-    );
-    let device_rates = context.device().total_rates();
+    trace!("global pressure {}", global_pressure.display(device));
+    let device_rates = device.total_rates();
     let throughput_bound = global_pressure.bound(BottleneckLevel::Global, &device_rates);
     // Return the biggest bound.
     debug!(
@@ -126,7 +128,7 @@ pub fn bound(space: &SearchSpace, context: &dyn Context) -> Bound {
         unwrap!(levels[0].repeated_latency.as_ref()).value()
     );
     let bound = cmp::max(latency, throughput_bound);
-    bound.explain(&*context.device(), &levels, code_points.dag.nodes())
+    bound.explain(device, &levels, code_points.dag.nodes())
 }
 
 /// Populates the dependency maps and the levels with dependency edges and back-edges.

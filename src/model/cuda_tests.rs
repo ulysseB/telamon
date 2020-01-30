@@ -2,7 +2,7 @@
 /* Disable tests to avoi circular dependencies, until we have a dedicated model crate.
 use super::*;
 use crate::codegen;
-use crate::device::{Context, EvalMode};
+use crate::context::{Context, EvalMode};
 use env_logger;
 use crate::helper::*;
 use crate::model;
@@ -38,10 +38,10 @@ fn partial_bound_0() {
 
     let partial_pressure = {
         let space = builder.get_clone();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -58,10 +58,10 @@ fn partial_bound_0() {
     ));
     let final_pressure = {
         let space = builder.get_clone();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -102,10 +102,10 @@ fn partial_bound_1() {
 
     let partial_pressure = {
         let space = builder.get_clone();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -118,10 +118,10 @@ fn partial_bound_1() {
     builder.action(Action::DimKind(dim_z[0], DimKind::THREAD));
     let final_pressure = {
         let space = builder.get();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -247,9 +247,9 @@ fn partial_bound_3() {
 
     let partial_pressure = {
         let space = builder.get_clone();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -267,9 +267,9 @@ fn partial_bound_3() {
 
     let final_pressure = {
         let space = builder.get();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -311,9 +311,9 @@ fn partial_bound_4() {
 
     let partial_pressure = {
         let space = builder.get_clone();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -331,9 +331,9 @@ fn partial_bound_4() {
 
     let final_pressure = {
         let space = builder.get();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -375,9 +375,9 @@ fn partial_bound_5() {
 
     let partial_pressure = {
         let space = builder.get_clone();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
@@ -391,9 +391,9 @@ fn partial_bound_5() {
 
     let final_pressure = {
         let space = builder.get();
-        let local_info = LocalInfo::compute(&space, &context);
+        let local_info = LocalInfo::compute(&space, context.params(), context.device());
         sum_pressure(
-            &context,
+            context.params(), context.device(),
             &space,
             &local_info,
             BottleneckLevel::Global,
