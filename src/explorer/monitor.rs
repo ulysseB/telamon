@@ -193,7 +193,7 @@ where
                     serde_json::to_string(&cand.actions).unwrap()
                 )?;
 
-                cand.space.dump_code(context, output_path.join("code"))
+                cand.dump_code(context, output_path.join("code"))
             })
             .unwrap_or_else(|err| warn!("Error while dumping candidate: {}", err));
 

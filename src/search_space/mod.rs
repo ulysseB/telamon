@@ -3,8 +3,6 @@ use std::cmp;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::codegen;
-use crate::device::Context;
 use crate::ir;
 use log::debug;
 use std::sync::Arc;
@@ -87,30 +85,6 @@ impl SearchSpace {
             dim_map::lower_layout(ir_instance, mem, st_dims, ld_dims, &self.domain)?
         };
         self.apply_decisions(actions)
-    }
-
-    /// Dump the code associated with this candidate.
-    pub fn dump_code<P: AsRef<Path>>(
-        &self,
-        context: &dyn Context,
-        path: P,
-    ) -> io::Result<()> {
-        let code = codegen::Function::build(self);
-
-        // Dump the "control flow graph"
-        write!(
-            std::fs::File::create(path.as_ref().with_extension("cfg"))?,
-            "{}",
-            code,
-        )?;
-
-        // Dump the source code
-        context.device().print(
-            &code,
-            &mut std::fs::File::create(path.as_ref().with_extension("c"))?,
-        );
-
-        Ok(())
     }
 
     /// Returns a wrapper around a statement ID which can be compared according to nesting order

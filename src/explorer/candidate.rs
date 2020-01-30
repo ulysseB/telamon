@@ -92,7 +92,7 @@ impl Candidate {
             self
         )?;
 
-        self.space.dump_code(context, path.as_ref().join("code"))
+        self.dump_code(context, path.as_ref().join("code"))
     }
 
     /// Applies a choice to a candidate.
@@ -118,6 +118,30 @@ impl Candidate {
             depth: self.depth + 1,
             actions,
         })
+    }
+
+    /// Dump the code associated with a candidate.
+    pub fn dump_code<P: AsRef<Path>>(
+        &self,
+        context: &dyn Context,
+        path: P,
+    ) -> io::Result<()> {
+        let code = codegen::Function::build(&self.space);
+
+        // Dump the "control flow graph"
+        write!(
+            std::fs::File::create(path.as_ref().with_extension("cfg"))?,
+            "{}",
+            code,
+        )?;
+
+        // Dump the source code
+        context.device().print(
+            &code,
+            &mut std::fs::File::create(path.as_ref().with_extension("c"))?,
+        );
+
+        Ok(())
     }
 }
 
