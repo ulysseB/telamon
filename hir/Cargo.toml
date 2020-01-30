@@ -1,15 +1,17 @@
 [package]
-name = "telamon"
+name = "telamon-hir"
 authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
 license = "Apache-2.0"
 version = "0.2.0"
 edition = "2018"
 
-readme = "README.md"
-repository = "https://github.com/ulysseB/telamon/"
+[build-dependencies]
+cc = "1.0.12"
+failure = "0.1.1"
+glob = "0.2"
 
-[[example]]
-name = "print_event_log"
+[build-dependencies.telamon-gen]
+path = "../telamon-gen"
 
 [dependencies]
 byteorder = "1"
@@ -42,30 +44,8 @@ toml = "0.4"
 flate2 = "1.0.2"
 dot = "0.1"
 csv = "1"
-utils = {package = "telamon-utils", path = "telamon-utils"}
-telamon-hir = {path = "hir"}
+utils = {package = "telamon-utils", path = "../telamon-utils"}
 
 [features]
 default = []
 format_exh = []
-lex = []
-
-[workspace]
-members = [
-    "backend/cuda",
-    "backend/x86",
-    "backend/mppa",
-    "backend/c",
-    "kernels",
-    "telamon-gen",
-    "telajax",
-    "telamon-utils",
-    "telamon-gen/cc_tests",
-    "telamon-capi",
-    "telamon-cli",
-    "hir",
-]
-
-[profile.release]
-lto = false
-debug = true

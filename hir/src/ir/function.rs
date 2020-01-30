@@ -432,7 +432,7 @@ impl<L> Function<L> {
     }
 
     /// Returns the list of layouts to lower.
-    pub(crate) fn layouts_to_lower(&self) -> &[ir::MemId] {
+    pub fn layouts_to_lower(&self) -> &[ir::MemId] {
         &self.body.layouts_to_lower
     }
 

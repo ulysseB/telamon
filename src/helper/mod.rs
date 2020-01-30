@@ -70,10 +70,13 @@ pub trait MetaStatement {
     fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_>;
 }
 
-impl<T> MetaStatement for T
-where
-    T: Into<ir::StmtId> + Copy,
-{
+impl MetaStatement for ir::InstId {
+    fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_> {
+        Box::new(std::iter::once((*self).into()))
+    }
+}
+
+impl MetaStatement for ir::DimId {
     fn ids(&self) -> Box<dyn Iterator<Item = ir::StmtId> + '_> {
         Box::new(std::iter::once((*self).into()))
     }
