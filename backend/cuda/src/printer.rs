@@ -75,7 +75,7 @@ impl PTXDisplay for llir::Operand<'_> {
             Register(register) => write!(fmt, "{}", register.ptx()),
             &IntLiteral(ref val, bits) => {
                 assert!(bits <= 64);
-                fmt::Display::fmt(val, fmt)
+                write!(fmt, "{:#x}", **val)
             }
             &FloatLiteral(ref val, bits) => {
                 use num::ToPrimitive;
@@ -88,7 +88,7 @@ impl PTXDisplay for llir::Operand<'_> {
                         .to_bits()
                 )
             }
-            IndexCell(cell) => fmt::Display::fmt(&*cell.borrow(), fmt),
+            IndexCell(cell) => write!(fmt, "{:#x}", &*cell.borrow()),
         }
     }
 }
