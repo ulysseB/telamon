@@ -11,7 +11,10 @@ pub enum Cfg<'a> {
     /// Represents the root node of the CFG.
     Root(Vec<Cfg<'a>>),
     /// Represents a loop in the CFG.
-    Loop(Dimension, Vec<Cfg<'a>>),
+    Loop {
+        dimension: Dimension,
+        body: Vec<Cfg<'a>>,
+    },
     /// An instruction in the CFG, potentially vectorized on 2 levels.
     Instruction([Vec<Dimension>; 2], Instruction<'a>),
     /// Defines the set of active thread dimensions.
@@ -26,9 +29,9 @@ impl<'a> Cfg<'a> {
                 Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
                     as Box<dyn Iterator<Item = _>>
             }
-            Cfg::Loop(dim, body) => {
+            Cfg::Loop { dimension, body } => {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
-                Box::new(std::iter::once(dim).chain(body_dims)) as _
+                Box::new(std::iter::once(dimension).chain(body_dims)) as _
             }
             Cfg::Instruction(dims, _) => Box::new(dims.iter().flatten()),
         }
@@ -37,7 +40,7 @@ impl<'a> Cfg<'a> {
     /// Iterates over the instructions of the `Cfg`.
     pub fn instructions(&self) -> impl Iterator<Item = &Instruction<'a>> {
         match self {
-            Cfg::Root(body) | Cfg::Loop(_, body) | Cfg::Threads(_, body) => {
+            Cfg::Root(body) | Cfg::Loop { body, .. } | Cfg::Threads(_, body) => {
                 let iter = body.iter().flat_map(|cfg| cfg.instructions());
                 Box::new(iter) as Box<dyn Iterator<Item = _>>
             }
@@ -102,7 +105,10 @@ impl<'a> Cfg<'a> {
                         body.push(Cfg::vector_inst_from_events(dim, events));
                     } else {
                         let cfg = Cfg::body_from_events(events, num_thread_dims);
-                        body.push(Cfg::Loop(dim, cfg))
+                        body.push(Cfg::Loop {
+                            dimension: dim,
+                            body: cfg,
+                        });
                     }
                 }
                 Exit(_, ExitEvent::SeqDim) => break,
@@ -152,9 +158,10 @@ impl<'a> Cfg<'a> {
                     Cfg::Root(inner) => {
                         Cfg::Root(Self::add_empty_threads(inner, num_thread_dims))
                     }
-                    Cfg::Loop(dim, inner) => {
-                        Cfg::Loop(dim, Self::add_empty_threads(inner, num_thread_dims))
-                    }
+                    Cfg::Loop { dimension, body } => Cfg::Loop {
+                        dimension,
+                        body: Self::add_empty_threads(body, num_thread_dims),
+                    },
                     cfg => cfg,
                 }))
             } else {
@@ -168,8 +175,8 @@ impl<'a> Cfg<'a> {
     /// Indicates if the `Cfg` handles thread parallelism.
     fn handle_threads(&self) -> bool {
         match *self {
-            Cfg::Root(ref inners) | Cfg::Loop(_, ref inners) => {
-                inners.iter().any(|c| c.handle_threads())
+            Cfg::Root(ref inners) | Cfg::Loop { ref body, .. } => {
+                body.iter().any(|c| c.handle_threads())
             }
             Cfg::Threads(..) => true,
             Cfg::Instruction(..) => false,
@@ -239,15 +246,15 @@ impl ir::IrDisplay for Cfg<'_> {
                     writeln!(fmt, "{}", inner.display(fun))?;
                 }
             }
-            Cfg::Loop(dim, inners) => {
+            Cfg::Loop { dimension, body } => {
                 writeln!(
                     fmt,
                     "{:?}[{}]({:?}) {{",
-                    dim.kind(),
-                    dim.size(),
-                    dim.dim_ids().format(" = ")
+                    dimension.kind(),
+                    dimension.size(),
+                    dimension.dim_ids().format(" = ")
                 )?;
-                for inner in inners {
+                for inner in body {
                     writeln!(IndentAdapter::new(fmt), "{}", inner.display(fun))?;
                 }
                 write!(fmt, "}}")?;
@@ -315,10 +322,13 @@ impl<'a> fmt::Debug for Cfg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Cfg::Root(inners) => f.debug_list().entries(inners).finish(),
-            Cfg::Loop(dim, inners) => f
-                .debug_tuple(&format!("{:?}", dim.kind()))
-                .field(&format_args!("[{:?}]", &dim.dim_ids().format(",")))
-                .field(inners)
+            Cfg::Loop { dimension, body } => f
+                .debug_struct(&format!("{:?}", dimension.kind()))
+                .field(
+                    "dimension",
+                    &format_args!("[{:?}]", &dimension.dim_ids().format(",")),
+                )
+                .field("body", body)
                 .finish(),
             Cfg::Instruction(dims, inst) => write!(f, "{:?} {}", dims, inst),
             Cfg::Threads(dims, inners) => {

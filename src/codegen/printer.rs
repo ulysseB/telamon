@@ -299,7 +299,7 @@ impl<'a, 'b> Printer<'a, 'b> {
 
                 self.cfg_vec(fun, cfgs)
             }
-            Cfg::Loop(dim, cfgs) => self.gen_loop(fun, dim, cfgs),
+            Cfg::Loop { dimension, body } => self.gen_loop(fun, dimension, body),
             Cfg::Threads(dims, inner) => {
                 // Disable inactive threads
                 self.disable_threads(
