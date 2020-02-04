@@ -309,6 +309,9 @@ struct Codegen {
     /// Platform to generate code for.
     #[structopt(long = "platform", short = "p", default_value = "cuda")]
     platform: Platform,
+
+    #[structopt(long = "cfg")]
+    print_cfg: bool,
 }
 
 impl Codegen {
@@ -326,8 +329,42 @@ impl Codegen {
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
         }
 
+        {
+            use telamon::ir::Statement;
+
+            let ir_instance = candidate.ir_instance();
+            println!("Inst deps:");
+            for inst in ir_instance.insts() {
+                for dep in inst.dependencies() {
+                    print!("{}, ", dep);
+                }
+                print!(" <- {} -> ", inst.id());
+                for user in inst.users() {
+                    print!("{}, ", user);
+                }
+                println!("");
+            }
+
+            println!("Dim deps:");
+            for dim in ir_instance.dims() {
+                for dep in dim.dependencies() {
+                    print!("{}, ", dep);
+                }
+                print!(" <- {} -> ", dim.id());
+                for user in dim.users() {
+                    print!("{}, ", user);
+                }
+                println!("");
+            }
+        }
+
         let code = telamon::codegen::Function::build(&candidate);
-        context.printer().print(&code, &mut std::io::stdout());
+
+        if self.print_cfg {
+            print!("{}", code);
+        } else {
+            context.printer().print(&code, &mut std::io::stdout());
+        }
 
         Ok(())
     }

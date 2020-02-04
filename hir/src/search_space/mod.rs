@@ -13,8 +13,8 @@ use utils::generated_file;
 generated_file!(choices);
 
 pub use self::choices::{
-    Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace, NumSet,
-    Order, ThreadMapping,
+    Action, Advance, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace,
+    NumSet, Order, ThreadMapping,
 };
 
 use self::choices::{apply_action, init_domain, DomainDiff};

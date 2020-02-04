@@ -306,10 +306,19 @@ set Dependencies($stmt in Statements) subsetof Statements:
 end
 
 // Enforce order between dependent statements depending on the advance level
+// require forall $user in Statements:
+// 	forall $dep in Dependencies($user):
+// 		order($user, $dep) is AFTER | MERGED
+
+// Enforce that if a statement `$user` depends on a statement `$dep` and the
+// user statement is advanced, then either the dependency is before the
+// advanced dimension, or it is also advanced.
 require forall $user in Statements:
 	forall $dep in Dependencies($user):
-		order($user, $dep) is AFTER | MERGED
-		num_dim_advances($user) <= num_dim_advances($dep)
+		forall $dim in Dimensions:
+			advance($user, $dim) is not YES ||
+				order($dep, $dim) is BEFORE ||
+					advance($dep, $dim) is YES
 
 // dim_map lowering.
 trigger forall $lhs in Dimensions:

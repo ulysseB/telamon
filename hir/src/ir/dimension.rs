@@ -227,6 +227,14 @@ impl<L> Dimension<L> {
     pub fn is_parallelizable(&self) -> bool {
         self.is_parallelizable
     }
+
+    pub(super) fn register_user(&mut self, user: ir::StmtId) {
+        self.users.insert(user);
+    }
+
+    pub(super) fn register_dependency(&mut self, dependency: ir::StmtId) {
+        self.dependencies.insert(dependency);
+    }
 }
 
 impl<L> fmt::Display for Dimension<L> {

@@ -9,7 +9,7 @@ use utils::*;
 
 use crate::codegen::{self, cfg, dimension, Cfg, Dimension};
 use crate::ir::{self, IrDisplay};
-use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
+use crate::search_space::{self, Advance, DimKind, Domain, MemSpace, SearchSpace};
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
@@ -458,11 +458,13 @@ impl MemoryRegion {
 }
 
 /// An instruction to execute.
+#[derive(Clone)]
 pub struct Instruction<'a> {
     instruction: &'a ir::Instruction,
     instantiation_dims: Vec<(ir::DimId, u32)>,
     mem_flag: Option<search_space::InstFlag>,
     t: Option<ir::Type>,
+    advanced_for: FxHashSet<ir::DimId>,
 }
 
 impl<'a> Instruction<'a> {
@@ -486,11 +488,32 @@ impl<'a> Instruction<'a> {
         let t = instruction
             .t()
             .map(|t| unwrap!(space.ir_instance().device().lower_type(t, space)));
+
+        let mut advanced_for = FxHashSet::default();
+        if space
+            .domain()
+            .get_num_dim_advances(instruction.id().into())
+            .min
+            > 0
+        {
+            for dim in space.ir_instance().dims() {
+                if space
+                    .domain()
+                    .get_advance(instruction.id().into(), dim.id())
+                    .is(Advance::YES)
+                    .is_true()
+                {
+                    advanced_for.insert(dim.id());
+                }
+            }
+        }
+
         Instruction {
             instruction,
             instantiation_dims,
             mem_flag,
             t,
+            advanced_for,
         }
     }
 
@@ -550,6 +573,11 @@ impl<'a> Instruction<'a> {
     /// Indicates where to store the result of the instruction.
     pub fn result_variable(&self) -> Option<ir::VarId> {
         self.instruction.result_variable()
+    }
+
+    /// Indicates whether the instruction is advanced for a given dimension.
+    pub fn is_advanced(&self, dim_id: ir::DimId) -> bool {
+        self.advanced_for.contains(&dim_id)
     }
 }
 

@@ -228,6 +228,10 @@ impl<L> Instruction<L> {
     pub(super) fn register_user(&mut self, user: ir::StmtId) {
         self.users.insert(user);
     }
+
+    pub(super) fn register_dependency(&mut self, dependency: ir::StmtId) {
+        self.dependencies.insert(dependency);
+    }
 }
 
 impl Instruction<()> {
@@ -256,6 +260,11 @@ impl Instruction {
         let operand = &mut *self.operator.operands_mut()[op_id];
         match *operand {
             Operand::Inst(ref mut src, _, ref mut dim_map, ref mut can_lower) => {
+                {
+                    let stmt_id = ir::StmtId::from(*src);
+                    self.dependencies.insert(new_src.into());
+                }
+
                 *src = new_src;
                 *dim_map = new_dim_map;
                 *can_lower = DimMapScope::Local;

@@ -124,12 +124,6 @@ impl<'a> InstPrinterHelper<'a> {
             .print_inst(llir::Instruction::and(result, lhs, rhs).unwrap().into())
     }
 
-    /// Prints a move instruction.
-    fn print_move(&mut self, result: llir::Register<'_>, operand: llir::Operand<'_>) {
-        self.inst_printer
-            .print_inst(llir::Instruction::mov(result, operand).unwrap().into())
-    }
-
     /// Prints a scalar equals instruction.
     fn print_equals(
         &mut self,
@@ -150,6 +144,7 @@ impl<'a> InstPrinterHelper<'a> {
 pub struct Printer<'a, 'b> {
     helper: InstPrinterHelper<'a>,
     namer: &'a mut NameMap<'b>,
+    guard: Option<llir::Register<'a>>,
 }
 
 impl<'a, 'b> Printer<'a, 'b> {
@@ -160,6 +155,7 @@ impl<'a, 'b> Printer<'a, 'b> {
         Printer {
             helper: InstPrinterHelper { inst_printer },
             namer,
+            guard: None,
         }
     }
 
@@ -210,19 +206,44 @@ impl<'a, 'b> Printer<'a, 'b> {
 
     /// Prints a classic loop - that is, a sequential loop with an index and a jump to the beginning
     /// at the end of the block
-    fn standard_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &'b [Cfg<'b>]) {
+    fn standard_loop(
+        &mut self,
+        fun: &Function,
+        dim: &Dimension,
+        prologue: &'b [Cfg<'b>],
+        cfgs: &'b [Cfg<'b>],
+        advanced: &'b [Cfg<'b>],
+    ) {
         let idx = self.namer.name_index(dim.id());
-        self.helper.print_move(idx, 0i32.int_literal());
+        self.helper.print_inst(
+            llir::Instruction::mov(idx, 0i32.int_literal())
+                .unwrap()
+                .predicated(self.guard),
+        );
 
         for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
             self.helper.print_inst(instruction.clone());
         }
 
+        // Prologue
+        if !prologue.is_empty() || !advanced.is_empty() {
+            for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
+            {
+                self.helper.print_inst(instruction.clone());
+            }
+
+            self.cfg_vec(fun, prologue);
+        }
+
         let loop_label = self.namer.gen_label("LOOP");
         self.helper.inst_printer.print_label(loop_label);
 
-        for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id())) {
-            self.helper.print_inst(instruction.clone());
+        // If there is a prologue, index expressions are advanced for simplicity
+        if prologue.is_empty() && advanced.is_empty() {
+            for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
+            {
+                self.helper.print_inst(instruction.clone());
+            }
         }
 
         self.cfg_vec(fun, cfgs);
@@ -238,6 +259,21 @@ impl<'a, 'b> Printer<'a, 'b> {
         let lt_cond = self.namer.gen_name(ir::Type::I(1));
         let size = self.namer.name_size(dim.size(), Type::I(32));
         self.helper.print_lt_int(lt_cond, idx.into(), size);
+
+        if !prologue.is_empty() || !advanced.is_empty() {
+            // Compute index expressions for the next iteration
+            for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
+            {
+                self.helper.print_inst(instruction.clone());
+            }
+
+            // Precompute the next iteration of advanced instructions
+            assert!(self.guard.is_none());
+            self.guard = Some(lt_cond);
+            self.cfg_vec(fun, advanced);
+            self.guard = None;
+        }
+
         self.helper
             .inst_printer
             .print_inst(llir::Instruction::jump(loop_label).predicated(lt_cond));
@@ -248,38 +284,50 @@ impl<'a, 'b> Printer<'a, 'b> {
     }
 
     /// Prints an unroll loop - loop without jumps
-    fn unroll_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &'b [Cfg<'b>]) {
+    fn unroll_loop(
+        &mut self,
+        fun: &Function,
+        dim: &Dimension,
+        prologue: &'b [Cfg<'b>],
+        cfgs: &'b [Cfg<'b>],
+        advanced: &'b [Cfg<'b>],
+    ) {
         for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
             self.helper.print_inst(instruction.clone());
         }
 
-        for i in 0..dim.size().as_int().unwrap() {
-            self.namer.set_current_index(dim, i);
+        self.namer.set_current_index(dim, 0);
 
-            for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
-            {
-                self.helper.print_inst(instruction.clone());
-            }
+        for instruction in self.namer.expr_to_operand().compute_exprs(Some(dim.id())) {
+            self.helper.print_inst(instruction.clone());
+        }
 
+        self.cfg_vec(fun, prologue);
+
+        let size = dim.size().as_int().unwrap();
+        for i in 0..size {
             self.cfg_vec(fun, cfgs);
 
             for instruction in self.namer.expr_to_operand().update_exprs(dim.id()) {
                 self.helper.print_inst(instruction.clone());
+            }
+
+            if i < size - 1 {
+                self.namer.set_current_index(dim, i + 1);
+
+                for instruction in
+                    self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
+                {
+                    self.helper.print_inst(instruction.clone());
+                }
+
+                self.cfg_vec(fun, advanced);
             }
         }
         self.namer.unset_current_index(dim);
 
         for instruction in self.namer.expr_to_operand().reset_exprs(dim.id()) {
             self.helper.print_inst(instruction.clone());
-        }
-    }
-
-    /// Prints a Loop
-    fn gen_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &'b [Cfg<'b>]) {
-        match dim.kind() {
-            DimKind::LOOP => self.standard_loop(fun, dim, cfgs),
-            DimKind::UNROLL => self.unroll_loop(fun, dim, cfgs),
-            _ => panic!("{:?} loop should not be printed here !", dim.kind()),
         }
     }
 
@@ -299,7 +347,80 @@ impl<'a, 'b> Printer<'a, 'b> {
 
                 self.cfg_vec(fun, cfgs)
             }
-            Cfg::Loop { dimension, body } => self.gen_loop(fun, dimension, body),
+            Cfg::Loop {
+                dimension,
+                size: None,
+                prologue,
+                body,
+                advanced,
+            } => match dimension.kind() {
+                DimKind::LOOP => {
+                    self.standard_loop(fun, dimension, prologue, body, advanced)
+                }
+                DimKind::UNROLL => {
+                    self.unroll_loop(fun, dimension, prologue, body, advanced)
+                }
+                _ => panic!("{:?} loop should not be printed here !", dimension.kind()),
+            },
+            Cfg::Loop {
+                dimension,
+                size: Some(size),
+                prologue,
+                body,
+                advanced,
+            } => {
+                assert_eq!(*size, 1);
+                assert!(prologue.is_empty());
+                assert!(advanced.is_empty());
+
+                match dimension.kind() {
+                    DimKind::LOOP => {
+                        let idx = self.namer.name_index(dimension.id());
+                        self.helper.print_inst(
+                            llir::Instruction::mov(idx, 0i32.int_literal()).unwrap(),
+                        );
+
+                        for instruction in
+                            self.namer.expr_to_operand().init_exprs(dimension.id())
+                        {
+                            self.helper.print_inst(instruction.clone());
+                        }
+
+                        for instruction in self
+                            .namer
+                            .expr_to_operand()
+                            .compute_exprs(Some(dimension.id()))
+                        {
+                            self.helper.print_inst(instruction.clone());
+                        }
+
+                        self.cfg_vec(fun, body);
+                    }
+                    DimKind::UNROLL => {
+                        self.namer.set_current_index(dimension, 0);
+                        for instruction in
+                            self.namer.expr_to_operand().init_exprs(dimension.id())
+                        {
+                            self.helper.print_inst(instruction.clone());
+                        }
+
+                        for instruction in self
+                            .namer
+                            .expr_to_operand()
+                            .compute_exprs(Some(dimension.id()))
+                        {
+                            self.helper.print_inst(instruction.clone());
+                        }
+
+                        self.cfg_vec(fun, body);
+
+                        self.namer.unset_current_index(dimension);
+                    }
+                    _ => {
+                        panic!("{:?} loop should not be printed here !", dimension.kind())
+                    }
+                }
+            }
             Cfg::Threads(dims, inner) => {
                 // Disable inactive threads
                 self.disable_threads(
@@ -355,7 +476,7 @@ impl<'a, 'b> Printer<'a, 'b> {
                 self.namer.vector_operand(vector_levels, rhs),
             )
             .unwrap()
-            .into(),
+            .predicated(self.guard),
             &op::Mul(ref lhs, ref rhs, round, return_type) => llir::Instruction::binary(
                 llir::BinOp::from_ir_mul(
                     round,
@@ -369,7 +490,7 @@ impl<'a, 'b> Printer<'a, 'b> {
                 self.namer.vector_operand(vector_levels, rhs),
             )
             .unwrap()
-            .into(),
+            .predicated(self.guard),
             &op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
                 llir::Instruction::ternary(
                     llir::TernOp::from_ir_mad(
@@ -385,7 +506,7 @@ impl<'a, 'b> Printer<'a, 'b> {
                     self.namer.vector_operand(vector_levels, add_rhs),
                 )
                 .unwrap()
-                .into()
+                .predicated(self.guard)
             }
             &op::UnaryOp(operator, ref operand) => {
                 // Need to lower inner types
@@ -400,7 +521,7 @@ impl<'a, 'b> Printer<'a, 'b> {
                     self.namer.vector_operand(vector_levels, operand),
                 )
                 .unwrap()
-                .into()
+                .predicated(self.guard)
             }
             &op::Ld(ld_type, ref addr, ref pattern) => {
                 let spec = llir::LoadSpec::from_ir(

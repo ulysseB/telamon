@@ -711,6 +711,22 @@ impl Function {
             ld_dim_map,
         );
 
+        // XXX: The direct dependency is added in lower_dim_map; fix the reverse dependency.
+        self.body.insts[lowered.load].register_user(dst_inst.into());
+
+        // XXX: add "through shared" order dependency (for advance)
+        self.body.insts[lowered.store].register_user(lowered.load.into());
+        self.body.insts[lowered.load].register_dependency(lowered.store.into());
+
+        for ((_, [_, st_dim]), (_, [_, ld_dim])) in lowered
+            .st_dims_mapping
+            .iter()
+            .zip(lowered.ld_dims_mapping.iter())
+        {
+            self.body.dims[*st_dim].register_user((*ld_dim).into());
+            self.body.dims[*ld_dim].register_dependency((*st_dim).into());
+        }
+
         Ok(lowered)
     }
 

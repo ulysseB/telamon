@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::explorer::config;
 use crate::ir::{self, Statement};
-use crate::search_space::{Action, DimKind, Domain, NumSet, Order, SearchSpace};
+use crate::search_space::{Action, Advance, DimKind, Domain, NumSet, Order, SearchSpace};
 use itertools::Itertools;
 use log::trace;
 use serde::{Deserialize, Serialize};

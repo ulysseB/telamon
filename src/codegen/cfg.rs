@@ -7,18 +7,204 @@ use std::{self, fmt};
 use utils::unwrap;
 
 /// Represents a CFG of the targeted device.
+#[derive(Clone)]
 pub enum Cfg<'a> {
     /// Represents the root node of the CFG.
     Root(Vec<Cfg<'a>>),
     /// Represents a loop in the CFG.
+    ///
+    /// Conceptually (except the loop could be unrolled), this expands to the following template:
+    ///
+    ///   index = 0;
+    ///   ${prologue}
+    ///   loop {
+    ///     ${body}
+    ///     index = index + 1;
+    ///     if (index < size) {
+    ///       ${advanced}
+    ///     } else {
+    ///       break;
+    ///     }
+    ///   }
     Loop {
+        // The iteration dimension
         dimension: Dimension,
+        // Size override
+        size: Option<i32>,
+        // Code to execute before entering the loop
+        prologue: Vec<Cfg<'a>>,
+        // Code to execute at each iteration of the loop
         body: Vec<Cfg<'a>>,
+        // Code to execute with a predicate, for the next iteration of the loop
+        advanced: Vec<Cfg<'a>>,
     },
     /// An instruction in the CFG, potentially vectorized on 2 levels.
     Instruction([Vec<Dimension>; 2], Instruction<'a>),
     /// Defines the set of active thread dimensions.
     Threads(Vec<Option<ir::DimId>>, Vec<Cfg<'a>>),
+}
+
+/// A helper struct to represent a sequential dimension's body.
+///
+/// The instructions and loops inside the body are split in two parts: in `body` are the regular
+/// instructions as scheduled by Telamon; in `advanced` are the advanced instructions which need to
+/// be duplicated in the prologue and scheduled (with a predicate to not be executed on the last
+/// iteration) after the rest of the body.
+struct SeqBody<'a> {
+    prologue: Vec<Cfg<'a>>,
+    body: Vec<Cfg<'a>>,
+    advanced: Vec<Cfg<'a>>,
+}
+
+// Returns a pair (advanced, not_advanced)
+fn split_prologue_cfgs<'a>(
+    cfgs: Vec<Cfg<'a>>,
+    dim_id: ir::DimId,
+) -> (Vec<Cfg<'a>>, Vec<Cfg<'a>>) {
+    let mut dim_advanced = Vec::new();
+    let mut dim_not_advanced = Vec::new();
+
+    for inner in cfgs {
+        match inner {
+            Cfg::Root(_) => unreachable!("cannot split root"),
+            Cfg::Threads(dim_ids, body) => {
+                let (body_advanced, body_not_advanced) =
+                    split_prologue_cfgs(body, dim_id);
+                if !body_advanced.is_empty() {
+                    dim_advanced.push(Cfg::Threads(dim_ids.clone(), body_advanced));
+                }
+
+                dim_not_advanced.push(Cfg::Threads(dim_ids, body_not_advanced));
+            }
+            Cfg::Loop {
+                dimension,
+                size,
+                prologue,
+                body,
+                advanced,
+            } => {
+                if dimension.is_advanced(dim_id) {
+                    dim_advanced.push(Cfg::Loop {
+                        dimension,
+                        size,
+                        prologue,
+                        body,
+                        advanced,
+                    });
+                } else {
+                    let (prologue_advanced, prologue_not_advanced) =
+                        split_prologue_cfgs(prologue, dim_id);
+                    if !prologue_advanced.is_empty() {
+                        dim_advanced.push(Cfg::Loop {
+                            dimension: dimension.clone(),
+                            size: Some(1),
+                            prologue: Vec::new(),
+                            body: prologue_advanced,
+                            advanced: Vec::new(),
+                        });
+                    }
+                    dim_not_advanced.push(Cfg::Loop {
+                        dimension,
+                        size,
+                        prologue: prologue_not_advanced,
+                        body,
+                        advanced,
+                    });
+                }
+            }
+            Cfg::Instruction(vec_dims, inst) => {
+                if inst.is_advanced(dim_id) {
+                    dim_advanced.push(Cfg::Instruction(vec_dims, inst));
+                } else {
+                    dim_not_advanced.push(Cfg::Instruction(vec_dims, inst));
+                }
+            }
+        }
+    }
+
+    (dim_advanced, dim_not_advanced)
+}
+
+// Returns a pair `(advanced, not_advanced)
+fn split_body_cfgs<'a>(cfgs: Vec<Cfg<'a>>, dim_id: ir::DimId) -> SeqBody<'a> {
+    let mut dim_prologue = Vec::new();
+    let mut dim_advanced = Vec::new();
+    let mut dim_body = Vec::new();
+
+    for inner in cfgs {
+        match inner {
+            Cfg::Root(_) => unreachable!("cannot advance root"),
+            Cfg::Threads(dim_ids, body) => {
+                let split_body = split_body_cfgs(body, dim_id);
+
+                if !split_body.prologue.is_empty() {
+                    dim_prologue.push(Cfg::Threads(dim_ids.clone(), split_body.prologue));
+                }
+
+                if !split_body.advanced.is_empty() {
+                    dim_advanced.push(Cfg::Threads(dim_ids.clone(), split_body.advanced));
+                }
+
+                // Ensure we always keep a non-advanced `Cfg::Threads`, even if empty, to prevent
+                // `add_empty_threads` from messing with us.
+                dim_body.push(Cfg::Threads(dim_ids, split_body.body));
+            }
+            Cfg::Instruction(vec_dims, inst) => {
+                if inst.is_advanced(dim_id) {
+                    dim_prologue.push(Cfg::Instruction(vec_dims.clone(), inst.clone()));
+                    dim_advanced.push(Cfg::Instruction(vec_dims, inst));
+                } else {
+                    dim_body.push(Cfg::Instruction(vec_dims, inst));
+                }
+            }
+            Cfg::Loop {
+                dimension,
+                size,
+                prologue,
+                body,
+                advanced,
+            } => {
+                if dimension.is_advanced(dim_id) {
+                    let loop_ = Cfg::Loop {
+                        dimension,
+                        size,
+                        prologue,
+                        body,
+                        advanced,
+                    };
+                    dim_prologue.push(loop_.clone());
+                    dim_advanced.push(loop_);
+                } else {
+                    let (prologue_advanced, prologue_not_advanced) =
+                        split_prologue_cfgs(prologue, dim_id);
+                    if !prologue_advanced.is_empty() {
+                        dim_prologue.push(Cfg::Loop {
+                            dimension: dimension.clone(),
+                            size: Some(1),
+                            prologue: Vec::new(),
+                            body: prologue_advanced.clone(),
+                            advanced: Vec::new(),
+                        });
+                        dim_advanced.extend(prologue_advanced);
+                    }
+
+                    dim_body.push(Cfg::Loop {
+                        dimension,
+                        size,
+                        prologue: prologue_not_advanced,
+                        body,
+                        advanced,
+                    });
+                }
+            }
+        }
+    }
+
+    SeqBody {
+        prologue: dim_prologue,
+        body: dim_body,
+        advanced: dim_advanced,
+    }
 }
 
 impl<'a> Cfg<'a> {
@@ -29,9 +215,20 @@ impl<'a> Cfg<'a> {
                 Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
                     as Box<dyn Iterator<Item = _>>
             }
-            Cfg::Loop { dimension, body } => {
+            Cfg::Loop {
+                dimension,
+                size: _size,
+                prologue: _prologue,
+                body,
+                advanced,
+            } => {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
-                Box::new(std::iter::once(dimension).chain(body_dims)) as _
+                let advanced_dims = advanced.iter().flat_map(|cfg| cfg.dimensions());
+                Box::new(
+                    std::iter::once(dimension)
+                        .chain(body_dims)
+                        .chain(advanced_dims),
+                ) as _
             }
             Cfg::Instruction(dims, _) => Box::new(dims.iter().flatten()),
         }
@@ -40,8 +237,16 @@ impl<'a> Cfg<'a> {
     /// Iterates over the instructions of the `Cfg`.
     pub fn instructions(&self) -> impl Iterator<Item = &Instruction<'a>> {
         match self {
-            Cfg::Root(body) | Cfg::Loop { body, .. } | Cfg::Threads(_, body) => {
+            Cfg::Root(body) | Cfg::Threads(_, body) => {
                 let iter = body.iter().flat_map(|cfg| cfg.instructions());
+                Box::new(iter) as Box<dyn Iterator<Item = _>>
+            }
+            Cfg::Loop { prologue, body, .. } => {
+                // Skip advance: the same instruction might be present multiple times in advance
+                // for different loops (multi-level advance), but it will always be in either
+                // exactly one prologue or exactly one body.
+                let iter =
+                    (prologue.iter().chain(body)).flat_map(|cfg| cfg.instructions());
                 Box::new(iter) as Box<dyn Iterator<Item = _>>
             }
             Cfg::Instruction(_, inst) => Box::new(std::iter::once(inst)) as _,
@@ -105,9 +310,14 @@ impl<'a> Cfg<'a> {
                         body.push(Cfg::vector_inst_from_events(dim, events));
                     } else {
                         let cfg = Cfg::body_from_events(events, num_thread_dims);
+                        let seq_body = split_body_cfgs(cfg, dim_id);
+
                         body.push(Cfg::Loop {
                             dimension: dim,
-                            body: cfg,
+                            size: None,
+                            prologue: seq_body.prologue,
+                            body: seq_body.body,
+                            advanced: seq_body.advanced,
                         });
                     }
                 }
@@ -158,9 +368,18 @@ impl<'a> Cfg<'a> {
                     Cfg::Root(inner) => {
                         Cfg::Root(Self::add_empty_threads(inner, num_thread_dims))
                     }
-                    Cfg::Loop { dimension, body } => Cfg::Loop {
+                    Cfg::Loop {
                         dimension,
+                        size,
+                        prologue,
+                        body,
+                        advanced,
+                    } => Cfg::Loop {
+                        dimension,
+                        size,
+                        prologue: Self::add_empty_threads(prologue, num_thread_dims),
                         body: Self::add_empty_threads(body, num_thread_dims),
+                        advanced: Self::add_empty_threads(advanced, num_thread_dims),
                     },
                     cfg => cfg,
                 }))
@@ -175,7 +394,7 @@ impl<'a> Cfg<'a> {
     /// Indicates if the `Cfg` handles thread parallelism.
     fn handle_threads(&self) -> bool {
         match *self {
-            Cfg::Root(ref inners) | Cfg::Loop { ref body, .. } => {
+            Cfg::Root(ref body) | Cfg::Loop { ref body, .. } => {
                 body.iter().any(|c| c.handle_threads())
             }
             Cfg::Threads(..) => true,
@@ -193,6 +412,7 @@ impl<'a> Cfg<'a> {
 struct IndentAdapter<'a> {
     fmt: &'a mut (dyn fmt::Write + 'a),
     on_newline: bool,
+    padding: &'a str,
 }
 
 impl<'a> IndentAdapter<'a> {
@@ -203,9 +423,14 @@ impl<'a> IndentAdapter<'a> {
     /// This assumes that the adapter is created after a newline; indentation will be added to the
     /// first formatted value.
     fn new<'b: 'a>(fmt: &'a mut fmt::Formatter<'b>) -> Self {
+        IndentAdapter::with_padding(fmt, "  ")
+    }
+
+    fn with_padding<'b: 'a>(fmt: &'a mut fmt::Formatter<'b>, padding: &'a str) -> Self {
         IndentAdapter {
             fmt,
             on_newline: true,
+            padding,
         }
     }
 }
@@ -214,7 +439,7 @@ impl fmt::Write for IndentAdapter<'_> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
             if self.on_newline {
-                self.fmt.write_str("  ")?;
+                self.fmt.write_str(self.padding)?;
             }
 
             let split = match s.find('\n') {
@@ -246,16 +471,50 @@ impl ir::IrDisplay for Cfg<'_> {
                     writeln!(fmt, "{}", inner.display(fun))?;
                 }
             }
-            Cfg::Loop { dimension, body } => {
+            Cfg::Loop {
+                dimension,
+                size,
+                prologue,
+                body,
+                advanced,
+            } => {
                 writeln!(
                     fmt,
-                    "{:?}[{}]({:?}) {{",
+                    "{:?}[{}{}]({:?}) {{",
                     dimension.kind(),
                     dimension.size(),
+                    match size {
+                        None => "".to_string(),
+                        Some(size) => format!("={}", size),
+                    },
                     dimension.dim_ids().format(" = ")
                 )?;
+                if !prologue.is_empty() {
+                    writeln!(IndentAdapter::new(fmt), "prologue {{")?;
+                    for inner in prologue {
+                        writeln!(
+                            IndentAdapter::with_padding(fmt, "    "),
+                            "{}",
+                            inner.display(fun)
+                        )?;
+                    }
+                    writeln!(IndentAdapter::new(fmt), "}}")?;
+                }
+
                 for inner in body {
                     writeln!(IndentAdapter::new(fmt), "{}", inner.display(fun))?;
+                }
+
+                if !advanced.is_empty() {
+                    writeln!(IndentAdapter::new(fmt), "advanced {{")?;
+                    for inner in advanced {
+                        writeln!(
+                            IndentAdapter::with_padding(fmt, "    "),
+                            "{}",
+                            inner.display(fun)
+                        )?;
+                    }
+                    writeln!(IndentAdapter::new(fmt), "}}")?;
                 }
                 write!(fmt, "}}")?;
             }
@@ -322,13 +581,22 @@ impl<'a> fmt::Debug for Cfg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Cfg::Root(inners) => f.debug_list().entries(inners).finish(),
-            Cfg::Loop { dimension, body } => f
+            Cfg::Loop {
+                dimension,
+                size,
+                prologue,
+                body,
+                advanced,
+            } => f
                 .debug_struct(&format!("{:?}", dimension.kind()))
                 .field(
                     "dimension",
                     &format_args!("[{:?}]", &dimension.dim_ids().format(",")),
                 )
+                .field("size", size)
+                .field("prologue", prologue)
                 .field("body", body)
+                .field("advanced", advanced)
                 .finish(),
             Cfg::Instruction(dims, inst) => write!(f, "{:?} {}", dims, inst),
             Cfg::Threads(dims, inners) => {

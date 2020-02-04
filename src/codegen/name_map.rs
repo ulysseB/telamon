@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 use fxhash::FxHashMap;
 use itertools::Itertools;
+use log::debug;
 use typed_arena::Arena;
 use utils::*;
 
@@ -335,6 +336,7 @@ impl<'a> NameMap<'a> {
                 .remove(&rhs)
                 .map(|idx| indexes.to_mut().insert(lhs, idx));
         }
+        debug!("name_mapped_inst: {:?} {:?}", id, indexes);
         *self.insts[&id].get_name(&indexes)
     }
 
@@ -361,6 +363,7 @@ impl<'a> NameMap<'a> {
         for &(dim, _) in alias.instantiation_dims() {
             mapping.insert(dim, dim);
         }
+        debug!("decl_alias {:?}", base);
         let mut names = self.insts[&base].clone();
         let new_indexes = names
             .indexes
