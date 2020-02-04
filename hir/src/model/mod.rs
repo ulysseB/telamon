@@ -207,8 +207,6 @@ fn set_data_deps(
     levels: &mut [Level],
     level_dag: &mut LevelDag,
 ) {
-    let user_advances = space.domain().get_num_dim_advances(inst_id.into());
-
     for operand in space.ir_instance().inst(inst_id).operands() {
         match *operand {
             ir::Operand::Variable(var_id, _) => {
@@ -222,16 +220,10 @@ fn set_data_deps(
                 set_data_dep(space, pred, code_point, &dim_map, &latency, level_dag);
             }
             ir::Operand::Inst(pred_id, _, ref dim_map, _) => {
-                let pred_advances = space.domain().get_num_dim_advances(pred_id.into());
-                // If user_advances < pred_advances the dependency is broken
-                // It is possible to break the dependency when user_advances.min <
-                // pred_advances.max
-                if user_advances.min >= pred_advances.max {
-                    let pred = code_points.ids[&CodePoint::Inst(pred_id)];
-                    let latency = local_info.hw_pressure[&pred_id.into()]
-                        .bound(BottleneckLevel::Thread, thread_rates);
-                    set_data_dep(space, pred, code_point, dim_map, &latency, level_dag);
-                }
+                let pred = code_points.ids[&CodePoint::Inst(pred_id)];
+                let latency = local_info.hw_pressure[&pred_id.into()]
+                    .bound(BottleneckLevel::Thread, thread_rates);
+                set_data_dep(space, pred, code_point, dim_map, &latency, level_dag);
             }
             ir::Operand::Reduce(pred_id, _, ref dim_map, ref reduce_dims) => {
                 let pred = code_points.ids[&CodePoint::Inst(pred_id)];
