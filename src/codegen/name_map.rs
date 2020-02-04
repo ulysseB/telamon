@@ -197,6 +197,12 @@ impl<'a> NameMap<'a> {
         }
 
         // Setup the name of variables holding instruction results.
+        // Due to the ability to advance certain instructions we cannot rely on the iteration order
+        // of `function.cfg().instructions()` to always return instructions before their
+        // dependencies.
+        //
+        // Instead, we keep the aliases in a vector and handle them afterwards.
+        let mut aliases = Vec::new();
         for inst in function.cfg().instructions() {
             // If the instruction has a return variable, use its name instead.
             if let Some(var) = inst.result_variable() {
@@ -204,10 +210,13 @@ impl<'a> NameMap<'a> {
                     .insts
                     .insert(inst.id(), name_map.variables[&var].clone());
             } else if let Some((inst_id, dim_map)) = inst.as_reduction() {
-                name_map.decl_alias(inst, inst_id, dim_map);
+                aliases.push((inst, inst_id, dim_map));
             } else if inst.t().is_some() {
                 name_map.decl_inst(inst);
             }
+        }
+        for (inst, inst_id, dim_map) in aliases {
+            name_map.decl_alias(inst, inst_id, dim_map);
         }
         name_map
     }
