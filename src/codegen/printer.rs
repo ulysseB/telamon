@@ -105,39 +105,6 @@ impl<'a> InstPrinterHelper<'a> {
     fn print_inst<T: Into<llir::PredicatedInstruction<'a>>>(&mut self, inst: T) {
         self.inst_printer.print_inst(inst.into())
     }
-
-    /// Prints a scalar less-than on integers.
-    fn print_lt_int(
-        &mut self,
-        result: llir::Register<'_>,
-        lhs: llir::Operand<'_>,
-        rhs: llir::Operand<'_>,
-    ) {
-        self.inst_printer
-            .print_inst(llir::Instruction::set_lt(result, lhs, rhs).unwrap().into())
-    }
-
-    /// Prints an AND operation.
-    fn print_and(
-        &mut self,
-        result: llir::Register<'_>,
-        lhs: llir::Operand<'_>,
-        rhs: llir::Operand<'_>,
-    ) {
-        self.inst_printer
-            .print_inst(llir::Instruction::and(result, lhs, rhs).unwrap().into())
-    }
-
-    /// Prints a scalar equals instruction.
-    fn print_equals(
-        &mut self,
-        result: llir::Register<'_>,
-        lhs: llir::Operand<'_>,
-        rhs: llir::Operand<'_>,
-    ) {
-        self.inst_printer
-            .print_inst(llir::Instruction::set_eq(result, lhs, rhs).unwrap().into())
-    }
 }
 
 /// High-level printer struct delegating to an `InstPrinter` instance the role of printing actual
@@ -172,10 +139,12 @@ impl<'a, 'b> Printer<'a, 'b> {
         for dim in threads {
             let new_guard = self.namer.gen_name(ir::Type::I(1));
             let index = self.namer.name_index_as_operand(dim.id());
-            self.helper
-                .print_equals(new_guard, index, 0i32.int_literal());
+            self.helper.print_inst(
+                llir::Instruction::set_eq(new_guard, index, 0i32.int_literal()).unwrap(),
+            );
             if let Some(guard) = guard {
-                self.helper.print_and(guard, guard.into(), new_guard.into());
+                self.helper
+                    .print_inst(llir::Instruction::and(guard, guard, new_guard).unwrap());
             } else {
                 guard = Some(new_guard);
             };
@@ -262,7 +231,8 @@ impl<'a, 'b> Printer<'a, 'b> {
 
         let lt_cond = self.namer.gen_name(ir::Type::I(1));
         let size = self.namer.name_size(dim.size(), Type::I(32));
-        self.helper.print_lt_int(lt_cond, idx.into(), size);
+        self.helper
+            .print_inst(llir::Instruction::set_lt(lt_cond, idx, size).unwrap());
 
         if !prologue.is_empty() || !advanced.is_empty() {
             // Compute index expressions for the next iteration
@@ -591,7 +561,9 @@ impl<'a, 'b> Printer<'a, 'b> {
                             None => predicate,
                             Some(guard) => {
                                 let p = self.namer.gen_name(ir::Type::I(1));
-                                self.helper.print_and(p, predicate.into(), guard.into());
+                                self.helper.print_inst(
+                                    llir::Instruction::and(p, predicate, guard).unwrap(),
+                                );
                                 p
                             }
                         })
@@ -618,7 +590,8 @@ impl<'a, 'b> Printer<'a, 'b> {
                     (Some(p), None) | (None, Some(p)) => Some(p),
                     (Some(p1), Some(p2)) => {
                         let p = self.namer.gen_name(ir::Type::I(1));
-                        self.helper.print_and(p, p1.into(), p2.into());
+                        self.helper
+                            .print_inst(llir::Instruction::and(p, p1, p2).unwrap());
                         Some(p)
                     }
                 };

@@ -265,10 +265,10 @@ define enum advance($stmt in Statements, $dim in Dimensions):
 	value NO:
 end
 
-// Only unrolled dimensions can be advanced
+// Only vectorized and unrolled dimensions can be advanced
 require forall $dim in Dimensions:
 	forall $unroll in Dimensions:
-		advance($unroll, $dim) is not YES || dim_kind($unroll) is UNROLL
+		advance($unroll, $dim) is not YES || dim_kind($unroll) is VECTOR | UNROLL
 
 // If a statement is advanced in a dimension, it is also advanced in all inner
 // dimensions.

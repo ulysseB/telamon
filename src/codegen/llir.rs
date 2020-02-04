@@ -286,6 +286,23 @@ impl<T> From<T> for ScalarOrVector<T> {
     }
 }
 
+impl<'a> From<Register<'a>> for ScalarOrVector<Operand<'a>> {
+    fn from(register: Register<'a>) -> Self {
+        ScalarOrVector::Scalar(register.into())
+    }
+}
+
+impl<'a> From<ScalarOrVector<Register<'a>>> for ScalarOrVector<Operand<'a>> {
+    fn from(registers: ScalarOrVector<Register<'a>>) -> Self {
+        match registers {
+            ScalarOrVector::Scalar(register) => ScalarOrVector::Scalar(register.into()),
+            ScalarOrVector::Vector(registers) => {
+                ScalarOrVector::Vector(registers.into_iter().map(Operand::from).collect())
+            }
+        }
+    }
+}
+
 /// Either a single register or a vector of registers
 ///
 /// Empty vectors are invalid, and so are vectors with registers of different types.
