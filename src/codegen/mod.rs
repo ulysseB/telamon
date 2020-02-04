@@ -3,6 +3,7 @@ mod cfg;
 mod dimension;
 mod expr;
 mod function;
+mod helper;
 pub mod llir;
 mod name_map;
 mod printer;

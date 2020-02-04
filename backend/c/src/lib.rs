@@ -327,6 +327,7 @@ impl C99Display for llir::Instruction<'_> {
             ),
             Jump(label) => write!(fmt, "goto {label}", label = label.name()),
             Sync => write!(fmt, "__sync()"),
+            Comment(comment) => write!(fmt, "// {}", comment),
         }
     }
 }

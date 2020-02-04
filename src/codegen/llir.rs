@@ -10,6 +10,7 @@ use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 
+use crate::codegen::helper::IndentAdapter;
 use crate::ir;
 use crate::search_space::{InstFlag, MemSpace};
 
@@ -892,6 +893,7 @@ pub enum Instruction<'a> {
     Store(StoreSpec, Address<'a>, [OpVec<'a>; 1]),
     Jump(Label<'a>),
     Sync,
+    Comment(&'a str), // TODO: dyn fmt::Display
 }
 
 impl fmt::Display for Instruction<'_> {
@@ -908,6 +910,11 @@ impl fmt::Display for Instruction<'_> {
             Store(spec, a, [b]) => write!(fmt, "{}({}, {})", spec, a, b),
             Jump(label) => write!(fmt, "jump {}", label),
             Sync => write!(fmt, "sync"),
+            Comment(comment) => {
+                use fmt::Write;
+
+                write!(IndentAdapter::with_prefix(fmt, "// "), "{}", comment)
+            }
         }
     }
 }

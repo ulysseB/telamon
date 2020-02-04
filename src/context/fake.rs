@@ -37,7 +37,7 @@ impl<D: Device> ParamsHolder for Context<D> {
 }
 
 impl<D: Device> DevicePrinter for Context<D> {
-    fn print(&self, fun: &codegen::Function, out: &mut dyn std::io::Write) {}
+    fn print(&self, fun: &codegen::Function, out: &mut dyn Write) {}
 }
 
 impl<D: Device> super::Context for Context<D> {

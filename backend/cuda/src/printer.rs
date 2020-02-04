@@ -626,6 +626,7 @@ impl PTXDisplay for llir::Instruction<'_> {
             }
             Jump(label) => write!(fmt, "bra.uni {}", label.ptx()),
             Sync => write!(fmt, "bar.sync 0"),
+            Comment(comment) => write!(fmt, "// {}", comment),
         }
     }
 }
