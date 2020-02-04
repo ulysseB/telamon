@@ -187,7 +187,13 @@ fn split_body_cfgs<'a>(cfgs: Vec<Cfg<'a>>, dim_id: ir::DimId) -> SeqBody<'a> {
                             body: prologue_advanced.clone(),
                             advanced: Vec::new(),
                         });
-                        dim_advanced.extend(prologue_advanced);
+                        dim_advanced.push(Cfg::Loop {
+                            dimension: dimension.clone(),
+                            size: Some(1),
+                            prologue: Vec::new(),
+                            body: prologue_advanced,
+                            advanced: Vec::new(),
+                        });
                     }
 
                     dim_body.push(Cfg::Loop {

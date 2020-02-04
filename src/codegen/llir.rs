@@ -893,7 +893,7 @@ pub enum Instruction<'a> {
     Store(StoreSpec, Address<'a>, [OpVec<'a>; 1]),
     Jump(Label<'a>),
     Sync,
-    Comment(&'a str), // TODO: dyn fmt::Display
+    Comment(String), // TODO: dyn fmt::Display
 }
 
 impl fmt::Display for Instruction<'_> {
@@ -1195,6 +1195,11 @@ impl<'a> Instruction<'a> {
     /// Create a new `sync` instruction.
     pub fn sync() -> Self {
         Instruction::Sync
+    }
+
+    /// Create a new comment
+    pub fn comment<D: fmt::Display>(comment: D) -> Self {
+        Instruction::Comment(comment.to_string())
     }
 
     /// Create a new predicated instruction.

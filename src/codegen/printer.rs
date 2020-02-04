@@ -98,6 +98,10 @@ struct InstPrinterHelper<'a> {
 }
 
 impl<'a> InstPrinterHelper<'a> {
+    fn print_comment<D: fmt::Display>(&mut self, comment: D) {
+        self.print_inst(llir::Instruction::comment(comment))
+    }
+
     fn print_inst<T: Into<llir::PredicatedInstruction<'a>>>(&mut self, inst: T) {
         self.inst_printer.print_inst(inst.into())
     }
@@ -302,10 +306,17 @@ impl<'a, 'b> Printer<'a, 'b> {
             self.helper.print_inst(instruction.clone());
         }
 
-        self.cfg_vec(fun, prologue);
+        if !prologue.is_empty() {
+            self.helper
+                .print_comment(format_args!("prologue {}", dim.id()));
+            self.cfg_vec(fun, prologue);
+        }
 
         let size = dim.size().as_int().unwrap();
         for i in 0..size {
+            self.helper
+                .print_comment(format_args!("body {} = {}", dim.id(), i));
+
             self.cfg_vec(fun, cfgs);
 
             for instruction in self.namer.expr_to_operand().update_exprs(dim.id()) {
@@ -314,6 +325,14 @@ impl<'a, 'b> Printer<'a, 'b> {
 
             if i < size - 1 {
                 self.namer.set_current_index(dim, i + 1);
+
+                if !advanced.is_empty() {
+                    self.helper.print_comment(format_args!(
+                        "advance {} = {}",
+                        dim.id(),
+                        i
+                    ));
+                }
 
                 for instruction in
                     self.namer.expr_to_operand().compute_exprs(Some(dim.id()))
@@ -353,15 +372,25 @@ impl<'a, 'b> Printer<'a, 'b> {
                 prologue,
                 body,
                 advanced,
-            } => match dimension.kind() {
-                DimKind::LOOP => {
-                    self.standard_loop(fun, dimension, prologue, body, advanced)
+            } => {
+                self.helper
+                    .print_comment(format_args!("enter {}", dimension.id()));
+
+                match dimension.kind() {
+                    DimKind::LOOP => {
+                        self.standard_loop(fun, dimension, prologue, body, advanced)
+                    }
+                    DimKind::UNROLL => {
+                        self.unroll_loop(fun, dimension, prologue, body, advanced)
+                    }
+                    _ => {
+                        panic!("{:?} loop should not be printed here !", dimension.kind())
+                    }
                 }
-                DimKind::UNROLL => {
-                    self.unroll_loop(fun, dimension, prologue, body, advanced)
-                }
-                _ => panic!("{:?} loop should not be printed here !", dimension.kind()),
-            },
+
+                self.helper
+                    .print_comment(format_args!("exit {}", dimension.id()));
+            }
             Cfg::Loop {
                 dimension,
                 size: Some(size),
@@ -372,6 +401,9 @@ impl<'a, 'b> Printer<'a, 'b> {
                 assert_eq!(*size, 1);
                 assert!(prologue.is_empty());
                 assert!(advanced.is_empty());
+
+                self.helper
+                    .print_comment(format_args!("{} = 0", dimension.id()));
 
                 match dimension.kind() {
                     DimKind::LOOP => {
@@ -536,26 +568,40 @@ impl<'a, 'b> Printer<'a, 'b> {
 
                 let (addr, predicate) = self.namer.name_op(addr);
 
-                if predicate.is_some() {
-                    let zero = 0f32.float_literal();
-                    match &dst {
-                        &llir::ScalarOrVector::Scalar(dst) => {
-                            self.helper
-                                .print_inst(llir::Instruction::mov(dst, zero).unwrap());
-                        }
-                        llir::ScalarOrVector::Vector(dst) => {
-                            for &dst in dst {
+                let guard = match predicate {
+                    Some(predicate) => {
+                        let zero = 0f32.float_literal();
+                        match &dst {
+                            &llir::ScalarOrVector::Scalar(dst) => {
                                 self.helper.print_inst(
-                                    llir::Instruction::mov(dst, zero.clone()).unwrap(),
+                                    llir::Instruction::mov(dst, zero).unwrap(),
                                 );
                             }
+                            llir::ScalarOrVector::Vector(dst) => {
+                                for &dst in dst {
+                                    self.helper.print_inst(
+                                        llir::Instruction::mov(dst, zero.clone())
+                                            .unwrap(),
+                                    );
+                                }
+                            }
                         }
+
+                        Some(match self.guard {
+                            None => predicate,
+                            Some(guard) => {
+                                let p = self.namer.gen_name(ir::Type::I(1));
+                                self.helper.print_and(p, predicate.into(), guard.into());
+                                p
+                            }
+                        })
                     }
-                }
+                    None => self.guard,
+                };
 
                 llir::Instruction::load(spec, dst, addr.try_into().unwrap())
                     .unwrap()
-                    .predicated(predicate)
+                    .predicated(guard)
             }
             op::St(addr, val, _, pattern) => {
                 let (addr, predicate) = self.namer.name_op(addr);
@@ -566,6 +612,17 @@ impl<'a, 'b> Printer<'a, 'b> {
                 } else {
                     None
                 };
+
+                let guard = match (self.guard, guard) {
+                    (None, None) => None,
+                    (Some(p), None) | (None, Some(p)) => Some(p),
+                    (Some(p1), Some(p2)) => {
+                        let p = self.namer.gen_name(ir::Type::I(1));
+                        self.helper.print_and(p, p1.into(), p2.into());
+                        Some(p)
+                    }
+                };
+
                 llir::Instruction::store(
                     llir::StoreSpec::from_ir(
                         vector_factors,
