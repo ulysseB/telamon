@@ -437,9 +437,25 @@ impl<'a, 'b> Printer<'a, 'b> {
                     ),
                 );
                 self.cfg_vec(fun, inner);
-                self.helper
-                    .inst_printer
-                    .print_inst(llir::Instruction::sync().into());
+
+                // XXX: Only print sync if there is a load/store to shared memory in the thread
+                // block
+                let mut needs_sync = false;
+                for instruction in c.instructions() {
+                    match instruction.operator() {
+                        op::Ld(_, _, ap) if ap.mem_block().is_some() => needs_sync = true,
+                        op::St(_, _, _, ap) if ap.mem_block().is_some() => {
+                            needs_sync = true
+                        }
+                        _ => (),
+                    }
+                }
+
+                if needs_sync {
+                    self.helper
+                        .inst_printer
+                        .print_inst(llir::Instruction::sync().into());
+                }
             }
             Cfg::Instruction(vec_dims, inst) => self.inst(vec_dims, inst, fun),
         }
