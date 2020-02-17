@@ -160,9 +160,11 @@ impl CudaPrinter {
             self.buffer,
             "\
   .shared.align 16 .u8 %shmem{id}[{size}];
-  mov.u32 {name}, %shmem{id};",
+  mov.u32 {load}, %shmem{id};
+  mov.u32 {store}, %shmem{id};",
             id = block.id().0,
-            name = name_map.name_addr(block.id()).ptx(),
+            load = name_map.name_addr(block.id(), ir::AccessType::Load).ptx(),
+            store = name_map.name_addr(block.id(), ir::AccessType::Store).ptx(),
             size = unwrap!(block.alloc_size().as_int())
         ));
     }

@@ -5,21 +5,21 @@ use std::hash;
 use std::sync::Arc;
 
 use fxhash::{FxHashMap, FxHashSet};
-use log::trace;
+use log::{debug, trace};
 
 use crate::ir;
 use crate::search_space::{AssertOrd, DimKind, Domain, SearchSpace};
 
 use super::dimension::MergedDimensions;
 use super::llir::{self, IntLiteral};
-use super::{ParamVal, ParamValKey, Size};
+use super::{Function, ParamVal, ParamValKey, Size};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Expr {
     // A kernel parameter.  This is a runtime constant.
     Parameter(Arc<ir::Parameter>),
     // Address of a memory block
-    MemBlock(ir::MemId),
+    MemBlock(ir::MemId, ir::AccessType),
     // A dimension size.  This is a runtime constant.
     Size(Size),
     // A signed constant value.
@@ -151,7 +151,7 @@ impl Expr {
             Expr::Parameter(_)
             | Expr::StridedSum { .. }
             | Expr::RollingSum { .. }
-            | Expr::MemBlock(_)
+            | Expr::MemBlock(..)
             | Expr::Dimension(_)
             | Expr::And(_)
             | Expr::InRange { .. }
@@ -183,7 +183,7 @@ impl Expr {
             Expr::Parameter(_) | Expr::Size(_) | Expr::Constant(_) => true,
             Expr::Dimension(_)
             | Expr::RollingSum { .. }
-            | Expr::MemBlock(_)
+            | Expr::MemBlock(..)
             | Expr::Proj(..) => false,
             Expr::StridedSum { base, elems, .. } => {
                 base.is_runtime_constant()
@@ -204,7 +204,7 @@ impl Expr {
             Expr::Size(_) => 32,
             Expr::Constant(_) => 32,
             Expr::Dimension(_) => 32,
-            Expr::MemBlock(_) => 32,
+            Expr::MemBlock(..) => 32,
             Expr::StridedSum { base, .. } => base.bitwidth(),
             Expr::RollingSum { base, .. } => base.bitwidth(),
             // Predicates
@@ -229,7 +229,7 @@ impl Expr {
                 space,
             )),
 
-            Expr::MemBlock(_) => (),
+            Expr::MemBlock(..) => (),
 
             Expr::Size(size) => host_values.extend(ParamVal::from_size(size)),
 
@@ -337,6 +337,17 @@ impl<'a> ExprToOperand<'a> {
             .unwrap_or_else(|| &[])
     }
 
+    pub(super) fn add_reset(
+        &mut self,
+        dim: ir::DimId,
+        instruction: llir::Instruction<'a>,
+    ) {
+        self.reset_exprs
+            .entry(dim)
+            .or_insert_with(Vec::new)
+            .push(instruction);
+    }
+
     pub fn to_operand(&self, expr: &ExprPtr) -> llir::Operand<'a> {
         self.cache[expr].clone()
     }
@@ -403,6 +414,7 @@ impl<'a> ExprDispatch<'a> {
 }
 
 pub struct ExprToOperandBuilder<'a, 'b> {
+    function: &'a Function<'a>,
     merged_dimensions: &'a MergedDimensions<'a>,
     namer: &'a mut super::NameMap<'b>,
 
@@ -413,11 +425,12 @@ pub struct ExprToOperandBuilder<'a, 'b> {
 
 impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
     pub fn new(
-        _space: &'a SearchSpace,
+        function: &'a Function<'a>,
         merged_dimensions: &'a MergedDimensions<'a>,
         namer: &'a mut super::NameMap<'b>,
     ) -> Self {
         ExprToOperandBuilder {
+            function,
             merged_dimensions,
             namer,
 
@@ -584,8 +597,8 @@ impl<'a, 'b> ExprToOperandBuilder<'a, 'b> {
                         .name_param_val(ParamValKey::External(&*param))
                         .into_operand(),
 
-                    &Expr::MemBlock(mem_block) => {
-                        self.namer.name_addr(mem_block).into_operand()
+                    &Expr::MemBlock(mem_block, access_type) => {
+                        self.namer.name_addr(mem_block, access_type).into_operand()
                     }
 
                     Expr::Size(size) => {
@@ -843,10 +856,15 @@ impl<'a> ExprBuilder<'a> {
                 trace!("Creating {:?}", vacant.key());
 
                 let defined_at = match &**vacant.key() {
-                    Expr::Parameter(_)
-                    | Expr::MemBlock(_)
-                    | Expr::Size(_)
-                    | Expr::Constant(_) => None,
+                    Expr::Parameter(_) | Expr::Size(_) | Expr::Constant(_) => None,
+                    Expr::MemBlock(_, _) => {
+                        // The memory block, depending on load/store access type, can only be used
+                        // in the corresponding loop nest, where the double buffering will happen
+                        // (if applicable).  This ensures we don't compute slices at an outer level
+                        // compared to the double buffering, which would be incorrect.
+                        // XXX: TODO
+                        None
+                    }
                     &Expr::Dimension(id) => {
                         if space
                             .domain()
@@ -911,13 +929,59 @@ impl<'a> ExprBuilder<'a> {
         }
     }
 
+    fn extract_thread_constant(&self, expr: &ExprPtr) -> Option<ExprPtr> {
+        match &**expr {
+            Expr::Parameter(_)
+            | Expr::Size(_)
+            | Expr::Constant(_)
+            | Expr::MemBlock(..) => Some(expr.clone()),
+            Expr::Dimension(dim) => {
+                if self
+                    .space
+                    .domain()
+                    .get_dim_kind(*dim)
+                    .intersects(DimKind::BLOCK | DimKind::THREAD)
+                {
+                    Some(expr.clone())
+                } else {
+                    None
+                }
+            }
+            Expr::StridedSum { base, elems } => {
+                if elems.iter().all(|(expr, _)| self.is_thread_constant(expr))
+                    && self.is_thread_constant(base)
+                {
+                    Some(expr.clone())
+                } else {
+                    self.extract_thread_constant(base)
+                }
+            }
+            Expr::RollingSum { base, .. } => {
+                if self.is_thread_constant(base) {
+                    Some(expr.clone())
+                } else {
+                    self.extract_thread_constant(base)
+                }
+            }
+            Expr::And(..) => None,
+            Expr::InRange { .. } => None,
+            Expr::Proj(tuple, index) => {
+                if self.is_tuple_thread_constant(&**tuple, *index) {
+                    Some(expr.clone())
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     fn is_thread_constant(&self, expr: &Expr) -> bool {
         match expr {
             Expr::Parameter(_)
             | Expr::Size(_)
-            | Expr::MemBlock(_)
-            | Expr::Constant(_) => true,
-            &Expr::Dimension(dim) => !self
+            | Expr::Constant(_)
+            | Expr::MemBlock(..) => true,
+            &Expr::Dimension(dim) => self
                 .space
                 .domain()
                 .get_dim_kind(dim)
@@ -949,8 +1013,12 @@ impl<'a> ExprBuilder<'a> {
         self.create(Expr::Parameter(param))
     }
 
-    pub fn mem_block(&mut self, mem_id: ir::MemId) -> ExprPtr {
-        self.create(Expr::MemBlock(mem_id))
+    pub fn mem_block(
+        &mut self,
+        mem_id: ir::MemId,
+        access_type: ir::AccessType,
+    ) -> ExprPtr {
+        self.create(Expr::MemBlock(mem_id, access_type))
     }
 
     pub fn size(&mut self, size: Size) -> ExprPtr {
@@ -1276,21 +1344,69 @@ impl<'a> ExprLowering<'a> {
         }
     }
 
-    pub fn induction_var(&mut self, ind_var: &'a ir::InductionVar) -> ExprPtr {
+    /// Returns a pair (expr, thread_constant_expr) of the actual value for the variable and the
+    /// thread-constant base.  The thread-constant base is flipped when double-buffering is
+    /// enabled.
+    pub fn induction_var(
+        &mut self,
+        ind_var: &'a ir::InductionVar,
+    ) -> (ExprPtr, Option<ExprPtr>) {
         let base = match ind_var.base() {
             ir::Operand::Param(param) => self.parameter(param),
-            &ir::Operand::Addr(mem_id) => self.builder.mem_block(mem_id),
+            &ir::Operand::Addr(mem_id, access_type) => {
+                self.builder.mem_block(mem_id, access_type)
+            }
             _ => panic!("Unsupported operand for induction variable base"),
         };
 
         let merged_dims = &self.merged_dims;
         let space = &self.space;
-        self.builder.rolling_sum(
+        let ptr = self.builder.rolling_sum(
             base,
             ind_var.dims().iter().map(|&(dim, ref stride)| {
                 (merged_dims[dim].id(), Size::from_ir(stride, space))
             }),
-        )
+        );
+
+        // Determine the dimension where we can compute the induction var.
+        //
+        // This is needed for the double-buffering because if there are outer loops etc. we need to
+        // reset the buffers at that point.
+        let mut dims = ind_var
+            .dims()
+            .iter()
+            .map(|&(dim, _)| merged_dims[dim].id())
+            .collect::<Vec<_>>();
+        // dims.retain(|&dim| space.domain().get_dim_kind(dim).intersects(DimKind::THREAD));
+        dims.sort_by_key(|&dim| AssertOrd(space.nesting_order(dim)));
+        let compute_dim = if let Some(&dim) = dims.first() {
+            let nesting_order = space.nesting_order(dim);
+            // Only keep dims that are outermost to the thread dim
+            let mut outer_dims = space
+                .ir_instance()
+                .dims()
+                .filter(|other_dim| {
+                    merged_dims[other_dim.id()]
+                        .kind()
+                        .intersects(DimKind::SEQUENTIAL)
+                })
+                .filter(|other_dim| nesting_order > other_dim.id())
+                .collect::<Vec<_>>();
+            // Sort by outermost first
+            outer_dims.sort_by_key(|dim| AssertOrd(space.nesting_order(dim.id())));
+            debug!("outer_dims: {:?}", outer_dims);
+            outer_dims.last().map(|dim| merged_dims[dim.id()].id())
+        } else {
+            None
+        };
+
+        debug!(
+            "induction var parallel dims: {:?} (compute at: {:?})",
+            dims, compute_dim
+        );
+
+        let thread_constant = self.builder.extract_thread_constant(&ptr);
+        (ptr, thread_constant)
     }
 
     pub fn logical_dim(&mut self, lid: ir::LogicalDimId) -> ExprPtr {

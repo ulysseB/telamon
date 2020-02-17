@@ -14,6 +14,7 @@ use crate::codegen::{
     self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
 };
 use crate::ir::{self, dim, DimMap, InstId, Type};
+use crate::search_space::{AssertOrd, DimKind, Domain};
 
 use super::llir::{self, IntLiteral as _, Operand, Register};
 
@@ -41,7 +42,9 @@ pub struct NameMap<'a> {
     /// Keeps track of parameter names in the code
     params: FxHashMap<ParamValKey<'a>, Register<'a>>,
     /// Keeps track of memory block address names.
-    mem_blocks: FxHashMap<ir::MemId, Register<'a>>,
+    mem_blocks: FxHashMap<(ir::MemId, ir::AccessType), Register<'a>>,
+    /// Keeps track of double-buffering registers
+    double_buffers: FxHashMap<ir::MemId, Register<'a>>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
@@ -54,11 +57,17 @@ pub struct NameMap<'a> {
     side_effect_guard: Option<Register<'a>>,
     expr_to_operand: super::expr::ExprToOperand<'a>,
     /// Keeps track of induction variable names.
-    induction_vars: FxHashMap<ir::IndVarId, Operand<'a>>,
+    ///
+    /// The register is the thread-constant base which gets flipped for double-buffering
+    induction_vars: FxHashMap<ir::IndVarId, (Operand<'a>, Register<'a>)>,
     /// Keeps track of accesses variable names.
     ///
     /// Also includes predicate when applicable.
     accesses: FxHashMap<ir::AccessId, (Operand<'a>, Option<Register<'a>>)>,
+    /// Conditional resets for double-buffering.  Those resets are only placed when the given
+    /// instruction is inside the loop.   This is needed for correct buffer swap placement in
+    /// presence of advancement.
+    dbuf_resets: FxHashMap<ir::StmtId, Vec<(ir::InstId, llir::Instruction<'a>)>>,
 }
 
 /// An interner, used to convert owned objects into a long-lived borrowed version.
@@ -100,7 +109,8 @@ impl<'a> NameMap<'a> {
                 let var_t = val.t();
                 let var_name = Register::new(interner.intern(namegen.name(var_t)), var_t);
                 if let ParamValKey::GlobalMem(id) = val.key() {
-                    mem_blocks.insert(id, var_name);
+                    mem_blocks.insert((id, ir::AccessType::Load), var_name);
+                    mem_blocks.insert((id, ir::AccessType::Store), var_name);
                 }
                 (val.key(), var_name)
             })
@@ -122,13 +132,26 @@ impl<'a> NameMap<'a> {
             }
         }
         // Name shared memory blocks. Global mem blocks are named by parameters.
+        let mut double_buffers = FxHashMap::default();
         for mem_block in function.mem_blocks() {
             if mem_block.alloc_scheme() == AllocationScheme::Shared {
-                let name = Register::new(
+                let load_reg = Register::new(
                     interner.intern(namegen.name(mem_block.ptr_type())),
                     mem_block.ptr_type(),
                 );
-                mem_blocks.insert(mem_block.id(), name);
+                let store_reg = Register::new(
+                    interner.intern(namegen.name(mem_block.ptr_type())),
+                    mem_block.ptr_type(),
+                );
+                mem_blocks.insert((mem_block.id(), ir::AccessType::Load), load_reg);
+                mem_blocks.insert((mem_block.id(), ir::AccessType::Store), store_reg);
+                double_buffers.insert(
+                    mem_block.id(),
+                    Register::new(
+                        interner.intern(namegen.name(mem_block.ptr_type())),
+                        mem_block.ptr_type(),
+                    ),
+                );
             }
         }
         let mut variables: FxHashMap<_, VariableNames<_>> = FxHashMap::default();
@@ -162,6 +185,8 @@ impl<'a> NameMap<'a> {
             expr_to_operand: Default::default(),
             induction_vars: Default::default(),
             accesses: Default::default(),
+            double_buffers,
+            dbuf_resets: Default::default(),
         };
 
         // Setup induction variables.
@@ -170,15 +195,19 @@ impl<'a> NameMap<'a> {
                 function.dimensions().collect();
 
             let mut builder = super::expr::ExprToOperandBuilder::new(
-                function.space(),
+                function,
                 &merged_dimensions,
                 &mut name_map,
             );
 
             let mut induction_vars = FxHashMap::default();
-            for &(var_id, ref expr) in function.induction_vars() {
+            for &(var_id, (ref expr, ref thread_constant)) in function.induction_vars() {
                 let operand = builder.to_operand(expr);
-                induction_vars.insert(var_id, operand);
+                let tc_reg = builder
+                    .to_operand(thread_constant.as_ref().unwrap())
+                    .to_register()
+                    .unwrap();
+                induction_vars.insert(var_id, (operand, tc_reg));
             }
 
             let mut accesses = FxHashMap::default();
@@ -218,7 +247,169 @@ impl<'a> NameMap<'a> {
         for (inst, inst_id, dim_map) in aliases {
             name_map.decl_alias(inst, inst_id, dim_map);
         }
+
+        // Setup double-buffering schemes for variables which need it, and performs sync placement.
+        // TODO: This should probably be in another place?
+        name_map.setup_double_buffer(function);
+
         name_map
+    }
+
+    fn setup_double_buffer(&mut self, function: &Function<'_>) {
+        // Place double-buffers
+        let ir_instance = function.space().ir_instance();
+        let mut reset_if = FxHashMap::default();
+        for mem in ir_instance.mem_blocks() {
+            // Extract the load/store instructions
+            let ((load_inst, load_ivar), (store_inst, store_ivar)) = {
+                let mut load = None;
+                let mut store = None;
+                for &inst_id in mem.uses() {
+                    match ir_instance.inst(inst_id).operator() {
+                        ir::Operator::St(addr, ..) => {
+                            assert!(store.is_none());
+                            if let ir::Operand::InductionVar(id, _) = *addr {
+                                store = Some((inst_id, id));
+                            } else {
+                                panic!("not a shmem store")
+                            }
+                        }
+                        ir::Operator::Ld(_, addr, ..) => {
+                            assert!(load.is_none());
+                            if let ir::Operand::InductionVar(id, _) = *addr {
+                                load = Some((inst_id, id));
+                            } else {
+                                panic!("not a shmem load")
+                            }
+                        }
+                        _ => panic!("not a memory use"),
+                    }
+                }
+
+                (load.unwrap(), store.unwrap())
+            };
+
+            // Get the outer store/load dimensions
+            let outer_st = mem
+                .mapped_dims()
+                .iter()
+                .map(|&(st_dim, _)| st_dim)
+                .filter(|&dim| {
+                    !function
+                        .space()
+                        .domain()
+                        .get_dim_kind(dim)
+                        .intersects(DimKind::THREAD)
+                })
+                .min_by_key(|&dim| AssertOrd(function.space().nesting_order(dim)))
+                .map(ir::StmtId::from)
+                .unwrap_or_else(|| store_inst.into());
+            let outer_ld = mem
+                .mapped_dims()
+                .iter()
+                .map(|&(_, ld_dim)| ld_dim)
+                .filter(|&dim| {
+                    !function
+                        .space()
+                        .domain()
+                        .get_dim_kind(dim)
+                        .intersects(DimKind::THREAD)
+                })
+                .min_by_key(|&dim| AssertOrd(function.space().nesting_order(dim)))
+                .map(ir::StmtId::from)
+                .unwrap_or_else(|| load_inst.into());
+
+            // Find the nearest common ancestor
+            let nca = function
+                .dimensions()
+                .filter(|dim| !dim.kind().intersects(DimKind::THREAD))
+                .filter(|dim| {
+                    let dim_order = function.space().nesting_order(dim.id());
+                    dim_order < outer_st && dim_order < outer_ld
+                })
+                .max_by_key(|&dim| AssertOrd(function.space().nesting_order(dim.id())))
+                .unwrap()
+                .id();
+
+            // Flip the store buffer after the child of the nca which contains all the stores
+            let swap_store = function
+                .dimensions()
+                // Skip threads and blocks.  NB: If we need to flip after a block it doesn't matter
+                // there is nothing else to run...
+                .filter(|dim| !dim.kind().intersects(DimKind::BLOCK | DimKind::THREAD))
+                .filter_map(|dim| {
+                    let dim_order = function.space().nesting_order(dim.id());
+                    if dim_order <= outer_st && dim_order > nca {
+                        Some(ir::StmtId::Dim(dim.id()))
+                    } else {
+                        None
+                    }
+                })
+                .chain(std::iter::once(ir::StmtId::Inst(store_inst)))
+                .min_by_key(|&stmt_id| AssertOrd(function.space().nesting_order(stmt_id)))
+                .unwrap();
+
+            // Flip the load buffer after the child of the nca which contains all the loads
+            let swap_load = function
+                .dimensions()
+                // Skip threads and blocks.  NB: If we need to flip after a block it doesn't matter
+                // there is nothing else to run...
+                .filter(|dim| !dim.kind().intersects(DimKind::BLOCK | DimKind::THREAD))
+                .filter_map(|dim| {
+                    let dim_order = function.space().nesting_order(dim.id());
+                    if dim_order <= outer_ld && dim_order > nca {
+                        Some(ir::StmtId::Dim(dim.id()))
+                    } else {
+                        None
+                    }
+                })
+                .chain(std::iter::once(ir::StmtId::Inst(load_inst)))
+                .min_by_key(|&stmt_id| AssertOrd(function.space().nesting_order(stmt_id)))
+                .unwrap();
+
+            debug!(
+                "memory {:?}: store after {:?}; load after {:?}",
+                mem.mem_id(),
+                swap_store,
+                swap_load,
+            );
+
+            if function.mem_block(mem.mem_id()).double_buffer() {
+                let delta = self.double_buffer_offset(mem.mem_id());
+                {
+                    let load_reg = self.name_tc_ivar_register(load_ivar);
+                    let resets = reset_if.entry(swap_load).or_insert_with(Vec::new);
+                    resets.push((
+                        load_inst,
+                        llir::Instruction::iadd(load_reg, load_reg, delta).unwrap(),
+                    ));
+                    resets
+                        .push((load_inst, llir::Instruction::neg(delta, delta).unwrap()));
+                }
+
+                {
+                    let store_reg = self.name_tc_ivar_register(store_ivar);
+                    let resets = reset_if.entry(swap_store).or_insert_with(Vec::new);
+                    resets.push((
+                        store_inst,
+                        llir::Instruction::iadd(store_reg, store_reg, delta).unwrap(),
+                    ));
+                    resets.push((store_inst, llir::Instruction::sync()));
+                }
+            } else {
+                reset_if
+                    .entry(swap_store)
+                    .or_insert_with(Vec::new)
+                    .push((store_inst, llir::Instruction::sync()));
+                reset_if
+                    .entry(swap_load)
+                    .or_insert_with(Vec::new)
+                    .push((load_inst, llir::Instruction::sync()));
+            }
+        }
+
+        assert!(self.dbuf_resets.is_empty());
+        self.dbuf_resets = reset_if;
     }
 
     /// Generates a variable of the given `Type`.
@@ -237,8 +428,25 @@ impl<'a> NameMap<'a> {
         &self.expr_to_operand
     }
 
+    pub fn dbuf_resets(
+        &self,
+        stmt_id: ir::StmtId,
+    ) -> &[(ir::InstId, llir::Instruction<'a>)] {
+        self.dbuf_resets
+            .get(&stmt_id)
+            .map(|x| &x[..])
+            .unwrap_or(&[])
+    }
+
     pub fn name_induction_var(&self, ind_var_id: ir::IndVarId) -> llir::Operand<'a> {
-        self.induction_vars[&ind_var_id].clone()
+        self.induction_vars[&ind_var_id].0.clone()
+    }
+
+    // Returns the thread-constant register used as base for the induction var.
+    //
+    // This should be flipped for double-buffering.
+    pub fn name_tc_ivar_register(&self, ind_var_id: ir::IndVarId) -> llir::Register<'a> {
+        self.induction_vars[&ind_var_id].1
     }
 
     pub fn name_access(
@@ -283,7 +491,9 @@ impl<'a> NameMap<'a> {
             ir::Operand::Param(p) => {
                 (self.name_param_val(ParamValKey::External(&*p)).into(), None)
             }
-            ir::Operand::Addr(id) => (self.name_addr(*id).into(), None),
+            ir::Operand::Addr(id, access_type) => {
+                (self.name_addr(*id, *access_type).into(), None)
+            }
             ir::Operand::InductionVar(id, _) => (self.name_induction_var(*id), None),
             ir::Operand::Variable(val_id, _t) => {
                 ((*self.variables[val_id].get_name(&indexes)).into(), None)
@@ -345,7 +555,6 @@ impl<'a> NameMap<'a> {
                 .remove(&rhs)
                 .map(|idx| indexes.to_mut().insert(lhs, idx));
         }
-        debug!("name_mapped_inst: {:?} {:?}", id, indexes);
         *self.insts[&id].get_name(&indexes)
     }
 
@@ -430,8 +639,13 @@ impl<'a> NameMap<'a> {
     }
 
     /// Returns the name of the address of a memory block.
-    pub fn name_addr(&self, id: ir::MemId) -> Register<'a> {
-        self.mem_blocks[&id]
+    pub fn name_addr(&self, id: ir::MemId, access_type: ir::AccessType) -> Register<'a> {
+        self.mem_blocks[&(id, access_type)]
+    }
+
+    /// Returns the register used to implement double-buffering for a memory block, if applicable
+    pub fn double_buffer_offset(&self, id: ir::MemId) -> Register<'a> {
+        self.double_buffers[&id]
     }
 
     /// Declares a size cast. Returns the name of the variable only if a new variable was

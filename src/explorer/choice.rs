@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::explorer::config;
 use crate::ir::{self, Statement};
-use crate::search_space::{Action, Advance, DimKind, Domain, NumSet, Order, SearchSpace};
+use crate::search_space::{Action, DimKind, Domain, NumSet, Order, SearchSpace};
 use itertools::Itertools;
 use log::trace;
 use serde::{Deserialize, Serialize};
@@ -145,6 +145,16 @@ pub fn list<'a>(
                                     Action::Advance(stmt, dim, a)
                                 })
                             })
+                    }))
+                }
+
+                ChoiceGroup::DoubleBuffering => {
+                    Box::new(fun.mem_blocks().flat_map(move |mem| {
+                        let mem_id = mem.mem_id();
+                        let double_buffers = space.domain().get_double_buffer(mem_id);
+                        gen_choice(double_buffers.list(), &|db| {
+                            Action::DoubleBuffer(mem_id, db)
+                        })
                     }))
                 }
 

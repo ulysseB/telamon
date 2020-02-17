@@ -105,7 +105,8 @@ impl AutoOperand for TmpArray {
 
 impl AutoOperand for ir::MemId {
     fn get(&self, _: &mut Builder) -> Operand<()> {
-        Operand::Addr(*self)
+        // XXX: Here it should be "both"
+        Operand::Addr(*self, ir::AccessType::Load)
     }
 }
 

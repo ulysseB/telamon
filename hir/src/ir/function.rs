@@ -6,7 +6,7 @@ use crate::device::Device;
 use crate::ir::{
     self, Dimension, InstId, Instruction, IrDisplay, Operator, Statement, StmtId,
 };
-use crate::ir::{mem, AccessPattern, Operand, SparseVec};
+use crate::ir::{mem, AccessPattern, AccessType, Operand, SparseVec};
 use fxhash::FxHashSet;
 use itertools::Itertools;
 use log::debug;
@@ -379,8 +379,10 @@ impl<L> Function<L> {
         let pos = unwrap!(self.body.layouts_to_lower.iter().position(|&x| x == id));
         self.body.layouts_to_lower.swap_remove(pos);
         self.body.mem_blocks.lower_layout(id);
-        let (st_index, st_pattern) = self.gen_internal_index(id, &st_dims);
-        let (ld_index, ld_pattern) = self.gen_internal_index(id, &ld_dims);
+        let (st_index, st_pattern) =
+            self.gen_internal_index(id, &st_dims, AccessType::Store);
+        let (ld_index, ld_pattern) =
+            self.gen_internal_index(id, &ld_dims, AccessType::Load);
         for &mem_use in self.body.mem_blocks.block(id).uses() {
             self.body.insts[mem_use].lower_layout(
                 ld_index.clone(),
@@ -396,9 +398,10 @@ impl<L> Function<L> {
         &mut self,
         id: ir::MemId,
         dims: &[ir::DimId],
+        access_type: AccessType,
     ) -> (Operand<L>, AccessPattern) {
         let ty_len = self.body.mem_blocks.block(id).base_size();
-        self.gen_index(id, ty_len, Operand::Addr(id), &dims)
+        self.gen_index(id, ty_len, Operand::Addr(id, access_type), &dims)
     }
 
     /// Generates an access pattern and the corresponding induction variable to access a
@@ -691,6 +694,10 @@ impl Function {
         // Build and activate the store instruction
         let st_operand =
             Operand::new_inst(self.inst(src_inst), st_dim_map, ir::DimMapScope::Local);
+        debug!(
+            "after_store: {:?}",
+            lowered.store_dims().collect::<Vec<_>>()
+        );
         let st = unwrap!(self.create_inst(
             lowered.store,
             Operator::TmpSt(st_operand, lowered.mem),
@@ -699,11 +706,13 @@ impl Function {
         self.body.insts.set_lazy(lowered.store, st);
 
         // Build and activate the load instruction
+        debug!("after_load: {:?}", lowered.load_dims().collect::<Vec<_>>());
         let ld = unwrap!(self.create_inst(
             lowered.load,
             Operator::TmpLd(data_type, lowered.mem),
             lowered.load_dims().collect(),
         ));
+
         self.body.insts.set_lazy(lowered.load, ld);
         self.body.insts[dst_inst].lower_dim_map(
             dst_operand_pos,
@@ -718,11 +727,17 @@ impl Function {
         self.body.insts[lowered.store].register_user(lowered.load.into());
         self.body.insts[lowered.load].register_dependency(lowered.store.into());
 
-        for ((_, [_, st_dim]), (_, [_, ld_dim])) in lowered
+        for ((_, [compute_dim, st_dim]), (_, [consume_dim, ld_dim])) in lowered
             .st_dims_mapping
             .iter()
             .zip(lowered.ld_dims_mapping.iter())
         {
+            self.body.dims[*st_dim].register_dependency((*compute_dim).into());
+            self.body.dims[*compute_dim].register_user((*st_dim).into());
+
+            self.body.dims[*ld_dim].register_user((*consume_dim).into());
+            self.body.dims[*consume_dim].register_dependency((*ld_dim).into());
+
             self.body.dims[*st_dim].register_user((*ld_dim).into());
             self.body.dims[*ld_dim].register_dependency((*st_dim).into());
         }

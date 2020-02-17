@@ -194,7 +194,7 @@ pub enum Operand<L = LoweringMap> {
     /// A parameter of the function.
     Param(Arc<Parameter>),
     /// The address of a memory block.
-    Addr(ir::MemId),
+    Addr(ir::MemId, AccessType),
     /// The value of the current instruction at a previous iteration.
     Reduce(InstId, Type, DimMap, Vec<ir::DimId>),
     /// A variable increased by a fixed amount at every step of some loops.
@@ -206,13 +206,20 @@ pub enum Operand<L = LoweringMap> {
     ComputedAddress(AccessId, Type),
 }
 
+/// Type of access.  This is used for double-buffering
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum AccessType {
+    Load,
+    Store,
+}
+
 impl<L> Operand<L> {
     /// Returns the type of the `Operand`.
     pub fn t(&self) -> Type {
         match self {
             Int(_, n_bit) => Type::I(*n_bit),
             Float(_, n_bit) => Type::F(*n_bit),
-            Addr(mem) => ir::Type::PtrTo(*mem),
+            Addr(mem, _) => ir::Type::PtrTo(*mem),
             Index(..) => Type::I(32),
             Param(p) => p.t,
             Variable(_, t)
@@ -327,7 +334,7 @@ impl Operand<()> {
             Variable(val, t) => Variable(val, t),
             Index(id) => Index(id),
             Param(param) => Param(param),
-            Addr(id) => Addr(id),
+            Addr(id, at) => Addr(id, at),
             Reduce(id, t, dim_map, dims) => Reduce(id, t, dim_map, dims),
             InductionVar(id, t) => InductionVar(id, t),
             ComputedAddress(address, t) => ComputedAddress(address, t),
@@ -343,7 +350,7 @@ impl<L> fmt::Display for Operand<L> {
             Inst(id, _t, dim_map, _scope) => write!(fmt, "{:?} [{}]", id, dim_map),
             Index(id) => write!(fmt, "{}", id),
             Param(param) => write!(fmt, "{}", param),
-            Addr(id) => write!(fmt, "{}", id),
+            Addr(id, _at) => write!(fmt, "{}", id),
             Reduce(id, _t, dim_map, dims) => {
                 write!(fmt, "reduce({:?}, {:?}) [{}]", id, dims, dim_map)
             }
@@ -380,7 +387,7 @@ impl<L> ir::IrDisplay<L> for Operand<L> {
             }
             Index(id) => write!(fmt, "{}", id),
             Param(param) => write!(fmt, "{}", param),
-            Addr(id) => write!(fmt, "{}", id),
+            Addr(id, _at) => write!(fmt, "{}", id),
             Reduce(id, _t, dim_map, dims) => {
                 let source_dims = fun
                     .inst(*id)

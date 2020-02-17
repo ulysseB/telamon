@@ -9,14 +9,21 @@ use utils::*;
 
 use crate::codegen::{self, cfg, dimension, Cfg, Dimension};
 use crate::ir::{self, IrDisplay};
-use crate::search_space::{self, Advance, DimKind, Domain, MemSpace, SearchSpace};
+use crate::search_space::{
+    self, Advance, DimKind, Domain, DoubleBuffer, MemSpace, SearchSpace,
+};
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
     cfg: Cfg<'a>,
     thread_dims: Vec<Dimension>,
     block_dims: Vec<Dimension>,
-    induction_vars: Vec<(ir::IndVarId, super::expr::ExprPtr)>,
+    // Pair of (expr, thread_constant_expr) for each indvar.  thread_constant_expr is flipped for
+    // double-buffering.
+    induction_vars: Vec<(
+        ir::IndVarId,
+        (super::expr::ExprPtr, Option<super::expr::ExprPtr>),
+    )>,
     accesses: Vec<(
         ir::AccessId,
         super::expr::ExprPtr,
@@ -73,7 +80,7 @@ impl<'a> Function<'a> {
         device_code_args.extend(
             induction_vars
                 .iter()
-                .flat_map(|(_, expr)| expr.host_values(space, &merged_dims))
+                .flat_map(|(_, (expr, _))| expr.host_values(space, &merged_dims))
                 .chain(
                     accesses
                         .iter()
@@ -154,6 +161,14 @@ impl<'a> Function<'a> {
         self.mem_blocks.iter()
     }
 
+    /// XXX: Return the memory block with the given ID
+    pub fn mem_block(&self, id: ir::MemId) -> &MemoryRegion {
+        self.mem_blocks
+            .iter()
+            .find(|region| region.id() == id)
+            .unwrap()
+    }
+
     /// Returns the underlying implementation space.
     // TODO(cleanup): prefer access to the space from individual wrappers on ir objects.
     pub fn space(&self) -> &SearchSpace {
@@ -165,7 +180,12 @@ impl<'a> Function<'a> {
         self.space.ir_instance().name()
     }
 
-    pub fn induction_vars(&self) -> &[(ir::IndVarId, super::expr::ExprPtr)] {
+    pub fn induction_vars(
+        &self,
+    ) -> &[(
+        ir::IndVarId,
+        (super::expr::ExprPtr, Option<super::expr::ExprPtr>),
+    )] {
         &self.induction_vars
     }
 
@@ -343,6 +363,7 @@ fn register_mem_blocks<'a>(
 /// A memory block allocated by the kernel.
 pub struct MemoryRegion {
     id: ir::MemId,
+    double_buffer: bool,
     size: codegen::Size,
     num_private_copies: Option<codegen::Size>,
     mem_space: MemSpace,
@@ -366,7 +387,16 @@ impl MemoryRegion {
     ) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
-        let mut size = codegen::Size::new(block.base_size(), vec![], 1);
+        let double_buffer = space
+            .domain()
+            .get_double_buffer(block.mem_id())
+            .is(DoubleBuffer::YES)
+            .is_true();
+        let mut size = codegen::Size::new(
+            block.base_size() * if double_buffer { 2 } else { 1 },
+            vec![],
+            1,
+        );
         for &(dim, _) in block.mapped_dims() {
             let ir_size = space.ir_instance().dim(dim).size();
             size *= &codegen::Size::from_ir(ir_size, space);
@@ -380,6 +410,7 @@ impl MemoryRegion {
         let ptr_type = unwrap!(space.ir_instance().device().lower_type(ptr_type, space));
         MemoryRegion {
             id: block.mem_id(),
+            double_buffer,
             size,
             mem_space,
             num_private_copies,
@@ -411,7 +442,7 @@ impl MemoryRegion {
         } else {
             None
         };
-        out.extend(size.into_iter().flat_map(|x| x));
+        out.extend(size.into_iter().flatten());
         out
     }
 
@@ -454,6 +485,10 @@ impl MemoryRegion {
     /// Returns the type of the pointer to the memory block.
     pub fn ptr_type(&self) -> ir::Type {
         self.ptr_type
+    }
+
+    pub fn double_buffer(&self) -> bool {
+        self.double_buffer
     }
 }
 

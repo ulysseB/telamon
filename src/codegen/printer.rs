@@ -1,7 +1,9 @@
 use std::convert::{TryFrom, TryInto};
 use std::{fmt, ops};
 
+use fxhash::FxHashSet;
 use itertools::Itertools;
+use log::debug;
 
 use crate::ir::{self, op, Type};
 use crate::search_space::*;
@@ -156,7 +158,8 @@ impl<'a, 'b> Printer<'a, 'b> {
         if fun.block_dims().is_empty() {
             return;
         }
-        let addr = self.namer.name_addr(block.id());
+        // XXX: Should do this for both Load and Store?
+        let addr = self.namer.name_addr(block.id(), ir::AccessType::Load);
         let size = self.namer.name_size(block.local_size(), Type::I(32));
         let d0 = self.namer.name_index_as_operand(fun.block_dims()[0].id());
         let var = fun.block_dims()[1..].iter().fold(d0, |old_var, dim| {
@@ -252,9 +255,16 @@ impl<'a, 'b> Printer<'a, 'b> {
             .inst_printer
             .print_inst(llir::Instruction::jump(loop_label).predicated(lt_cond));
 
-        for instruction in self.namer.expr_to_operand().reset_exprs(dim.id()) {
-            self.helper.print_inst(instruction.clone());
-        }
+        let inner_insts = cfgs
+            .iter()
+            .flat_map(|c| c.instructions().map(|i| i.id()))
+            .chain(
+                advanced
+                    .iter()
+                    .flat_map(|c| c.instructions().map(|i| i.id())),
+            )
+            .collect();
+        self.print_resets(ir::StmtId::Dim(dim.id()), &inner_insts);
     }
 
     /// Prints an unroll loop - loop without jumps
@@ -315,9 +325,16 @@ impl<'a, 'b> Printer<'a, 'b> {
         }
         self.namer.unset_current_index(dim);
 
-        for instruction in self.namer.expr_to_operand().reset_exprs(dim.id()) {
-            self.helper.print_inst(instruction.clone());
-        }
+        let inner_insts = cfgs
+            .iter()
+            .flat_map(|c| c.instructions().map(|i| i.id()))
+            .chain(
+                advanced
+                    .iter()
+                    .flat_map(|c| c.instructions().map(|i| i.id())),
+            )
+            .collect();
+        self.print_resets(ir::StmtId::Dim(dim.id()), &inner_insts);
     }
 
     fn cfg_vec(&mut self, fun: &Function, cfgs: &'b [Cfg<'b>]) {
@@ -327,9 +344,26 @@ impl<'a, 'b> Printer<'a, 'b> {
     }
 
     /// Prints a cfg.
+    #[allow(clippy::cognitive_complexity)]
     pub fn cfg(&mut self, fun: &Function, c: &'b Cfg<'b>) {
         match c {
             Cfg::Root(cfgs) => {
+                // Setup double-buffering offsets
+                for region in fun.mem_blocks() {
+                    if region.double_buffer() {
+                        let delta = self.namer.double_buffer_offset(region.id());
+                        self.helper.print_inst(
+                            llir::Instruction::mov(
+                                delta,
+                                i32::try_from(region.alloc_size().as_int().unwrap() / 2)
+                                    .unwrap()
+                                    .int_literal(),
+                            )
+                            .unwrap(),
+                        );
+                    }
+                }
+
                 for instruction in self.namer.expr_to_operand().compute_exprs(None) {
                     self.helper.print_inst(instruction.clone());
                 }
@@ -438,24 +472,18 @@ impl<'a, 'b> Printer<'a, 'b> {
                 );
                 self.cfg_vec(fun, inner);
 
-                // XXX: Only print sync if there is a load/store to shared memory in the thread
-                // block
-                let mut needs_sync = false;
-                for instruction in c.instructions() {
-                    match instruction.operator() {
-                        op::Ld(_, _, ap) if ap.mem_block().is_some() => needs_sync = true,
-                        op::St(_, _, _, ap) if ap.mem_block().is_some() => {
-                            needs_sync = true
-                        }
-                        _ => (),
+                let body_inst = c.instructions().map(|inst| inst.id()).collect();
+                for &dim in dims {
+                    if let Some(dim) = dim {
+                        self.print_resets(ir::StmtId::Dim(dim), &body_inst);
                     }
                 }
 
-                if needs_sync {
-                    self.helper
-                        .inst_printer
-                        .print_inst(llir::Instruction::sync().into());
-                }
+                /*
+                self.helper
+                    .inst_printer
+                    .print_inst(llir::Instruction::sync().into());
+                    */
             }
             Cfg::Instruction(vec_dims, inst) => self.inst(vec_dims, inst, fun),
         }
@@ -542,6 +570,14 @@ impl<'a, 'b> Printer<'a, 'b> {
                 .predicated(self.guard)
             }
             &op::Ld(ld_type, ref addr, ref pattern) => {
+                debug!(
+                    "ld dims{}: {:?}",
+                    inst.id(),
+                    inst.ir_instruction()
+                        .iteration_dims()
+                        .iter()
+                        .collect::<Vec<_>>()
+                );
                 let spec = llir::LoadSpec::from_ir(
                     vector_factors,
                     lower_type(ld_type, fun),
@@ -592,6 +628,14 @@ impl<'a, 'b> Printer<'a, 'b> {
                     .predicated(guard)
             }
             op::St(addr, val, _, pattern) => {
+                debug!(
+                    "st dims{}: {:?}",
+                    inst.id(),
+                    inst.ir_instruction()
+                        .iteration_dims()
+                        .iter()
+                        .collect::<Vec<_>>()
+                );
                 let (addr, predicate) = self.namer.name_op(addr);
                 assert!(predicate.is_none(), "predicated store");
 
@@ -631,5 +675,37 @@ impl<'a, 'b> Printer<'a, 'b> {
             }
         };
         self.helper.inst_printer.print_inst(llinst);
+        self.print_resets(ir::StmtId::Inst(inst.id()), &Default::default());
+    }
+
+    fn print_resets(&mut self, stmt_id: ir::StmtId, body: &FxHashSet<ir::InstId>) {
+        match stmt_id {
+            ir::StmtId::Dim(dim_id) => {
+                for instruction in self.namer.expr_to_operand().reset_exprs(dim_id) {
+                    self.helper
+                        .print_inst(instruction.clone().predicated(self.guard));
+                }
+
+                for (cond_inst, instruction) in self.namer.dbuf_resets(stmt_id) {
+                    if !body.contains(cond_inst) {
+                        continue;
+                    }
+
+                    self.helper
+                        .print_inst(instruction.clone().predicated(self.guard));
+                }
+            }
+
+            ir::StmtId::Inst(inst_id) => {
+                assert!(body.is_empty());
+
+                for (cond_inst, instruction) in self.namer.dbuf_resets(stmt_id) {
+                    assert_eq!(*cond_inst, inst_id);
+
+                    self.helper
+                        .print_inst(instruction.clone().predicated(self.guard));
+                }
+            }
+        }
     }
 }

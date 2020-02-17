@@ -180,6 +180,13 @@ define enum mem_space($mem in MemoryRegions):
         || inst_flag($inst) is NO_CACHE
 end
 
+/// Whether to enable double-buffering for this shared region
+define enum double_buffer($mem in MemoryRegions):
+	value NO:
+  value YES:
+  	requires mem_space($mem) is SHARED
+end
+
 /// Computes the size of each memory block.
 // TODO(cleanup): use dependent sets to only iterate on necessary pairs.
 // FIXME: remove cubic choice choices
