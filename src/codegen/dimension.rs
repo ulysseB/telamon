@@ -32,10 +32,6 @@ pub struct Dimension {
     other_dims: Vec<ir::DimId>,
     /// The size of this iteration dimension.
     size: codegen::Size,
-
-    /// Dimensions for which this dimension is advanced
-    advanced_for: FxHashSet<ir::DimId>,
-
     /// Index expressions which need to be initialized (in order) before entering the dimension.
     init_exprs: Vec<ExprPtr>,
     /// Index expressions which need to be computed (in order) at the beginning of each iteration.
@@ -97,7 +93,6 @@ impl Dimension {
             representant: dim.id(),
             size: codegen::Size::from_ir(dim.size(), space),
             other_dims: Default::default(),
-            advanced_for: Default::default(),
 
             init_exprs: Default::default(),
             compute_exprs: Default::default(),
@@ -126,11 +121,6 @@ impl Dimension {
         } else {
             false
         }
-    }
-
-    /// Indicates whether the dimension is advanced for a given dimension.
-    pub fn is_advanced(&self, dim_id: ir::DimId) -> bool {
-        self.advanced_for.contains(&dim_id)
     }
 }
 
@@ -185,26 +175,6 @@ pub fn group_merged_dimensions<'a>(space: &'a SearchSpace) -> Vec<Dimension> {
             }
         }
         groups.push(Dimension::new(dim, space));
-    }
-
-    // Add advance information
-    for group in &mut groups {
-        if space.domain().get_num_dim_advances(group.id().into()).min > 0 {
-            for dim in space.ir_instance().dims() {
-                if group.id() == dim.id() {
-                    continue;
-                }
-
-                if space
-                    .domain()
-                    .get_advance(group.id().into(), dim.id())
-                    .is(Advance::YES)
-                    .is_true()
-                {
-                    group.advanced_for.insert(dim.id());
-                }
-            }
-        }
     }
 
     groups

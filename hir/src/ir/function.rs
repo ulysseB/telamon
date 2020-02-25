@@ -170,12 +170,8 @@ impl<L> Function<L> {
         // Create and check the instruction.
         let inst = ir::Instruction::new(op, id, iter_dims, self)?;
         // Register the instruction in its dependencies
-        for &stmt_id in inst.dependencies() {
-            if let ir::StmtId::Inst(dep_id) = stmt_id {
-                self.inst_mut(dep_id).register_user(id.into());
-            } else {
-                unreachable!()
-            }
+        for &dep_id in inst.dependencies() {
+            self.inst_mut(dep_id).register_user(id.into());
         }
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() {
@@ -726,21 +722,6 @@ impl Function {
         // XXX: add "through shared" order dependency (for advance)
         self.body.insts[lowered.store].register_user(lowered.load.into());
         self.body.insts[lowered.load].register_dependency(lowered.store.into());
-
-        for ((_, [compute_dim, st_dim]), (_, [consume_dim, ld_dim])) in lowered
-            .st_dims_mapping
-            .iter()
-            .zip(lowered.ld_dims_mapping.iter())
-        {
-            self.body.dims[*st_dim].register_dependency((*compute_dim).into());
-            self.body.dims[*compute_dim].register_user((*st_dim).into());
-
-            self.body.dims[*ld_dim].register_user((*consume_dim).into());
-            self.body.dims[*consume_dim].register_dependency((*ld_dim).into());
-
-            self.body.dims[*st_dim].register_user((*ld_dim).into());
-            self.body.dims[*ld_dim].register_dependency((*st_dim).into());
-        }
 
         Ok(lowered)
     }

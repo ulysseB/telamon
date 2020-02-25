@@ -84,7 +84,7 @@ pub struct NewObjs {
     pub var_dims: Vec<(VarId, DimId)>,
     pub var_mappings: Vec<(VarId, DimMappingId)>,
     // (a, b) means b is added to Dependencies(a)
-    pub dependencies: Vec<(StmtId, StmtId)>,
+    pub dependencies: Vec<(InstId, InstId)>,
 }
 
 impl NewObjs {

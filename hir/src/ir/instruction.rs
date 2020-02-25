@@ -41,8 +41,8 @@ pub struct Instruction<L = LoweringMap> {
     variable: Option<ir::VarId>,
     defined_vars: VecSet<ir::VarId>,
     used_vars: VecSet<ir::VarId>,
-    dependencies: VecSet<ir::StmtId>,
-    users: VecSet<ir::StmtId>,
+    dependencies: VecSet<ir::InstId>,
+    users: VecSet<ir::InstId>,
 }
 
 impl<L> Instruction<L> {
@@ -79,12 +79,9 @@ impl<L> Instruction<L> {
         let dependencies = operator
             .operands()
             .iter()
-            .flat_map(|op| {
-                if let ir::Operand::Inst(src, _, _, _) = op {
-                    Some((*src).into())
-                } else {
-                    None
-                }
+            .flat_map(|op| match op {
+                ir::Operand::Inst(src, ..) | ir::Operand::Reduce(src, ..) => Some((*src)),
+                _ => None,
             })
             .collect();
 
@@ -225,12 +222,20 @@ impl<L> Instruction<L> {
         assert_eq!(std::mem::replace(&mut self.variable, Some(variable)), None);
     }
 
-    pub(super) fn register_user(&mut self, user: ir::StmtId) {
+    pub(super) fn register_user(&mut self, user: ir::InstId) {
         self.users.insert(user);
     }
 
-    pub(super) fn register_dependency(&mut self, dependency: ir::StmtId) {
+    pub(super) fn register_dependency(&mut self, dependency: ir::InstId) {
         self.dependencies.insert(dependency);
+    }
+
+    pub(crate) fn dependencies(&self) -> &VecSet<ir::InstId> {
+        &self.dependencies
+    }
+
+    pub(crate) fn users(&self) -> &VecSet<ir::InstId> {
+        &self.users
     }
 }
 
@@ -262,7 +267,7 @@ impl Instruction {
             Operand::Inst(ref mut src, _, ref mut dim_map, ref mut can_lower) => {
                 {
                     let stmt_id = ir::StmtId::from(*src);
-                    self.dependencies.insert(new_src.into());
+                    self.dependencies.insert(new_src);
                 }
 
                 *src = new_src;
@@ -294,14 +299,6 @@ impl<L> Statement<L> for Instruction<L> {
     fn register_defined_var(&mut self, var: ir::VarId) {
         self.defined_vars.insert(var);
     }
-
-    fn users(&self) -> &VecSet<ir::StmtId> {
-        &self.users
-    }
-
-    fn dependencies(&self) -> &VecSet<ir::StmtId> {
-        &self.dependencies
-    }
 }
 
 impl<L> fmt::Display for Instruction<L> {
@@ -314,10 +311,12 @@ impl<L> ir::IrDisplay<L> for Instruction<L> {
     fn fmt(&self, fmt: &mut fmt::Formatter, function: &ir::Function<L>) -> fmt::Result {
         write!(
             fmt,
-            "{:?}[{}]: {}",
+            "{:?}[{}]: {} [deps: {:?}, users: {:?}]",
             self.id,
             self.iteration_dims().iter().sorted().format(", "),
-            self.operator.display(function)
+            self.operator.display(function),
+            self.dependencies(),
+            self.users(),
         )
     }
 }

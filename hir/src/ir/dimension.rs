@@ -43,16 +43,6 @@ pub struct Dimension<L = ir::LoweringMap> {
     inner_vars: VecSet<ir::VarId>,
     is_parallelizable: bool,
     freeze_marker: std::marker::PhantomData<L>,
-
-    // Dimensions which use this one
-    //
-    // This correspond to mapped dimensions of a reverse dependency.
-    users: VecSet<ir::StmtId>,
-
-    // Dimensions used by this one
-    //
-    // Those are mapped dimensions of a dependency
-    dependencies: VecSet<ir::StmtId>,
 }
 
 impl Dimension<()> {
@@ -70,8 +60,6 @@ impl Dimension<()> {
             inner_vars: self.inner_vars,
             is_parallelizable: self.is_parallelizable,
             freeze_marker: std::marker::PhantomData,
-            users: self.users,
-            dependencies: self.dependencies,
         }
     }
 }
@@ -104,8 +92,6 @@ impl<L> Dimension<L> {
             inner_vars: VecSet::default(),
             is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
-            users: VecSet::default(),
-            dependencies: VecSet::default(),
         })
     }
 
@@ -132,8 +118,6 @@ impl<L> Dimension<L> {
             inner_vars: VecSet::default(),
             is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
-            users: VecSet::default(),
-            dependencies: VecSet::default(),
         })
     }
 
@@ -199,13 +183,6 @@ impl<L> Dimension<L> {
     /// Register a dimension mapping.
     pub fn register_dim_mapping(&mut self, mapping: &DimMapping) {
         self.mapped_dims.insert(mapping.id);
-
-        if mapping.dims[0] == self.id() {
-            self.users.insert(mapping.dims[1].into());
-        } else {
-            assert!(mapping.dims[1] == self.id());
-            self.dependencies.insert(mapping.dims[0].into());
-        }
     }
 
     /// Returns the list of variables available inside the dimension.
@@ -226,14 +203,6 @@ impl<L> Dimension<L> {
     /// Indicates if the dimension can be parallelized.
     pub fn is_parallelizable(&self) -> bool {
         self.is_parallelizable
-    }
-
-    pub(super) fn register_user(&mut self, user: ir::StmtId) {
-        self.users.insert(user);
-    }
-
-    pub(super) fn register_dependency(&mut self, dependency: ir::StmtId) {
-        self.dependencies.insert(dependency);
     }
 }
 
@@ -269,14 +238,6 @@ impl<L> Statement<L> for Dimension<L> {
 
     fn register_defined_var(&mut self, var: ir::VarId) {
         self.defined_vars.insert(var);
-    }
-
-    fn users(&self) -> &VecSet<ir::StmtId> {
-        &self.users
-    }
-
-    fn dependencies(&self) -> &VecSet<ir::StmtId> {
-        &self.dependencies
     }
 }
 

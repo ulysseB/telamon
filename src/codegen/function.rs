@@ -525,21 +525,14 @@ impl<'a> Instruction<'a> {
             .map(|t| unwrap!(space.ir_instance().device().lower_type(t, space)));
 
         let mut advanced_for = FxHashSet::default();
-        if space
-            .domain()
-            .get_num_dim_advances(instruction.id().into())
-            .min
-            > 0
-        {
-            for dim in space.ir_instance().dims() {
-                if space
-                    .domain()
-                    .get_advance(instruction.id().into(), dim.id())
-                    .is(Advance::YES)
-                    .is_true()
-                {
-                    advanced_for.insert(dim.id());
-                }
+        for dim in space.ir_instance().dims() {
+            if space
+                .domain()
+                .get_advance(instruction.id(), dim.id())
+                .is(Advance::YES)
+                .is_true()
+            {
+                advanced_for.insert(dim.id());
             }
         }
 

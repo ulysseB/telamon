@@ -198,7 +198,8 @@ impl<'a, 'b> Printer<'a, 'b> {
         );
 
         for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
-            self.helper.print_inst(instruction.clone());
+            self.helper
+                .print_inst(instruction.clone().predicated(self.guard));
         }
 
         // Prologue
@@ -225,7 +226,8 @@ impl<'a, 'b> Printer<'a, 'b> {
         self.cfg_vec(fun, cfgs);
 
         for instruction in self.namer.expr_to_operand().update_exprs(dim.id()) {
-            self.helper.print_inst(instruction.clone());
+            self.helper
+                .print_inst(instruction.clone().predicated(self.guard));
         }
 
         self.helper.print_inst(
@@ -245,10 +247,12 @@ impl<'a, 'b> Printer<'a, 'b> {
             }
 
             // Precompute the next iteration of advanced instructions
-            assert!(self.guard.is_none());
-            self.guard = Some(lt_cond);
-            self.cfg_vec(fun, advanced);
-            self.guard = None;
+            if !advanced.is_empty() {
+                assert!(self.guard.is_none());
+                self.guard = Some(lt_cond);
+                self.cfg_vec(fun, advanced);
+                self.guard = None;
+            }
         }
 
         self.helper
@@ -277,7 +281,8 @@ impl<'a, 'b> Printer<'a, 'b> {
         advanced: &'b [Cfg<'b>],
     ) {
         for instruction in self.namer.expr_to_operand().init_exprs(dim.id()) {
-            self.helper.print_inst(instruction.clone());
+            self.helper
+                .print_inst(instruction.clone().predicated(self.guard));
         }
 
         self.namer.set_current_index(dim, 0);
@@ -300,7 +305,8 @@ impl<'a, 'b> Printer<'a, 'b> {
             self.cfg_vec(fun, cfgs);
 
             for instruction in self.namer.expr_to_operand().update_exprs(dim.id()) {
-                self.helper.print_inst(instruction.clone());
+                self.helper
+                    .print_inst(instruction.clone().predicated(self.guard));
             }
 
             if i < size - 1 {
@@ -372,7 +378,6 @@ impl<'a, 'b> Printer<'a, 'b> {
             }
             Cfg::Loop {
                 dimension,
-                size: None,
                 prologue,
                 body,
                 advanced,
@@ -395,9 +400,9 @@ impl<'a, 'b> Printer<'a, 'b> {
                 self.helper
                     .print_comment(format_args!("exit {}", dimension.id()));
             }
+            /*
             Cfg::Loop {
                 dimension,
-                size: Some(size),
                 prologue,
                 body,
                 advanced,
@@ -457,6 +462,7 @@ impl<'a, 'b> Printer<'a, 'b> {
                     }
                 }
             }
+            */
             Cfg::Threads(dims, inner) => {
                 // Disable inactive threads
                 self.disable_threads(
@@ -676,6 +682,14 @@ impl<'a, 'b> Printer<'a, 'b> {
         };
         self.helper.inst_printer.print_inst(llinst);
         self.print_resets(ir::StmtId::Inst(inst.id()), &Default::default());
+        let mut body_set = FxHashSet::default();
+        body_set.insert(inst.id());
+
+        for dims in vector_levels {
+            for dim in &dims[..] {
+                self.print_resets(dim.id().into(), &body_set);
+            }
+        }
     }
 
     fn print_resets(&mut self, stmt_id: ir::StmtId, body: &FxHashSet<ir::InstId>) {

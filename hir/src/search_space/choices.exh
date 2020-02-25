@@ -254,53 +254,35 @@ require forall $dim in Dimensions:
       "!$reduce.is_reduction_common_dim($init.id(), $dim.id())"
         || is_iteration_dim($reduce, $dim) is FALSE || order($dim, $init) is OUTER
 
-// Specifies whether the statement should be advanced in the dimension.  If
-// advanced, the first iteration of the statement is put in the prologue and
-// each iteration of the dimension executes the statement with an offset.
-define enum advance($stmt in Statements, $dim in Dimensions):
+// Specifies whether the instruction should be advanced in the dimension.
+// If advanced, the first iteration of the statement is put in the prologue,
+// and each iteration of the dimension executes the statement with an
+// offset.
+// If the instruction is not a direct child of the dimension, all the intermediate
+// loops get advanced as well (but they only carry the advanced instructions).
+define enum advance($inst in Instructions, $dim in Dimensions):
 	value YES:
-		requires order($stmt, $dim) is INNER
+		requires order($inst, $dim) is INNER
 		requires dim_kind($dim) is SEQUENTIAL
 
 	value NO:
 end
 
-// Only vectorized and unrolled dimensions can be advanced
-require forall $dim in Dimensions:
-	forall $unroll in Dimensions:
-		advance($unroll, $dim) is not YES || dim_kind($unroll) is VECTOR | UNROLL
-
-// If a statement is advanced in a dimension, it is also advanced in all inner
-// dimensions.
-require forall $stmt in Statements:
-	forall $outer in Dimensions:
-		forall $inner in Dimensions:
-			order($inner, $stmt) is not OUTER || order($outer, $inner) is not OUTER
-				|| advance($stmt, $outer) is not YES || advance($stmt, $inner) is YES
-				|| dim_kind($inner) is not SEQUENTIAL
-
 // Ensure MERGED dimensions are compatible wrt advance
-require forall $stmt in Statements:
+require forall $inst in Instructions:
 	forall $lhs in Dimensions:
 		forall $rhs in Dimensions:
-			order($lhs, $rhs) is not MERGED || advance($stmt, $lhs) == advance($stmt, $rhs)
-
-// Count the number of dimensions which are advanced
-define counter num_dim_advances($stmt in Statements):
-	forall $dim in Dimensions:
-		sum "1" when:
-			advance($stmt, $dim) is YES
-end
+			order($lhs, $rhs) is not MERGED || advance($inst, $lhs) == advance($inst, $rhs)
 
 // Represents the dependencies of a statement
-set Dependencies($stmt in Statements) subsetof Statements:
-	item_type = "dyn ir::Statement"
-	id_type = "ir::StmtId"
-	item_getter = "$fun.statement($id)"
-	id_getter = "$item.stmt_id()"
-	iterator = "$stmt.dependencies().iter().map(|&id| $fun.statement(id))"
-	from_superset = "if $stmt.dependencies().contains(&$item.stmt_id()) { Some($item) } else { None }"
-	reverse forall $dep in Statements = "$dep.users().iter().map(|&id| $fun.statement(id))"
+set Dependencies($inst in Instructions) subsetof Instructions:
+	item_type = "ir::Instruction"
+	id_type = "ir::InstId"
+	item_getter = "$fun.inst($id)"
+	id_getter = "$item.id()"
+	iterator = "$inst.dependencies().iter().map(|&id| $fun.inst(id))"
+	from_superset = "if $inst.dependencies().contains(&$item.id()) { Some($item) } else { None }"
+	reverse forall $dep in Instructions = "$dep.users().iter().map(|&id| $fun.inst(id))"
 	var_prefix = "dep"
 	new_objs = "$objs.dependencies"
 end
@@ -313,12 +295,26 @@ end
 // Enforce that if a statement `$user` depends on a statement `$dep` and the
 // user statement is advanced, then either the dependency is before the
 // advanced dimension, or it is also advanced.
-require forall $user in Statements:
+require forall $user in Instructions:
 	forall $dep in Dependencies($user):
 		forall $dim in Dimensions:
 			advance($user, $dim) is not YES ||
 				order($dep, $dim) is BEFORE ||
 					advance($dep, $dim) is YES
+
+// If we have `for A { for B { I; J } }` and I (resp. J) is advanced, we
+// require that J (resp. I) is also advanced.  This prevents breaking
+// up the inner dimension B, which should happen through `order` not merging
+// the outer dimensions of `I` and `J` instead.
+require forall $user in Instructions:
+	forall $dep in Instructions:
+		forall $outer in Dimensions:
+			forall $inner in Dimensions:
+				order($outer, $inner) is not OUTER ||
+				order($inner, $user) is not OUTER ||
+				order($inner, $dep) is not OUTER ||
+				advance($user, $outer) is not YES || 
+				advance($dep, $outer) is YES
 
 // dim_map lowering.
 trigger forall $lhs in Dimensions:
