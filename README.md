@@ -102,5 +102,5 @@ Telamon is released under the Apache Licence (version 2.0). See [LICENSE](LICENS
 more details.
 
 [rust-install]: https://www.rust-lang.org/en-US/install.html
-[cc17]: https://stratoss.fr/ulysse/papers/telamon_cc17.pdf
+[cc17]: https://hal.inria.fr/hal-01655602/file/paper.pdf
 [telamon-doc]: https://ulysseb.github.com/telamon/telamon
