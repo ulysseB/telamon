@@ -54,8 +54,6 @@ We can now describe the body of the kernel itself. Here we create a kernel that 
 instructions for us. The builder keeps the list of open loops and nest new instructions in
 them.
 
-``` mppa
-
 Telamon now has a nearly functional mppa backend. While most kernels run
 perfectly fine, it is still buggy and a lot of hacks take place as the runtime
 we rely on is not really satisfying. Also for diverse reasons, telamon
